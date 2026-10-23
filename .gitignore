@@ -1,0 +1,43 @@
+# Generated Android / Gradle
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+.externalNativeBuild/
+.cxx/
+captures/
+*.apk
+*.aab
+*.apks
+
+# Signing, licenses, secrets and machine-specific configuration
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.pk8
+*.key
+keystore.properties
+signing.properties
+secrets.properties
+.env
+.env.*
+**/.env
+**/.env.*
+google-services.json
+**/google-services.json
+*OWNER-PRIVATE*
+*owner-private*
+**/private-keys/
+**/license-generator-private/
+
+# Local user data and exports
+*.ab
+*.bak
+*.backup
+*.log
+backups/
+exports/
+user-data/
