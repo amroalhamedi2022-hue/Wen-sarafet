@@ -1,0 +1,40 @@
+plugins { id "com.android.application" }
+
+android {
+    namespace "app.wensarafet.tracker"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "app.wensarafet.tracker"
+        minSdk 33
+        targetSdk 35
+        versionCode 16
+        versionName "1.8.0"
+    }
+
+    signingConfigs {
+        if (System.getenv("WEN_SARAFET_KEYSTORE")) {
+            release {
+                storeFile file(System.getenv("WEN_SARAFET_KEYSTORE"))
+                storePassword System.getenv("WEN_SARAFET_STORE_PASSWORD")
+                keyAlias System.getenv("WEN_SARAFET_KEY_ALIAS") ?: "wen-sarafet-test"
+                keyPassword System.getenv("WEN_SARAFET_KEY_PASSWORD") ?: System.getenv("WEN_SARAFET_STORE_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources false
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), rootProject.file("proguard-rules.pro")
+            if (signingConfigs.findByName("release")) signingConfig signingConfigs.release
+        }
+        debug { applicationIdSuffix ".recovered.debug" }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}

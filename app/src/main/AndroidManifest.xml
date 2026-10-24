@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="app.wensarafet.tracker">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <application
+        android:allowBackup="true"
+        android:debuggable="false"
+        android:usesCleartextTraffic="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".QuickActionActivity" android:exported="false" android:theme="@style/AppTheme" />
+
+        <receiver android:name=".ReminderReceiver" android:exported="false" />
+        <receiver android:name=".CaptureActionReceiver" android:exported="false" />
+        <receiver android:name=".SmsCaptureReceiver" android:exported="true" android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+        <service android:name=".FinanceNotificationListener" android:label="وين صرفت؟ — التقاط الحوالات"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="true">
+            <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
+        </service>
+        <receiver android:name=".BootReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name=".JawwalFriendWidget" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_jawwal_friend" />
+        </receiver>
+        <receiver android:name=".JawwalMerchantWidget" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_jawwal_merchant" />
+        </receiver>
+        <receiver android:name=".BopWidget" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_bop" />
+        </receiver>
+        <receiver android:name=".PalPayWidget" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_palpay" />
+        </receiver>
+        <receiver android:name=".BalanceWidgetProvider" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /><action android:name="android.intent.action.CONFIGURATION_CHANGED" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_balances" />
+        </receiver>
+        <receiver android:name=".BalanceTripleWidgetProvider" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /><action android:name="android.intent.action.CONFIGURATION_CHANGED" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_balances_triple" />
+        </receiver>
+    </application>
+</manifest>
