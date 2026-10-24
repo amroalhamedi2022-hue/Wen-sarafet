@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">وين صرفت؟</string>
+    <string name="widget_friend_desc">جوال باي — دفع لصديق</string>
+    <string name="widget_merchant_desc">جوال باي — دفع لتاجر</string>
+    <string name="widget_bop_desc">بنك فلسطين — USSD</string>
+    <string name="widget_palpay_desc">PalPay — تحويل سريع</string>
+    <string name="widget_balances_desc">أرصدة جوال باي وبنك فلسطين</string>
+    <string name="widget_balances_triple_desc">أرصدة جوال باي وبنك فلسطين وبال باي</string>
+    <string name="widget_palpay_balance">رصيد بال باي</string>
+    <string name="widget_jawwal_balance">رصيد جوال باي</string>
+    <string name="widget_bop_balance">رصيد بنك فلسطين</string>
+</resources>

@@ -1,0 +1,13 @@
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+-keep class app.wensarafet.tracker.*Activity
+-keep class app.wensarafet.tracker.*Receiver
+-keep class app.wensarafet.tracker.*Widget
+-keep class app.wensarafet.tracker.*WidgetProvider
+-keep class app.wensarafet.tracker.FinanceNotificationListener
+-keepclassmembers class * extends android.app.Activity { public protected *; }
+-keepclassmembers class * extends android.app.Service { public protected *; }
+-keepclassmembers class * extends android.content.BroadcastReceiver { public protected *; }
+-keepclassmembers class * extends android.appwidget.AppWidgetProvider { public protected *; }
+-keep class **.R
+-keep class **.R$* { <fields>; }
+-dontwarn java.lang.invoke.StringConcatFactory

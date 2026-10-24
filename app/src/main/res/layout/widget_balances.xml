@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_balance_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:layoutDirection="ltr"
+    android:padding="3dp"
+    android:background="@drawable/widget_balance_two_background">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="1dp">
+        <ImageView
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/icon_jawwal_pay_widget_soft"
+            android:contentDescription="@string/widget_jawwal_balance" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Jawwal Pay"
+            android:textColor="@color/widget_jawwal_text"
+            android:textStyle="normal"
+            android:textSize="10.5sp"
+            android:maxLines="1" />
+        <TextView
+            android:id="@+id/widget_jawwal_balance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="@color/widget_jawwal_text"
+            android:textStyle="bold"
+            android:textSize="11.5sp"
+            android:maxLines="1" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="1dp">
+        <ImageView
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/icon_bop_widget_soft"
+            android:contentDescription="@string/widget_bop_balance" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="بنك فلسطين"
+            android:textColor="@color/widget_bop_text"
+            android:textStyle="normal"
+            android:textSize="10.5sp"
+            android:maxLines="1" />
+        <TextView
+            android:id="@+id/widget_bop_balance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="@color/widget_bop_text"
+            android:textStyle="bold"
+            android:textSize="11.5sp"
+            android:maxLines="1" />
+    </LinearLayout>
+</LinearLayout>
