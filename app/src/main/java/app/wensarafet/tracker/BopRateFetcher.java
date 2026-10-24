@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 public final class BopRateFetcher {
     private BopRateFetcher() {}
     public static String fetchBuyUsdIls() throws Exception {
-        URL url=new URL("https://web.bankofpalestine.com/ar/retail/treasury");
+        URL url=new URL("https://www.bop.ps/personal/exchange");
         HttpURLConnection c=(HttpURLConnection)url.openConnection();
         c.setConnectTimeout(7000);c.setReadTimeout(7000);
         c.setRequestProperty("Accept","text/html");

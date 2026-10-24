@@ -1075,9 +1075,14 @@ public final class MainActivity extends Activity {
         final boolean[] verifiedOnline={false};
         final long[] onlineTime={0L};
         final String[] onlineValue={""};
+        final boolean[] loadingQuote={false};
+        final boolean[] dialogVisible={true};
+        final boolean[] autoAttemptedThisDialog={false};
+        final Runnable[] onPairChanged={null};
+        final android.content.SharedPreferences onlinePrefs=getSharedPreferences("fx_online_rates",MODE_PRIVATE);
         TextView preview=Ui.text(this,"",15,Ui.BRAND,true);
         form.addView(preview,fieldParams());
-        TextView warning=Ui.text(this,"أدخل السعر الفعلي من البنك أو المحفظة. هذا السعر يدوي حاليًا ولا يُستبدل تلقائيًا بسعر سوق تقديري.",11,Ui.MUTED,false);
+        TextView warning=Ui.text(this,"أدخل السعر الفعلي من البنك أو المحفظة. التسعيرة المنشورة إرشادية ولا تحلّ محل السعر المدخل دون موافقتك.",11,Ui.MUTED,false);
         form.addView(warning,fieldParams());
         Runnable recalc=()->{
             int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
@@ -1089,41 +1094,82 @@ public final class MainActivity extends Activity {
                 preview.setText("سيُخصم "+Money.format(n,a.currency)+" ويُضاف "+Money.format(converted,b.currency));
             } catch(Exception error){preview.setText("أدخل المبلغ والسعر الصحيحين");}
         };
+        // Never overwrite a manually entered rate when accounts are reselected.
         Runnable loadSavedRate=()->{
             int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
             if(si<0 || di<0)return;
             String key=accounts.get(si).currency+"_"+accounts.get(di).currency;
             rate.setText(getSharedPreferences("fx_manual_rates",MODE_PRIVATE).getString(key,""));
+            verifiedOnline[0]=false;onlineValue[0]="";onlineTime[0]=0L;
+            if("USD_ILS".equals(key)){
+                String oldQuote=onlinePrefs.getString("USD_ILS_rate","");
+                long oldTime=onlinePrefs.getLong("USD_ILS_at",0L);
+                if(!oldQuote.isEmpty() && oldTime>0){
+                    rateStatus.setText("تسعيرة بنك فلسطين الإرشادية: "+oldQuote+" شيكل/دولار • "+
+                        new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.ROOT).format(new Date(oldTime))+" • اضغط للمراجعة");
+                }else rateStatus.setText("تسعيرة بنك فلسطين غير متوفرة؛ يمكنك إدخال السعر يدويًا");
+            }else rateStatus.setText("سعر يدوي لهذا الزوج من العملات");
             recalc.run();
+            if(onPairChanged[0]!=null)onPairChanged[0].run();
         };
-        Runnable downloadOnline=()->{
-            Models.Account a=accounts.get(source.getSelectedItemPosition()),b=accounts.get(destination.getSelectedItemPosition());
+        Runnable confirmCachedRate=()->{
+            int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
+            if(si<0 || di<0 || !"USD".equals(accounts.get(si).currency) || !"ILS".equals(accounts.get(di).currency))return;
+            final String quote=onlinePrefs.getString("USD_ILS_rate","");
+            final long checked=onlinePrefs.getLong("USD_ILS_at",0L);
+            if(quote.isEmpty() || checked<=0)return;
+            new AlertDialog.Builder(this).setTitle("تسعيرة بنك فلسطين (شراء الدولار)")
+                .setMessage("كل 1 USD ≈ "+quote+" ILS (إرشادي). تاريخ الجلب: "+
+                    new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.ROOT).format(new Date(checked))+". السعر الفعلي ورسوم التحويل قد تختلف.")
+                .setNegativeButton("احتفظ بالسعر المكتوب",null)
+                .setPositiveButton("استخدام السعر",(d,w)->{
+                    rate.setText(quote);verifiedOnline[0]=true;onlineTime[0]=checked;onlineValue[0]=quote;
+                    rateStatus.setText("تم اختيار السعر الإرشادي. تأكد من السعر الفعلي قبل تأكيد التحويل.");
+                }).show();
+        };
+        rateStatus.setOnClickListener(v->confirmCachedRate.run());
+        // true: explicit refresh opens the quote confirmation; false: silent daily refresh.
+        java.util.function.Consumer<Boolean> downloadOnline=manual->{
+            int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
+            if(si<0 || di<0)return;
+            Models.Account a=accounts.get(si),b=accounts.get(di);
             if(!"USD".equals(a.currency)||!"ILS".equals(b.currency)){
-                Toast.makeText(this,"السعر البنكي الأونلاين متاح حاليًا من USD إلى ILS فقط",Toast.LENGTH_LONG).show();return;
+                if(manual)Toast.makeText(this,"سعر البنك الأونلاين متاح من USD إلى ILS فقط",Toast.LENGTH_LONG).show();
+                return;
             }
-            refreshRate.setEnabled(false);rateStatus.setText("جارٍ جلب التسعيرة الإرشادية من البنك...");
+            if(loadingQuote[0])return;
+            loadingQuote[0]=true;refreshRate.setEnabled(false);
+            rateStatus.setText("جارٍ جلب التسعيرة الإرشادية من بنك فلسطين...");
             new Thread(()->{
                 try{
-                    final String newQuote=BopRateFetcher.fetchBuyUsdIls();final long now=System.currentTimeMillis();
+                    final String quote=BopRateFetcher.fetchBuyUsdIls();final long fetchedAt=System.currentTimeMillis();
                     runOnUiThread(()->{
-                        refreshRate.setEnabled(true);
-                        getSharedPreferences("fx_online_rates",MODE_PRIVATE).edit()
-                            .putString("USD_ILS_rate",newQuote).putLong("USD_ILS_at",now).apply();
-                        // A downloaded rate is not the effective rate until the user explicitly accepts it.
-                        new AlertDialog.Builder(this).setTitle("تسعيرة بنك فلسطين (شراء الدولار)")
-                            .setMessage("كل 1 USD ≈ "+newQuote+" ILS (إرشادي). قد يختلف سعر التنفيذ الفعلي أو رسوم المحفظة.")
-                            .setNegativeButton("احتفظ بالسعر المكتوب",null)
-                            .setPositiveButton("استخدام السعر",(d,w)->{
-                                rate.setText(newQuote);verifiedOnline[0]=true;onlineTime[0]=now;onlineValue[0]=newQuote;
-                                rateStatus.setText("سعر إرشادي أونلاين، تحقّق منه قبل التأكيد");
-                            }).show();
+                        loadingQuote[0]=false;refreshRate.setEnabled(true);
+                        onlinePrefs.edit().putString("USD_ILS_rate",quote).putLong("USD_ILS_at",fetchedAt).apply();
+                        if(!dialogVisible[0])return;
+                        int activeSource=source.getSelectedItemPosition(),activeDestination=destination.getSelectedItemPosition();
+                        if(activeSource<0 || activeDestination<0 || !"USD".equals(accounts.get(activeSource).currency)
+                                || !"ILS".equals(accounts.get(activeDestination).currency))return;
+                        rateStatus.setText("تسعيرة البنك الإرشادية: "+quote+" شيكل/دولار • اضغط للمراجعة");
+                        if(manual)confirmCachedRate.run();
                     });
-                }catch(Exception e){runOnUiThread(()->{
-                    refreshRate.setEnabled(true);rateStatus.setText("تعذّر التأكد من سعر البنك — أدخل السعر الفعلي يدويًا");
+                }catch(Exception error){runOnUiThread(()->{
+                    loadingQuote[0]=false;refreshRate.setEnabled(true);
+                    if(dialogVisible[0])rateStatus.setText("لم تتوفر تسعيرة موثوقة من البنك؛ أدخل السعر الفعلي يدويًا");
                 });}
-            }).start();
+            },"wen-bop-rate-fetch").start();
         };
-        refreshRate.setOnClickListener(v->downloadOnline.run());
+        onPairChanged[0]=()->{
+            int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
+            if(si<0 || di<0 || !"USD".equals(accounts.get(si).currency) || !"ILS".equals(accounts.get(di).currency))return;
+            if(autoAttemptedThisDialog[0] || loadingQuote[0])return;
+            long lastFetched=onlinePrefs.getLong("USD_ILS_at",0L);
+            if(FxRateRefreshPolicy.needsDailyRefresh(lastFetched,System.currentTimeMillis(),
+                    java.util.TimeZone.getDefault())){
+                autoAttemptedThisDialog[0]=true;downloadOnline.accept(false);
+            }
+        };
+        refreshRate.setOnClickListener(v->downloadOnline.accept(true));
         saveRate.setOnClickListener(v->{
             try{
                 int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
@@ -1154,19 +1200,9 @@ public final class MainActivity extends Activity {
                 dialog.dismiss();Toast.makeText(this,"تم التحويل بين الحسابين",Toast.LENGTH_SHORT).show();showMain(false);
             }catch(Exception error){Toast.makeText(this,error.getMessage()==null?"فشل التحويل":error.getMessage(),Toast.LENGTH_LONG).show();}
         }));
+        dialog.setOnDismissListener(d->dialogVisible[0]=false);
         dialog.show();loadSavedRate.run();
-        long lastOnline=getSharedPreferences("fx_online_rates",MODE_PRIVATE).getLong("USD_ILS_at",0L);
-        if(lastOnline>0)rateStatus.setText("آخر تسعيرة مخزنة: "+new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.ROOT).format(new Date(lastOnline)));
-        Calendar lastDay=Calendar.getInstance();lastDay.setTimeInMillis(lastOnline);
-        Calendar thisDay=Calendar.getInstance();
-        if(lastOnline==0 || lastDay.get(Calendar.YEAR)!=thisDay.get(Calendar.YEAR) || lastDay.get(Calendar.DAY_OF_YEAR)!=thisDay.get(Calendar.DAY_OF_YEAR)) {
-            // Only fetch when USD->ILS is selected, never in a background loop consuming data.
-            if(source.getSelectedItemPosition()>=0 && destination.getSelectedItemPosition()>=0) {
-                Models.Account sourceAccount=accounts.get(source.getSelectedItemPosition());
-                Models.Account destinationAccount=accounts.get(destination.getSelectedItemPosition());
-                if("USD".equals(sourceAccount.currency)&&"ILS".equals(destinationAccount.currency))downloadOnline.run();
-            }
-        }
+
     }
 
     private void showTransactionTransferDialog(Models.Transaction tx) {

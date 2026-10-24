@@ -37,6 +37,9 @@ java -cp "$OUT_DIR" FxTransferMathTest
 compile "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BopIndicativeRate.java" \
   "$PROJECT_DIR/tests/BopIndicativeRateTest.java"
 java -cp "$OUT_DIR" BopIndicativeRateTest
+compile "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FxRateRefreshPolicy.java" \
+  "$PROJECT_DIR/tests/FxRateRefreshPolicyTest.java"
+java -cp "$OUT_DIR" FxRateRefreshPolicyTest
 
 compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/LicenseProtocol.java" \
@@ -49,3 +52,4 @@ java -cp "$OUT_DIR" app.wensarafet.tracker.BackupCryptoTest
 python3 "$PROJECT_DIR/tests/debt_migration_audit.py"
 python3 "$PROJECT_DIR/tests/fx_migration_audit.py"
 python3 "$PROJECT_DIR/tests/category_audit_migration_v10.py"
+python3 "$PROJECT_DIR/tests/fx_form_source_contract.py"

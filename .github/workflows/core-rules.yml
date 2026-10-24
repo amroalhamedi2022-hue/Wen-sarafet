@@ -1,33 +1,23 @@
-name: Core rules tests (no APK build)
+name: Wen Sarafet source-only finance and safety checks
 on:
   push:
     branches:
-      - "feature/wen-batch01-recovered-20261024"
-      - "feature/wen-batch02-finance-ui-20261024"
+      - 'feature/wen-batch01-recovered-20261024'
+      - 'feature/wen-batch02-finance-ui-20261024'
+      - 'feature/wen-batch03-fx-daily-20261025'
   pull_request:
 
 jobs:
-  core-tests:
+  source-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Compile and test isolated finance rules
-        run: |
-          mkdir -p /tmp/wen-core
-          javac --release 17 -encoding UTF-8 -d /tmp/wen-core \
-            app/src/main/java/app/wensarafet/tracker/CategorySuggestionRules.java \
-            app/src/main/java/app/wensarafet/tracker/FxTransferMath.java \
-            app/src/main/java/app/wensarafet/tracker/MonthlySavingsRules.java \
-            app/src/main/java/app/wensarafet/tracker/BopIndicativeRate.java \
-            tests/CategorySuggestionRulesTest.java \
-            tests/FxTransferMathTest.java \
-            tests/MonthlySavingsRulesTest.java \
-            tests/BopIndicativeRateTest.java
-          java -cp /tmp/wen-core CategorySuggestionRulesTest
-          java -cp /tmp/wen-core FxTransferMathTest
-          java -cp /tmp/wen-core MonthlySavingsRulesTest
-          java -cp /tmp/wen-core BopIndicativeRateTest
+      - name: Run Java business-rule and SQL migration tests (no APK)
+        run: bash scripts/test_core.sh
+      - name: Check protected security file digests remain identical to recovered baseline
+        run: sha256sum -c tests/protected_security_sha256.txt
