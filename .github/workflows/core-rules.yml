@@ -1,7 +1,9 @@
 name: Core rules tests (no APK build)
 on:
   push:
-    branches: ["feature/wen-batch01-recovered-20261024"]
+    branches:
+      - "feature/wen-batch01-recovered-20261024"
+      - "feature/wen-batch02-finance-ui-20261024"
   pull_request:
 
 jobs:
@@ -19,7 +21,13 @@ jobs:
           javac --release 17 -encoding UTF-8 -d /tmp/wen-core \
             app/src/main/java/app/wensarafet/tracker/CategorySuggestionRules.java \
             app/src/main/java/app/wensarafet/tracker/FxTransferMath.java \
+            app/src/main/java/app/wensarafet/tracker/MonthlySavingsRules.java \
+            app/src/main/java/app/wensarafet/tracker/BopIndicativeRate.java \
             tests/CategorySuggestionRulesTest.java \
-            tests/FxTransferMathTest.java
+            tests/FxTransferMathTest.java \
+            tests/MonthlySavingsRulesTest.java \
+            tests/BopIndicativeRateTest.java
           java -cp /tmp/wen-core CategorySuggestionRulesTest
           java -cp /tmp/wen-core FxTransferMathTest
+          java -cp /tmp/wen-core MonthlySavingsRulesTest
+          java -cp /tmp/wen-core BopIndicativeRateTest
