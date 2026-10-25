@@ -5,7 +5,7 @@ from pathlib import Path
 
 s = Path(__file__).resolve().parents[1]/'app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java'
 code = s.read_text()
-assert 'DB_VERSION = 10' in code
+assert 'DB_VERSION = 11' in code
 fields = ('destination_amount_minor','exchange_rate','exchange_rate_source','exchange_rate_checked_at')
 for col in fields:
     assert f'ALTER TABLE transactions ADD COLUMN {col} ' in code, col

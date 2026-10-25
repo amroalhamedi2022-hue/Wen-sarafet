@@ -13,7 +13,7 @@ import java.util.Map;
 
 public final class FinanceDbHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "wen_sarafet.db";
-    private static final int DB_VERSION = 10;
+    private static final int DB_VERSION = 11;
     private final Context appContext;
 
     public FinanceDbHelper(Context context) {
@@ -30,7 +30,10 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, currency TEXT NOT NULL, balance_minor INTEGER NOT NULL DEFAULT 0, built_in INTEGER NOT NULL DEFAULT 1, position INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1)");
         db.execSQL("CREATE TABLE categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, kind TEXT NOT NULL, emoji TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0, exclude_from_expense INTEGER NOT NULL DEFAULT 0, archived INTEGER NOT NULL DEFAULT 0)");
         db.execSQL("CREATE TABLE transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, amount_minor INTEGER NOT NULL, currency TEXT NOT NULL, account_id INTEGER NOT NULL, destination_account_id INTEGER, category_id INTEGER, note TEXT NOT NULL DEFAULT '', raw_text TEXT, needs_review INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, source TEXT NOT NULL DEFAULT 'MANUAL', affects_balance INTEGER NOT NULL DEFAULT 1, base_affects_balance INTEGER NOT NULL DEFAULT 1, special_kind TEXT, debt_person_id INTEGER, debt_direction TEXT, destination_amount_minor INTEGER, exchange_rate TEXT, exchange_rate_source TEXT, exchange_rate_checked_at INTEGER, FOREIGN KEY(account_id) REFERENCES accounts(id), FOREIGN KEY(destination_account_id) REFERENCES accounts(id), FOREIGN KEY(category_id) REFERENCES categories(id))");
-        db.execSQL("CREATE TABLE transaction_splits (id INTEGER PRIMARY KEY AUTOINCREMENT, transaction_id INTEGER NOT NULL, category_id INTEGER NOT NULL, amount_minor INTEGER NOT NULL, FOREIGN KEY(transaction_id) REFERENCES transactions(id) ON DELETE CASCADE, FOREIGN KEY(category_id) REFERENCES categories(id))");
+        db.execSQL("CREATE TABLE transaction_splits (id INTEGER PRIMARY KEY AUTOINCREMENT, transaction_id INTEGER NOT NULL, category_id INTEGER, amount_minor INTEGER NOT NULL, special_kind TEXT, debt_person_id INTEGER, debt_direction TEXT, " +
+                "CHECK ((special_kind IS NULL AND category_id IS NOT NULL AND debt_person_id IS NULL AND debt_direction IS NULL) OR " +
+                "(special_kind IN ('DEBT','DEBT_PAYMENT') AND category_id IS NULL AND debt_person_id IS NOT NULL AND debt_direction IN ('RECEIVABLE','PAYABLE'))), " +
+                "FOREIGN KEY(transaction_id) REFERENCES transactions(id) ON DELETE CASCADE, FOREIGN KEY(category_id) REFERENCES categories(id), FOREIGN KEY(debt_person_id) REFERENCES debt_people(id))");
         db.execSQL("CREATE INDEX idx_tx_account ON transactions(account_id)");
         db.execSQL("CREATE INDEX idx_tx_created ON transactions(created_at)");
         createCaptureSchema(db);
@@ -76,6 +79,17 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 10) {
             db.execSQL("ALTER TABLE categories ADD COLUMN archived INTEGER NOT NULL DEFAULT 0");
+            createAuditSchema(db);
+        }
+        if (oldVersion < 11) {
+            // Rebuild the child table to safely make category_id nullable. Keep original IDs and amounts.
+            db.execSQL("CREATE TABLE transaction_splits_v11 (id INTEGER PRIMARY KEY AUTOINCREMENT, transaction_id INTEGER NOT NULL, category_id INTEGER, amount_minor INTEGER NOT NULL, special_kind TEXT, debt_person_id INTEGER, debt_direction TEXT, " +
+                    "CHECK ((special_kind IS NULL AND category_id IS NOT NULL AND debt_person_id IS NULL AND debt_direction IS NULL) OR " +
+                    "(special_kind IN ('DEBT','DEBT_PAYMENT') AND category_id IS NULL AND debt_person_id IS NOT NULL AND debt_direction IN ('RECEIVABLE','PAYABLE'))), " +
+                    "FOREIGN KEY(transaction_id) REFERENCES transactions(id) ON DELETE CASCADE, FOREIGN KEY(category_id) REFERENCES categories(id), FOREIGN KEY(debt_person_id) REFERENCES debt_people(id))");
+            db.execSQL("INSERT INTO transaction_splits_v11(id,transaction_id,category_id,amount_minor) SELECT id,transaction_id,category_id,amount_minor FROM transaction_splits");
+            db.execSQL("DROP TABLE transaction_splits");
+            db.execSQL("ALTER TABLE transaction_splits_v11 RENAME TO transaction_splits");
             createAuditSchema(db);
         }
     }
@@ -124,10 +138,10 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 "'transactions',OLD.id,'DELETE','type='||OLD.type||', amount='||OLD.amount_minor||', account='||OLD.account_id,strftime('%s','now')*1000); END");
         db.execSQL("CREATE TRIGGER IF NOT EXISTS audit_split_insert AFTER INSERT ON transaction_splits BEGIN " +
                 "INSERT INTO change_history(table_name,record_id,action,current,created_at) VALUES ("+
-                "'transaction_splits',NEW.transaction_id,'SPLIT_ADD','category='||NEW.category_id||', amount='||NEW.amount_minor,strftime('%s','now')*1000); END");
+                "'transaction_splits',NEW.transaction_id,'SPLIT_ADD','category='||COALESCE(NEW.category_id,-1)||', amount='||NEW.amount_minor,strftime('%s','now')*1000); END");
         db.execSQL("CREATE TRIGGER IF NOT EXISTS audit_split_delete BEFORE DELETE ON transaction_splits BEGIN " +
                 "INSERT INTO change_history(table_name,record_id,action,previous,created_at) VALUES ("+
-                "'transaction_splits',OLD.transaction_id,'SPLIT_REMOVE','category='||OLD.category_id||', amount='||OLD.amount_minor,strftime('%s','now')*1000); END");
+                "'transaction_splits',OLD.transaction_id,'SPLIT_REMOVE','category='||COALESCE(OLD.category_id,-1)||', amount='||OLD.amount_minor,strftime('%s','now')*1000); END");
         db.execSQL("CREATE TRIGGER IF NOT EXISTS audit_category_update AFTER UPDATE ON categories " +
                 "WHEN OLD.emoji!=NEW.emoji OR OLD.archived!=NEW.archived BEGIN " +
                 "INSERT INTO change_history(table_name,record_id,action,previous,current,created_at) VALUES ("+
@@ -466,12 +480,19 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
 
     public List<Models.SplitDetail> getSplitDetails(long transactionId) {
         List<Models.SplitDetail> result = new ArrayList<>();
-        String sql = "SELECT c.id,c.name,c.emoji,s.amount_minor FROM transaction_splits s " +
-                "JOIN categories c ON c.id=s.category_id WHERE s.transaction_id=? ORDER BY s.id";
+        String sql = "SELECT c.id,c.name,c.emoji,s.amount_minor,s.special_kind,s.debt_person_id,p.name,s.debt_direction FROM transaction_splits s " +
+                "LEFT JOIN categories c ON c.id=s.category_id LEFT JOIN debt_people p ON p.id=s.debt_person_id " +
+                "WHERE s.transaction_id=? ORDER BY s.id";
         try (Cursor c = getReadableDatabase().rawQuery(sql, new String[]{String.valueOf(transactionId)})) {
             while (c.moveToNext()) {
                 Models.SplitDetail item = new Models.SplitDetail();
-                item.categoryId = c.getLong(0); item.categoryName = c.getString(1); item.categoryEmoji = c.getString(2); item.amountMinor = c.getLong(3);
+                item.categoryId = c.isNull(0) ? 0 : c.getLong(0);
+                item.categoryName = c.isNull(1) ? "" : c.getString(1);
+                item.categoryEmoji = c.isNull(2) ? "" : c.getString(2);
+                item.amountMinor = c.getLong(3); item.specialKind = c.isNull(4) ? null : c.getString(4);
+                item.debtPersonId = c.isNull(5) ? null : c.getLong(5);
+                item.debtPersonName = c.isNull(6) ? null : c.getString(6);
+                item.debtDirection = c.isNull(7) ? null : c.getString(7);
                 result.add(item);
             }
         }
@@ -929,9 +950,11 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 destinationId = null;
                 if (splits != null && !splits.isEmpty()) {
                     if (!FinanceRules.EXPENSE.equals(newType)) throw new IllegalArgumentException("التقسيم متاح للمصروف فقط");
-                    List<Long> values = new ArrayList<>();
-                    for (Models.SplitInput split : splits) values.add(split.amountMinor);
-                    if (!FinanceRules.splitsMatch(amount, values)) throw new IllegalArgumentException("مجموع الأجزاء لا يساوي مبلغ العملية");
+                    SplitDebtRules.checkParts(amount, splits);
+                    for (Models.SplitInput split : splits) if (split.specialKind != null) {
+                        validateDebtDirection(split.debtDirection);
+                        requireDebtPerson(split.debtPersonId);
+                    }
                     categoryId = null;
                 } else if (categoryId == null) throw new IllegalArgumentException("اختر تصنيف العملية");
             }
@@ -946,6 +969,8 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             ensureDebtOpeningCanBeRemoved(writable, transactionId);
             if (affectsBalance) reverseBalanceEffect(writable, oldType, oldBalanceImpact, oldSourceId, oldDestinationId);
             List<Long> affectedDebts = removeDebtMovementsForTransaction(writable, transactionId);
+            // A fully repaid debt must reopen before a revised PAYMENT can be allocated to it.
+            for (Long debtId : affectedDebts) recomputeDebt(writable, debtId);
             writable.delete("transaction_splits", "transaction_id=?", new String[]{String.valueOf(transactionId)});
             ContentValues cv = new ContentValues(); cv.put("type", newType); cv.put("account_id", sourceId);
             if (destinationId == null) cv.putNull("destination_account_id"); else cv.put("destination_account_id", destinationId);
@@ -956,8 +981,34 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             writable.update("transactions", cv, "id=?", new String[]{String.valueOf(transactionId)});
             if (splits != null) for (Models.SplitInput split : splits) {
                 ContentValues part = new ContentValues();
-                part.put("transaction_id", transactionId); part.put("category_id", split.categoryId); part.put("amount_minor", split.amountMinor);
+                part.put("transaction_id", transactionId); part.put("amount_minor", split.amountMinor);
+                if (split.specialKind == null) part.put("category_id", split.categoryId);
+                else { part.putNull("category_id"); part.put("special_kind", split.specialKind);
+                    part.put("debt_person_id", split.debtPersonId); part.put("debt_direction", split.debtDirection); }
                 writable.insertOrThrow("transaction_splits", null, part);
+            }
+            // Several split lines for the same person may share a single debt record.
+            // Coalesce them before posting; debt_movements has UNIQUE(transaction_id,debt_id,kind).
+            Map<String, Models.SplitInput> groupedDebt = new LinkedHashMap<>();
+            if (splits != null) for (Models.SplitInput split : splits) if (split.specialKind != null) {
+                String key = split.specialKind + ":" + split.debtDirection + ":" + split.debtPersonId;
+                Models.SplitInput item = groupedDebt.get(key);
+                if (item == null) groupedDebt.put(key, Models.SplitInput.debt(split.amountMinor, split.specialKind, split.debtPersonId, split.debtDirection));
+                else item.amountMinor = Math.addExact(item.amountMinor, split.amountMinor);
+            }
+            // Debt OPEN first, then payments; every action is in the same database transaction.
+            for (int stage=0; stage<2; stage++) for (Models.SplitInput split : groupedDebt.values()) {
+                if ((stage == 0) != FinanceRules.SPECIAL_DEBT.equals(split.specialKind)) continue;
+                if (stage == 0) {
+                    long debtId = findOrCreateOpenDebt(writable, split.debtPersonId, split.debtDirection,
+                            currency, "جزء من: " + transactionId, System.currentTimeMillis());
+                    insertDebtMovement(writable, debtId, transactionId, "OPEN", split.amountMinor,
+                            System.currentTimeMillis(), "جزء من عملية مقسمة");
+                    recomputeDebt(writable, debtId);
+                } else {
+                    allocatePayment(writable, split.debtPersonId, split.debtDirection, currency, transactionId,
+                            split.amountMinor, System.currentTimeMillis(), "سداد من عملية مقسمة");
+                }
             }
             if (baseAffectsBalance) {
                 long newBalanceImpact = FinanceRules.EXPENSE.equals(newType)
@@ -1167,6 +1218,10 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 "SELECT DISTINCT transaction_id FROM debt_movements WHERE debt_id=? AND transaction_id IS NOT NULL",
                 new String[]{String.valueOf(debtId)})) { while (c.moveToNext()) transactionIds.add(c.getLong(0)); }
         for (Long txId : transactionIds) {
+            try (Cursor c = getReadableDatabase().rawQuery("SELECT 1 FROM transaction_splits WHERE transaction_id=? LIMIT 1",
+                    new String[]{String.valueOf(txId)})) {
+                if (c.moveToFirst()) throw new IllegalArgumentException("الدين مرتبط بمصروف مقسّم؛ عدّل أو احذف العملية من تفاصيلها لحماية الأجزاء الأخرى");
+            }
             try (Cursor c = getReadableDatabase().rawQuery("SELECT COUNT(DISTINCT debt_id) FROM debt_movements WHERE transaction_id=?",
                     new String[]{String.valueOf(txId)})) {
                 if (c.moveToFirst() && c.getInt(0) > 1)
@@ -1438,7 +1493,9 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         List<Long> includedParts = new ArrayList<>();
         if (splits != null && !splits.isEmpty()) {
             for (Models.SplitInput split : splits)
-                if (!categoryExcluded(readable, split.categoryId)) includedParts.add(split.amountMinor);
+                if (SplitDebtRules.affectsOutgoingBalance(split,
+                        split.specialKind == null && categoryExcluded(readable, split.categoryId)))
+                    includedParts.add(split.amountMinor);
             // A split made entirely of excluded categories intentionally has zero balance impact.
             if (includedParts.isEmpty()) return 0L;
             return FinanceRules.expenseBalanceImpact(total, false, includedParts);
@@ -1450,12 +1507,14 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     private long existingExpenseBalanceImpact(SQLiteDatabase readable, long transactionId, long total) {
         List<Long> includedParts = new ArrayList<>();
         int splitCount = 0;
-        try (Cursor c = readable.rawQuery("SELECT s.amount_minor,c.exclude_from_expense FROM transaction_splits s " +
-                "JOIN categories c ON c.id=s.category_id WHERE s.transaction_id=?",
+        try (Cursor c = readable.rawQuery("SELECT s.amount_minor,COALESCE(c.exclude_from_expense,0),s.special_kind FROM transaction_splits s " +
+                "LEFT JOIN categories c ON c.id=s.category_id WHERE s.transaction_id=?",
                 new String[]{String.valueOf(transactionId)})) {
             while (c.moveToNext()) {
                 splitCount++;
-                if (c.getInt(1) == 0) includedParts.add(c.getLong(0));
+                String special = c.isNull(2) ? null : c.getString(2);
+                if (FinanceRules.SPECIAL_DEBT_PAYMENT.equals(special) ||
+                        (special == null && c.getInt(1) == 0)) includedParts.add(c.getLong(0));
             }
         }
         if (splitCount > 0) return includedParts.isEmpty() ? 0L

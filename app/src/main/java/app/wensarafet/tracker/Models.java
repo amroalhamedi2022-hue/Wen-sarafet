@@ -18,8 +18,16 @@ public final class Models {
         public String categoryName;
         public String categoryEmoji;
         public long amountMinor;
+        public String specialKind;
+        public Long debtPersonId;
+        public String debtPersonName;
+        public String debtDirection;
 
-        public String displayName() { return categoryEmoji + " " + categoryName; }
+        public String displayName() {
+            if (FinanceRules.SPECIAL_DEBT.equals(specialKind)) return "🤝 دَين — " + debtPersonName + " (إلي)";
+            if (FinanceRules.SPECIAL_DEBT_PAYMENT.equals(specialKind)) return "✓ سداد دَين — " + debtPersonName + " (عليّ)";
+            return categoryEmoji + " " + categoryName;
+        }
     }
 
     public static final class Category {
@@ -114,10 +122,20 @@ public final class Models {
     public static final class SplitInput {
         public long categoryId;
         public long amountMinor;
+        public String specialKind;
+        public Long debtPersonId;
+        public String debtDirection;
 
         public SplitInput(long categoryId, long amountMinor) {
             this.categoryId = categoryId;
             this.amountMinor = amountMinor;
+        }
+        public static SplitInput debt(long amountMinor, String specialKind, long personId, String direction) {
+            SplitInput value = new SplitInput(0, amountMinor);
+            value.specialKind = specialKind;
+            value.debtPersonId = personId;
+            value.debtDirection = direction;
+            return value;
         }
     }
 }
