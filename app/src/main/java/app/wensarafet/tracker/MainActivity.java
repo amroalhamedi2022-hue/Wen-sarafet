@@ -2461,7 +2461,7 @@ public final class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,78)));
         ScrollView scroll=new ScrollView(this);LinearLayout body=Ui.column(this);
         body.setPadding(Ui.dp(this,16),Ui.dp(this,12),Ui.dp(this,16),Ui.dp(this,32));
-        body.addView(Ui.text(this,"سجل محفوظ على الجهاز: يبيّن الإضافة والتعديل والحذف والتقسيم. التراجع متاح لتغيير التصنيف العادي الأخير فقط بعد التحقق؛ لا يمكن حاليًا عكس الحذف أو عمليات الدين والتحويلات المعقدة تلقائيًا، حفاظًا على الرصيد.",12,Ui.MUTED,false));
+        body.addView(Ui.text(this,"سجل محفوظ على الجهاز: يبيّن الإضافة والتعديل والحذف والتقسيم. التراجع متاح لتغيير التصنيف العادي الأخير أو حذف عملية يدوية بسيطة حُذفت بعد هذا التحديث. لا يمكن استرجاع الديون أو التحويلات أو العمليات المقسّمة تلقائيًا، حفاظًا على الأرصدة.",12,Ui.MUTED,false));
         List<FinanceDbHelper.AuditEntry> events=db.getChangeHistory(200);
         if(events.isEmpty())body.addView(Ui.text(this,"لا توجد تعديلات مسجّلة بعد تحديث هذه النسخة.",14,Ui.MUTED,false));
         for(FinanceDbHelper.AuditEntry entry:events){
@@ -2471,12 +2471,18 @@ public final class MainActivity extends Activity {
             if(entry.before!=null)card.addView(Ui.text(this,"قبل: "+entry.before,12,Ui.MUTED,false));
             if(entry.after!=null)card.addView(Ui.text(this,"بعد: "+entry.after,12,Ui.MUTED,false));
             if(entry.undoable && "transactions".equals(entry.table)) {
-                Button undo=miniButton("↶ تراجع عن تغيير التصنيف");
-                undo.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("تراجع عن التصنيف؟")
-                    .setMessage("سيتم إرجاع التصنيف السابق وإعادة احتساب الرصيد. لا يمكن التراجع عن تعديلات أقدم إذا تغيرت الحركة بعدها.")
+                boolean deleted="DELETE".equals(entry.action);
+                Button undo=miniButton(deleted?"↶ استرجاع العملية المحذوفة":"↶ تراجع عن تغيير التصنيف");
+                undo.setOnClickListener(v->new AlertDialog.Builder(this)
+                    .setTitle(deleted?"استرجاع العملية المحذوفة؟":"تراجع عن التصنيف؟")
+                    .setMessage(deleted?"سيُعاد سجل العملية اليدوية ورصيد الحساب داخل معاملة واحدة. لن يُسترجع حذف الديون أو التحويلات.":
+                            "سيتم إرجاع التصنيف السابق وإعادة احتساب الرصيد. لا يمكن التراجع عن تعديلات أقدم إذا تغيرت الحركة بعدها.")
                     .setNegativeButton("إلغاء",null).setPositiveButton("تراجع",(d,w)->{
-                        try{db.undoLatestSimpleCategoryChange(entry.id);showAuditHistory();}
-                        catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}
+                        try{
+                            if(deleted)db.undoDeletedSimpleTransaction(entry.id);
+                            else db.undoLatestSimpleCategoryChange(entry.id);
+                            showAuditHistory();
+                        }catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}
                     }).show());
                 card.addView(undo,fieldParams());
             }

@@ -3,8 +3,8 @@
 import json, re, sqlite3
 from pathlib import Path
 src=(Path(__file__).resolve().parents[1]/'app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java').read_text()
-assert 'DB_VERSION = 11' in src
-segment=src.split('private static void createAuditSchema(SQLiteDatabase db) {',1)[1].split('    public static final class AuditEntry',1)[0]
+assert 'DB_VERSION = 12' in src
+segment=src.split('private static void createAuditSchema(SQLiteDatabase db) {',1)[1].split('    private static void createSafeUndoSchema',1)[0]
 sql=[]
 for match in re.finditer(r'db\.execSQL\((.*?)\);\s*\n',segment,re.S):
     terms=re.findall(r'"(?:\\.|[^"\\])*"',match.group(1))
