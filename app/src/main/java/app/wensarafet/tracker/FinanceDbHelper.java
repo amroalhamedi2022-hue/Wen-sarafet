@@ -176,6 +176,20 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         public String table,action,before,after;
         public boolean undoable;
     }
+    /** Guard shared by the history button and its execution to avoid stale/unsafe Undo. */
+    private static final String SAFE_CATEGORY_UNDO_SQL =
+            "AND t.source='MANUAL' AND t.needs_review=0 " +
+            "AND t.destination_amount_minor IS NULL AND t.exchange_rate IS NULL " +
+            "AND t.exchange_rate_source IS NULL AND t.exchange_rate_checked_at IS NULL " +
+            "AND t.debt_person_id IS NULL AND t.debt_direction IS NULL " +
+            "AND NOT EXISTS(SELECT 1 FROM transaction_splits sp WHERE sp.transaction_id=t.id) " +
+            "AND NOT EXISTS(SELECT 1 FROM debt_movements dm WHERE dm.transaction_id=t.id) " +
+            "AND NOT EXISTS(SELECT 1 FROM capture_inbox ci WHERE ci.transaction_id=t.id) " +
+            "AND EXISTS(SELECT 1 FROM categories oldcat " +
+            "WHERE oldcat.id=h.previous_category_id AND oldcat.kind=t.type) " +
+            "AND EXISTS(SELECT 1 FROM categories newcat " +
+            "WHERE newcat.id=h.current_category_id AND newcat.kind=t.type) ";
+
     public List<AuditEntry> getChangeHistory(int limit) {
         List<AuditEntry> result=new ArrayList<>();
         try(Cursor c=getReadableDatabase().rawQuery("SELECT h.id,h.table_name,h.record_id,h.action,h.previous,h.current,h.created_at,"+
@@ -190,7 +204,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 "AND t.type=h.current_type AND t.category_id=h.current_category_id " +
                 "AND t.account_id=h.current_account_id AND t.amount_minor=h.current_amount_minor " +
                 "AND t.special_kind IS NULL AND t.destination_account_id IS NULL " +
-                "AND NOT EXISTS(SELECT 1 FROM transaction_splits sp WHERE sp.transaction_id=t.id)) " +
+                SAFE_CATEGORY_UNDO_SQL + ") " +
                 "AND h.id=(SELECT MAX(next.id) FROM change_history next " +
                 "WHERE next.table_name='transactions' AND next.record_id=h.record_id) " +
                 "THEN 1 ELSE 0 END " +
@@ -203,32 +217,41 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         return result;
     }
 
-    /** Undo only a single, latest, ordinary category edit. No debt, FX, split or delete undo. */
+    /** Undo a latest manual category edit only. The edit and audit mark commit together. */
     public void undoLatestSimpleCategoryChange(long auditId) {
-        long txId,oldCategory,account;
-        String kind;
-        try(Cursor c=getReadableDatabase().rawQuery(
-                "SELECT h.record_id,h.previous_category_id,h.previous_type,h.previous_account_id " +
-                "FROM change_history h JOIN transactions t ON t.id=h.record_id " +
-                "WHERE h.id=? AND h.table_name='transactions' AND h.action='EDIT' AND h.undone=0 " +
-                "AND h.previous_category_id IS NOT NULL AND h.current_category_id IS NOT NULL " +
-                "AND h.previous_category_id!=h.current_category_id AND h.previous_type=h.current_type " +
-                "AND h.previous_account_id=h.current_account_id AND h.previous_amount_minor=h.current_amount_minor " +
-                "AND t.type=h.current_type AND t.category_id=h.current_category_id " +
-                "AND t.account_id=h.current_account_id AND t.amount_minor=h.current_amount_minor " +
-                "AND t.special_kind IS NULL AND t.destination_account_id IS NULL " +
-                "AND NOT EXISTS(SELECT 1 FROM transaction_splits sp WHERE sp.transaction_id=t.id) " +
-                "AND h.id=(SELECT MAX(next.id) FROM change_history next WHERE next.table_name='transactions' AND next.record_id=h.record_id)",
-                new String[]{String.valueOf(auditId)})) {
-            if(!c.moveToFirst())throw new IllegalArgumentException("هذه الحركة ليست آمنة للتراجع أو تغيّرت بعدها بيانات أخرى");
-            txId=c.getLong(0);oldCategory=c.getLong(1);kind=c.getString(2);account=c.getLong(3);
+        SQLiteDatabase writable=getWritableDatabase();
+        writable.beginTransaction();
+        try {
+            long txId,oldCategory,account;
+            String kind;
+            try(Cursor c=writable.rawQuery(
+                    "SELECT h.record_id,h.previous_category_id,h.previous_type,h.previous_account_id " +
+                    "FROM change_history h JOIN transactions t ON t.id=h.record_id " +
+                    "WHERE h.id=? AND h.table_name='transactions' AND h.action='EDIT' AND h.undone=0 " +
+                    "AND h.previous_category_id IS NOT NULL AND h.current_category_id IS NOT NULL " +
+                    "AND h.previous_category_id!=h.current_category_id AND h.previous_type=h.current_type " +
+                    "AND h.previous_account_id=h.current_account_id AND h.previous_amount_minor=h.current_amount_minor " +
+                    "AND t.type=h.current_type AND t.category_id=h.current_category_id " +
+                    "AND t.account_id=h.current_account_id AND t.amount_minor=h.current_amount_minor " +
+                    "AND t.special_kind IS NULL AND t.destination_account_id IS NULL " +
+                    SAFE_CATEGORY_UNDO_SQL +
+                    "AND h.id=(SELECT MAX(next.id) FROM change_history next WHERE next.table_name='transactions' AND next.record_id=h.record_id)",
+                    new String[]{String.valueOf(auditId)})) {
+                if(!c.moveToFirst())throw new IllegalArgumentException("هذه الحركة ليست آمنة للتراجع أو تغيّرت بعدها بيانات أخرى");
+                txId=c.getLong(0);oldCategory=c.getLong(1);kind=c.getString(2);account=c.getLong(3);
+            }
+            if(!FinanceRules.EXPENSE.equals(kind)&&!FinanceRules.INCOME.equals(kind))
+                throw new IllegalArgumentException("التراجع متاح لتغيير التصنيف العادي فقط");
+            // reclassifyTransaction nests an Android SQLite transaction. A failure in either
+            // step rolls back the entire outer transaction, including balances and audit state.
+            reclassifyTransaction(txId,kind,account,null,oldCategory,new ArrayList<>());
+            ContentValues cv=new ContentValues();cv.put("undone",1);
+            if(writable.update("change_history",cv,"id=? AND undone=0",new String[]{String.valueOf(auditId)})!=1)
+                throw new IllegalStateException("تعذّر تثبيت سجل التراجع");
+            writable.setTransactionSuccessful();
+        } finally {
+            writable.endTransaction();
         }
-        if(!FinanceRules.EXPENSE.equals(kind)&&!FinanceRules.INCOME.equals(kind))
-            throw new IllegalArgumentException("التراجع متاح لتغيير التصنيف العادي فقط");
-        // Existing reclassification function is responsible for reversing and posting the balance exactly.
-        reclassifyTransaction(txId,kind,account,null,oldCategory,new ArrayList<>());
-        ContentValues cv=new ContentValues();cv.put("undone",1);
-        getWritableDatabase().update("change_history",cv,"id=?",new String[]{String.valueOf(auditId)});
     }
 
     /** Deletion is permanent only for unused categories; referenced categories are archived. */
@@ -1456,14 +1479,21 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             String type; long amount; long sourceId; Long destinationId; boolean affectsBalance;
             boolean baseAffects; Long categoryId;String currency,note,rawText,source;int needsReview;long createdAt;
             boolean hasSpecialMetadata;boolean canUndo;
-            try (Cursor c = writable.rawQuery("SELECT type,amount_minor,account_id,destination_account_id,affects_balance FROM transactions WHERE id=?", new String[]{String.valueOf(transactionId)})) {
+            // Keep the projection in sync with all cursor indices used below. Previous
+            // code selected only FIVE columns but accessed 0..17, crashing on deletion.
+            try (Cursor c = writable.rawQuery("SELECT type,amount_minor,account_id,destination_account_id,affects_balance," +
+                    "base_affects_balance,category_id,currency,note,raw_text,source,needs_review,created_at," +
+                    "special_kind,debt_person_id,debt_direction,destination_amount_minor," +
+                    "exchange_rate,exchange_rate_source,exchange_rate_checked_at FROM transactions WHERE id=?",
+                    new String[]{String.valueOf(transactionId)})) {
                 if (!c.moveToFirst()) throw new IllegalArgumentException("العملية غير موجودة");
                 type=c.getString(0);amount=c.getLong(1);sourceId=c.getLong(2);
                 destinationId=c.isNull(3)?null:c.getLong(3);affectsBalance=c.getInt(4)==1;
                 baseAffects=c.getInt(5)==1;categoryId=c.isNull(6)?null:c.getLong(6);
                 currency=c.getString(7);note=c.getString(8);rawText=c.isNull(9)?null:c.getString(9);
                 source=c.getString(10);needsReview=c.getInt(11);createdAt=c.getLong(12);
-                hasSpecialMetadata=!c.isNull(13)||!c.isNull(14)||!c.isNull(15)||!c.isNull(16)||!c.isNull(17);
+                hasSpecialMetadata=!c.isNull(13)||!c.isNull(14)||!c.isNull(15)||!c.isNull(16)||
+                        !c.isNull(17)||!c.isNull(18)||!c.isNull(19);
             }
             long balanceImpact = FinanceRules.EXPENSE.equals(type)
                     ? existingExpenseBalanceImpact(writable, transactionId, amount) : amount;
