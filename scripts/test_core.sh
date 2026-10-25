@@ -69,3 +69,5 @@ compile \
   "$PROJECT_DIR/tests/SimpleUndoRulesTest.java"
 java -cp "$OUT_DIR" SimpleUndoRulesTest
 python3 "$PROJECT_DIR/tests/simple_delete_undo_v12.py"
+
+python3 "$PROJECT_DIR/tests/finance_delete_cursor_and_category_undo_contract.py"
