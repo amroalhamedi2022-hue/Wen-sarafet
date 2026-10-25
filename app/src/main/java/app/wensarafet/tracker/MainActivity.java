@@ -997,21 +997,39 @@ public final class MainActivity extends Activity {
     }
 
     private void showSplitTransactionDialog(Models.Transaction tx) {
+        if (!FinanceRules.EXPENSE.equals(tx.type)) {
+            Toast.makeText(this, "تقسيم المصروف متاح للعمليات الصادرة فقط", Toast.LENGTH_LONG).show();
+            return;
+        }
         List<Models.Category> categories = db.getCategories(FinanceRules.EXPENSE);
+        List<Models.DebtPerson> people = db.getDebtPeople();
+        List<Models.SplitDetail> existing = db.getSplitDetails(tx.id);
+        for (Models.SplitDetail split : existing) if (split.debtPersonId != null) {
+            boolean found = false;
+            for (Models.DebtPerson person : people) if (person.id == split.debtPersonId) found = true;
+            if (!found) {
+                Toast.makeText(this, "فعّل صاحب الدين من إدارة الأشخاص قبل تعديل التقسيم", Toast.LENGTH_LONG).show();
+                return;
+            }
+        }
         List<SplitRowRef> rows = new ArrayList<>();
         LinearLayout form = Ui.column(this); form.setPadding(Ui.dp(this, 18), Ui.dp(this, 4), Ui.dp(this, 18), Ui.dp(this, 8));
         form.addView(Ui.text(this, "المبلغ الكامل: " + Money.format(tx.amountMinor, tx.currency) + " — يجب أن يساوي مجموع الأجزاء.", 12, Ui.MUTED, false));
         LinearLayout rowsBox = Ui.column(this); form.addView(rowsBox);
-        List<Models.SplitDetail> existing = db.getSplitDetails(tx.id);
         if (existing.isEmpty()) {
-            addSplitRow(rowsBox, rows, categories); addSplitRow(rowsBox, rows, categories);
+            addDebtSplitRow(rowsBox, rows, categories, people); addDebtSplitRow(rowsBox, rows, categories, people);
         } else for (Models.SplitDetail split : existing) {
-            addSplitRow(rowsBox, rows, categories);
+            addDebtSplitRow(rowsBox, rows, categories, people);
             SplitRowRef row = rows.get(rows.size() - 1);
             for (int i = 0; i < categories.size(); i++) if (categories.get(i).id == split.categoryId) { row.category.setSelection(i); break; }
+            if (row.mode != null) row.mode.setSelection(
+                    FinanceRules.SPECIAL_DEBT.equals(split.specialKind) ? 1 :
+                    FinanceRules.SPECIAL_DEBT_PAYMENT.equals(split.specialKind) ? 2 : 0);
+            if (row.person != null && split.debtPersonId != null) for(int i=0;i<people.size();i++)
+                if (people.get(i).id==split.debtPersonId) { row.person.setSelection(i); break; }
             row.amount.setText(String.format(Locale.ROOT, "%.2f", split.amountMinor / 100.0));
         }
-        Button add = actionButton("＋ إضافة جزء", false); add.setOnClickListener(v -> addSplitRow(rowsBox, rows, categories)); form.addView(add, fieldParams());
+        Button add = actionButton("＋ إضافة جزء", false); add.setOnClickListener(v -> addDebtSplitRow(rowsBox, rows, categories, people)); form.addView(add, fieldParams());
         ScrollView scroll = new ScrollView(this); scroll.addView(form);
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("تقسيم العملية")
                 .setView(scroll).setNegativeButton("إلغاء", null).setPositiveButton("حفظ التقسيم", null).create();
@@ -1022,8 +1040,19 @@ public final class MainActivity extends Activity {
                 for (SplitRowRef row : rows) {
                     Long value = Money.parseMinor(row.amount.getText().toString());
                     if (value == null || value <= 0) throw new IllegalArgumentException("أكمل مبلغ كل جزء");
-                    Models.Category category = categories.get(row.category.getSelectedItemPosition());
-                    parts.add(new Models.SplitInput(category.id, value)); amounts.add(value);
+                    int mode = row.mode == null ? 0 : row.mode.getSelectedItemPosition();
+                    if (mode == 0) {
+                        Models.Category category = categories.get(row.category.getSelectedItemPosition());
+                        parts.add(new Models.SplitInput(category.id, value));
+                    } else {
+                        if (people.isEmpty() || row.person == null || row.person.getSelectedItemPosition() < 0)
+                            throw new IllegalArgumentException("أضف الشخص من صفحة الديون أولًا");
+                        Models.DebtPerson person = people.get(row.person.getSelectedItemPosition());
+                        parts.add(Models.SplitInput.debt(value,
+                                mode == 1 ? FinanceRules.SPECIAL_DEBT : FinanceRules.SPECIAL_DEBT_PAYMENT,
+                                person.id, mode == 1 ? FinanceRules.DEBT_RECEIVABLE : FinanceRules.DEBT_PAYABLE));
+                    }
+                    amounts.add(value);
                 }
                 if (!FinanceRules.splitsMatch(tx.amountMinor, amounts)) throw new IllegalArgumentException("مجموع الأجزاء لا يساوي مبلغ العملية");
                 db.reclassifyTransaction(tx.id, FinanceRules.EXPENSE, tx.accountId, null, null, parts);
@@ -2154,6 +2183,8 @@ public final class MainActivity extends Activity {
 
     private static final class SplitRowRef {
         Spinner category;
+        Spinner mode;
+        Spinner person;
         EditText amount;
     }
 
@@ -2505,6 +2536,28 @@ public final class MainActivity extends Activity {
             db.addCustomCategory(name.getText().toString(), kind, emoji.getText().toString()); dialog.dismiss(); afterSave.run();
             Toast.makeText(this, "تمت إضافة التصنيف", Toast.LENGTH_SHORT).show();
         })); dialog.show();
+    }
+
+    private void addDebtSplitRow(LinearLayout container, List<SplitRowRef> rows,
+                                 List<Models.Category> categories, List<Models.DebtPerson> people) {
+        addSplitRow(container, rows, categories);
+        SplitRowRef row = rows.get(rows.size()-1);
+        // The original row's fields stay intact; insert compact debt controls above its amount.
+        ViewGroup card = (ViewGroup) row.category.getParent();
+        Spinner mode = spinner(java.util.Arrays.asList("مصروف عادي", "دَين — إلي", "سداد دَين — عليّ"));
+        row.mode = mode;
+        card.addView(mode, 0, fieldParams());
+        List<String> names = new ArrayList<>();
+        for (Models.DebtPerson person:people) names.add(person.name);
+        Spinner person = spinner(names);
+        row.person = person;
+        card.addView(person, 1, fieldParams());
+        mode.setOnItemSelectedListener(new SimpleItemSelected(() -> {
+            boolean debt = mode.getSelectedItemPosition()!=0;
+            person.setVisibility(debt ? View.VISIBLE : View.GONE);
+            row.category.setVisibility(debt ? View.GONE : View.VISIBLE);
+        }));
+        person.setVisibility(View.GONE);
     }
 
     private void addSplitRow(LinearLayout container, List<SplitRowRef> rows, List<Models.Category> categories) {
