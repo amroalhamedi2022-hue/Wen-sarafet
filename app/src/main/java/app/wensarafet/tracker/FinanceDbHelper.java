@@ -13,7 +13,7 @@ import java.util.Map;
 
 public final class FinanceDbHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "wen_sarafet.db";
-    private static final int DB_VERSION = 11;
+    private static final int DB_VERSION = 12;
     private final Context appContext;
 
     public FinanceDbHelper(Context context) {
@@ -39,6 +39,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         createCaptureSchema(db);
         createDebtSchema(db);
         createAuditSchema(db);
+        createSafeUndoSchema(db);
         seed(db);
     }
 
@@ -91,6 +92,10 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             db.execSQL("DROP TABLE transaction_splits");
             db.execSQL("ALTER TABLE transaction_splits_v11 RENAME TO transaction_splits");
             createAuditSchema(db);
+        }
+        if (oldVersion < 12) {
+            // Previous deletions intentionally have no snapshots and cannot be undone.
+            createSafeUndoSchema(db);
         }
     }
 
@@ -151,6 +156,21 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 "'categories',OLD.id,'CATEGORY_DELETE',OLD.name,strftime('%s','now')*1000); END");
     }
 
+    /** Only newly deleted, simple manual transactions get an undo snapshot.
+     *  No plaintext snapshot is exported to GitHub or a network service.
+     */
+    private static void createSafeUndoSchema(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS deleted_transaction_snapshots(" +
+                "audit_id INTEGER PRIMARY KEY,transaction_id INTEGER NOT NULL," +
+                "type TEXT NOT NULL,amount_minor INTEGER NOT NULL,currency TEXT NOT NULL," +
+                "account_id INTEGER NOT NULL,category_id INTEGER NOT NULL," +
+                "note TEXT NOT NULL,raw_text TEXT,needs_review INTEGER NOT NULL," +
+                "created_at INTEGER NOT NULL,source TEXT NOT NULL," +
+                "affects_balance INTEGER NOT NULL,base_affects_balance INTEGER NOT NULL," +
+                "balance_impact_minor INTEGER NOT NULL,deleted_at INTEGER NOT NULL," +
+                "restored_at INTEGER,FOREIGN KEY(audit_id) REFERENCES change_history(id))");
+    }
+
     public static final class AuditEntry {
         public long id,recordId,createdAt;
         public String table,action,before,after;
@@ -158,12 +178,23 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     }
     public List<AuditEntry> getChangeHistory(int limit) {
         List<AuditEntry> result=new ArrayList<>();
-        try(Cursor c=getReadableDatabase().rawQuery("SELECT id,table_name,record_id,action,previous,current,created_at,"+
-                "CASE WHEN action='EDIT' AND undone=0 AND previous_category_id IS NOT NULL " +
-                "AND current_category_id IS NOT NULL AND previous_category_id!=current_category_id " +
-                "AND previous_type=current_type AND previous_account_id=current_account_id " +
-                "AND previous_amount_minor=current_amount_minor THEN 1 ELSE 0 END " +
-                "FROM change_history ORDER BY id DESC LIMIT ?",new String[]{String.valueOf(Math.min(500,Math.max(1,limit)))})) {
+        try(Cursor c=getReadableDatabase().rawQuery("SELECT h.id,h.table_name,h.record_id,h.action,h.previous,h.current,h.created_at,"+
+                "CASE WHEN h.action='DELETE' AND h.table_name='transactions' AND h.undone=0 " +
+                "AND EXISTS(SELECT 1 FROM deleted_transaction_snapshots ss WHERE ss.audit_id=h.id AND ss.restored_at IS NULL) " +
+                "AND NOT EXISTS(SELECT 1 FROM transactions other WHERE other.id=h.record_id) THEN 1 " +
+                "WHEN h.action='EDIT' AND h.undone=0 AND h.previous_category_id IS NOT NULL " +
+                "AND h.current_category_id IS NOT NULL AND h.previous_category_id!=h.current_category_id " +
+                "AND h.previous_type=h.current_type AND h.previous_account_id=h.current_account_id " +
+                "AND h.previous_amount_minor=h.current_amount_minor " +
+                "AND EXISTS(SELECT 1 FROM transactions t WHERE t.id=h.record_id " +
+                "AND t.type=h.current_type AND t.category_id=h.current_category_id " +
+                "AND t.account_id=h.current_account_id AND t.amount_minor=h.current_amount_minor " +
+                "AND t.special_kind IS NULL AND t.destination_account_id IS NULL " +
+                "AND NOT EXISTS(SELECT 1 FROM transaction_splits sp WHERE sp.transaction_id=t.id)) " +
+                "AND h.id=(SELECT MAX(next.id) FROM change_history next " +
+                "WHERE next.table_name='transactions' AND next.record_id=h.record_id) " +
+                "THEN 1 ELSE 0 END " +
+                "FROM change_history h ORDER BY h.id DESC LIMIT ?",new String[]{String.valueOf(Math.min(500,Math.max(1,limit)))})) {
             while(c.moveToNext()) {
                 AuditEntry a=new AuditEntry();a.id=c.getLong(0);a.table=c.getString(1);a.recordId=c.getLong(2);
                 a.action=c.getString(3);a.before=c.getString(4);a.after=c.getString(5);a.createdAt=c.getLong(6);a.undoable=c.getInt(7)==1;result.add(a);
@@ -1232,7 +1263,9 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         try {
             for (Long txId : transactionIds) {
                 String type; long amount, sourceId; Long destinationId; boolean affects;
-                try (Cursor c = writable.rawQuery("SELECT type,amount_minor,account_id,destination_account_id,affects_balance FROM transactions WHERE id=?",
+                try (Cursor c = writable.rawQuery("SELECT type,amount_minor,account_id,destination_account_id,affects_balance,base_affects_balance," +
+                    "category_id,currency,note,raw_text,source,needs_review,created_at," +
+                    "special_kind,debt_person_id,debt_direction,destination_amount_minor,exchange_rate FROM transactions WHERE id=?",
                         new String[]{String.valueOf(txId)})) {
                     if (!c.moveToFirst()) continue;
                     type=c.getString(0); amount=c.getLong(1); sourceId=c.getLong(2); destinationId=c.isNull(3)?null:c.getLong(3); affects=c.getInt(4)==1;
@@ -1335,14 +1368,102 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         } finally { writable.endTransaction(); BalanceWidgetProvider.updateAll(appContext); BudgetAlertManager.checkAll(appContext); }
     }
 
+    /** Restore only a simple deleted manual income/expense. One SQLite transaction for
+     *  row, balance and audit metadata; never restore capture, transfer or debt. */
+    public void undoDeletedSimpleTransaction(long auditId) {
+        SQLiteDatabase writable=getWritableDatabase();writable.beginTransaction();
+        try {
+            long transactionId,accountId,categoryId,amount,impact,createdAt;
+            int affects,baseAffects,needsReview;
+            String type,currency,note,rawText,source;
+            try(Cursor c=writable.rawQuery(
+                "SELECT s.transaction_id,s.account_id,s.category_id,s.type,s.amount_minor," +
+                "s.balance_impact_minor,s.created_at,s.currency,s.note,s.raw_text,s.source," +
+                "s.needs_review,s.affects_balance,s.base_affects_balance " +
+                "FROM deleted_transaction_snapshots s JOIN change_history h ON h.id=s.audit_id " +
+                "WHERE s.audit_id=? AND s.restored_at IS NULL AND h.undone=0 AND h.action='DELETE' " +
+                "AND h.table_name='transactions' AND h.record_id=s.transaction_id " +
+                "AND NOT EXISTS(SELECT 1 FROM transactions t WHERE t.id=s.transaction_id)",
+                new String[]{String.valueOf(auditId)})) {
+                if(!c.moveToFirst())throw new IllegalArgumentException("هذه العملية غير قابلة للتراجع أو سبق استرجاعها");
+                transactionId=c.getLong(0);accountId=c.getLong(1);categoryId=c.getLong(2);
+                type=c.getString(3);amount=c.getLong(4);impact=c.getLong(5);
+                createdAt=c.getLong(6);currency=c.getString(7);note=c.getString(8);
+                rawText=c.isNull(9)?null:c.getString(9);source=c.getString(10);
+                needsReview=c.getInt(11);affects=c.getInt(12);baseAffects=c.getInt(13);
+            }
+            if(!SimpleUndoRules.isEligible(type,source,amount,true,false,false,false,false,needsReview))
+                throw new IllegalArgumentException("التراجع المالي غير آمن لهذه العملية");
+            long balance;
+            try(Cursor c=writable.rawQuery("SELECT balance_minor,currency FROM accounts WHERE id=?",
+                    new String[]{String.valueOf(accountId)})) {
+                if(!c.moveToFirst() || !currency.equals(c.getString(1)))
+                    throw new IllegalArgumentException("الحساب الأصلي لم يعد موجودًا بنفس العملة");
+                balance=c.getLong(0);
+            }
+            try(Cursor c=writable.rawQuery("SELECT kind FROM categories WHERE id=?",
+                    new String[]{String.valueOf(categoryId)})) {
+                if(!c.moveToFirst() || !type.equals(c.getString(0)))
+                    throw new IllegalArgumentException("التصنيف الأصلي غير متاح لاسترجاع العملية");
+            }
+            // The stored impact is the precise amount reversed at deletion, even if
+            // exclusion/category preferences changed afterward.
+            long restoredBalance=SimpleUndoRules.restoredBalance(balance,type,affects==1?impact:0);
+            ContentValues tx=new ContentValues();tx.put("id",transactionId);tx.put("type",type);
+            tx.put("amount_minor",amount);tx.put("currency",currency);tx.put("account_id",accountId);
+            tx.put("category_id",categoryId);tx.put("note",note);
+            if(rawText==null)tx.putNull("raw_text");else tx.put("raw_text",rawText);
+            tx.put("needs_review",needsReview);tx.put("created_at",createdAt);tx.put("source",source);
+            tx.put("affects_balance",affects);tx.put("base_affects_balance",baseAffects);
+            writable.insertOrThrow("transactions",null,tx);
+            ContentValues account=new ContentValues();account.put("balance_minor",restoredBalance);
+            if(writable.update("accounts",account,"id=?",new String[]{String.valueOf(accountId)})!=1)
+                throw new IllegalStateException("الحساب الأصلي غير موجود");
+            ContentValues restored=new ContentValues();restored.put("restored_at",System.currentTimeMillis());
+            if(writable.update("deleted_transaction_snapshots",restored,"audit_id=? AND restored_at IS NULL",
+                    new String[]{String.valueOf(auditId)})!=1)throw new IllegalStateException("الاسترجاع تكرر");
+            ContentValues undo=new ContentValues();undo.put("undone",1);
+            if(writable.update("change_history",undo,"id=? AND undone=0",new String[]{String.valueOf(auditId)})!=1)
+                throw new IllegalStateException("سجل التراجع تغيّر");
+            writable.setTransactionSuccessful();
+        } finally {
+            writable.endTransaction();
+            BalanceWidgetProvider.updateAll(appContext);
+            BudgetAlertManager.checkAll(appContext);
+        }
+    }
+
+    private static boolean canSnapshotSimpleDelete(SQLiteDatabase writable,long transactionId,
+                      String type,long amount,long categoryId,String source,int needsReview) {
+        if(!SimpleUndoRules.isEligible(type,source,amount,categoryId>0,false,false,false,false,needsReview))
+            return false;
+        String[] arg={String.valueOf(transactionId)};
+        try(Cursor c=writable.rawQuery("SELECT 1 FROM transaction_splits WHERE transaction_id=? LIMIT 1",arg)) {
+            if(c.moveToFirst())return false;
+        }
+        try(Cursor c=writable.rawQuery("SELECT 1 FROM debt_movements WHERE transaction_id=? LIMIT 1",arg)) {
+            if(c.moveToFirst())return false;
+        }
+        try(Cursor c=writable.rawQuery("SELECT 1 FROM capture_inbox WHERE transaction_id=? LIMIT 1",arg)) {
+            return !c.moveToFirst();
+        }
+    }
+
     public void deleteTransaction(long transactionId) {
         SQLiteDatabase writable = getWritableDatabase();
         writable.beginTransaction();
         try {
             String type; long amount; long sourceId; Long destinationId; boolean affectsBalance;
+            boolean baseAffects; Long categoryId;String currency,note,rawText,source;int needsReview;long createdAt;
+            boolean hasSpecialMetadata;boolean canUndo;
             try (Cursor c = writable.rawQuery("SELECT type,amount_minor,account_id,destination_account_id,affects_balance FROM transactions WHERE id=?", new String[]{String.valueOf(transactionId)})) {
                 if (!c.moveToFirst()) throw new IllegalArgumentException("العملية غير موجودة");
-                type = c.getString(0); amount = c.getLong(1); sourceId = c.getLong(2); destinationId = c.isNull(3) ? null : c.getLong(3); affectsBalance = c.getInt(4) == 1;
+                type=c.getString(0);amount=c.getLong(1);sourceId=c.getLong(2);
+                destinationId=c.isNull(3)?null:c.getLong(3);affectsBalance=c.getInt(4)==1;
+                baseAffects=c.getInt(5)==1;categoryId=c.isNull(6)?null:c.getLong(6);
+                currency=c.getString(7);note=c.getString(8);rawText=c.isNull(9)?null:c.getString(9);
+                source=c.getString(10);needsReview=c.getInt(11);createdAt=c.getLong(12);
+                hasSpecialMetadata=!c.isNull(13)||!c.isNull(14)||!c.isNull(15)||!c.isNull(16)||!c.isNull(17);
             }
             long balanceImpact = FinanceRules.EXPENSE.equals(type)
                     ? existingExpenseBalanceImpact(writable, transactionId, amount) : amount;
@@ -1351,6 +1472,8 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                     new String[]{String.valueOf(transactionId)})) {
                 if(fx.moveToFirst() && !fx.isNull(0))fxDestinationMinor=fx.getLong(0);
             }
+            canUndo=!hasSpecialMetadata && destinationId==null && canSnapshotSimpleDelete(writable,transactionId,
+                    type,amount,categoryId==null?-1:categoryId,source,needsReview);
             ensureDebtOpeningCanBeRemoved(writable, transactionId);
             if (affectsBalance) {
                 if(fxDestinationMinor!=null) {
@@ -1367,7 +1490,25 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             List<Long> affectedDebts = debtIdsForTransaction(writable, transactionId);
             ContentValues capture = new ContentValues(); capture.put("status", "IGNORED"); capture.putNull("transaction_id");
             writable.update("capture_inbox", capture, "transaction_id=?", new String[]{String.valueOf(transactionId)});
-            writable.delete("transactions", "id=?", new String[]{String.valueOf(transactionId)});
+            if(writable.delete("transactions", "id=?", new String[]{String.valueOf(transactionId)})!=1)
+                throw new IllegalStateException("فشل حذف العملية");
+            if(canUndo) {
+                long auditId;
+                try(Cursor audit=writable.rawQuery("SELECT id FROM change_history WHERE table_name='transactions' " +
+                        "AND action='DELETE' AND record_id=? ORDER BY id DESC LIMIT 1",
+                        new String[]{String.valueOf(transactionId)})) {
+                    if(!audit.moveToFirst())throw new IllegalStateException("سجل حذف العملية غير موجود");
+                    auditId=audit.getLong(0);
+                }
+                ContentValues snap=new ContentValues();snap.put("audit_id",auditId);
+                snap.put("transaction_id",transactionId);snap.put("type",type);snap.put("amount_minor",amount);
+                snap.put("currency",currency);snap.put("account_id",sourceId);snap.put("category_id",categoryId);
+                snap.put("note",note);if(rawText==null)snap.putNull("raw_text");else snap.put("raw_text",rawText);
+                snap.put("needs_review",needsReview);snap.put("created_at",createdAt);snap.put("source",source);
+                snap.put("affects_balance",affectsBalance?1:0);snap.put("base_affects_balance",baseAffects?1:0);
+                snap.put("balance_impact_minor",balanceImpact);snap.put("deleted_at",System.currentTimeMillis());
+                writable.insertOrThrow("deleted_transaction_snapshots",null,snap);
+            }
             for (Long debtId : affectedDebts) recomputeDebt(writable, debtId);
             writable.setTransactionSuccessful();
         } finally {

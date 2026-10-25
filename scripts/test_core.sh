@@ -62,3 +62,10 @@ python3 "$PROJECT_DIR/tests/category_audit_migration_v10.py"
 python3 "$PROJECT_DIR/tests/fx_form_source_contract.py"
 
 python3 "$PROJECT_DIR/tests/split_debt_schema_v11.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/SimpleUndoRules.java" \
+  "$PROJECT_DIR/tests/SimpleUndoRulesTest.java"
+java -cp "$OUT_DIR" SimpleUndoRulesTest
+python3 "$PROJECT_DIR/tests/simple_delete_undo_v12.py"

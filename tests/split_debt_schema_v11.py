@@ -6,7 +6,7 @@ import json,re,sqlite3
 from pathlib import Path
 src=(Path(__file__).resolve().parents[1]/'app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java').read_text()
 ui=(Path(__file__).resolve().parents[1]/'app/src/main/java/app/wensarafet/tracker/MainActivity.java').read_text()
-assert 'DB_VERSION = 11' in src
+assert 'DB_VERSION = 12' in src
 assert 'SplitDebtRules.checkParts(amount, splits)' in src
 assert 'LEFT JOIN debt_people p ON p.id=s.debt_person_id' in src
 assert 'for (Long debtId : affectedDebts) recomputeDebt(writable, debtId);\n            writable.delete("transaction_splits"' in src

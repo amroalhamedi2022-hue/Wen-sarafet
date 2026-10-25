@@ -6,6 +6,7 @@ on:
       - 'feature/wen-batch02-finance-ui-20261024'
       - 'feature/wen-batch03-fx-daily-20261025'
       - 'feature/wen-batch04-debt-splits-20261025'
+      - 'feature/wen-batch05-undo-20261025'
   pull_request:
 
 jobs:
