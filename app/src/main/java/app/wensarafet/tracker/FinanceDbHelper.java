@@ -32,7 +32,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, amount_minor INTEGER NOT NULL, currency TEXT NOT NULL, account_id INTEGER NOT NULL, destination_account_id INTEGER, category_id INTEGER, note TEXT NOT NULL DEFAULT '', raw_text TEXT, needs_review INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, source TEXT NOT NULL DEFAULT 'MANUAL', affects_balance INTEGER NOT NULL DEFAULT 1, base_affects_balance INTEGER NOT NULL DEFAULT 1, special_kind TEXT, debt_person_id INTEGER, debt_direction TEXT, destination_amount_minor INTEGER, exchange_rate TEXT, exchange_rate_source TEXT, exchange_rate_checked_at INTEGER, FOREIGN KEY(account_id) REFERENCES accounts(id), FOREIGN KEY(destination_account_id) REFERENCES accounts(id), FOREIGN KEY(category_id) REFERENCES categories(id))");
         db.execSQL("CREATE TABLE transaction_splits (id INTEGER PRIMARY KEY AUTOINCREMENT, transaction_id INTEGER NOT NULL, category_id INTEGER, amount_minor INTEGER NOT NULL, special_kind TEXT, debt_person_id INTEGER, debt_direction TEXT, " +
                 "CHECK ((special_kind IS NULL AND category_id IS NOT NULL AND debt_person_id IS NULL AND debt_direction IS NULL) OR " +
-                "(special_kind IN ('DEBT','DEBT_PAYMENT') AND category_id IS NULL AND debt_person_id IS NOT NULL AND debt_direction IN ('RECEIVABLE','PAYABLE'))), " +
+                "(category_id IS NULL AND debt_person_id IS NOT NULL AND ((special_kind='DEBT' AND debt_direction='RECEIVABLE') OR (special_kind='DEBT_PAYMENT' AND debt_direction='PAYABLE')))), " +
                 "FOREIGN KEY(transaction_id) REFERENCES transactions(id) ON DELETE CASCADE, FOREIGN KEY(category_id) REFERENCES categories(id), FOREIGN KEY(debt_person_id) REFERENCES debt_people(id))");
         db.execSQL("CREATE INDEX idx_tx_account ON transactions(account_id)");
         db.execSQL("CREATE INDEX idx_tx_created ON transactions(created_at)");
@@ -85,7 +85,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             // Rebuild the child table to safely make category_id nullable. Keep original IDs and amounts.
             db.execSQL("CREATE TABLE transaction_splits_v11 (id INTEGER PRIMARY KEY AUTOINCREMENT, transaction_id INTEGER NOT NULL, category_id INTEGER, amount_minor INTEGER NOT NULL, special_kind TEXT, debt_person_id INTEGER, debt_direction TEXT, " +
                     "CHECK ((special_kind IS NULL AND category_id IS NOT NULL AND debt_person_id IS NULL AND debt_direction IS NULL) OR " +
-                    "(special_kind IN ('DEBT','DEBT_PAYMENT') AND category_id IS NULL AND debt_person_id IS NOT NULL AND debt_direction IN ('RECEIVABLE','PAYABLE'))), " +
+                    "(category_id IS NULL AND debt_person_id IS NOT NULL AND ((special_kind='DEBT' AND debt_direction='RECEIVABLE') OR (special_kind='DEBT_PAYMENT' AND debt_direction='PAYABLE')))), " +
                     "FOREIGN KEY(transaction_id) REFERENCES transactions(id) ON DELETE CASCADE, FOREIGN KEY(category_id) REFERENCES categories(id), FOREIGN KEY(debt_person_id) REFERENCES debt_people(id))");
             db.execSQL("INSERT INTO transaction_splits_v11(id,transaction_id,category_id,amount_minor) SELECT id,transaction_id,category_id,amount_minor FROM transaction_splits");
             db.execSQL("DROP TABLE transaction_splits");

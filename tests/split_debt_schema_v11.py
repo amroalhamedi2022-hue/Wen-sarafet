@@ -61,7 +61,9 @@ assert c.execute('SELECT SUM(amount_minor) FROM transaction_splits WHERE transac
 assert c.execute('SELECT SUM(s.amount_minor) FROM transaction_splits s LEFT JOIN categories cat ON cat.id=s.category_id WHERE s.transaction_id=41 AND (s.special_kind=\'DEBT_PAYMENT\' OR (s.special_kind IS NULL AND cat.exclude_from_expense=0))').fetchone()[0]==15000
 assert c.execute('SELECT SUM(s.amount_minor) FROM transaction_splits s JOIN categories cat ON cat.id=s.category_id WHERE s.transaction_id=41 AND s.special_kind IS NULL').fetchone()[0]==12000
 for q in ["INSERT INTO transaction_splits(transaction_id,category_id,amount_minor,special_kind,debt_person_id,debt_direction) VALUES(41,NULL,5,'DEBT',NULL,'RECEIVABLE')",
-          "INSERT INTO transaction_splits(transaction_id,category_id,amount_minor,special_kind,debt_person_id,debt_direction) VALUES(41,10,5,'DEBT',7,'RECEIVABLE')"]:
+          "INSERT INTO transaction_splits(transaction_id,category_id,amount_minor,special_kind,debt_person_id,debt_direction) VALUES(41,10,5,'DEBT',7,'RECEIVABLE')",
+          "INSERT INTO transaction_splits(transaction_id,category_id,amount_minor,special_kind,debt_person_id,debt_direction) VALUES(41,NULL,5,'DEBT',7,'PAYABLE')",
+          "INSERT INTO transaction_splits(transaction_id,category_id,amount_minor,special_kind,debt_person_id,debt_direction) VALUES(41,NULL,5,'DEBT_PAYMENT',8,'RECEIVABLE')"]:
  try:c.execute(q);raise AssertionError('invalid split was accepted')
  except sqlite3.IntegrityError: pass
 # Reconcile a deliberately invalid settlement within a transaction: rollback every side effect.
