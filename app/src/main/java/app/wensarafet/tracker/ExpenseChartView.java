@@ -4,7 +4,6 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.RectF;
 import android.view.View;
 
 public final class ExpenseChartView extends View {
@@ -41,7 +40,6 @@ public final class ExpenseChartView extends View {
             float ratio = values[i] / (float) max;
             float barHeight = Math.max(values[i] > 0 ? Ui.dp(getContext(), 7) : Ui.dp(getContext(), 3), (bottom - top) * ratio);
             float center = slot * i + slot / 2f;
-            RectF bar = new RectF(center - barWidth / 2, bottom - barHeight, center + barWidth / 2, bottom);
             float pointY = bottom - barHeight;
             if (lineMode) {
                 paint.setColor(Ui.VIOLET); paint.setStrokeWidth(Ui.dp(getContext(), 4)); paint.setStyle(Paint.Style.STROKE);
@@ -52,14 +50,17 @@ public final class ExpenseChartView extends View {
             } else {
                 paint.setColor(values[i] > 0 ? Ui.VIOLET : Color.rgb(229, 226, 241));
                 paint.setShadowLayer(values[i] > 0 ? Ui.dp(getContext(), 6) : 0, 0, Ui.dp(getContext(), 2), Color.argb(60, 93, 63, 170));
-                canvas.drawRoundRect(bar, barWidth / 2, barWidth / 2, paint);
+                // Avoid allocating RectF objects on every frame while scrolling or animating.
+                canvas.drawRoundRect(center - barWidth / 2, bottom - barHeight,
+                        center + barWidth / 2, bottom, barWidth / 2, barWidth / 2, paint);
             }
 
             paint.clearShadowLayer();
             paint.setColor(Ui.MUTED);
             paint.setTextSize(Ui.dp(getContext(), 11));
             paint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText(labels[i], center, height - Ui.dp(getContext(), 8), paint);
+            canvas.drawText(i < labels.length && labels[i] != null ? labels[i] : "",
+                    center, height - Ui.dp(getContext(), 8), paint);
         }
     }
 }
