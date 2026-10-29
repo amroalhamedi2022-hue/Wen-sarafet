@@ -58,6 +58,17 @@ jobs:
           fi
           sha256sum "$OUTPUT"
           echo "UNSIGNED aligned candidate only; owner signs privately after independent signer check."
+      - name: Stage Android SDK APK signature verification utility
+        run: |
+          mkdir -p build/release-tools
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" build/release-tools/apksigner.jar
+      - name: Upload Android SDK public signature utility
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-sdk-apksigner-tool
+          path: build/release-tools/apksigner.jar
+          retention-days: 2
+          if-no-files-found: error
       - name: Upload UNSIGNED original application package for private offline signing
         uses: actions/upload-artifact@v4
         with:
