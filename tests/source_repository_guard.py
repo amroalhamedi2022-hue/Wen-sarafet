@@ -74,7 +74,7 @@ def verify() -> None:
     ):
         failures.append("Android applicationId is missing or changed")
     if gradle.is_file() and not re.search(
-        r'buildTypes\\s*\\{[\\s\\S]*?release\\s*\\{[\\s\\S]*?\\bdebuggable\\s+false\\b',
+        r'buildTypes\s*\{[\s\S]*?release\s*\{[\s\S]*?\bdebuggable\s+false\b',
         gradle.read_text(encoding="utf-8"),
     ):
         failures.append("Release build must explicitly set debuggable false")
