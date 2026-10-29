@@ -100,6 +100,9 @@ public final class MainActivity extends Activity {
             super.setContentView(screenHost);
             screenHost.addView(next, match);
             activeScreen = next;
+            // A disabled system animator scale must never leave the first screen
+            // transparent. In that mode, show the view without a transition.
+            if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
             next.setAlpha(0f);
             next.setTranslationX(Ui.dp(this, 14));
             next.animate().alpha(1f).translationX(0f).setDuration(260)
@@ -115,6 +118,15 @@ public final class MainActivity extends Activity {
         }
         screenHost.addView(next, match);
         activeScreen = next;
+        if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            next.setAlpha(1f);
+            next.setTranslationX(0f);
+            if (previous != null && previous.getParent() == screenHost) {
+                previous.animate().cancel();
+                screenHost.removeView(previous);
+            }
+            return;
+        }
         next.setAlpha(0f);
         next.setTranslationX(Ui.dp(this, 18));
         next.animate().alpha(1f).translationX(0f).setDuration(280)
@@ -452,17 +464,34 @@ public final class MainActivity extends Activity {
             boolean showWhileAscending = delta < 0 && upwardTravel[0] >= Ui.dp(this, 18) && v.canScrollVertically(1);
             if (hide && !chromeHidden[0]) {
                 chromeHidden[0] = true;
-                bottomNav.animate().translationY(Ui.dp(this, 76)).alpha(0f).setDuration(220)
-                        .withEndAction(() -> { if (chromeHidden[0]) bottomNav.setVisibility(View.INVISIBLE); }).start();
-                fab.animate().translationY(Ui.dp(this, 70)).setDuration(220).start();
+                if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                    bottomNav.animate().cancel();
+                    bottomNav.setTranslationY(Ui.dp(this, 76));
+                    bottomNav.setAlpha(0f);
+                    bottomNav.setVisibility(View.INVISIBLE);
+                    fab.animate().cancel();
+                    fab.setTranslationY(Ui.dp(this, 70));
+                } else {
+                    bottomNav.animate().translationY(Ui.dp(this, 76)).alpha(0f).setDuration(220)
+                            .withEndAction(() -> { if (chromeHidden[0]) bottomNav.setVisibility(View.INVISIBLE); }).start();
+                    fab.animate().translationY(Ui.dp(this, 70)).setDuration(220).start();
+                }
             } else if ((showAtTop || showWhileAscending) && chromeHidden[0]) {
                 chromeHidden[0] = false;
                 upwardTravel[0] = 0;
                 bottomNav.setVisibility(View.VISIBLE);
-                bottomNav.setAlpha(0f);
-                bottomNav.setTranslationY(Ui.dp(this, 76));
-                bottomNav.animate().translationY(0f).alpha(1f).setDuration(220).start();
-                fab.animate().translationY(0f).setDuration(220).start();
+                if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                    bottomNav.animate().cancel();
+                    bottomNav.setAlpha(1f);
+                    bottomNav.setTranslationY(0f);
+                    fab.animate().cancel();
+                    fab.setTranslationY(0f);
+                } else {
+                    bottomNav.setAlpha(0f);
+                    bottomNav.setTranslationY(Ui.dp(this, 76));
+                    bottomNav.animate().translationY(0f).alpha(1f).setDuration(220).start();
+                    fab.animate().translationY(0f).setDuration(220).start();
+                }
             }
         });
         setContentView(root);
