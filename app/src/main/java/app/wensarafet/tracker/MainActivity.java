@@ -1502,9 +1502,9 @@ public final class MainActivity extends Activity {
                     .putInt("home_icon_accounts", 70 + accounts.getProgress())
                     .putInt("home_icon_transactions", 70 + transactions.getProgress())
                     .putInt("home_icon_fab", 70 + fab.getProgress())
-                    .putBoolean("home_header_right", headerPosition.getCheckedRadioButtonId() == 1)
-                    .putBoolean("icons_on_right", listPosition.getCheckedRadioButtonId() == 1)
-                    .putBoolean("home_fab_right", fabPosition.getCheckedRadioButtonId() == 1).apply();
+                    .putBoolean("home_header_right", ((RadioButton) headerPosition.getChildAt(0)).isChecked())
+                    .putBoolean("icons_on_right", ((RadioButton) listPosition.getChildAt(0)).isChecked())
+                    .putBoolean("home_fab_right", ((RadioButton) fabPosition.getChildAt(0)).isChecked()).apply();
             Toast.makeText(this, "تم حفظ تخصيص الصفحة الرئيسية", Toast.LENGTH_SHORT).show();
             showMain(false);
         });
@@ -1544,8 +1544,8 @@ public final class MainActivity extends Activity {
         LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this, 14), Ui.dp(this, 8), Ui.dp(this, 14), Ui.dp(this, 8));
         card.setBackground(Ui.rounded(Ui.SURFACE, 18, this)); card.addView(Ui.text(this, title, 13, Ui.TEXT, true));
         RadioGroup group = new RadioGroup(this); group.setOrientation(LinearLayout.HORIZONTAL); group.setGravity(Gravity.CENTER);
-        RadioButton right = radio("يمين", rightSelected); right.setId(1);
-        RadioButton left = radio("يسار", !rightSelected); left.setId(2);
+        RadioButton right = radio("يمين", rightSelected); right.setId(View.generateViewId());
+        RadioButton left = radio("يسار", !rightSelected); left.setId(View.generateViewId());
         group.addView(right, new RadioGroup.LayoutParams(0, Ui.dp(this, 48), 1));
         group.addView(left, new RadioGroup.LayoutParams(0, Ui.dp(this, 48), 1));
         card.addView(group); LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);

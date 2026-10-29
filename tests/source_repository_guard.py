@@ -42,6 +42,15 @@ def verify() -> None:
             }
             if permissions & forbidden:
                 failures.append(f"Unexpected privileged permissions: {sorted(permissions & forbidden)}")
+            # SmsCaptureReceiver is optional on Wi-Fi-only tablets (e.g. Xiaomi Pad).
+            telephony = [
+                feature for feature in tree.findall("uses-feature")
+                if feature.attrib.get(ANDROID + "name") == "android.hardware.telephony"
+            ]
+            if not telephony or not any(
+                feature.attrib.get(ANDROID + "required") == "false" for feature in telephony
+            ):
+                failures.append("Telephony must be explicitly optional for tablets")
             app = tree.find("application")
             if app is None:
                 failures.append("Missing Android application element")
@@ -64,6 +73,11 @@ def verify() -> None:
         gradle.read_text(encoding="utf-8") if gradle.is_file() else "",
     ):
         failures.append("Android applicationId is missing or changed")
+    if gradle.is_file() and not re.search(
+        r'buildTypes\s*\{[\s\S]*?release\s*\{[\s\S]*?\bdebuggable\s+false\b',
+        gradle.read_text(encoding="utf-8"),
+    ):
+        failures.append("Release build must explicitly set debuggable false")
 
     helper = ROOT / "app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java"
     helper_text = helper.read_text(encoding="utf-8") if helper.is_file() else ""
