@@ -2194,6 +2194,7 @@ public final class MainActivity extends Activity {
         final String[] selectedType = {FinanceRules.EXPENSE};
         final List<Models.Account> filteredAccounts = new ArrayList<>();
         final List<Models.Category> filteredCategories = new ArrayList<>();
+        final List<Models.DebtPerson> debtPeople = db.getDebtPeople();
         final List<SplitRowRef> splitRows = new ArrayList<>();
 
         LinearLayout page = Ui.column(this);
@@ -2380,13 +2381,13 @@ public final class MainActivity extends Activity {
         note.addTextChangedListener(learningInputs);
         splitCheck.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked && splitRows.isEmpty()) {
-                addSplitRow(splitRowsBox, splitRows, filteredCategories);
-                addSplitRow(splitRowsBox, splitRows, filteredCategories);
+                addDebtSplitRow(splitRowsBox, splitRows, filteredCategories, debtPeople);
+                addDebtSplitRow(splitRowsBox, splitRows, filteredCategories, debtPeople);
             }
             refreshVisibility.run();
             refreshSuggestion.run();
         });
-        addPart.setOnClickListener(v -> addSplitRow(splitRowsBox, splitRows, filteredCategories));
+        addPart.setOnClickListener(v -> addDebtSplitRow(splitRowsBox, splitRows, filteredCategories, debtPeople));
 
         refreshAccounts.run();
         refreshCategories.run();
@@ -2412,9 +2413,19 @@ public final class MainActivity extends Activity {
                     for (SplitRowRef row : splitRows) {
                         Long partAmount = Money.parseMinor(row.amount.getText().toString());
                         if (partAmount == null || partAmount <= 0) throw new IllegalArgumentException("أكمل مبالغ التقسيم");
-                        if (row.category.getSelectedItemPosition() < 0) throw new IllegalArgumentException("اختر تصنيف كل جزء");
-                        Models.Category partCategory = filteredCategories.get(row.category.getSelectedItemPosition());
-                        splits.add(new Models.SplitInput(partCategory.id, partAmount));
+                        int mode = row.mode == null ? 0 : row.mode.getSelectedItemPosition();
+                        if (mode == 0) {
+                            if (row.category.getSelectedItemPosition() < 0) throw new IllegalArgumentException("اختر تصنيف كل جزء");
+                            Models.Category partCategory = filteredCategories.get(row.category.getSelectedItemPosition());
+                            splits.add(new Models.SplitInput(partCategory.id, partAmount));
+                        } else {
+                            if (debtPeople.isEmpty() || row.person == null || row.person.getSelectedItemPosition() < 0)
+                                throw new IllegalArgumentException("أضف صاحب الدين من صفحة الديون أولًا");
+                            Models.DebtPerson person = debtPeople.get(row.person.getSelectedItemPosition());
+                            splits.add(Models.SplitInput.debt(partAmount,
+                                    mode == 1 ? FinanceRules.SPECIAL_DEBT : FinanceRules.SPECIAL_DEBT_PAYMENT,
+                                    person.id, mode == 1 ? FinanceRules.DEBT_RECEIVABLE : FinanceRules.DEBT_PAYABLE));
+                        }
                         parts.add(partAmount);
                     }
                     if (!FinanceRules.splitsMatch(amountMinor, parts)) throw new IllegalArgumentException("مجموع الأجزاء يجب أن يساوي المبلغ الكامل");
@@ -2442,7 +2453,9 @@ public final class MainActivity extends Activity {
     }
 
     private void showNewDebtTransactionDialog(String type,long amountMinor,String currency,long accountId,String note,boolean affectsBalance,String specialKind){
-        String inferred=FinanceRules.INCOME.equals(type)?FinanceRules.DEBT_RECEIVABLE:FinanceRules.DEBT_PAYABLE;
+        String inferred=FinanceRules.SPECIAL_DEBT.equals(specialKind)
+                ? (FinanceRules.EXPENSE.equals(type)?FinanceRules.DEBT_RECEIVABLE:FinanceRules.DEBT_PAYABLE)
+                : (FinanceRules.EXPENSE.equals(type)?FinanceRules.DEBT_PAYABLE:FinanceRules.DEBT_RECEIVABLE);
         List<Models.DebtPerson> people=FinanceRules.SPECIAL_DEBT_PAYMENT.equals(specialKind)?db.getDebtPeopleWithOpenBalance(inferred,currency):db.getDebtPeople();
         if(people.isEmpty()){
             if(FinanceRules.SPECIAL_DEBT_PAYMENT.equals(specialKind)){Toast.makeText(this,"لا يوجد دين نشط لهذا الاتجاه والعملة",Toast.LENGTH_LONG).show();return;}
@@ -2451,7 +2464,7 @@ public final class MainActivity extends Activity {
         LinearLayout form=Ui.column(this);form.setPadding(Ui.dp(this,18),0,Ui.dp(this,18),Ui.dp(this,8));List<String> names=new ArrayList<>();for(Models.DebtPerson p:people)names.add(p.name);Spinner person=spinner(names);form.addView(label("الدَين لمين؟"));form.addView(person,fieldParams());
         RadioGroup directions=new RadioGroup(this);directions.setOrientation(RadioGroup.HORIZONTAL);directions.setGravity(Gravity.CENTER);RadioButton mine=radio("إلي",FinanceRules.DEBT_RECEIVABLE.equals(inferred));RadioButton owed=radio("عليّ",FinanceRules.DEBT_PAYABLE.equals(inferred));directions.addView(mine);directions.addView(owed);if(FinanceRules.SPECIAL_DEBT_PAYMENT.equals(specialKind)){mine.setEnabled(false);owed.setEnabled(false);}form.addView(label("اتجاه الدين"));form.addView(directions,fieldParams());
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle(FinanceRules.SPECIAL_DEBT.equals(specialKind)?"إضافة دَين":"إضافة سداد دين").setView(form).setNegativeButton("إلغاء",null).setPositiveButton("حفظ",null).create();
-        dialog.setOnShowListener(x->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{long txId=-1;try{txId=db.addTransaction(type,amountMinor,currency,accountId,null,null,note,new ArrayList<>(),affectsBalance);String direction=mine.isChecked()?FinanceRules.DEBT_RECEIVABLE:FinanceRules.DEBT_PAYABLE;db.reclassifyTransactionAsDebt(txId,specialKind,people.get(person.getSelectedItemPosition()).id,direction);dialog.dismiss();Toast.makeText(this,"تم حفظ حركة الدين",Toast.LENGTH_SHORT).show();showMain(false);}catch(Exception error){if(txId>=0)try{db.deleteTransaction(txId);}catch(Exception ignored){}Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}}));dialog.show();
+        dialog.setOnShowListener(x->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{String direction=mine.isChecked()?FinanceRules.DEBT_RECEIVABLE:FinanceRules.DEBT_PAYABLE;db.addDebtTransaction(type,amountMinor,currency,accountId,note,affectsBalance,specialKind,people.get(person.getSelectedItemPosition()).id,direction);dialog.dismiss();Toast.makeText(this,"تم حفظ حركة الدين",Toast.LENGTH_SHORT).show();showMain(false);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}}));dialog.show();
     }
 
     private void showAuditHistory(){

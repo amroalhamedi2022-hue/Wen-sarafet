@@ -3,7 +3,7 @@
 from pathlib import Path
 import json,re,sqlite3
 src=(Path(__file__).resolve().parents[1]/'app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java').read_text()
-assert 'DB_VERSION = 12' in src
+assert 'DB_VERSION = 13' in src
 upgrade=src.split('if (oldVersion < 12)',1)[1].split('    private static void createCaptureSchema',1)[0]
 assert 'createSafeUndoSchema(db);' in upgrade
 schema=src.split('private static void createSafeUndoSchema(SQLiteDatabase db) {',1)[1].split('    public static final class AuditEntry',1)[0]

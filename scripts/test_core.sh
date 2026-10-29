@@ -9,8 +9,12 @@ mkdir -p "$OUT_DIR"
 compile() {
   if [[ -n "$ECJ_JAR" && -f "$ECJ_JAR" ]]; then
     java -jar "$ECJ_JAR" -encoding UTF-8 -source 17 -target 17 -d "$OUT_DIR" "$@"
-  else
+  elif java com.sun.tools.javac.Main --release 17 -version >/dev/null 2>&1; then
     java com.sun.tools.javac.Main -encoding UTF-8 --release 17 -d "$OUT_DIR" "$@"
+  else
+    # Some slim JDK images omit ct.sym, so --release is unavailable even though
+    # the Java 17 language level is supported. Keep local/CI source tests usable.
+    java com.sun.tools.javac.Main -encoding UTF-8 -source 17 -target 17 -d "$OUT_DIR" "$@"
   fi
 }
 
@@ -71,3 +75,4 @@ java -cp "$OUT_DIR" SimpleUndoRulesTest
 python3 "$PROJECT_DIR/tests/simple_delete_undo_v12.py"
 
 python3 "$PROJECT_DIR/tests/finance_delete_cursor_and_category_undo_contract.py"
+python3 "$PROJECT_DIR/tests/financial_analytics_contract.py"

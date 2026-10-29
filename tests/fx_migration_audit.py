@@ -5,11 +5,16 @@ from pathlib import Path
 
 s = Path(__file__).resolve().parents[1]/'app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java'
 code = s.read_text()
-assert 'DB_VERSION = 12' in code
+assert 'DB_VERSION = 13' in code
 fields = ('destination_amount_minor','exchange_rate','exchange_rate_source','exchange_rate_checked_at')
 for col in fields:
     assert f'ALTER TABLE transactions ADD COLUMN {col} ' in code, col
     assert col in code.split('CREATE TABLE transactions',1)[1].split('FOREIGN KEY',1)[0],col
+fx_method=code.split('public long addFxTransfer(',1)[1].split('public long insertCapture',1)[0]
+assert '"BOP_INDICATIVE_BUY_USER_CONFIRMED".equals(provenance)' in fx_method
+assert '"USD".equals(source.currency) && "ILS".equals(destination.currency)' in fx_method
+assert 'id=? AND active=1' in fx_method
+assert 'Math.addExact' in (Path(__file__).resolve().parents[1]/'app/src/main/java/app/wensarafet/tracker/FxTransferMath.java').read_text()
 
 c = sqlite3.connect(':memory:')
 c.execute('CREATE TABLE accounts (id INTEGER PRIMARY KEY, name TEXT, currency TEXT, balance_minor INTEGER, active INTEGER DEFAULT 1)')

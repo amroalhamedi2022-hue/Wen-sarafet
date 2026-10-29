@@ -22,9 +22,14 @@ public final class FinanceCoreTest {
         equalsLong(1_500L, transfer[0], "transfer source");
         equalsLong(1_300L, transfer[1], "transfer destination");
         equalsLong(2_800L, transfer[0] + transfer[1], "transfer combined balance");
+        try { FinanceRules.balancesAfter(FinanceRules.INCOME, 1L, Long.MAX_VALUE, null); fail("income overflow accepted"); }
+        catch (ArithmeticException expected) {}
+        try { FinanceRules.balancesAfter(FinanceRules.EXPENSE, 1L, Long.MIN_VALUE, null); fail("expense overflow accepted"); }
+        catch (ArithmeticException expected) {}
 
         if (!FinanceRules.splitsMatch(10_000L, Arrays.asList(6_000L, 3_000L, 1_000L))) fail("valid split rejected");
         if (FinanceRules.splitsMatch(10_000L, Arrays.asList(6_000L, 3_000L))) fail("invalid split accepted");
+        if (FinanceRules.splitsMatch(Long.MAX_VALUE, Arrays.asList(Long.MAX_VALUE, 1L))) fail("split overflow accepted");
         equalsLong(0L, FinanceRules.expenseBalanceImpact(10_000L, true, null), "brother-only expense balance impact");
         equalsLong(10_000L, FinanceRules.expenseBalanceImpact(10_000L, false, null), "normal expense balance impact");
         equalsLong(6_000L, FinanceRules.expenseBalanceImpact(10_000L, false, Arrays.asList(6_000L)), "split brother expense balance impact");
@@ -46,6 +51,8 @@ public final class FinanceCoreTest {
         equalsText(FinanceRules.SPECIAL_DEBT,
                 DebtLedgerRules.movementKind(FinanceRules.INCOME, FinanceRules.DEBT_PAYABLE),
                 "incoming payable opening");
+        try { DebtLedgerRules.allocatePayment(1L, Arrays.asList(Long.MAX_VALUE, 1L)); fail("debt total overflow accepted"); }
+        catch (ArithmeticException expected) {}
 
         equalsText("*110*1*1234*0591234567*25.5*1#", UssdCodes.jawwalFriend("1234", "0591234567", "25.5"), "jawwal friend code");
         equalsText("*110*2*1234*0591234567*25.5*1#", UssdCodes.jawwalMerchant("1234", "0591234567", "25.5"), "jawwal merchant code");

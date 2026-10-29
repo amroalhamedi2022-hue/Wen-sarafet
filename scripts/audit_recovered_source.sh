@@ -4,7 +4,7 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 
-scripts/test_core.sh
+bash scripts/test_core.sh
 
 python3 - <<'PY'
 from pathlib import Path

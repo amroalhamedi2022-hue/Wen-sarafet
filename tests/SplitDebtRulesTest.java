@@ -23,6 +23,10 @@ public class SplitDebtRulesTest {
     reject(()->SplitDebtRules.checkParts(20000, Arrays.asList(ordinary,Models.SplitInput.debt(5000,FinanceRules.SPECIAL_DEBT,7,FinanceRules.DEBT_PAYABLE),pay)));
     reject(()->SplitDebtRules.checkParts(20000, Arrays.asList(ordinary,Models.SplitInput.debt(5000,FinanceRules.SPECIAL_DEBT_PAYMENT,7,FinanceRules.DEBT_RECEIVABLE),pay)));
     reject(()->SplitDebtRules.checkParts(Long.MAX_VALUE,Arrays.asList(new Models.SplitInput(1,Long.MAX_VALUE),new Models.SplitInput(1,1))));
+    ok(FinanceRules.SPECIAL_DEBT.equals(DebtLedgerRules.movementKind(FinanceRules.EXPENSE,FinanceRules.DEBT_RECEIVABLE)),"expense receivable opens debt");
+    ok(FinanceRules.SPECIAL_DEBT_PAYMENT.equals(DebtLedgerRules.movementKind(FinanceRules.EXPENSE,FinanceRules.DEBT_PAYABLE)),"expense payable repays debt");
+    ok(FinanceRules.SPECIAL_DEBT_PAYMENT.equals(DebtLedgerRules.movementKind(FinanceRules.INCOME,FinanceRules.DEBT_RECEIVABLE)),"income receivable repays debt");
+    ok(FinanceRules.SPECIAL_DEBT.equals(DebtLedgerRules.movementKind(FinanceRules.INCOME,FinanceRules.DEBT_PAYABLE)),"income payable opens debt");
     System.out.println("SplitDebtRulesTest: mixed categories, direction, balances, precision, overflow passed");
   }
 }
