@@ -28,6 +28,11 @@ grep -q '@color/widget_quick_title' app/src/main/res/layout/widget_quick_action.
 
 ! grep -R --exclude='audit_recovered_source.sh' -E 'WenSarafetTest2026|MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg' .
 ! find . -type f \( -name '*.jks' -o -name '*.keystore' \) | grep -q .
-! grep -q 'android.permission.INTERNET\|android.permission.CALL_PHONE' app/src/main/AndroidManifest.xml
+# INTERNET is intentionally limited to the optional BOP USD/ILS indicative quote.
+# Keep direct dialing and unrestricted package enumeration disallowed.
+grep -Fq 'android.permission.INTERNET' app/src/main/AndroidManifest.xml
+! grep -Fq 'android.permission.CALL_PHONE' app/src/main/AndroidManifest.xml
+! grep -Fq 'android.permission.QUERY_ALL_PACKAGES' app/src/main/AndroidManifest.xml
+python3 tests/source_repository_guard.py
 
-echo 'RecoveredSourceAudit: core tests, XML, version, 1.8 features, permissions, and secret separation passed'
+echo 'RecoveredSourceAudit: core tests, XML, 1.8 features, BOP INTERNET permission policy, and secret separation passed'
