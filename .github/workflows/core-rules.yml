@@ -30,3 +30,7 @@ jobs:
         run: sha256sum -c tests/protected_security_sha256.txt
       - name: Validate Android XML, manifest permissions and public repository hygiene
         run: python3 tests/source_repository_guard.py
+      - name: Run recovered-source audit and parse release scripts (no signing secrets)
+        run: |
+          bash -n scripts/audit_recovered_source.sh scripts/audit_release.sh scripts/build_apk.sh
+          CORE_TESTS_ALREADY_RUN=1 bash scripts/audit_recovered_source.sh
