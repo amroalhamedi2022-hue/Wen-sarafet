@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 
 public final class FinanceDbHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "wen_sarafet.db";
@@ -1007,13 +1008,13 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                                       String counterparty, Long balanceMinor, long receivedAt) {
         if (amountMinor == null || currency == null) return false;
         long window = 48 * 60 * 60_000L;
-        String normalizedParty = counterparty == null ? "" : counterparty.trim().toLowerCase();
+        String normalizedParty = counterparty == null ? "" : counterparty.trim().toLowerCase(Locale.ROOT);
         String sql = "SELECT channel,counterparty,inferred_type,balance_minor,received_at FROM capture_inbox WHERE provider=? AND currency=? AND amount_minor=? AND received_at BETWEEN ? AND ?";
         String[] args = {provider, currency, String.valueOf(amountMinor), String.valueOf(receivedAt - window), String.valueOf(receivedAt + window)};
         try (Cursor c = getReadableDatabase().rawQuery(sql, args)) {
             while (c.moveToNext()) {
                 String otherChannel = c.getString(0); if (channel.equals(otherChannel)) continue;
-                String otherParty = c.isNull(1) ? "" : c.getString(1).trim().toLowerCase();
+                String otherParty = c.isNull(1) ? "" : c.getString(1).trim().toLowerCase(Locale.ROOT);
                 String otherType = c.isNull(2) ? null : c.getString(2);
                 Long otherBalance = c.isNull(3) ? null : c.getLong(3);
                 long timeGap = Math.abs(receivedAt - c.getLong(4));
