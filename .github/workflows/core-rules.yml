@@ -2,13 +2,17 @@ name: Wen Sarafet source-only finance and safety checks
 on:
   push:
     branches:
-      - 'feature/wen-batch01-recovered-20261024'
-      - 'feature/wen-batch02-finance-ui-20261024'
-      - 'feature/wen-batch03-fx-daily-20261025'
-      - 'feature/wen-batch04-debt-splits-20261025'
-      - 'feature/wen-batch05-undo-20261025'
-      - 'feature/wen-batch06-safe-undo-crashfix-20261025'
+      - 'feature/wen-*'
+      - 'automation/wen-*'
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   source-tests:
@@ -24,3 +28,5 @@ jobs:
         run: bash scripts/test_core.sh
       - name: Check protected security file digests remain identical to recovered baseline
         run: sha256sum -c tests/protected_security_sha256.txt
+      - name: Validate Android XML, manifest permissions and public repository hygiene
+        run: python3 tests/source_repository_guard.py
