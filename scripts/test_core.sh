@@ -79,3 +79,5 @@ python3 "$PROJECT_DIR/tests/simple_delete_undo_v12.py"
 
 python3 "$PROJECT_DIR/tests/finance_delete_cursor_and_category_undo_contract.py"
 python3 "$PROJECT_DIR/tests/financial_analytics_contract.py"
+
+python3 "$PROJECT_DIR/tests/motion_accessibility_contract.py"
