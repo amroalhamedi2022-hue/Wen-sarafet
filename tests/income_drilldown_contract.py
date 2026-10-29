@@ -28,13 +28,13 @@ assert details_order.strip() == "ORDER BY t.created_at DESC,t.id DESC"
 conn = sqlite3.connect(":memory:")
 conn.executescript("""
 CREATE TABLE accounts(id INTEGER PRIMARY KEY,name TEXT);
-CREATE TABLE categories(id INTEGER PRIMARY KEY,name TEXT);
+CREATE TABLE categories(id INTEGER PRIMARY KEY,name TEXT,emoji TEXT);
 CREATE TABLE transaction_splits(transaction_id INTEGER);
 CREATE TABLE transactions(id INTEGER PRIMARY KEY,type TEXT,amount_minor INTEGER,currency TEXT,
  account_id INTEGER,destination_account_id INTEGER,category_id INTEGER,
  note TEXT,raw_text TEXT,needs_review INTEGER,created_at INTEGER,affects_balance INTEGER,special_kind TEXT);
 INSERT INTO accounts VALUES(1,'نقدي'),(2,'البنك');
-INSERT INTO categories VALUES(1,'راتب'),(2,'حوالة مستلمة'),(3,'هدية');
+INSERT INTO categories VALUES(1,'راتب','💼'),(2,'حوالة مستلمة','↙️'),(3,'هدية','🎁');
 INSERT INTO transactions VALUES
 (1,'INCOME',100,'ILS',1,NULL,1,'راتب',NULL,0,101,1,NULL),
 (2,'INCOME',200,'ILS',1,NULL,2,'حوالة',NULL,0,102,1,NULL),
