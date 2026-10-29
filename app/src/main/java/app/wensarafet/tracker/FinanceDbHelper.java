@@ -609,6 +609,42 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         }
     }
 
+    /** Exact item-level counterpart of getIncomeTotal. Split/debt/internal transfers
+     * never appear here; only categorized non-special INCOME rows are counted. */
+    public List<Models.Transaction> getIncomeTransactions(String currency, long startInclusive,
+                                                          long endExclusive, boolean receivedOnly) {
+        List<Models.Transaction> result = new ArrayList<>();
+        String sql = "SELECT t.id,t.type,t.amount_minor,t.currency,t.account_id,t.destination_account_id,"
+                + "a.name,d.name,c.name,c.emoji,t.note,t.raw_text,t.needs_review,t.created_at,"
+                + "EXISTS(SELECT 1 FROM transaction_splits s WHERE s.transaction_id=t.id),t.affects_balance "
+                + "FROM transactions t JOIN accounts a ON a.id=t.account_id "
+                + "LEFT JOIN accounts d ON d.id=t.destination_account_id "
+                + "LEFT JOIN categories c ON c.id=t.category_id "
+                + "WHERE t.type=? AND t.currency=? AND t.special_kind IS NULL "
+                + "AND t.created_at>=? AND t.created_at<? AND t.category_id IS NOT NULL "
+                + (receivedOnly ? "AND c.name='حوالة مستلمة' " : "AND c.name!='حوالة مستلمة' ")
+                + "ORDER BY t.created_at DESC,t.id DESC";
+        String[] args = {FinanceRules.INCOME,currency,
+                String.valueOf(startInclusive),String.valueOf(endExclusive)};
+        try(Cursor c=getReadableDatabase().rawQuery(sql,args)) {
+            while(c.moveToNext()) {
+                Models.Transaction tx = new Models.Transaction();
+                tx.id = c.getLong(0); tx.type = c.getString(1); tx.amountMinor = c.getLong(2);
+                tx.currency = c.getString(3); tx.accountId = c.getLong(4);
+                tx.destinationAccountId = c.isNull(5) ? null : c.getLong(5);
+                tx.accountName = c.getString(6); tx.destinationName = c.isNull(7) ? null : c.getString(7);
+                tx.categoryName = c.isNull(8) ? null : c.getString(8);
+                tx.categoryEmoji = c.isNull(9) ? null : c.getString(9);
+                tx.note = c.getString(10); tx.rawText = c.isNull(11) ? null : c.getString(11);
+                tx.needsReview = c.getInt(12) == 1; tx.createdAt = c.getLong(13);
+                tx.hasSplits = c.getInt(14) == 1; tx.affectsBalance = c.getInt(15) == 1;
+                populateSpecial(tx);
+                result.add(tx);
+            }
+        }
+        return result;
+    }
+
     public long getExpenseTotal(String currency, long startInclusive, long endExclusive) {
         String sql = "SELECT COALESCE(SUM(value),0) FROM (" +
                 "SELECT t.amount_minor value FROM transactions t LEFT JOIN categories c ON c.id=t.category_id " +
