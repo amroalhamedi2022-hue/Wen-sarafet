@@ -9,13 +9,28 @@ import android.graphics.Color;
 
 public final class ReminderReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context, Intent intent) {
-        if (!LicenseManager.isActivated(context)) return;
-        if (ReminderScheduler.ACTION_SNOOZE.equals(intent.getAction())) {
-            show(context);
+        if (!LicenseManager.isActivated(context)
+                || !ReminderScheduler.prefs(context).getBoolean("enabled", false)) {
+            ReminderScheduler.cancel(context);
             return;
         }
+        String action = intent == null ? null : intent.getAction();
+        if (ReminderScheduler.ACTION_SNOOZE_REQUEST.equals(action)) {
+            // A tap on "Later" schedules a new alarm; it must NOT show the alert now.
+            NotificationManager notifications = (NotificationManager)
+                    context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (notifications != null) notifications.cancel(8301);
+            try (FinanceDbHelper db = new FinanceDbHelper(context)) {
+                if (db.getPendingExpenseClassificationCount() > 0)
+                    ReminderScheduler.scheduleSnooze(context);
+            }
+            return;
+        }
+        if (!ReminderScheduler.ACTION_DAILY.equals(action)
+                && !ReminderScheduler.ACTION_SNOOZE.equals(action)) return;
         show(context);
-        ReminderScheduler.scheduleDaily(context);
+        if (ReminderScheduler.ACTION_DAILY.equals(action))
+            ReminderScheduler.scheduleDaily(context);
     }
 
     private void show(Context context) {
@@ -40,7 +55,7 @@ public final class ReminderReceiver extends BroadcastReceiver {
                 .setAutoCancel(true)
                 .addAction(new android.app.Notification.Action.Builder(null, "فتح التطبيق", open).build());
         if (ReminderScheduler.prefs(context).getBoolean("snooze_enabled", true)) {
-            Intent laterIntent = new Intent(context, ReminderReceiver.class).setAction(ReminderScheduler.ACTION_SNOOZE);
+            Intent laterIntent = new Intent(context, ReminderReceiver.class).setAction(ReminderScheduler.ACTION_SNOOZE_REQUEST);
             PendingIntent later = PendingIntent.getBroadcast(context, 8202, laterIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             builder.addAction(new android.app.Notification.Action.Builder(null, "لاحقًا", later).build());
         }
