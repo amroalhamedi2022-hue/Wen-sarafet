@@ -8,8 +8,8 @@ android {
         applicationId "app.wensarafet.tracker"
         minSdk 33
         targetSdk 35
-        versionCode 16
-        versionName "1.8.0"
+        versionCode 17
+        versionName "1.8.1"
     }
 
     signingConfigs {
