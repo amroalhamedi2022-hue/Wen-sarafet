@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
 
 public final class MainActivity extends Activity {
     private FinanceDbHelper db;
@@ -1870,9 +1871,15 @@ public final class MainActivity extends Activity {
         content.addView(incomingRow);
         content.addView(monthlyBudgetCard(dashboardCurrency, month));
         // Last completed month: a congratulation is meaningful only after the month closes.
-        String previousMonthKey=new SimpleDateFormat("yyyy-MM",Locale.ROOT).format(previousMonth.getTime());
-        long priorCap=getSharedPreferences("monthly_budgets",MODE_PRIVATE)
-                .getLong("budget_"+dashboardCurrency+"_"+previousMonthKey,0L);
+        String previousMonthKey=MonthlyBudgetHistory.monthKey(previousMonth.getTimeInMillis(),TimeZone.getDefault());
+        android.content.SharedPreferences budgetHistory=getSharedPreferences("monthly_budgets",MODE_PRIVATE);
+        String completedKey="budget_"+dashboardCurrency+"_"+previousMonthKey;
+        // A recorded zero means that month had no budget. Missing snapshots from
+        // older versions inherit the rolling cap, instead of suppressing savings.
+        Long completedSnapshot=budgetHistory.contains(completedKey)
+                ? budgetHistory.getLong(completedKey,0L) : null;
+        long priorCap=MonthlyBudgetHistory.completedMonthCap(
+                budgetHistory.getLong("budget_"+dashboardCurrency,0L),completedSnapshot);
         MonthlySavingsRules.State finished=MonthlySavingsRules.calculate(priorCap,priorMonth,true);
         if(finished.configured && !finished.exceeded && finished.savedMinor>0) {
             content.addView(Ui.text(this,"🎉 Congratulations! أحسنت — الشهر الماضي بقيت تحت السقف بـ "
@@ -1978,10 +1985,18 @@ public final class MainActivity extends Activity {
         dialog.setOnShowListener(x -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             Long value = Money.parseMinor(amount.getText().toString());
             if (value == null || value < 0) { amount.setError("اكتب مبلغًا صحيحًا أو صفرًا للحذف"); return; }
-            String currentMonthKey=new SimpleDateFormat("yyyy-MM",Locale.ROOT).format(new Date());
-            getSharedPreferences("monthly_budgets", MODE_PRIVATE).edit()
-                    .putLong("budget_" + currency, value)
-                    .putLong("budget_" + currency+"_"+currentMonthKey, value).apply();
+            long nowMillis=System.currentTimeMillis();
+            String currentMonthKey=MonthlyBudgetHistory.monthKey(nowMillis,TimeZone.getDefault());
+            String previousMonthKey=MonthlyBudgetHistory.previousMonthKey(nowMillis,TimeZone.getDefault());
+            android.content.SharedPreferences budgetHistory=getSharedPreferences("monthly_budgets",MODE_PRIVATE);
+            String baseKey="budget_"+currency;
+            String completedKey=baseKey+"_"+previousMonthKey;
+            android.content.SharedPreferences.Editor edit=budgetHistory.edit();
+            // Preserve the cap that applied to last month BEFORE editing this month's
+            // rolling cap. Never overwrite an already recorded month snapshot.
+            if(!budgetHistory.contains(completedKey)) edit.putLong(completedKey,currentMinor);
+            edit.putLong(baseKey,value)
+                    .putLong(baseKey+"_"+currentMonthKey,value).apply();
             BudgetAlertManager.checkAll(this);
             dialog.dismiss();
             showAnalyticsScreen();
