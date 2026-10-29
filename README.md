@@ -1,23 +1,64 @@
 # وين صرفت — Wen Sarafet
 
-Android personal finance application.
+Arabic-first Android personal finance tracker. Application ID: `app.wensarafet.tracker`.
 
-> **Project state (2026-10-23):** The repository has only planning and safety-scaffolding files. It does **not yet** contain the original application source or a verified APK. No completed features or passing tests are implied.
+## Verified state — 2026-10-29
 
-## Approved scoped roadmap
-[خطة الإصلاح والتطوير المعتمدة — 2026-10-23](docs/WEN_SARAFET_REPAIR_AND_DEVELOPMENT_PLAN_2026-10-23.md)
+This public repository **does contain reconstructed application source** under `app/src/main`.
+It is a recovered and incrementally improved source tree, **not a proven
+byte-for-byte copy of the originally installed 1.8.0 APK**.
 
-## Source import / security gate
-Import the latest *real, buildable* codebase after checking it contains NO signing keys, license generator/private keys, personal financial records, authentication tokens, backups, or machine-specific secrets. The public repo must not include confidential owner-only artifacts.
+The current cumulative draft-PR chain (do not start new work from stale `main`):
 
-Preserve existing PIN/biometrics, offline licensing, Android Keystore/device binding, tamper checks, app identity/signing continuity, migrations and all unrequested functionality. Treat baseline tests and a data-retaining upgrade as mandatory before a release.
+1. Previous source fixes through Batch 06: PR #5.
+2. GitHub CI safety gates: PR #7.
+3. Batch 07 SQLite v13 and atomic debt/split accounting: PR #8.
+4. Android API 35 debug compilation CI: PR #9.
+5. Batch 08 historical monthly budget cap preservation: PR #10.
+6. Batch 09 reduced-motion screen/navigation safety: PR #11.
+7. Batch 10 audit policy alignment: PR #12.
 
-Do not make claims about implementation, tests, or builds without linked evidence.
+The documentation-only handoff is in PR #6 (`docs/HANDOFF_LIVE_AR_2026-10-28.md`);
+do not assume that docs-only branch contains newer app code.
 
-## Status
-- [x] Approved plan documented
-- [ ] Sanitized source imported
-- [ ] Baseline tests and GitHub Actions green
-- [ ] Each of 12 requested change groups implemented
-- [ ] Data migration, security regression, and device verification complete
-- [ ] Release APK verified
+### What is verified
+
+- GitHub-hosted Java business-rule and SQLite migration/source-contract tests.
+- Protected security source digest checks and Android XML/manifest guards.
+- Android debug APK **compilation** with JDK 17, Android SDK 35, Gradle 8.10.2.
+- No owner signing secrets or license private keys are tracked in the public tree.
+
+### NOT TESTED / NOT RELEASE-READY
+
+- An Android device exercising transactions, debt splits, FX, PIN/biometrics,
+  notifications, widgets, visual themes, animations, and Drive backup.
+- A real signed in-place upgrade from the user's installed 1.8.0, including
+  signer-certificate identity, DB migration and preservation of personal records.
+- Release signing, R8/proguard runtime behavior, and owner-only license generator.
+- The precise icon-overlap defect: its original screenshot is still required.
+
+**Do not present a debug APK as an upgrade for the user's installed application.**
+The debug variant uses the `.recovered.debug` application ID suffix.
+
+### Local/source checks
+
+```sh
+bash scripts/test_core.sh
+python3 tests/source_repository_guard.py
+CORE_TESTS_ALREADY_RUN=1 bash scripts/audit_recovered_source.sh
+```
+
+The Android debug compile and security checks also run through GitHub Actions
+on the draft PRs. The release audit requires original signing/generator artifacts
+**which must remain outside this public repository**. A passing source-only CI
+check is not a production release approval.
+
+### Safe continuation rules
+
+- Continue on the latest validated cumulative feature branch, not `main`.
+- Keep each increment in a new branch and Draft PR. Do not auto-merge.
+- Prefer GitHub Actions for repeatable tests; use Codex for actual code problems.
+- Preserve account identity, balances, local SQLite, backup data, signing
+  certificate continuity, PIN/biometrics, ECDSA licensing and key separation.
+- Do not publish signing keys, generator private keys, personal financial data,
+  personal SMS records or backups.

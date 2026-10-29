@@ -16,11 +16,17 @@ EXPECTED_CERT="6b8268e5b647b12a2aa055d7a22f7b8ea888e40fb863e74409938aad4ec789c9"
 
 main_badging="$($BUILD_TOOLS/aapt2 dump badging "$MAIN_APK")"
 generator_badging="$($BUILD_TOOLS/aapt2 dump badging "$GENERATOR_APK")"
-grep -q "package: name='app.wensarafet.tracker' versionCode='16' versionName='1.8.0'" <<<"$main_badging"
+# Compare against the source metadata, not an obsolete hardcoded release number.
+source_code="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*$/\1/p' "$PROJECT_DIR/app/build.gradle" | head -1)"
+source_name="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\1/p' "$PROJECT_DIR/app/build.gradle" | head -1)"
+[[ "$source_code" =~ ^[0-9]+$ && -n "$source_name" ]]
+grep -Fq "package: name='app.wensarafet.tracker' versionCode='$source_code' versionName='$source_name'" <<<"$main_badging"
 grep -q "package: name='app.wensarafet.admin'" <<<"$generator_badging"
 
 main_permissions="$(grep '^uses-permission:' <<<"$main_badging" || true)"
-! grep -Eq 'INTERNET|CALL_PHONE|BIND_ACCESSIBILITY_SERVICE|QUERY_ALL_PACKAGES' <<<"$main_permissions"
+# INTERNET is approved only for the optional BOP indicative USD/ILS quote.
+grep -Fq "android.permission.INTERNET" <<<"$main_permissions"
+! grep -Eq 'CALL_PHONE|BIND_ACCESSIBILITY_SERVICE|QUERY_ALL_PACKAGES' <<<"$main_permissions"
 ! grep -q '^uses-permission:' <<<"$generator_badging"
 
 main_manifest="$($BUILD_TOOLS/aapt2 dump xmltree --file AndroidManifest.xml "$MAIN_APK")"
@@ -46,7 +52,8 @@ grep -q 'app.wensarafet.tracker.AppIntegrity -> ' "$PROJECT_DIR/build/apk/mappin
 
 grep -q 'license_state.xml' "$PROJECT_DIR/app/src/main/res/xml/backup_rules.xml"
 grep -q 'license_state.xml' "$PROJECT_DIR/app/src/main/res/xml/data_extraction_rules.xml"
-grep -q 'private static final int DB_VERSION = 8' "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java"
+db_version="$(sed -nE 's/^[[:space:]]*private static final int DB_VERSION[[:space:]]*=[[:space:]]*([0-9]+);.*$/\1/p' "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java" | head -1)"
+[[ "$db_version" =~ ^[0-9]+$ && "$db_version" -ge 13 ]]
 grep -q 'UNIQUE(transaction_id,debt_id,kind)' "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java"
 grep -q 'CONFIGURATION_CHANGED' "$PROJECT_DIR/app/src/main/AndroidManifest.xml"
 [[ -f "$PROJECT_DIR/app/src/main/res/drawable-night/widget_balance_two_background.xml" ]]
