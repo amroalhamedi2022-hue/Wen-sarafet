@@ -31,9 +31,10 @@ jobs:
       - name: Use Android SDK preinstalled on GitHub's Ubuntu runner
         run: |
           test -n "$ANDROID_HOME"
-          test -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" || command -v sdkmanager
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
       - name: Provide Gradle 8.10.2 without a project wrapper
         uses: gradle/actions/setup-gradle@v4
         with:
