@@ -17,8 +17,8 @@ EXPECTED_CERT="6b8268e5b647b12a2aa055d7a22f7b8ea888e40fb863e74409938aad4ec789c9"
 main_badging="$($BUILD_TOOLS/aapt2 dump badging "$MAIN_APK")"
 generator_badging="$($BUILD_TOOLS/aapt2 dump badging "$GENERATOR_APK")"
 # Compare against the source metadata, not an obsolete hardcoded release number.
-source_code="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*$/\\1/p' "$PROJECT_DIR/app/build.gradle" | head -1)"
-source_name="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\\1/p' "$PROJECT_DIR/app/build.gradle" | head -1)"
+source_code="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*$/\1/p' "$PROJECT_DIR/app/build.gradle" | head -1)"
+source_name="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\1/p' "$PROJECT_DIR/app/build.gradle" | head -1)"
 [[ "$source_code" =~ ^[0-9]+$ && -n "$source_name" ]]
 grep -Fq "package: name='app.wensarafet.tracker' versionCode='$source_code' versionName='$source_name'" <<<"$main_badging"
 grep -q "package: name='app.wensarafet.admin'" <<<"$generator_badging"
@@ -52,7 +52,7 @@ grep -q 'app.wensarafet.tracker.AppIntegrity -> ' "$PROJECT_DIR/build/apk/mappin
 
 grep -q 'license_state.xml' "$PROJECT_DIR/app/src/main/res/xml/backup_rules.xml"
 grep -q 'license_state.xml' "$PROJECT_DIR/app/src/main/res/xml/data_extraction_rules.xml"
-db_version="$(sed -nE 's/^[[:space:]]*private static final int DB_VERSION[[:space:]]*=[[:space:]]*([0-9]+);.*$/\\1/p' "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java" | head -1)"
+db_version="$(sed -nE 's/^[[:space:]]*private static final int DB_VERSION[[:space:]]*=[[:space:]]*([0-9]+);.*$/\1/p' "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java" | head -1)"
 [[ "$db_version" =~ ^[0-9]+$ && "$db_version" -ge 13 ]]
 grep -q 'UNIQUE(transaction_id,debt_id,kind)' "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java"
 grep -q 'CONFIGURATION_CHANGED' "$PROJECT_DIR/app/src/main/AndroidManifest.xml"
