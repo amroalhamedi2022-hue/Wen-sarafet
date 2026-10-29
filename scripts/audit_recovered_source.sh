@@ -4,7 +4,10 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 
-bash scripts/test_core.sh
+# CI already executes the core suite separately; local manual audits still run it.
+if [[ "${CORE_TESTS_ALREADY_RUN:-0}" != "1" ]]; then
+  bash scripts/test_core.sh
+fi
 
 python3 - <<'PY'
 from pathlib import Path
