@@ -34,6 +34,9 @@ java -cp "$OUT_DIR" CategorySuggestionRulesTest
 compile "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/MonthlySavingsRules.java" \
   "$PROJECT_DIR/tests/MonthlySavingsRulesTest.java"
 java -cp "$OUT_DIR" MonthlySavingsRulesTest
+compile "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/MonthlyBudgetHistory.java" \
+  "$PROJECT_DIR/tests/MonthlyBudgetHistoryTest.java"
+java -cp "$OUT_DIR" MonthlyBudgetHistoryTest
 compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FxTransferMath.java" \
   "$PROJECT_DIR/tests/FxTransferMathTest.java"
