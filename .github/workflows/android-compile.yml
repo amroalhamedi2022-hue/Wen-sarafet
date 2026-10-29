@@ -53,3 +53,16 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 3
           if-no-files-found: error
+      - name: Run Android Lint on debug variant
+        run: gradle :app:lintDebug --no-daemon --console=plain
+      - name: Save short-lived Android Lint report (also on failure)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wen-sarafet-android-lint
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.xml
+            app/build/reports/lint-results-debug.txt
+          retention-days: 3
+          if-no-files-found: warn
