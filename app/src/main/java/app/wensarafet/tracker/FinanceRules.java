@@ -16,11 +16,11 @@ public final class FinanceRules {
     public static long[] balancesAfter(String type, long amount, long source, Long destination) {
         if (amount <= 0) throw new IllegalArgumentException("المبلغ يجب أن يكون أكبر من صفر");
         switch (type) {
-            case EXPENSE: return new long[]{source - amount};
-            case INCOME: return new long[]{source + amount};
+            case EXPENSE: return new long[]{Math.subtractExact(source, amount)};
+            case INCOME: return new long[]{Math.addExact(source, amount)};
             case TRANSFER:
                 if (destination == null) throw new IllegalArgumentException("الحساب المستلم مطلوب");
-                return new long[]{source - amount, destination + amount};
+                return new long[]{Math.subtractExact(source, amount), Math.addExact(destination, amount)};
             default: throw new IllegalArgumentException("نوع عملية غير معروف");
         }
     }
@@ -30,7 +30,8 @@ public final class FinanceRules {
         long sum = 0;
         for (Long part : parts) {
             if (part == null || part <= 0) return false;
-            sum += part;
+            try { sum = Math.addExact(sum, part); }
+            catch (ArithmeticException overflow) { return false; }
         }
         return sum == total;
     }
@@ -41,7 +42,7 @@ public final class FinanceRules {
         long included = 0L;
         for (Long part : includedSplitParts) {
             if (part == null || part < 0) throw new IllegalArgumentException("جزء الرصيد غير صالح");
-            included += part;
+            included = Math.addExact(included, part);
         }
         if (included > total) throw new IllegalArgumentException("أجزاء الرصيد تتجاوز مبلغ العملية");
         return included;

@@ -6,13 +6,19 @@ import json,re,sqlite3
 from pathlib import Path
 src=(Path(__file__).resolve().parents[1]/'app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java').read_text()
 ui=(Path(__file__).resolve().parents[1]/'app/src/main/java/app/wensarafet/tracker/MainActivity.java').read_text()
-assert 'DB_VERSION = 12' in src
+assert 'DB_VERSION = 13' in src
 assert 'SplitDebtRules.checkParts(amount, splits)' in src
 assert 'LEFT JOIN debt_people p ON p.id=s.debt_person_id' in src
 assert 'for (Long debtId : affectedDebts) recomputeDebt(writable, debtId);\n            writable.delete("transaction_splits"' in src
 assert 'الدين مرتبط بمصروف مقسّم' in src
 assert 'addDebtSplitRow(rowsBox, rows, categories, people)' in ui
 assert 'SplitInput.debt(value' in ui
+assert 'public long addDebtTransaction(' in src
+assert 'String actualKind = DebtLedgerRules.movementKind(type, direction);' in src
+assert 'if (!actualKind.equals(specialKind))' in src
+assert 'db.addDebtTransaction(type,amountMinor,currency,accountId,note,affectsBalance,specialKind' in ui
+assert 'addDebtSplitRow(splitRowsBox, splitRows, filteredCategories, debtPeople)' in ui
+assert 'splits.add(Models.SplitInput.debt(partAmount' in ui
 
 # Extract verbatim SQL assembled by Java literals, not hand-maintained replacement SQL.
 def statements(s):

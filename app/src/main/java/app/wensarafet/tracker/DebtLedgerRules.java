@@ -27,7 +27,7 @@ public final class DebtLedgerRules {
         long available = 0;
         for (Long value : openRemainders) {
             if (value == null || value < 0) throw new IllegalArgumentException("رصيد دين غير صالح");
-            available += value;
+            available = Math.addExact(available, value);
         }
         if (available < payment) throw new IllegalArgumentException("مبلغ السداد أكبر من المتبقي");
         long[] result = new long[openRemainders.size()]; long left = payment;

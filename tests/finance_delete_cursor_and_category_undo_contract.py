@@ -103,6 +103,11 @@ assert undo.index('reclassifyTransaction(') < undo.index('writable.update("chang
 assert undo.index('writable.update("change_history"') < undo.index('writable.setTransactionSuccessful()')
 assert 'writable.endTransaction();' in undo
 assert 'if(writable.update("change_history",cv,"id=? AND undone=0"' in undo
+assert 'reversal.put("action","UNDO")' in undo
+assert "AND id>? AND action='EDIT'" in undo
+restore = SRC.split('public void undoDeletedSimpleTransaction(long auditId) {',1)[1].split('private static boolean canSnapshotSimpleDelete',1)[0]
+assert 'restoreEvent.put("action","RESTORE")' in restore
+assert "AND action='ADD'" in restore
 raw_action = undo.split('writable.rawQuery(',1)[1].split('new String[]{String.valueOf(auditId)}',1)[0]
 assert raw_action.count('SAFE_CATEGORY_UNDO_SQL +') == 1
 before,after = raw_action.split('SAFE_CATEGORY_UNDO_SQL +',1)

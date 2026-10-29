@@ -13,7 +13,7 @@ import java.util.Map;
 
 public final class FinanceDbHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "wen_sarafet.db";
-    private static final int DB_VERSION = 12;
+    private static final int DB_VERSION = 13;
     private final Context appContext;
 
     public FinanceDbHelper(Context context) {
@@ -38,9 +38,9 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE INDEX idx_tx_created ON transactions(created_at)");
         createCaptureSchema(db);
         createDebtSchema(db);
+        seed(db);
         createAuditSchema(db);
         createSafeUndoSchema(db);
-        seed(db);
     }
 
     @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
@@ -97,6 +97,11 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             // Previous deletions intentionally have no snapshots and cannot be undone.
             createSafeUndoSchema(db);
         }
+        if (oldVersion < 13) {
+            // Keep all financial rows intact; only replace the local audit triggers so
+            // future debt/category/detail changes are represented accurately.
+            recreateAuditTriggers(db);
+        }
     }
 
     private static void createCaptureSchema(SQLiteDatabase db) {
@@ -129,13 +134,22 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE TRIGGER IF NOT EXISTS audit_transaction_update AFTER UPDATE ON transactions " +
                 "WHEN OLD.type!=NEW.type OR OLD.amount_minor!=NEW.amount_minor OR OLD.account_id!=NEW.account_id " +
                 "OR COALESCE(OLD.category_id,-1)!=COALESCE(NEW.category_id,-1) " +
-                "OR COALESCE(OLD.special_kind,'')!=COALESCE(NEW.special_kind,'') BEGIN " +
+                "OR COALESCE(OLD.destination_account_id,-1)!=COALESCE(NEW.destination_account_id,-1) " +
+                "OR OLD.note!=NEW.note OR OLD.affects_balance!=NEW.affects_balance " +
+                "OR OLD.base_affects_balance!=NEW.base_affects_balance " +
+                "OR COALESCE(OLD.special_kind,'')!=COALESCE(NEW.special_kind,'') " +
+                "OR COALESCE(OLD.debt_person_id,-1)!=COALESCE(NEW.debt_person_id,-1) " +
+                "OR COALESCE(OLD.debt_direction,'')!=COALESCE(NEW.debt_direction,'') " +
+                "OR COALESCE(OLD.destination_amount_minor,-1)!=COALESCE(NEW.destination_amount_minor,-1) " +
+                "OR COALESCE(OLD.exchange_rate,'')!=COALESCE(NEW.exchange_rate,'') " +
+                "OR COALESCE(OLD.exchange_rate_source,'')!=COALESCE(NEW.exchange_rate_source,'') " +
+                "OR COALESCE(OLD.exchange_rate_checked_at,-1)!=COALESCE(NEW.exchange_rate_checked_at,-1) BEGIN " +
                 "INSERT INTO change_history(table_name,record_id,action,previous,current,created_at,"+
                 "previous_category_id,current_category_id,previous_account_id,current_account_id,"+
                 "previous_amount_minor,current_amount_minor,previous_type,current_type) VALUES ("+
                 "'transactions',NEW.id,'EDIT',"+
-                "'type='||OLD.type||', amount='||OLD.amount_minor||', category='||COALESCE(OLD.category_id,-1)||', account='||OLD.account_id,"+
-                "'type='||NEW.type||', amount='||NEW.amount_minor||', category='||COALESCE(NEW.category_id,-1)||', account='||NEW.account_id,"+
+                "'type='||OLD.type||', amount='||OLD.amount_minor||', category='||COALESCE(OLD.category_id,-1)||', account='||OLD.account_id||', destination='||COALESCE(OLD.destination_account_id,-1)||', affects='||OLD.affects_balance||', special='||COALESCE(OLD.special_kind,'')||', debt_person='||COALESCE(OLD.debt_person_id,-1)||', debt_direction='||COALESCE(OLD.debt_direction,'')||', destination_amount='||COALESCE(OLD.destination_amount_minor,-1)||', rate='||COALESCE(OLD.exchange_rate,'')||', rate_source='||COALESCE(OLD.exchange_rate_source,''),"+
+                "'type='||NEW.type||', amount='||NEW.amount_minor||', category='||COALESCE(NEW.category_id,-1)||', account='||NEW.account_id||', destination='||COALESCE(NEW.destination_account_id,-1)||', affects='||NEW.affects_balance||', special='||COALESCE(NEW.special_kind,'')||', debt_person='||COALESCE(NEW.debt_person_id,-1)||', debt_direction='||COALESCE(NEW.debt_direction,'')||', destination_amount='||COALESCE(NEW.destination_amount_minor,-1)||', rate='||COALESCE(NEW.exchange_rate,'')||', rate_source='||COALESCE(NEW.exchange_rate_source,''),"+
                 "strftime('%s','now')*1000,OLD.category_id,NEW.category_id,OLD.account_id,NEW.account_id,"+
                 "OLD.amount_minor,NEW.amount_minor,OLD.type,NEW.type); END");
         db.execSQL("CREATE TRIGGER IF NOT EXISTS audit_transaction_delete BEFORE DELETE ON transactions BEGIN " +
@@ -148,12 +162,36 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 "INSERT INTO change_history(table_name,record_id,action,previous,created_at) VALUES ("+
                 "'transaction_splits',OLD.transaction_id,'SPLIT_REMOVE','category='||COALESCE(OLD.category_id,-1)||', amount='||OLD.amount_minor,strftime('%s','now')*1000); END");
         db.execSQL("CREATE TRIGGER IF NOT EXISTS audit_category_update AFTER UPDATE ON categories " +
-                "WHEN OLD.emoji!=NEW.emoji OR OLD.archived!=NEW.archived BEGIN " +
+                "WHEN OLD.name!=NEW.name OR OLD.kind!=NEW.kind OR OLD.emoji!=NEW.emoji " +
+                "OR OLD.exclude_from_expense!=NEW.exclude_from_expense OR OLD.archived!=NEW.archived BEGIN " +
                 "INSERT INTO change_history(table_name,record_id,action,previous,current,created_at) VALUES ("+
                 "'categories',NEW.id,'CATEGORY_EDIT',OLD.name||' / '||OLD.emoji,NEW.name||' / '||NEW.emoji,strftime('%s','now')*1000); END");
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS audit_category_insert AFTER INSERT ON categories BEGIN " +
+                "INSERT INTO change_history(table_name,record_id,action,current,created_at) VALUES ("+
+                "'categories',NEW.id,'CATEGORY_ADD',NEW.name||' / '||NEW.emoji,strftime('%s','now')*1000); END");
         db.execSQL("CREATE TRIGGER IF NOT EXISTS audit_category_delete BEFORE DELETE ON categories BEGIN " +
                 "INSERT INTO change_history(table_name,record_id,action,previous,created_at) VALUES ("+
                 "'categories',OLD.id,'CATEGORY_DELETE',OLD.name,strftime('%s','now')*1000); END");
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS audit_debt_movement_insert AFTER INSERT ON debt_movements BEGIN " +
+                "INSERT INTO change_history(table_name,record_id,action,current,created_at) VALUES ("+
+                "'debt_movements',NEW.id,'DEBT_ADD','debt='||NEW.debt_id||', kind='||NEW.kind||', amount='||NEW.amount_minor,strftime('%s','now')*1000); END");
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS audit_debt_movement_update AFTER UPDATE ON debt_movements " +
+                "WHEN OLD.kind!=NEW.kind OR OLD.amount_minor!=NEW.amount_minor OR OLD.note!=NEW.note BEGIN " +
+                "INSERT INTO change_history(table_name,record_id,action,previous,current,created_at) VALUES ("+
+                "'debt_movements',NEW.id,'DEBT_EDIT','kind='||OLD.kind||', amount='||OLD.amount_minor,"+
+                "'kind='||NEW.kind||', amount='||NEW.amount_minor,strftime('%s','now')*1000); END");
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS audit_debt_movement_delete BEFORE DELETE ON debt_movements BEGIN " +
+                "INSERT INTO change_history(table_name,record_id,action,previous,created_at) VALUES ("+
+                "'debt_movements',OLD.id,'DEBT_DELETE','debt='||OLD.debt_id||', kind='||OLD.kind||', amount='||OLD.amount_minor,strftime('%s','now')*1000); END");
+    }
+
+    private static void recreateAuditTriggers(SQLiteDatabase db) {
+        String[] names = {"audit_transaction_insert", "audit_transaction_update", "audit_transaction_delete",
+                "audit_split_insert", "audit_split_delete", "audit_category_insert", "audit_category_update",
+                "audit_category_delete", "audit_debt_movement_insert", "audit_debt_movement_update",
+                "audit_debt_movement_delete"};
+        for (String name : names) db.execSQL("DROP TRIGGER IF EXISTS " + name);
+        createAuditSchema(db);
     }
 
     /** Only newly deleted, simple manual transactions get an undo snapshot.
@@ -245,6 +283,11 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             // reclassifyTransaction nests an Android SQLite transaction. A failure in either
             // step rolls back the entire outer transaction, including balances and audit state.
             reclassifyTransaction(txId,kind,account,null,oldCategory,new ArrayList<>());
+            ContentValues reversal=new ContentValues();reversal.put("action","UNDO");
+            if(writable.update("change_history",reversal,
+                    "id=(SELECT MAX(id) FROM change_history WHERE table_name='transactions' AND record_id=?) AND id>? AND action='EDIT'",
+                    new String[]{String.valueOf(txId),String.valueOf(auditId)})!=1)
+                throw new IllegalStateException("تعذّر توثيق حدث التراجع");
             ContentValues cv=new ContentValues();cv.put("undone",1);
             if(writable.update("change_history",cv,"id=? AND undone=0",new String[]{String.valueOf(auditId)})!=1)
                 throw new IllegalStateException("تعذّر تثبيت سجل التراجع");
@@ -731,29 +774,46 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     public long addTransaction(String type, long amountMinor, String currency, long accountId,
                                Long destinationId, Long categoryId, String note,
                                List<Models.SplitInput> splits, boolean affectsBalance) {
+        if (amountMinor <= 0) throw new IllegalArgumentException("اكتب مبلغًا صحيحًا");
+        if (!FinanceRules.EXPENSE.equals(type) && !FinanceRules.INCOME.equals(type)
+                && !FinanceRules.TRANSFER.equals(type))
+            throw new IllegalArgumentException("نوع العملية غير صحيح");
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
             Models.Account source = getAccount(accountId);
-            if (source == null) throw new IllegalArgumentException("الحساب غير موجود");
+            if (source == null || !isActiveAccount(db, accountId)) throw new IllegalArgumentException("الحساب غير موجود أو غير نشط");
             if (!source.currency.equals(currency)) throw new IllegalArgumentException("عملة الحساب لا تطابق العملية");
             Models.Account destination = destinationId == null ? null : getAccount(destinationId);
             if (FinanceRules.TRANSFER.equals(type)) {
-                if (destination == null || destination.id == source.id) throw new IllegalArgumentException("اختر حسابًا مستلمًا مختلفًا");
+                if (destination == null || !isActiveAccount(db, destination.id) || destination.id == source.id) throw new IllegalArgumentException("اختر حسابًا مستلمًا مختلفًا");
                 if (!destination.currency.equals(source.currency)) throw new IllegalArgumentException("التحويل يدعم نفس العملة فقط حاليًا");
-            }
-            if (splits != null && !splits.isEmpty()) {
-                List<Long> amounts = new ArrayList<>();
-                for (Models.SplitInput split : splits) amounts.add(split.amountMinor);
-                if (!FinanceRules.splitsMatch(amountMinor, amounts)) throw new IllegalArgumentException("مجموع الأجزاء لا يساوي المبلغ");
+                if (categoryId != null || (splits != null && !splits.isEmpty()))
+                    throw new IllegalArgumentException("التحويل لا يقبل تصنيفًا أو تقسيمًا");
+            } else {
+                if (destinationId != null) throw new IllegalArgumentException("الحساب المستلم متاح للتحويل فقط");
+                if (splits != null && !splits.isEmpty()) {
+                    if (!FinanceRules.EXPENSE.equals(type))
+                        throw new IllegalArgumentException("التقسيم متاح للمصروف فقط");
+                    SplitDebtRules.checkParts(amountMinor, splits);
+                    for (Models.SplitInput split : splits) {
+                        if (split.specialKind == null) requireCategoryForType(db, split.categoryId, type);
+                        else { validateDebtDirection(split.debtDirection); requireDebtPerson(split.debtPersonId); }
+                    }
+                    categoryId = null;
+                } else {
+                    if (categoryId == null) throw new IllegalArgumentException("اختر تصنيف العملية");
+                    requireCategoryForType(db, categoryId, type);
+                }
             }
 
+            long createdAt = System.currentTimeMillis();
             ContentValues tx = new ContentValues();
             tx.put("type", type); tx.put("amount_minor", amountMinor); tx.put("currency", currency);
             tx.put("account_id", accountId);
             if (destinationId == null) tx.putNull("destination_account_id"); else tx.put("destination_account_id", destinationId);
             if (categoryId == null || (splits != null && !splits.isEmpty())) tx.putNull("category_id"); else tx.put("category_id", categoryId);
-            tx.put("note", note == null ? "" : note.trim()); tx.putNull("raw_text"); tx.put("created_at", System.currentTimeMillis()); tx.put("source", "MANUAL");
+            tx.put("note", note == null ? "" : note.trim()); tx.putNull("raw_text"); tx.put("created_at", createdAt); tx.put("source", "MANUAL");
             tx.put("affects_balance", affectsBalance ? 1 : 0);
             tx.put("base_affects_balance", affectsBalance ? 1 : 0);
             long txId = db.insertOrThrow("transactions", null, tx);
@@ -761,9 +821,34 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             if (splits != null) {
                 for (Models.SplitInput split : splits) {
                     ContentValues part = new ContentValues();
-                    part.put("transaction_id", txId); part.put("category_id", split.categoryId); part.put("amount_minor", split.amountMinor);
+                    part.put("transaction_id", txId); part.put("amount_minor", split.amountMinor);
+                    if (split.specialKind == null) part.put("category_id", split.categoryId);
+                    else {
+                        part.putNull("category_id"); part.put("special_kind", split.specialKind);
+                        part.put("debt_person_id", split.debtPersonId); part.put("debt_direction", split.debtDirection);
+                    }
                     db.insertOrThrow("transaction_splits", null, part);
                 }
+            }
+
+            Map<String, Models.SplitInput> groupedDebt = new LinkedHashMap<>();
+            if (splits != null) for (Models.SplitInput split : splits) if (split.specialKind != null) {
+                String key = split.specialKind + ":" + split.debtDirection + ":" + split.debtPersonId;
+                Models.SplitInput grouped = groupedDebt.get(key);
+                if (grouped == null) groupedDebt.put(key, Models.SplitInput.debt(
+                        split.amountMinor, split.specialKind, split.debtPersonId, split.debtDirection));
+                else grouped.amountMinor = Math.addExact(grouped.amountMinor, split.amountMinor);
+            }
+            for (int stage = 0; stage < 2; stage++) for (Models.SplitInput split : groupedDebt.values()) {
+                if ((stage == 0) != FinanceRules.SPECIAL_DEBT.equals(split.specialKind)) continue;
+                if (stage == 0) {
+                    long debtId = findOrCreateOpenDebt(db, split.debtPersonId, split.debtDirection,
+                            currency, note, createdAt);
+                    insertDebtMovement(db, debtId, txId, "OPEN", split.amountMinor, createdAt,
+                            "جزء من عملية مقسمة");
+                    recomputeDebt(db, debtId);
+                } else allocatePayment(db, split.debtPersonId, split.debtDirection, currency,
+                        txId, split.amountMinor, createdAt, "سداد من عملية مقسمة");
             }
 
             if (affectsBalance) {
@@ -780,16 +865,68 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         }
     }
 
+    /** Creates the transaction and its debt-ledger movement in one SQLite transaction. */
+    public long addDebtTransaction(String type, long amountMinor, String currency, long accountId,
+                                   String note, boolean baseAffectsBalance, String specialKind,
+                                   long personId, String direction) {
+        if (amountMinor <= 0) throw new IllegalArgumentException("اكتب مبلغًا صحيحًا");
+        if (!FinanceRules.EXPENSE.equals(type) && !FinanceRules.INCOME.equals(type))
+            throw new IllegalArgumentException("حركة الدين يجب أن تكون مصروفًا أو دخلًا");
+        validateDebtDirection(direction); requireDebtPerson(personId);
+        String actualKind = DebtLedgerRules.movementKind(type, direction);
+        if (!actualKind.equals(specialKind))
+            throw new IllegalArgumentException("اتجاه الدين لا يطابق نوع الحركة المالية");
+
+        SQLiteDatabase writable = getWritableDatabase();
+        writable.beginTransaction();
+        try {
+            Models.Account account = getAccount(accountId);
+            if (account == null || !isActiveAccount(writable, accountId) || !currency.equals(account.currency))
+                throw new IllegalArgumentException("الحساب غير صالح لهذه العملة");
+            long createdAt = System.currentTimeMillis();
+            boolean affectsBalance = FinanceRules.SPECIAL_DEBT_PAYMENT.equals(actualKind) && baseAffectsBalance;
+            ContentValues tx = new ContentValues();
+            tx.put("type", type); tx.put("amount_minor", amountMinor); tx.put("currency", currency);
+            tx.put("account_id", accountId); tx.putNull("destination_account_id"); tx.putNull("category_id");
+            tx.put("note", note == null ? "" : note.trim()); tx.putNull("raw_text");
+            tx.put("created_at", createdAt); tx.put("source", "MANUAL");
+            tx.put("affects_balance", affectsBalance ? 1 : 0);
+            tx.put("base_affects_balance", baseAffectsBalance ? 1 : 0);
+            tx.put("special_kind", actualKind); tx.put("debt_person_id", personId); tx.put("debt_direction", direction);
+            long txId = writable.insertOrThrow("transactions", null, tx);
+            if (affectsBalance) applyBalanceEffect(writable, type, amountMinor, accountId, null);
+            if (FinanceRules.SPECIAL_DEBT.equals(actualKind)) {
+                long debtId = findOrCreateOpenDebt(writable, personId, direction, currency, note, createdAt);
+                insertDebtMovement(writable, debtId, txId, "OPEN", amountMinor, createdAt, note);
+                recomputeDebt(writable, debtId);
+            } else allocatePayment(writable, personId, direction, currency, txId, amountMinor, createdAt, note);
+            writable.setTransactionSuccessful();
+            return txId;
+        } finally {
+            writable.endTransaction();
+            BalanceWidgetProvider.updateAll(appContext);
+            BudgetAlertManager.checkAll(appContext);
+        }
+    }
+
     /** New multi-currency transfer only; leaves all legacy same-currency transfers untouched. */
     public long addFxTransfer(long sourceId, long destinationId, long sourceAmountMinor,
                               String destUnitsPerSourceUnit, String rateSource, long checkedAt) {
         if (sourceId==destinationId) throw new IllegalArgumentException("اختر حسابين مختلفين");
+        if (checkedAt<=0) throw new IllegalArgumentException("وقت التحقق من سعر الصرف غير صالح");
+        String provenance=rateSource==null?"MANUAL":rateSource.trim();
+        if (!"MANUAL".equals(provenance) && !"BOP_INDICATIVE_BUY_USER_CONFIRMED".equals(provenance))
+            throw new IllegalArgumentException("مصدر سعر الصرف غير معروف");
         SQLiteDatabase writable=getWritableDatabase();
         writable.beginTransaction();
         try {
             Models.Account source=getAccount(sourceId), destination=getAccount(destinationId);
-            if(source==null || destination==null)throw new IllegalArgumentException("الحساب غير متاح");
+            if(source==null || destination==null || !isActiveAccount(writable,sourceId)
+                    || !isActiveAccount(writable,destinationId))throw new IllegalArgumentException("الحساب غير متاح");
             if(source.currency.equals(destination.currency))throw new IllegalArgumentException("التحويل بنفس العملة متاح بالطريقة المعتادة");
+            if("BOP_INDICATIVE_BUY_USER_CONFIRMED".equals(provenance)
+                    && !("USD".equals(source.currency) && "ILS".equals(destination.currency)))
+                throw new IllegalArgumentException("تسعيرة شراء الدولار من بنك فلسطين صالحة لمسار USD إلى ILS فقط");
             long destinationMinor=FxTransferMath.destinationMinor(sourceAmountMinor,destUnitsPerSourceUnit);
             long[] newBalances=FxTransferMath.balancesAfter(source.balanceMinor,destination.balanceMinor,
                     sourceAmountMinor,destinationMinor);
@@ -799,15 +936,17 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             tx.put("destination_account_id",destination.id);
             tx.put("destination_amount_minor",destinationMinor);
             tx.put("exchange_rate",destUnitsPerSourceUnit.trim());
-            tx.put("exchange_rate_source",rateSource==null?"MANUAL":rateSource);
+            tx.put("exchange_rate_source",provenance);
             tx.put("exchange_rate_checked_at",checkedAt);
             tx.put("note","");tx.put("created_at",System.currentTimeMillis());
             tx.put("source","MANUAL_FX");tx.put("affects_balance",1);tx.put("base_affects_balance",1);
             long id=writable.insertOrThrow("transactions",null,tx);
             ContentValues sourceUpdate=new ContentValues();sourceUpdate.put("balance_minor",newBalances[0]);
-            writable.update("accounts",sourceUpdate,"id=?",new String[]{String.valueOf(source.id)});
+            if(writable.update("accounts",sourceUpdate,"id=? AND active=1",new String[]{String.valueOf(source.id)})!=1)
+                throw new IllegalStateException("تعذر تحديث الحساب المصدر");
             ContentValues destinationUpdate=new ContentValues();destinationUpdate.put("balance_minor",newBalances[1]);
-            writable.update("accounts",destinationUpdate,"id=?",new String[]{String.valueOf(destination.id)});
+            if(writable.update("accounts",destinationUpdate,"id=? AND active=1",new String[]{String.valueOf(destination.id)})!=1)
+                throw new IllegalStateException("تعذر تحديث الحساب المستلم");
             writable.setTransactionSuccessful();return id;
         } finally {
             writable.endTransaction();
@@ -1439,6 +1578,11 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             tx.put("needs_review",needsReview);tx.put("created_at",createdAt);tx.put("source",source);
             tx.put("affects_balance",affects);tx.put("base_affects_balance",baseAffects);
             writable.insertOrThrow("transactions",null,tx);
+            ContentValues restoreEvent=new ContentValues();restoreEvent.put("action","RESTORE");
+            if(writable.update("change_history",restoreEvent,
+                    "id=(SELECT MAX(id) FROM change_history WHERE table_name='transactions' AND record_id=?) AND action='ADD'",
+                    new String[]{String.valueOf(transactionId)})!=1)
+                throw new IllegalStateException("تعذّر توثيق حدث الاسترجاع");
             ContentValues account=new ContentValues();account.put("balance_minor",restoredBalance);
             if(writable.update("accounts",account,"id=?",new String[]{String.valueOf(accountId)})!=1)
                 throw new IllegalStateException("الحساب الأصلي غير موجود");
@@ -1706,7 +1850,31 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         }
     }
 
+    private static void requireCategoryForType(SQLiteDatabase readable, long categoryId, String type) {
+        try (Cursor c = readable.rawQuery("SELECT kind FROM categories WHERE id=? AND archived=0",
+                new String[]{String.valueOf(categoryId)})) {
+            if (!c.moveToFirst() || !type.equals(c.getString(0)))
+                throw new IllegalArgumentException("التصنيف غير متاح لنوع العملية");
+        }
+    }
+
+    private static boolean isActiveAccount(SQLiteDatabase readable, long accountId) {
+        try (Cursor c = readable.rawQuery("SELECT 1 FROM accounts WHERE id=? AND active=1",
+                new String[]{String.valueOf(accountId)})) {
+            return c.moveToFirst();
+        }
+    }
+
     private void adjustBalance(SQLiteDatabase writable, long accountId, long delta) {
-        writable.execSQL("UPDATE accounts SET balance_minor=balance_minor+? WHERE id=?", new Object[]{delta, accountId});
+        long current;
+        try (Cursor c = writable.rawQuery("SELECT balance_minor FROM accounts WHERE id=?",
+                new String[]{String.valueOf(accountId)})) {
+            if (!c.moveToFirst()) throw new IllegalArgumentException("الحساب غير موجود");
+            current = c.getLong(0);
+        }
+        ContentValues values = new ContentValues();
+        values.put("balance_minor", Math.addExact(current, delta));
+        if (writable.update("accounts", values, "id=?", new String[]{String.valueOf(accountId)}) != 1)
+            throw new IllegalStateException("تعذر تحديث رصيد الحساب");
     }
 }
