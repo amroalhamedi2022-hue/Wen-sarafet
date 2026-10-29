@@ -2,6 +2,7 @@ package app.wensarafet.tracker;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -12,6 +13,7 @@ public final class ReminderScheduler {
     public static final String PREFS = "daily_reminder";
     public static final String ACTION_DAILY = "app.wensarafet.tracker.DAILY_REMINDER";
     public static final String ACTION_SNOOZE = "app.wensarafet.tracker.SNOOZE_REMINDER";
+    public static final String ACTION_SNOOZE_REQUEST = "app.wensarafet.tracker.REQUEST_SNOOZE_REMINDER";
 
     private ReminderScheduler() {}
 
@@ -30,7 +32,9 @@ public final class ReminderScheduler {
     }
 
     public static void scheduleSnooze(Context context) {
-        int minutes = prefs(context).getInt("snooze_minutes", 30);
+        if (!prefs(context).getBoolean("enabled", false)
+                || !prefs(context).getBoolean("snooze_enabled", true)) return;
+        int minutes = Math.max(1, Math.min(1440, prefs(context).getInt("snooze_minutes", 30)));
         schedule(context, System.currentTimeMillis() + minutes * 60_000L, ACTION_SNOOZE, 8102);
     }
 
@@ -44,8 +48,18 @@ public final class ReminderScheduler {
 
     public static void cancel(Context context) {
         AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        Intent intent = new Intent(context, ReminderReceiver.class).setAction(ACTION_DAILY);
-        PendingIntent pending = PendingIntent.getBroadcast(context, 8101, intent, PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
-        if (pending != null) manager.cancel(pending);
+        for (String action : new String[]{ACTION_DAILY, ACTION_SNOOZE}) {
+            int requestCode = ACTION_DAILY.equals(action) ? 8101 : 8102;
+            Intent intent = new Intent(context, ReminderReceiver.class).setAction(action);
+            PendingIntent pending = PendingIntent.getBroadcast(context, requestCode, intent,
+                    PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+            if (pending != null) {
+                manager.cancel(pending);
+                pending.cancel();
+            }
+        }
+        NotificationManager notifications = (NotificationManager)
+                context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notifications != null) notifications.cancel(8301);
     }
 }
