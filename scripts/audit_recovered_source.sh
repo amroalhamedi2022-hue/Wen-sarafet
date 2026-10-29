@@ -18,8 +18,12 @@ ET.parse('app/src/main/AndroidManifest.xml')
 print('XML audit: all resources parsed')
 PY
 
-grep -q 'versionCode 16' app/build.gradle
-grep -q 'versionName "1.8.0"' app/build.gradle
+# Accept valid incremental 1.8.x versions; the legacy baseline was 1.8.0 (code 16).
+# Never require the recovered source to remain stuck on the old release number.
+version_code="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*$/\1/p' app/build.gradle | head -1)"
+version_name="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\1/p' app/build.gradle | head -1)"
+[[ "$version_code" =~ ^[0-9]+$ && "$version_code" -ge 16 ]]
+[[ "$version_name" =~ ^1[.]8[.][0-9]+$ ]]
 grep -q 'android:layout_width="60dp"' app/src/main/res/layout/widget_balances.xml
 grep -q 'android:layout_width="54dp"' app/src/main/res/layout/widget_balances_triple.xml
 grep -q 'isVerificationMessage' app/src/main/java/app/wensarafet/tracker/CaptureEngine.java
