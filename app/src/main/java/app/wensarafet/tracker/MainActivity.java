@@ -1895,8 +1895,16 @@ public final class MainActivity extends Activity {
         long incomeMonth=db.getIncomeTotal(dashboardCurrency,monthStart.getTimeInMillis(),now,false);
         long receivedMonth=db.getIncomeTotal(dashboardCurrency,monthStart.getTimeInMillis(),now,true);
         LinearLayout incomingRow=Ui.row(this);
-        incomingRow.addView(comparisonCard("الدخل هذا الشهر",incomeMonth,-1));
-        incomingRow.addView(comparisonCard("المستلم هذا الشهر",receivedMonth,-1));
+        View earnedIncomeCard=comparisonCard("الدخل هذا الشهر",incomeMonth,-1);
+        View receivedIncomeCard=comparisonCard("المستلم هذا الشهر",receivedMonth,-1);
+        earnedIncomeCard.setOnClickListener(v -> showIncomePeriodScreen(
+                "الدخل هذا الشهر",dashboardCurrency,monthStart.getTimeInMillis(),now,false));
+        receivedIncomeCard.setOnClickListener(v -> showIncomePeriodScreen(
+                "المستلم هذا الشهر",dashboardCurrency,monthStart.getTimeInMillis(),now,true));
+        Ui.pressAnimation(earnedIncomeCard);
+        Ui.pressAnimation(receivedIncomeCard);
+        incomingRow.addView(earnedIncomeCard);
+        incomingRow.addView(receivedIncomeCard);
         content.addView(incomingRow);
         content.addView(monthlyBudgetCard(dashboardCurrency, month));
         // Last completed month: a congratulation is meaningful only after the month closes.
@@ -2044,6 +2052,46 @@ public final class MainActivity extends Activity {
         String change; if (previous < 0) change = "اضغط لعرض التفاصيل"; else if (previous == 0) change = current == 0 ? "لا تغيير" : "لا توجد مقارنة سابقة"; else { double percent = (current - previous) * 100.0 / previous; change = (percent >= 0 ? "↑ " : "↓ ") + String.format(Locale.ROOT, "%.1f%%", Math.abs(percent)) + " عن السابق"; }
         card.addView(Ui.text(this, change, 11, Color.rgb(232, 239, 255), false));
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, Ui.dp(this, 116), 1); p.setMargins(Ui.dp(this, 3), Ui.dp(this, 6), Ui.dp(this, 3), Ui.dp(this, 6)); card.setLayoutParams(p); return card;
+    }
+
+    /** C7: income and received remittances are separate analytical flows,
+     * not all account credits (which include internal transfers and debts). */
+    private void showIncomePeriodScreen(String title, String currency, long startInclusive,
+                                        long endExclusive, boolean receivedOnly) {
+        addScreenVisible = false; subScreenVisible = true;
+        LinearLayout page = Ui.column(this);
+        page.setBackgroundColor(Ui.BACKGROUND);
+        page.addView(pageHeader(title, this::showAnalyticsScreen),
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78)));
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout content = Ui.column(this);
+        content.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 34));
+        long total = db.getIncomeTotal(currency, startInclusive, endExclusive, receivedOnly);
+        TextView totalView = Ui.text(this, Money.format(total, currency), 25, Ui.INCOME, true);
+        totalView.setGravity(Gravity.CENTER);
+        totalView.setBackground(Ui.layeredSoftBackground(this, 20));
+        LinearLayout.LayoutParams totalParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78));
+        totalParams.setMargins(Ui.dp(this, 16), Ui.dp(this, 4),
+                Ui.dp(this, 16), Ui.dp(this, 10));
+        content.addView(totalView, totalParams);
+        List<Models.Transaction> transactions =
+                db.getIncomeTransactions(currency, startInclusive, endExclusive, receivedOnly);
+        content.addView(sectionTitle(receivedOnly ? "الحوالات المستلمة" : "عمليات الدخل",
+                transactions.isEmpty() ? "لا توجد عمليات" : transactions.size() + " عمليات"));
+        if (transactions.isEmpty()) {
+            content.addView(messageCard("لا توجد عمليات",
+                    receivedOnly ? "لا توجد حوالات مستلمة بهذه العملة خلال الفترة"
+                            : "لا توجد عمليات دخل بهذه العملة خلال الفترة"));
+        } else {
+            for (Models.Transaction tx : transactions) content.addView(transactionCard(tx));
+        }
+        scroll.addView(content);
+        page.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        setContentView(page);
+        Ui.animateScreen(page);
+        content.post(() -> Ui.animateChildren(content));
     }
 
     private void showExpensePeriodScreen(String title, String currency, long startInclusive, long endExclusive) {
