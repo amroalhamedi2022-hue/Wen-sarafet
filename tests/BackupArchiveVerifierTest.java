@@ -112,6 +112,36 @@ public final class BackupArchiveVerifierTest {
         return encryptPlain(bytes);
     }
 
+    // A malicious archive can repeat an optional filename; reject ambiguous ZIPs.
+    private static byte[] encryptedDuplicateOptionalName() throws Exception {
+        ByteArrayOutputStream plain = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(plain)) {
+            for (String name : new String[]{"database.sqlite", "settings.properties", "extra-a.txt", "extra-b.txt"}) {
+                zip.putNextEntry(new ZipEntry(name));
+                zip.write(name.equals("database.sqlite")
+                        ? "SQLite format 3\\u0000".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1)
+                        : new byte[]{1, 2, 3});
+                zip.closeEntry();
+            }
+        }
+        byte[] bytes = plain.toByteArray();
+        byte[] oldName = "extra-b.txt".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        byte[] newName = "extra-a.txt".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        int matches = 0;
+        for (int i = 0; i <= bytes.length - oldName.length; i++) {
+            boolean equal = true;
+            for (int j = 0; j < oldName.length; j++) {
+                if (bytes[i + j] != oldName[j]) { equal = false; break; }
+            }
+            if (equal) {
+                System.arraycopy(newName, 0, bytes, i, newName.length);
+                matches++;
+            }
+        }
+        if (matches != 2) throw new AssertionError("Expected local and central ZIP filenames");
+        return encryptPlain(bytes);
+    }
+
     private static byte[] encryptPlain(byte[] plain) throws Exception {
         ByteArrayOutputStream encrypted = new ByteArrayOutputStream();
         try (java.io.OutputStream output = BackupCrypto.encryptingStream(encrypted, PASSWORD)) {
@@ -153,6 +183,7 @@ public final class BackupArchiveVerifierTest {
             rejects(dir, oversizedEntry("unrecognized-extra.bin"), PASSWORD);
             rejects(dir, encryptedIncompleteCentralDirectory(), PASSWORD);
             rejects(dir, encryptedCentralDirectoryCrcMismatch(), PASSWORD);
+            rejects(dir, encryptedDuplicateOptionalName(), PASSWORD);
             rejects(dir, good, "wrong-password".toCharArray());
             rejects(dir, Arrays.copyOf(good, good.length - 12), PASSWORD);
             byte[] tampered = good.clone();
