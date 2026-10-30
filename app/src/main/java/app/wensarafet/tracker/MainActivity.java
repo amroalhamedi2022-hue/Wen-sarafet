@@ -983,15 +983,59 @@ public final class MainActivity extends Activity {
             return;
         }
         if (tx.specialKind != null) { showEditDebtTransactionDialog(tx); return; }
-        String[] options = {"مصروف — اختيار تصنيف", "دخل — اختيار تصنيف", "تقسيم المصروف", "تحويل بين حساباتي", "دَين", "سداد دين"};
+        boolean simpleEditable=db.canEditSimpleManualTransaction(tx.id);
+        String[] standardOptions = {"مصروف — اختيار تصنيف", "دخل — اختيار تصنيف",
+                "تقسيم المصروف", "تحويل بين حساباتي", "دَين", "سداد دين"};
+        String[] options;
+        if(simpleEditable) {
+            options=new String[standardOptions.length+1];
+            options[0]="✏️ تعديل المبلغ والملاحظة";
+            System.arraycopy(standardOptions,0,options,1,standardOptions.length);
+        } else options=standardOptions;
         new AlertDialog.Builder(this).setTitle("تعديل العملية").setItems(options, (d, which) -> {
-            if (which == 0) showCategoryPicker(tx, FinanceRules.EXPENSE);
-            else if (which == 1) showCategoryPicker(tx, FinanceRules.INCOME);
-            else if (which == 2) showSplitTransactionDialog(tx);
-            else if (which == 3) showTransactionTransferDialog(tx);
-            else if (which == 4) showDebtClassificationDialog(tx, FinanceRules.SPECIAL_DEBT);
+            if(simpleEditable && which==0) {
+                showSimpleManualTransactionEditDialog(tx);
+                return;
+            }
+            int action=simpleEditable?which-1:which;
+            if (action == 0) showCategoryPicker(tx, FinanceRules.EXPENSE);
+            else if (action == 1) showCategoryPicker(tx, FinanceRules.INCOME);
+            else if (action == 2) showSplitTransactionDialog(tx);
+            else if (action == 3) showTransactionTransferDialog(tx);
+            else if (action == 4) showDebtClassificationDialog(tx, FinanceRules.SPECIAL_DEBT);
             else showDebtClassificationDialog(tx, FinanceRules.SPECIAL_DEBT_PAYMENT);
         }).setNegativeButton("إلغاء", null).show();
+    }
+
+    private void showSimpleManualTransactionEditDialog(Models.Transaction tx) {
+        LinearLayout form=Ui.column(this);
+        form.setPadding(Ui.dp(this,18),Ui.dp(this,8),Ui.dp(this,18),Ui.dp(this,8));
+        form.addView(Ui.text(this,"سيُعدّل التطبيق الرصيد تلقائيًا بمقدار الفرق، مع الاحتفاظ بالتاريخ والتصنيف وسجل التدقيق.",12,Ui.MUTED,false));
+        EditText amount=input("المبلغ");
+        amount.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        amount.setText(java.math.BigDecimal.valueOf(tx.amountMinor,2).toPlainString());
+        amount.setSelectAllOnFocus(true);
+        EditText note=input("الملاحظة");
+        note.setText(tx.note==null?"":tx.note);
+        note.setMinLines(2);
+        form.addView(amount,fieldParams());
+        form.addView(note,fieldParams());
+        AlertDialog dialog=new AlertDialog.Builder(this)
+                .setTitle("تعديل العملية اليدوية").setView(form)
+                .setNegativeButton("إلغاء",null).setPositiveButton("حفظ التعديل",null).create();
+        dialog.setOnShowListener(ignored->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+            Long value=Money.parseMinor(amount.getText().toString());
+            if(value==null || value<=0) { amount.setError("أدخل مبلغًا موجبًا صحيحًا"); return; }
+            try {
+                db.editSimpleManualTransaction(tx.id,tx.amountMinor,tx.note,value,note.getText().toString());
+                dialog.dismiss();
+                Toast.makeText(this,"تم تعديل العملية والرصيد بأمان",Toast.LENGTH_SHORT).show();
+                showMain(transactionsTab);
+            } catch(Exception error) {
+                Toast.makeText(this,error.getMessage()==null?"تعذّر تعديل العملية":error.getMessage(),Toast.LENGTH_LONG).show();
+            }
+        }));
+        dialog.show();
     }
 
     private void showDebtClassificationDialog(Models.Transaction tx, String specialKind) {
