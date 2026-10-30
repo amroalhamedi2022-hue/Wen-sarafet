@@ -527,7 +527,7 @@ public final class MainActivity extends Activity {
 
         int headerPercent = Ui.homeIconScalePercent(this, "header");
         int headerIconSize = Math.max(Ui.dp(this, 32), Math.min(Ui.dp(this, 62), Ui.homeIconDp(this, "header", 42)));
-        if(getResources().getDisplayMetrics().widthPixels < Ui.dp(this,390))
+        if(getResources().getConfiguration().screenWidthDp < 390)
             headerIconSize=Math.min(headerIconSize,Ui.dp(this,48));
         float headerIconText = Math.min(31f, 21f * headerPercent / 100f);
         TextView addAccount = Ui.text(this, "▦", headerIconText, Color.WHITE, true);
@@ -787,7 +787,7 @@ public final class MainActivity extends Activity {
         accountName.setEllipsize(android.text.TextUtils.TruncateAt.END);
         labels.addView(accountName);
         labels.addView(Ui.text(this, account.currency, 12, Ui.MUTED, false));
-        boolean compactAccountCard=getResources().getDisplayMetrics().widthPixels < Ui.dp(this,390);
+        boolean compactAccountCard=getResources().getConfiguration().screenWidthDp < 390;
         TextView balance = Ui.text(this, Money.format(account.balanceMinor, account.currency), 15, Ui.TEXT, true);
         balance.setGravity((compactAccountCard?Gravity.START:Gravity.END) | Gravity.CENTER_VERTICAL);
         if(compactAccountCard){
@@ -897,7 +897,7 @@ public final class MainActivity extends Activity {
         info.addView(transactionSubtitle);
         String date = new SimpleDateFormat("dd/MM/yyyy  hh:mm a", new Locale("ar")).format(new Date(tx.createdAt));
         info.addView(Ui.text(this, date, 10, Ui.MUTED, false));
-        boolean compactTransactionCard=getResources().getDisplayMetrics().widthPixels < Ui.dp(this,390);
+        boolean compactTransactionCard=getResources().getConfiguration().screenWidthDp < 390;
 
         String prefix = FinanceRules.SPECIAL_DEBT.equals(tx.specialKind) ? "• " : FinanceRules.EXPENSE.equals(tx.type) ? "−" : FinanceRules.INCOME.equals(tx.type) ? "+" : "↔ ";
         TextView amount = Ui.text(this, prefix + Money.format(tx.amountMinor, tx.currency), 14, amountColor, true);
