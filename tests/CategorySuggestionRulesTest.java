@@ -18,6 +18,17 @@ public final class CategorySuggestionRulesTest {
         eq(3,CategorySuggestionRules.suggest(4,700,"مخبز الهدى","",shop),"description despite account");
         if(CategorySuggestionRules.suggest(1,200,"","",Collections.emptyList())!=null)
             throw new AssertionError("empty history");
+        // An amount repeated at one account must not defeat conflicting explicit shop history.
+        List<CategorySuggestionRules.Example> conflicting=Arrays.asList(
+            x(2,1,200,"تاكسي",""),x(2,1,200,"سيارة",""),x(2,1,200,"حافلة",""),
+            x(5,1,300,"سوبرماركت",""),x(7,1,400,"سوبرماركت",""));
+        if(CategorySuggestionRules.suggest(1,200,"سوبرماركت","",conflicting)!=null)
+            throw new AssertionError("ambiguous merchant overridden by amount frequency");
+        // Invalid old records must not train the suggestion engine.
+        List<CategorySuggestionRules.Example> invalid=Arrays.asList(
+            x(9,1,-100,"صيدلية",""),x(9,1,0,"صيدلية",""));
+        if(CategorySuggestionRules.suggest(1,200,"صيدلية","",invalid)!=null)
+            throw new AssertionError("invalid history trained a category");
         System.out.println("CategorySuggestionRulesTest: all checks passed");
     }
     static CategorySuggestionRules.Example x(long category,long account,long amount,String note,String merchant){
