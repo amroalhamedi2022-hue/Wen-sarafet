@@ -32,7 +32,10 @@ public final class BudgetAlertManager {
     }
 
     public static void checkAll(Context context) {
-        if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return;
+        // POST_NOTIFICATIONS is a runtime permission only on Android 13+;
+        // older devices must still receive budget warnings.
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return;
         SharedPreferences preferences = prefs(context);
         Calendar start = Calendar.getInstance();
         start.set(Calendar.DAY_OF_MONTH, 1); start.set(Calendar.HOUR_OF_DAY, 0); start.set(Calendar.MINUTE, 0); start.set(Calendar.SECOND, 0); start.set(Calendar.MILLISECOND, 0);
