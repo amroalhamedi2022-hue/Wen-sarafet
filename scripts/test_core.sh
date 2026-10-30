@@ -76,6 +76,10 @@ compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupArchiveVerifier.java" \
   "$PROJECT_DIR/tests/BackupArchiveVerifierTest.java"
 java -cp "$OUT_DIR" app.wensarafet.tracker.BackupArchiveVerifierTest
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupRestoreStaging.java" \
+  "$PROJECT_DIR/tests/BackupRestoreStagingTest.java"
+java -cp "$OUT_DIR" app.wensarafet.tracker.BackupRestoreStagingTest
 python3 "$PROJECT_DIR/tests/debt_migration_audit.py"
 python3 "$PROJECT_DIR/tests/fx_migration_audit.py"
 python3 "$PROJECT_DIR/tests/category_audit_migration_v10.py"
