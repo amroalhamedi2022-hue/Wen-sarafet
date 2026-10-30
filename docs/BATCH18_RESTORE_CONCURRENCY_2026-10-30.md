@@ -10,7 +10,8 @@ Before this batch, `BackupFileManager.restore` used `restore-<System.currentTime
 - `BackupRestoreStaging.newRollbackDestination` chooses a random UUID-based path without truncating or deleting existing recovery copies. Existing-path rejection remains.
 - `BackupFileManager.create` and `restore` are synchronized static methods to serialize snapshot creation and restore in this app process; they share the same class monitor.
 - The restore ZIP parser rejects duplicate `database.sqlite` entries and missing database entries rather than silently accepting ambiguous archives.
-- Added a pure-JVM concurrency regression test with 300 concurrent filename allocations and preservation of a pre-existing recovery file. Source/SQLite preflight contracts now guard the implementation.
+- After parsing ZIP entries, the restore now drains the underlying decrypted stream to EOF, forcing AES-GCM tag authentication before SQLite preflight and any live-database replacement. A ZIP parser may stop at the central directory before the tag; simply closing the ZIP is not proof of authentication.
+- Added pure-JVM tests for 300 concurrent filename allocations, preservation of a pre-existing recovery file, and AES-GCM tag tampering/truncation on a real encrypted ZIP. Source/SQLite preflight contracts now guard the implementation.
 
 ## Verification
 Required CI: `scripts/test_core.sh`, protected-file hash checks, source safety guard, Android debug compile/Lint and unsigned release candidate. These do **not** prove Android real-device restore behavior. Check GitHub Actions on the final HEAD.
