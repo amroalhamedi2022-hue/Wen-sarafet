@@ -1659,6 +1659,71 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         }
     }
 
+    /**
+     * Only ordinary manually entered, confirmed expense/income rows can be edited
+     * in-place. Debt, FX, imports, split and capture-linked operations remain on
+     * their dedicated edit paths to protect financial integrity.
+     */
+    private static final String SAFE_SIMPLE_MANUAL_EDIT =
+            "t.source='MANUAL' AND t.needs_review=0 " +
+            "AND t.type IN ('EXPENSE','INCOME') AND t.category_id IS NOT NULL AND t.amount_minor>0 " +
+            "AND t.destination_account_id IS NULL AND t.special_kind IS NULL " +
+            "AND t.debt_person_id IS NULL AND t.debt_direction IS NULL " +
+            "AND t.destination_amount_minor IS NULL AND t.exchange_rate IS NULL " +
+            "AND t.exchange_rate_source IS NULL AND t.exchange_rate_checked_at IS NULL " +
+            "AND NOT EXISTS(SELECT 1 FROM transaction_splits s WHERE s.transaction_id=t.id) " +
+            "AND NOT EXISTS(SELECT 1 FROM debt_movements d WHERE d.transaction_id=t.id) " +
+            "AND NOT EXISTS(SELECT 1 FROM capture_inbox i WHERE i.transaction_id=t.id) " +
+            "AND EXISTS(SELECT 1 FROM categories c WHERE c.id=t.category_id AND c.kind=t.type) ";
+
+    public boolean canEditSimpleManualTransaction(long transactionId) {
+        try(Cursor c=getReadableDatabase().rawQuery(
+                "SELECT 1 FROM transactions t WHERE t.id=? AND " + SAFE_SIMPLE_MANUAL_EDIT,
+                new String[]{String.valueOf(transactionId)})) {
+            return c.moveToFirst();
+        }
+    }
+
+    public void editSimpleManualTransaction(long transactionId, long expectedAmountMinor,
+                                            String expectedNote, long newAmountMinor, String newNote) {
+        if(newAmountMinor<=0)throw new IllegalArgumentException("المبلغ يجب أن يكون أكبر من صفر");
+        String cleanNote=newNote==null?"":newNote.trim();
+        if(cleanNote.length()>2000)throw new IllegalArgumentException("الملاحظة طويلة جدًا");
+        SQLiteDatabase writable=getWritableDatabase();
+        writable.beginTransaction();
+        try {
+            String type, oldNote;
+            long oldAmount, accountId, categoryId;
+            boolean affectsBalance;
+            try(Cursor c=writable.rawQuery(
+                    "SELECT t.type,t.amount_minor,t.account_id,t.category_id,t.affects_balance,t.note " +
+                    "FROM transactions t WHERE t.id=? AND "+SAFE_SIMPLE_MANUAL_EDIT,
+                    new String[]{String.valueOf(transactionId)})) {
+                if(!c.moveToFirst())
+                    throw new IllegalArgumentException("هذه العملية ليست يدوية بسيطة؛ استخدم تعديلها المخصص");
+                type=c.getString(0);oldAmount=c.getLong(1);accountId=c.getLong(2);
+                categoryId=c.getLong(3);affectsBalance=c.getInt(4)==1;
+                oldNote=c.isNull(5)?"":c.getString(5);
+            }
+            if(oldAmount!=expectedAmountMinor ||
+                    !oldNote.equals(expectedNote==null?"":expectedNote))
+                throw new IllegalStateException("تغيرت العملية بعد فتحها؛ افتحها من جديد قبل تعديلها");
+            boolean excludedExpense=FinanceRules.EXPENSE.equals(type) && categoryExcluded(writable,categoryId);
+            long delta=SimpleTransactionEditRules.balanceDelta(type,oldAmount,newAmountMinor,
+                    affectsBalance,excludedExpense);
+            if(delta!=0L)adjustBalance(writable,accountId,delta);
+            ContentValues cv=new ContentValues();
+            cv.put("amount_minor",newAmountMinor);
+            cv.put("note",cleanNote);
+            if(writable.update("transactions",cv,"id=?",new String[]{String.valueOf(transactionId)})!=1)
+                throw new IllegalStateException("تعذّر حفظ تعديل العملية");
+            // Audited by the existing transaction_update trigger; account + row
+            // changes commit atomically and roll back together on any error.
+            writable.setTransactionSuccessful();
+        } finally { writable.endTransaction(); }
+        BalanceWidgetProvider.updateAll(appContext);
+    }
+
     public void deleteTransaction(long transactionId) {
         SQLiteDatabase writable = getWritableDatabase();
         writable.beginTransaction();
