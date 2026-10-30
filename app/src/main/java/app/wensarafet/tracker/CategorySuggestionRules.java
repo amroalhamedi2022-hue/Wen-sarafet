@@ -73,7 +73,7 @@ public final class CategorySuggestionRules {
             // automatically suggested category for this SAME merchant/note.
             // It never boosts an amount-only match.
             int score = (descMatch ? 5:0)+(merchantMatch?8:0)+(sameAccount?3:0)
-                    +(sameAmount?2:0)+(old.correctedByUser?80:0);
+                    +(sameAmount?2:0)+(old.correctedByUser?160:0);
             contextScore.merge(old.categoryId,score,Integer::sum);
             contextCount.merge(old.categoryId,1,Integer::sum);
         }
