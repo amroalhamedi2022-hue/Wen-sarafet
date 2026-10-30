@@ -18,9 +18,9 @@ EXPECTED_CERT_SHA256="6B8268E5B647B12A2AA055D7A22F7B8EA888E40FB863E74409938AAD4E
 ECJ_JAR="${ECJ_JAR:-}"
 # Derive release metadata from Gradle; the old 1.8.0 is preserved on the phone.
 GRADLE_CONFIG="$PROJECT_DIR/app/build.gradle"
-APP_VERSION_CODE="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*$/\\1/p' "$GRADLE_CONFIG" | head -1)"
-APP_VERSION_NAME="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\\1/p' "$GRADLE_CONFIG" | head -1)"
-[[ "$APP_VERSION_CODE" =~ ^[0-9]+$ && "$APP_VERSION_CODE" -gt 16 && "$APP_VERSION_NAME" =~ ^1\\.8\\.[0-9]+$ ]] || {
+APP_VERSION_CODE="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*$/\1/p' "$GRADLE_CONFIG" | head -1)"
+APP_VERSION_NAME="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\1/p' "$GRADLE_CONFIG" | head -1)"
+[[ "$APP_VERSION_CODE" =~ ^[0-9]+$ && "$APP_VERSION_CODE" -gt 16 && "$APP_VERSION_NAME" =~ ^1\.8\.[0-9]+$ ]] || {
   echo "Refusing to build: missing/invalid newer release metadata in app/build.gradle" >&2; exit 1;
 }
 SIGNING_KEY_ALIAS="${SIGNING_KEY_ALIAS:-wen-sarafet-test}"
