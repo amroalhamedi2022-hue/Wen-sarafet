@@ -132,3 +132,10 @@ python3 "$PROJECT_DIR/tests/budget_notification_contract.py"
 python3 "$PROJECT_DIR/tests/reclassification_integrity_contract.py"
 
 python3 "$PROJECT_DIR/tests/reclassification_reference_integrity.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/CategoryNamingRules.java" \
+  "$PROJECT_DIR/tests/CategoryNamingRulesTest.java"
+java -cp "$OUT_DIR" CategoryNamingRulesTest
+python3 "$PROJECT_DIR/tests/category_rename_integrity.py"
