@@ -120,3 +120,9 @@ python3 "$PROJECT_DIR/tests/batch22_category_budget_icon_contract.py"
 python3 "$PROJECT_DIR/tests/original_180_upgrade_contract.py"
 
 python3 "$PROJECT_DIR/tests/upgrade_gate_contract.py"
+
+compile "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/SimpleTransactionEditRules.java" \
+  "$PROJECT_DIR/tests/SimpleTransactionEditRulesTest.java"
+java -cp "$OUT_DIR" SimpleTransactionEditRulesTest
+python3 "$PROJECT_DIR/tests/simple_manual_edit_contract.py"
