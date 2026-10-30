@@ -1708,6 +1708,11 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             if(oldAmount!=expectedAmountMinor ||
                     !oldNote.equals(expectedNote==null?"":expectedNote))
                 throw new IllegalStateException("تغيرت العملية بعد فتحها؛ افتحها من جديد قبل تعديلها");
+            // Do not create a fake EDIT audit record or wake widgets for a no-op.
+            if(oldAmount==newAmountMinor && oldNote.equals(cleanNote)) {
+                writable.setTransactionSuccessful();
+                return;
+            }
             boolean excludedExpense=FinanceRules.EXPENSE.equals(type) && categoryExcluded(writable,categoryId);
             long delta=SimpleTransactionEditRules.balanceDelta(type,oldAmount,newAmountMinor,
                     affectsBalance,excludedExpense);
