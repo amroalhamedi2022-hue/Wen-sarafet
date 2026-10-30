@@ -13,8 +13,8 @@ public final class MonthlySavingsRules {
         }
     }
     public static State calculate(long capMinor, long qualifyingExpenseMinor, boolean monthCompleted) {
-        if (capMinor <= 0) return new State(false,false,monthCompleted,0,0,0);
         if (qualifyingExpenseMinor < 0) throw new IllegalArgumentException("invalid expense total");
+        if (capMinor <= 0) return new State(false,false,monthCompleted,0,0,0);
         long remainder=Math.subtractExact(capMinor,qualifyingExpenseMinor);
         return new State(true,remainder<0,monthCompleted,Math.max(0,remainder),
                 monthCompleted?Math.max(0,remainder):0,remainder<0?Math.negateExact(remainder):0);
