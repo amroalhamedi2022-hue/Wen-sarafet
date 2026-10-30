@@ -148,3 +148,8 @@ compile \
   "$PROJECT_DIR/tests/TransactionSearchDump.java"
 java -cp "$OUT_DIR" TransactionSearchRulesTest
 python3 "$PROJECT_DIR/tests/transaction_search_sql_contract.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/Money.java" \
+  "$PROJECT_DIR/tests/MoneyParseSafetyTest.java"
+java -cp "$OUT_DIR" MoneyParseSafetyTest
