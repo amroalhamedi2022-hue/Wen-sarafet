@@ -41,13 +41,21 @@ public final class BackupFileManager {
                 live.rawQuery("PRAGMA wal_checkpoint(FULL)", null).close();
                 live.execSQL("VACUUM INTO " + DatabaseUtils.sqlEscapeString(snapshot.getAbsolutePath()));
             } finally { live.close(); }
+            if (snapshot.length() > BackupArchiveLimits.MAX_DATABASE_BYTES)
+                throw new IllegalStateException("قاعدة البيانات أكبر من الحد الآمن للنسخة الاحتياطية");
             try (ZipOutputStream zip = new ZipOutputStream(BackupCrypto.encryptingStream(destination, password))) {
             zip.putNextEntry(new ZipEntry("database.sqlite"));
-            try (FileInputStream databaseInput = new FileInputStream(snapshot)) { copy(databaseInput, zip); }
+            try (FileInputStream databaseInput = new FileInputStream(snapshot)) {
+                BackupArchiveLimits.copy(databaseInput, zip, BackupArchiveLimits.MAX_DATABASE_BYTES);
+            }
             zip.closeEntry();
             zip.putNextEntry(new ZipEntry("settings.properties"));
             Properties properties = collectPreferences(context);
-            properties.store(zip, "Wen Sarafet backup settings");
+            java.io.ByteArrayOutputStream settingsBytes = new java.io.ByteArrayOutputStream();
+            properties.store(settingsBytes, "Wen Sarafet backup settings");
+            if (settingsBytes.size() > BackupArchiveLimits.MAX_SETTINGS_BYTES)
+                throw new IllegalStateException("إعدادات النسخة الاحتياطية أكبر من الحد الآمن");
+            zip.write(settingsBytes.toByteArray());
             zip.closeEntry(); zip.finish();
             }
         } finally { snapshot.delete(); }
@@ -61,16 +69,25 @@ public final class BackupFileManager {
         try (InputStream decrypted = BackupCrypto.decryptingStream(source, password);
              ZipInputStream inputZip = new ZipInputStream(decrypted)) {
             ZipEntry entry;
+            int entryCount = 0;
             while ((entry = inputZip.getNextEntry()) != null) {
+                if (++entryCount > BackupArchiveLimits.MAX_ENTRIES)
+                    throw new IllegalArgumentException("النسخة تحتوي ملفات أكثر من الحد الآمن");
                 if ("database.sqlite".equals(entry.getName())) {
                     if (foundDatabase) throw new IllegalArgumentException("قاعدة بيانات مكررة في النسخة");
-                    FileOutputStream databaseOutput = new FileOutputStream(temp);
-                    try { copy(inputZip, databaseOutput); } finally { databaseOutput.close(); }
+                    try (FileOutputStream databaseOutput = new FileOutputStream(temp)) {
+                        BackupArchiveLimits.copy(inputZip, databaseOutput,
+                                BackupArchiveLimits.MAX_DATABASE_BYTES);
+                    }
                     foundDatabase = true;
                 } else if ("settings.properties".equals(entry.getName())) {
                     if (foundSettings) throw new IllegalArgumentException("إعدادات مكررة في النسخة");
-                    properties.load(inputZip);
+                    properties = BackupArchiveLimits.readSettings(inputZip);
                     foundSettings = true;
+                } else {
+                    // Legacy archives may contain optional metadata, but an
+                    // unknown entry must not expand without a strict bound.
+                    BackupArchiveLimits.copy(inputZip, null, BackupArchiveLimits.MAX_EXTRA_BYTES);
                 }
                 inputZip.closeEntry();
             }

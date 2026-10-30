@@ -38,6 +38,32 @@ public final class BackupArchiveVerifierTest {
         return bytes.toByteArray();
     }
 
+    private static byte[] oversizedEntry(String name) throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(BackupCrypto.encryptingStream(bytes, PASSWORD))) {
+            zip.putNextEntry(new ZipEntry("database.sqlite"));
+            zip.write("SQLite format 3\\u0000".replace("\\u0000", "\u0000")
+                    .getBytes(java.nio.charset.StandardCharsets.ISO_8859_1));
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry(name));
+            byte[] block = new byte[8192];
+            long remaining = BackupArchiveLimits.MAX_SETTINGS_BYTES + 1;
+            while (remaining > 0) {
+                int count = (int) Math.min(block.length, remaining);
+                zip.write(block, 0, count);
+                remaining -= count;
+            }
+            zip.closeEntry();
+            if (!"settings.properties".equals(name)) {
+                zip.putNextEntry(new ZipEntry("settings.properties"));
+                zip.write("appearance|mode=S:ZGFyaw==\\n".replace("\\n", "\n")
+                        .getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+                zip.closeEntry();
+            }
+        }
+        return bytes.toByteArray();
+    }
+
     private static void passes(File dir, byte[] bytes) throws Exception {
         BackupArchiveVerifier.verify(new ByteArrayInputStream(bytes), PASSWORD, dir);
         try (java.util.stream.Stream<java.nio.file.Path> paths = Files.list(dir.toPath())) {
@@ -67,6 +93,8 @@ public final class BackupArchiveVerifierTest {
             rejects(dir, archive(false, true, false, false), PASSWORD);
             rejects(dir, archive(true, false, false, false), PASSWORD);
             rejects(dir, archive(true, true, false, true), PASSWORD);
+            rejects(dir, oversizedEntry("settings.properties"), PASSWORD);
+            rejects(dir, oversizedEntry("unrecognized-extra.bin"), PASSWORD);
             rejects(dir, good, "wrong-password".toCharArray());
             rejects(dir, Arrays.copyOf(good, good.length - 12), PASSWORD);
             byte[] tampered = good.clone();

@@ -74,8 +74,13 @@ java -cp "$OUT_DIR" app.wensarafet.tracker.DriveBackupPublicationTest
 compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupCrypto.java" \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupArchiveVerifier.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupArchiveLimits.java" \
   "$PROJECT_DIR/tests/BackupArchiveVerifierTest.java"
 java -cp "$OUT_DIR" app.wensarafet.tracker.BackupArchiveVerifierTest
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupArchiveLimits.java" \
+  "$PROJECT_DIR/tests/BackupArchiveLimitsTest.java"
+java -cp "$OUT_DIR" app.wensarafet.tracker.BackupArchiveLimitsTest
 compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupRestoreStaging.java" \
   "$PROJECT_DIR/tests/BackupRestoreStagingTest.java"
