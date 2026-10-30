@@ -632,7 +632,8 @@ public final class MainActivity extends Activity {
         currencyParams.setMargins(Ui.dp(this,3),Ui.dp(this,5),Ui.dp(this,3),Ui.dp(this,5));
         filters.addView(type,typeParams);
         filters.addView(currency,currencyParams);
-        content.addView(filters,fieldParams());
+        content.addView(filters,new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,62)));
 
         TextView status=Ui.text(this,"",12,Ui.MUTED,false);
         status.setPadding(Ui.dp(this,6),Ui.dp(this,8),Ui.dp(this,6),Ui.dp(this,8));
@@ -679,9 +680,18 @@ public final class MainActivity extends Activity {
             results.removeAllViews();
             loadNext[0].run();
         };
+        // Debounce typing, rather than rebuilding up to 75 transaction cards every keystroke.
+        android.os.Handler searchHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+        final Runnable[] pendingSearch={null};
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence text,int start,int count,int after) {}
-            @Override public void onTextChanged(CharSequence text,int start,int before,int count) { reset.run(); }
+            @Override public void onTextChanged(CharSequence text,int start,int before,int count) {
+                if(pendingSearch[0]!=null)searchHandler.removeCallbacks(pendingSearch[0]);
+                pendingSearch[0]=()->{
+                    if(content.isAttachedToWindow())reset.run();
+                };
+                searchHandler.postDelayed(pendingSearch[0],180L);
+            }
             @Override public void afterTextChanged(Editable text) {}
         });
         type.setOnItemSelectedListener(new SimpleItemSelected(reset));
