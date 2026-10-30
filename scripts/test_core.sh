@@ -139,3 +139,11 @@ compile \
   "$PROJECT_DIR/tests/CategoryNamingRulesTest.java"
 java -cp "$OUT_DIR" CategoryNamingRulesTest
 python3 "$PROJECT_DIR/tests/category_rename_integrity.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/Money.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/TransactionSearchRules.java" \
+  "$PROJECT_DIR/tests/TransactionSearchRulesTest.java"
+java -cp "$OUT_DIR" TransactionSearchRulesTest
+python3 "$PROJECT_DIR/tests/transaction_search_sql_contract.py"
