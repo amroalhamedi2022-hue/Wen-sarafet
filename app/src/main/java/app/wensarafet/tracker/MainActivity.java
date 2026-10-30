@@ -614,12 +614,79 @@ public final class MainActivity extends Activity {
     }
 
     private LinearLayout transactionsContent(int limit) {
-        LinearLayout content = Ui.column(this);
-        content.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 110));
-        List<Models.Transaction> all = db.getTransactions(limit);
-        content.addView(sectionTitle("كل العمليات", String.valueOf(all.size())));
-        if (all.isEmpty()) content.addView(emptyCard());
-        else for (Models.Transaction tx : all) content.addView(transactionCard(tx));
+        LinearLayout content=Ui.column(this);
+        content.setPadding(Ui.dp(this,14),Ui.dp(this,8),Ui.dp(this,14),Ui.dp(this,110));
+        content.addView(sectionTitle("كل العمليات","بحث محلي وفلاتر"));
+
+        EditText search=input("🔎 ابحث بالملاحظة أو الحساب أو التصنيف أو المبلغ");
+        search.setSingleLine(true);
+        search.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        content.addView(search,fieldParams());
+
+        LinearLayout filters=Ui.row(this);
+        Spinner type=spinner(Arrays.asList("كل الأنواع","مصروف","دخل","تحويل"));
+        Spinner currency=spinner(Arrays.asList("كل العملات","ILS","USD","JOD"));
+        LinearLayout.LayoutParams typeParams=new LinearLayout.LayoutParams(0,Ui.dp(this,50),1);
+        typeParams.setMargins(Ui.dp(this,3),Ui.dp(this,5),Ui.dp(this,3),Ui.dp(this,5));
+        LinearLayout.LayoutParams currencyParams=new LinearLayout.LayoutParams(0,Ui.dp(this,50),1);
+        currencyParams.setMargins(Ui.dp(this,3),Ui.dp(this,5),Ui.dp(this,3),Ui.dp(this,5));
+        filters.addView(type,typeParams);
+        filters.addView(currency,currencyParams);
+        content.addView(filters,fieldParams());
+
+        TextView status=Ui.text(this,"",12,Ui.MUTED,false);
+        status.setPadding(Ui.dp(this,6),Ui.dp(this,8),Ui.dp(this,6),Ui.dp(this,8));
+        content.addView(status);
+
+        LinearLayout results=Ui.column(this);
+        content.addView(results);
+        final int pageSize=Math.max(20,Math.min(75,limit));
+        final int[] offset={0};
+        final Runnable[] loadNext={null};
+        loadNext[0]=()->{
+            int typeIndex=type.getSelectedItemPosition();
+            String chosenType=typeIndex==1?FinanceRules.EXPENSE:
+                    typeIndex==2?FinanceRules.INCOME:typeIndex==3?FinanceRules.TRANSFER:null;
+            int currencyIndex=currency.getSelectedItemPosition();
+            String chosenCurrency=currencyIndex==1?"ILS":currencyIndex==2?"USD":
+                    currencyIndex==3?"JOD":null;
+            List<Models.Transaction> page;
+            try {
+                // The extra result indicates whether a next page is available.
+                page=db.searchTransactions(search.getText().toString(),chosenType,chosenCurrency,
+                        pageSize+1,offset[0]);
+            } catch(Exception error) {
+                search.setError(error.getMessage()==null?"تعذّر البحث":error.getMessage());
+                return;
+            }
+            int shown=Math.min(pageSize,page.size());
+            for(int i=0;i<shown;i++)results.addView(transactionCard(page.get(i)));
+            offset[0]+=shown;
+            if(offset[0]==0)results.addView(emptyCard());
+            status.setText(offset[0]==0?"لا توجد عمليات مطابقة":
+                    "عُرضت "+offset[0]+" عملية"+(page.size()>pageSize?" — يوجد المزيد":""));
+            if(page.size()>pageSize) {
+                Button more=actionButton("عرض "+pageSize+" عملية أخرى",false);
+                more.setOnClickListener(v->{
+                    results.removeView(more);
+                    loadNext[0].run();
+                });
+                results.addView(more,fieldParams());
+            }
+        };
+        Runnable reset=()->{
+            offset[0]=0;
+            results.removeAllViews();
+            loadNext[0].run();
+        };
+        search.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence text,int start,int count,int after) {}
+            @Override public void onTextChanged(CharSequence text,int start,int before,int count) { reset.run(); }
+            @Override public void afterTextChanged(Editable text) {}
+        });
+        type.setOnItemSelectedListener(new SimpleItemSelected(reset));
+        currency.setOnItemSelectedListener(new SimpleItemSelected(reset));
+        reset.run();
         return content;
     }
 
