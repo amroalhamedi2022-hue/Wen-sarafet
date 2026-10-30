@@ -7,6 +7,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -38,11 +40,14 @@ final class BackupArchiveVerifier {
             try (ZipFile zip = new ZipFile(plain)) {
                 Enumeration<? extends ZipEntry> entries = zip.entries();
                 int entryCount = 0;
+                Set<String> seenNames = new HashSet<>();
                 while (entries.hasMoreElements()) {
                     if (++entryCount > BackupArchiveLimits.MAX_ENTRIES)
                         throw new IllegalArgumentException("Too many backup entries");
                     ZipEntry entry = entries.nextElement();
                     String name = entry.getName();
+                    if (!seenNames.add(name))
+                        throw new IllegalArgumentException("Duplicate backup ZIP entry: " + name);
                     if ("database.sqlite".equals(name)) {
                         if (database) throw new IllegalArgumentException("Duplicate backup database");
                         database = true;
