@@ -42,8 +42,8 @@ public final class BackupArchiveVerifierTest {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (ZipOutputStream zip = new ZipOutputStream(BackupCrypto.encryptingStream(bytes, PASSWORD))) {
             zip.putNextEntry(new ZipEntry("database.sqlite"));
-            zip.write("SQLite format 3\\u0000".replace("\\u0000", "\u0000")
-                    .getBytes(java.nio.charset.StandardCharsets.ISO_8859_1));
+            zip.write("SQLite format 3".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+            zip.write(0);
             zip.closeEntry();
             zip.putNextEntry(new ZipEntry(name));
             byte[] block = new byte[8192];
@@ -56,7 +56,7 @@ public final class BackupArchiveVerifierTest {
             zip.closeEntry();
             if (!"settings.properties".equals(name)) {
                 zip.putNextEntry(new ZipEntry("settings.properties"));
-                zip.write("appearance|mode=S:ZGFyaw==\\n".replace("\\n", "\n")
+                zip.write("appearance|mode=S:ZGFyaw==\\n"
                         .getBytes(java.nio.charset.StandardCharsets.US_ASCII));
                 zip.closeEntry();
             }
