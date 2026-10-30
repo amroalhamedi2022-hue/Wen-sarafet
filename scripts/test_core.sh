@@ -130,3 +130,5 @@ python3 "$PROJECT_DIR/tests/simple_manual_edit_contract.py"
 python3 "$PROJECT_DIR/tests/budget_notification_contract.py"
 
 python3 "$PROJECT_DIR/tests/reclassification_integrity_contract.py"
+
+python3 "$PROJECT_DIR/tests/reclassification_reference_integrity.py"
