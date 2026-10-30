@@ -531,8 +531,13 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                     long accountId, long amountMinor, String description) {
         if (!FinanceRules.EXPENSE.equals(kind) && !FinanceRules.INCOME.equals(kind)) return null;
         List<CategorySuggestionRules.Example> samples = new ArrayList<>();
-        String sql="SELECT t.category_id,t.account_id,t.amount_minor,t.note,t.raw_text FROM transactions t " +
-                "JOIN categories c ON c.id=t.category_id WHERE t.type=? AND t.currency=? " +
+        String sql="SELECT t.category_id,t.account_id,t.amount_minor,t.note,t.raw_text, " +
+                "EXISTS(SELECT 1 FROM change_history h WHERE h.table_name=\'transactions\' " +
+                "AND h.record_id=t.id AND h.action=\'EDIT\' AND h.undone=0 " +
+                "AND h.previous_category_id IS NOT NULL " +
+                "AND h.previous_category_id!=h.current_category_id " +
+                "AND h.current_category_id=t.category_id) corrected " +
+                "FROM transactions t JOIN categories c ON c.id=t.category_id WHERE t.type=? AND t.currency=? " +
                 "AND c.archived=0 AND c.kind=t.type AND t.amount_minor>0 " +
                 "AND t.special_kind IS NULL AND t.needs_review=0 " +
                 "AND NOT EXISTS(SELECT 1 FROM transaction_splits s WHERE s.transaction_id=t.id) " +
@@ -544,7 +549,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 // Merchant signals in automatic messages, or a merchant named in a note.
                 String merchant=extractMerchant(raw);
                 samples.add(new CategorySuggestionRules.Example(c.getLong(0),c.getLong(1),
-                        c.getLong(2),note,merchant));
+                        c.getLong(2),note,merchant,c.getInt(5)==1));
             }
         }
         return CategorySuggestionRules.suggest(accountId,amountMinor,description,description,samples);
