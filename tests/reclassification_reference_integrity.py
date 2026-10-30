@@ -29,9 +29,7 @@ def java_literal(s):
 
 required_method = src.split("private static void requireCategoryForType(",1)[1].split(
     "private static boolean isActiveAccount(",1)[0]
-category_sql = java_literal(required_method.split("writable.rawQuery(", 1)[-1]) if False else (
-    java_literal(required_method.split("rawQuery(", 1)[1].split("new String[]{", 1)[0]))
-)
+category_sql = java_literal(required_method.split("rawQuery(", 1)[1].split("new String[]{", 1)[0])
 active_method = src.split("private static boolean isActiveAccount(",1)[1].split(
     "private void adjustBalance(",1)[0]
 active_sql = java_literal(active_method.split("rawQuery(",1)[1].split("new String[]{",1)[0])
