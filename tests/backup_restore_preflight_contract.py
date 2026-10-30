@@ -10,7 +10,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = (ROOT / "app/src/main/java/app/wensarafet/tracker/BackupFileManager.java").read_text()
 HELPER = (ROOT / "app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java").read_text()
-RESTORE = SOURCE.split("public static void restore(", 1)[1].split(
+RESTORE = SOURCE.split("public static synchronized void restore(", 1)[1].split(
     "private static Properties collectPreferences", 1
 )[0]
 
