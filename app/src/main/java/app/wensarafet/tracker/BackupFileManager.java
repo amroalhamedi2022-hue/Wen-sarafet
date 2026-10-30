@@ -58,7 +58,8 @@ public final class BackupFileManager {
         // a backup can read a ledger while it is being replaced by restore.
         File temp = BackupRestoreStaging.createTemporaryDatabase(context.getCacheDir());
         Properties properties = new Properties(); boolean foundDatabase = false; boolean foundSettings = false;
-        try (ZipInputStream inputZip = new ZipInputStream(BackupCrypto.decryptingStream(source, password))) {
+        try (InputStream decrypted = BackupCrypto.decryptingStream(source, password);
+             ZipInputStream inputZip = new ZipInputStream(decrypted)) {
             ZipEntry entry;
             while ((entry = inputZip.getNextEntry()) != null) {
                 if ("database.sqlite".equals(entry.getName())) {
@@ -73,6 +74,9 @@ public final class BackupFileManager {
                 }
                 inputZip.closeEntry();
             }
+            // ZipInputStream may stop before reading the encrypted GCM tag.
+            // Authenticate the entire ciphertext before touching the live DB.
+            BackupRestoreAuthentication.finish(decrypted);
         } catch (Exception error) {
             temp.delete();
             throw new IllegalArgumentException("النسخة تالفة أو كلمة السر غير صحيحة", error);
