@@ -26,4 +26,15 @@ assert "pending.cancel();" in scheduler
 assert "notifications.cancel(8301);" in scheduler
 assert "Math.max(1, Math.min(1440" in scheduler
 assert "new String[]{ACTION_DAILY, ACTION_SNOOZE}" in scheduler
-print("ReminderSnoozeContract passed: deferred action, disabled state, both alarms and stale notification.")
+# Reminders stay enabled with no notification permission, but must never post illegally.
+show = receiver.split("private void show(Context context)", 1)[1]
+assert "context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)" in show
+assert "PackageManager.PERMISSION_GRANTED" in show
+assert show.index("context.checkSelfPermission(") < show.index("manager.notify(")
+assert "if (manager == null) return;" in show
+# Exact-alarm permission is revocable after the query; preserve an inexact fallback.
+assert "catch (SecurityException exactAlarmPermissionRevoked)" in scheduler
+assert "manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pending);" in scheduler
+assert 'Math.max(0, Math.min(23, p.getInt("hour", 20)))' in scheduler
+assert 'Math.max(0, Math.min(59, p.getInt("minute", 0)))' in scheduler
+print("ReminderSnoozeContract passed: pending-only notices, permission-safe delivery, revoked exact alarms.")
