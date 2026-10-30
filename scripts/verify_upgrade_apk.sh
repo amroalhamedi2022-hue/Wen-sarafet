@@ -29,7 +29,7 @@ cert() {
   [[ "$count" -eq 1 ]] || { echo "Expected exactly one APK signer for $1" >&2; return 1; }
   sed -nE 's/^Signer #1 certificate SHA-256 digest: ([[:xdigit:]]{64}).*/\1/p' <<< "$details" | tr '[:upper:]' '[:lower:]'
 }
-app_badging() { "$aapt" dump badging "$1" | head -n 1; }
+app_badging() { "$aapt" dump badging "$1" | sed -n "1p"; }
 field() {
   local key="$1" badging="$2"
   sed -nE "s/^package: .*\\b${key}='([^']+)'.*/\\1/p" <<< "$badging"
