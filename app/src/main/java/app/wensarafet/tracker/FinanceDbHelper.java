@@ -533,6 +533,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         List<CategorySuggestionRules.Example> samples = new ArrayList<>();
         String sql="SELECT t.category_id,t.account_id,t.amount_minor,t.note,t.raw_text FROM transactions t " +
                 "JOIN categories c ON c.id=t.category_id WHERE t.type=? AND t.currency=? " +
+                "AND c.archived=0 AND c.kind=t.type AND t.amount_minor>0 " +
                 "AND t.special_kind IS NULL AND t.needs_review=0 " +
                 "AND NOT EXISTS(SELECT 1 FROM transaction_splits s WHERE s.transaction_id=t.id) " +
                 "ORDER BY t.created_at DESC,t.id DESC LIMIT 200";
