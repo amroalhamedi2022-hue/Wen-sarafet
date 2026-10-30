@@ -3,6 +3,7 @@ package app.wensarafet.tracker;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Base64;
+import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -65,11 +66,20 @@ public final class BackupFileManager {
             temp.delete();
             throw new IllegalArgumentException("النسخة تالفة أو كلمة السر غير صحيحة", error);
         }
-        if (!foundDatabase || !validSqlite(temp)) { temp.delete(); throw new IllegalArgumentException("النسخة تالفة أو كلمة السر غير صحيحة"); }
+        // Never replace a working ledger on the strength of the SQLite magic header alone.
+        // Validate the decrypted snapshot before touching the currently installed database.
+        try { validateSqlite(temp); }
+        catch (RuntimeException error) { temp.delete(); throw error; }
         File target = context.getDatabasePath("wen_sarafet.db");
-        File old = new File(target.getParentFile(), "wen_sarafet.pre_restore.db");
-        old.delete();
         boolean hadOldDatabase = target.exists();
+        // A previous interrupted restore may have left a valuable rollback copy.
+        // Do not delete or overwrite that copy on the next restore attempt.
+        File old = new File(target.getParentFile(),
+                "wen_sarafet.pre_restore." + System.currentTimeMillis() + ".db");
+        if (old.exists()) { temp.delete(); throw new IllegalStateException("ملف الاستعادة الاحتياطي موجود بالفعل"); }
+        try {
+            if (hadOldDatabase) checkpointLiveDatabase(target);
+        } catch (RuntimeException error) { temp.delete(); throw error; }
         if (hadOldDatabase && !target.renameTo(old)) { temp.delete(); throw new IllegalStateException("تعذر تجهيز قاعدة البيانات للاستعادة"); }
         try {
             if (!temp.renameTo(target)) {
@@ -119,6 +129,47 @@ public final class BackupFileManager {
                 else if (value.startsWith("S:")) editor.putString(key, new String(Base64.decode(raw, Base64.NO_WRAP), StandardCharsets.UTF_8));
                 editor.apply();
             } catch (Exception ignored) {}
+        }
+    }
+
+    private static void validateSqlite(File file) {
+        if (!validSqlite(file)) throw new IllegalArgumentException("النسخة لا تحتوي قاعدة SQLite سليمة");
+        try (SQLiteDatabase database = SQLiteDatabase.openDatabase(
+                file.getAbsolutePath(), null, SQLiteDatabase.OPEN_READONLY)) {
+            int version = database.getVersion();
+            if (version < 1 || version > FinanceDbHelper.DB_VERSION)
+                throw new IllegalArgumentException("إصدار قاعدة البيانات غير مدعوم للاستعادة: " + version);
+            try (Cursor integrity = database.rawQuery("PRAGMA integrity_check", null)) {
+                if (!integrity.moveToFirst() || !"ok".equalsIgnoreCase(integrity.getString(0))
+                        || integrity.moveToNext())
+                    throw new IllegalArgumentException("قاعدة البيانات في النسخة الاحتياطية تالفة");
+            }
+            try (Cursor foreignKeys = database.rawQuery("PRAGMA foreign_key_check", null)) {
+                if (foreignKeys.moveToFirst())
+                    throw new IllegalArgumentException("النسخة الاحتياطية تحتوي مراجع مالية غير سليمة");
+            }
+            try (Cursor tables = database.rawQuery(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' " +
+                            "AND name IN ('accounts','categories','transactions','transaction_splits')", null)) {
+                if (!tables.moveToFirst() || tables.getInt(0) != 4)
+                    throw new IllegalArgumentException("النسخة لا تحتوي جداول التطبيق الأساسية");
+            }
+        } catch (IllegalArgumentException error) {
+            throw error;
+        } catch (RuntimeException error) {
+            throw new IllegalArgumentException("تعذر فحص قاعدة البيانات في النسخة الاحتياطية", error);
+        }
+    }
+
+    private static void checkpointLiveDatabase(File target) {
+        // Closing the Activity's helper normally checkpoints WAL, but verify any
+        // remaining committed WAL pages are durable before moving the live .db.
+        if (!new File(target.getPath() + "-wal").exists()) return;
+        try (SQLiteDatabase database = SQLiteDatabase.openDatabase(
+                target.getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
+             Cursor checkpoint = database.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null)) {
+            if (!checkpoint.moveToFirst() || checkpoint.getInt(0) != 0)
+                throw new IllegalStateException("قاعدة البيانات قيد الاستخدام؛ تعذرت الاستعادة بأمان");
         }
     }
 
