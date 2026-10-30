@@ -10,6 +10,7 @@ public final class DriveBackupPublicationTest {
         boolean failWrite, failVerify;
         String failRenameTo;
         boolean failAfterRename;
+        int failuresRemaining = 1;
 
         String seed(String name) {
             String id = "id-" + (++serial);
@@ -29,10 +30,11 @@ public final class DriveBackupPublicationTest {
             if (failVerify) throw new IllegalStateException("verification failed");
         }
         @Override public String rename(String id, String newName) {
-            if (newName.equals(failRenameTo) && !failAfterRename)
+            boolean fail = newName.equals(failRenameTo) && failuresRemaining-- > 0;
+            if (fail && !failAfterRename)
                 throw new IllegalStateException("rename failed");
             names.put(id, newName);
-            if (newName.equals(failRenameTo))
+            if (fail)
                 throw new IllegalStateException("rename reported failure after effect");
             return id;
         }
