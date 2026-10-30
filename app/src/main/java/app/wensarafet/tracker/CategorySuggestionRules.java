@@ -1,6 +1,5 @@
 package app.wensarafet.tracker;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -13,9 +12,14 @@ public final class CategorySuggestionRules {
     public static final class Example {
         public final long categoryId, accountId, amountMinor;
         public final String description, merchant;
+        public final boolean correctedByUser;
         public Example(long categoryId, long accountId, long amountMinor, String description, String merchant) {
+            this(categoryId,accountId,amountMinor,description,merchant,false);
+        }
+        public Example(long categoryId, long accountId, long amountMinor, String description,
+                       String merchant, boolean correctedByUser) {
             this.categoryId=categoryId; this.accountId=accountId; this.amountMinor=amountMinor;
-            this.description=description; this.merchant=merchant;
+            this.description=description; this.merchant=merchant; this.correctedByUser=correctedByUser;
         }
     }
 
@@ -30,9 +34,17 @@ public final class CategorySuggestionRules {
 
     public static String normalize(String value) {
         if (value == null) return "";
-        return value.toLowerCase(Locale.ROOT).replaceAll("[\u064b-\u065f\u0670]", "")
-                .replace('أ','ا').replace('إ','ا').replace('آ','ا').replace('ى','ي')
-                .replace('ة','ه').replaceAll("[^\\p{L}\\p{N}]+", " ").trim()
+        String lower=value.toLowerCase(Locale.ROOT).replaceAll("[\u064b-\u065f\u0670]", "")
+                .replace('أ','ا').replace('إ','ا').replace('آ','ا').replace('ى','ي').replace('ة','ه');
+        StringBuilder digits=new StringBuilder(lower.length());
+        for(int i=0;i<lower.length();i++) {
+            char c=lower.charAt(i);
+            if(c=='ـ')continue;
+            if(c>='٠'&&c<='٩')c=(char)('0'+(c-'٠'));
+            else if(c>='۰'&&c<='۹')c=(char)('0'+(c-'۰'));
+            digits.append(c);
+        }
+        return digits.toString().replaceAll("[^\\p{L}\\p{N}]+", " ").trim()
                 .replaceAll("\\s+", " ");
     }
 
@@ -57,7 +69,11 @@ public final class CategorySuggestionRules {
             boolean descMatch=!desc.isEmpty() && desc.length() >= 3 && desc.equals(normalize(old.description));
             boolean merchantMatch=!vendor.isEmpty() && vendor.length() >= 3 && vendor.equals(normalize(old.merchant));
             if (!descMatch && !merchantMatch) continue;
-            int score = (descMatch ? 5:0)+(merchantMatch?8:0)+(sameAccount?3:0)+(sameAmount?2:0);
+            // A manual correction represents stronger evidence than an earlier
+            // automatically suggested category for this SAME merchant/note.
+            // It never boosts an amount-only match.
+            int score = (descMatch ? 5:0)+(merchantMatch?8:0)+(sameAccount?3:0)
+                    +(sameAmount?2:0)+(old.correctedByUser?80:0);
             contextScore.merge(old.categoryId,score,Integer::sum);
             contextCount.merge(old.categoryId,1,Integer::sum);
         }
