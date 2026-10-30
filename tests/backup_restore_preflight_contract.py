@@ -80,7 +80,7 @@ with tempfile.TemporaryDirectory() as directory:
             with sqlite3.connect(path) as db:
                 assert db.execute("SELECT balance_minor FROM accounts").fetchone()[0] == 12345
     damaged = folder / "damaged.sqlite"
-    damaged.write_bytes(b"SQLite format 3\\x00" + b"garbage")
+    damaged.write_bytes(b"SQLite format 3\x00" + b"garbage")
     try:
         preflight_sql(damaged)
     except sqlite3.DatabaseError:
