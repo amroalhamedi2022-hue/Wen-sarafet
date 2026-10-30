@@ -99,3 +99,4 @@ python3 "$PROJECT_DIR/tests/reminder_snooze_contract.py"
 python3 "$PROJECT_DIR/tests/chart_capture_quality_contract.py"
 
 python3 "$PROJECT_DIR/tests/backup_restore_preflight_contract.py"
+python3 "$PROJECT_DIR/tests/drive_backup_publication_contract.py"
