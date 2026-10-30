@@ -63,6 +63,9 @@ public final class CategorySuggestionRules {
         }
         Suggestion contextual=topUnique(contextScore,contextCount,"بحسب المحل أو الوصف السابق",5);
         if (contextual != null) return contextual;
+        // Conflicting merchant/description evidence must never be overridden by
+        // a recurring amount: the user can spend the same amount at two shops.
+        if (!contextScore.isEmpty()) return null;
         // Weak evidence must be repeated and consistent; never guess on just one 2-ILS expense.
         if (allAmountCount<3) return null;
         long bestId=0; int best=0, second=0;
