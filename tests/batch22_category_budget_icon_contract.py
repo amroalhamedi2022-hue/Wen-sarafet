@@ -45,4 +45,25 @@ icon_ui = (root / "app/src/main/java/app/wensarafet/tracker/MainActivity.java").
 assert "showCustomCategoryIconDialog(chosen,kind)" in icon_ui
 assert "db.setCategoryIcon(chosen.id,symbol)" in icon_ui
 assert "symbol.codePointCount(0,symbol.length())>8" in icon_ui
-print("Batch22Contract: archived/mixed/invalid category exclusion, budget API guard, custom icon wiring passed")
+# C10: actual window configuration width controls responsive layouts, including split-screen.
+assert icon_ui.count("getResources().getConfiguration().screenWidthDp < 390") == 3
+assert "if(compactAccountCard)" in icon_ui
+assert "if(compactTransactionCard) info.addView(amount);" in icon_ui
+# C12: original 16 themes must remain at their original indices, followed by the new two.
+ui = (root / "app/src/main/java/app/wensarafet/tracker/Ui.java").read_text()
+names_block = ui.split("THEME_NAMES = {", 1)[1].split("};", 1)[0]
+theme_names = re.findall(r'"([^"]+)"', names_block)
+original = [
+    "زمرد نعناعي", "ملكي نيلي", "تركواز", "نيلي ليلي",
+    "رملي دافئ", "برغندي", "قرمزي", "كهرماني",
+    "مشمشي", "وردي هادئ", "لافندر", "جليدي",
+    "غابة قاتمة", "فحمي", "لؤلؤي", "نحاسي",
+]
+assert theme_names == original + ["Liquid Aurora", "Liquid Fusion"], theme_names
+for name, per_row in (("THEMES", 12), ("THEME_LAYERS", 4)):
+    palette = ui.split("int[][] " + name + " = {", 1)[1].split("};", 1)[0]
+    rows = re.findall(r"\\{([^{}]+)\\}", palette)
+    assert len(rows) == 18, (name, len(rows))
+    assert all(len(row.split(",")) == per_row for row in rows), name
+assert '.putInt("theme", index)' in ui
+print("Batch22Contract: categorization SQLite, budget API guard, custom icons, compact layouts and 18 stable theme IDs passed")
