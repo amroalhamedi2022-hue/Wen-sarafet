@@ -29,6 +29,23 @@ public final class CategorySuggestionRulesTest {
             x(9,1,-100,"صيدلية",""),x(9,1,0,"صيدلية",""));
         if(CategorySuggestionRules.suggest(1,200,"صيدلية","",invalid)!=null)
             throw new AssertionError("invalid history trained a category");
+        // Explicit user correction beats many stale suggestions for the same shop.
+        java.util.ArrayList<CategorySuggestionRules.Example> learning=new java.util.ArrayList<>();
+        for(int i=0;i<8;i++) learning.add(x(2,1,300,"مخبز الهدى",""));
+        learning.add(new CategorySuggestionRules.Example(5,1,300,"مخبز الهدى","",true));
+        eq(5,CategorySuggestionRules.suggest(1,300,"مخبز الهدى","",learning),
+                "manual correction should override repeated stale classification");
+        // Corrections must not turn all transactions of the same amount into that category.
+        if(CategorySuggestionRules.suggest(1,300,"مكتبة القدس","",learning)!=null)
+            throw new AssertionError("manual correction leaked to unrelated merchant");
+        List<CategorySuggestionRules.Example> contradictory=Arrays.asList(
+            new CategorySuggestionRules.Example(2,1,300,"مخبز الهدى","",true),
+            new CategorySuggestionRules.Example(5,1,300,"مخبز الهدى","",true));
+        if(CategorySuggestionRules.suggest(1,300,"مخبز الهدى","",contradictory)!=null)
+            throw new AssertionError("conflicting user corrections should remain ambiguous");
+        eq(3,CategorySuggestionRules.suggest(1,200,"مخبز الهدى فاتورة 2","",
+                Arrays.asList(x(3,1,300,"مخبز الـهدى فاتورة ٢",""))),
+                "Arabic-Indic and Latin digits and tatweel should normalize equally");
         System.out.println("CategorySuggestionRulesTest: all checks passed");
     }
     static CategorySuggestionRules.Example x(long category,long account,long amount,String note,String merchant){
