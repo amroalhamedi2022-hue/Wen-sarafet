@@ -36,6 +36,10 @@ assert "BackupRestoreStaging.createTemporaryDatabase(context.getCacheDir())" in 
 assert "System.currentTimeMillis()" not in RESTORE
 assert "if (foundDatabase) throw new IllegalArgumentException" in RESTORE
 assert "if (!foundDatabase)" in RESTORE
+# ZIP central directory can terminate parsing before the AES-GCM tag is read.
+# Complete authentication must happen before SQLite preflight/replacement.
+assert "BackupRestoreAuthentication.finish(decrypted)" in RESTORE
+assert RESTORE.index("BackupRestoreAuthentication.finish(decrypted)") < RESTORE.index("validateSqlite(temp)")
 # Regression: a fixed snapshot filename allowed simultaneous backups to overwrite
 # each other, and malformed/absent settings could silently wipe preferences.
 assert 'File.createTempFile("wen-backup-", ".db", context.getCacheDir())' in SOURCE
