@@ -27,7 +27,7 @@ public final class BackupFileManager {
 
     private BackupFileManager() {}
 
-    public static void create(Context context, OutputStream destination, char[] password) throws Exception {
+    public static synchronized void create(Context context, OutputStream destination, char[] password) throws Exception {
         File database = context.getDatabasePath("wen_sarafet.db");
         if (!database.isFile()) throw new IllegalStateException("قاعدة البيانات غير موجودة");
         // A fixed cache filename lets concurrent manual/Drive backups delete or
@@ -53,14 +53,16 @@ public final class BackupFileManager {
         } finally { snapshot.delete(); }
     }
 
-    public static void restore(Context context, InputStream source, char[] password) throws Exception {
-        ZipInputStream zip = new ZipInputStream(BackupCrypto.decryptingStream(source, password));
-        File temp = new File(context.getCacheDir(), "restore-" + System.currentTimeMillis() + ".db");
+    public static synchronized void restore(Context context, InputStream source, char[] password) throws Exception {
+        // Serialize restores with backup snapshots in this process: otherwise
+        // a backup can read a ledger while it is being replaced by restore.
+        File temp = BackupRestoreStaging.createTemporaryDatabase(context.getCacheDir());
         Properties properties = new Properties(); boolean foundDatabase = false; boolean foundSettings = false;
-        try (ZipInputStream inputZip = zip) {
+        try (ZipInputStream inputZip = new ZipInputStream(BackupCrypto.decryptingStream(source, password))) {
             ZipEntry entry;
             while ((entry = inputZip.getNextEntry()) != null) {
                 if ("database.sqlite".equals(entry.getName())) {
+                    if (foundDatabase) throw new IllegalArgumentException("قاعدة بيانات مكررة في النسخة");
                     FileOutputStream databaseOutput = new FileOutputStream(temp);
                     try { copy(inputZip, databaseOutput); } finally { databaseOutput.close(); }
                     foundDatabase = true;
@@ -74,6 +76,10 @@ public final class BackupFileManager {
         } catch (Exception error) {
             temp.delete();
             throw new IllegalArgumentException("النسخة تالفة أو كلمة السر غير صحيحة", error);
+        }
+        if (!foundDatabase) {
+            temp.delete();
+            throw new IllegalArgumentException("النسخة لا تحتوي قاعدة بيانات");
         }
         // Never replace a working ledger on the strength of the SQLite magic header alone.
         // Validate the decrypted snapshot before touching the currently installed database.
@@ -90,8 +96,7 @@ public final class BackupFileManager {
         boolean hadOldDatabase = target.exists();
         // A previous interrupted restore may have left a valuable rollback copy.
         // Do not delete or overwrite that copy on the next restore attempt.
-        File old = new File(target.getParentFile(),
-                "wen_sarafet.pre_restore." + System.currentTimeMillis() + ".db");
+        File old = BackupRestoreStaging.newRollbackDestination(target);
         if (old.exists()) { temp.delete(); throw new IllegalStateException("ملف الاستعادة الاحتياطي موجود بالفعل"); }
         try {
             if (hadOldDatabase) checkpointLiveDatabase(target);
