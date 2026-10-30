@@ -14,7 +14,7 @@ import java.util.Locale;
 
 public final class FinanceDbHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "wen_sarafet.db";
-    private static final int DB_VERSION = 13;
+    static final int DB_VERSION = 13; // Shared with backup preflight; reject newer schema before replacement.
     private final Context appContext;
 
     public FinanceDbHelper(Context context) {
