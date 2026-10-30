@@ -1,6 +1,8 @@
 package app.wensarafet.tracker;
 
+import android.Manifest;
 import android.app.NotificationManager;
+import android.content.pm.PackageManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -35,6 +37,12 @@ public final class ReminderReceiver extends BroadcastReceiver {
 
     private void show(Context context) {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null) return;
+        // The daily alarm may still fire after notification access has been denied.
+        // Never attempt to post without POST_NOTIFICATIONS on Android 13+.
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                        != PackageManager.PERMISSION_GRANTED) return;
         // Check the DB at delivery time, including snoozed alarms; never use a stale cached count.
         try (FinanceDbHelper db = new FinanceDbHelper(context)) {
             if (db.getPendingExpenseClassificationCount() == 0) {
