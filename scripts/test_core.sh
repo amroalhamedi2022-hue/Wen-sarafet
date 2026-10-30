@@ -144,6 +144,7 @@ compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/Money.java" \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceRules.java" \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/TransactionSearchRules.java" \
-  "$PROJECT_DIR/tests/TransactionSearchRulesTest.java"
+  "$PROJECT_DIR/tests/TransactionSearchRulesTest.java" \
+  "$PROJECT_DIR/tests/TransactionSearchDump.java"
 java -cp "$OUT_DIR" TransactionSearchRulesTest
 python3 "$PROJECT_DIR/tests/transaction_search_sql_contract.py"
