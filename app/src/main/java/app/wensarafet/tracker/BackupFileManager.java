@@ -87,10 +87,15 @@ public final class BackupFileManager {
                 try { copy(input, output); } finally { input.close(); output.close(); }
             }
             new File(target.getPath() + "-wal").delete(); new File(target.getPath() + "-shm").delete(); new File(target.getPath() + "-journal").delete();
-            FinanceDbHelper check = new FinanceDbHelper(context); check.getAccounts(); check.close();
+            try (FinanceDbHelper check = new FinanceDbHelper(context)) { check.getAccounts(); }
             restorePreferences(context, properties);
             old.delete();
         } catch (Exception error) {
+            // A failed upgrade/open may have created WAL sidecars for the replacement.
+            // Never replay those pages against the original database during rollback.
+            new File(target.getPath() + "-wal").delete();
+            new File(target.getPath() + "-shm").delete();
+            new File(target.getPath() + "-journal").delete();
             target.delete();
             if (hadOldDatabase && !old.renameTo(target))
                 throw new IllegalStateException("فشلت الاستعادة وتعذر إرجاع قاعدة البيانات السابقة", error);
