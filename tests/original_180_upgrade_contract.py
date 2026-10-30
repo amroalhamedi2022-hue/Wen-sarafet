@@ -25,7 +25,8 @@ assert "debuggable false" in gradle
 assert "WEN_SARAFET_KEYSTORE" in gradle
 assert "AppIntegrity.isTrusted(context)" in license_manager
 assert "InstallationIdentity.provesPossession(context)" in license_manager
-assert "if (!InstallationIdentity.provesPossession(context) && !InstallationIdentity.provesPossession(context))" in license_manager\n# Protected security sources must remain byte-identical to the approved baseline.
+assert "if (!InstallationIdentity.provesPossession(context) && !InstallationIdentity.provesPossession(context))" in license_manager
+# Protected security sources must remain byte-identical to the approved baseline.
 assert 'ALIAS = "wen_sarafet_installation_identity_v2"' in identity
 assert 'PREFS = "license_state"' in license_manager
 assert 'TOKEN = "activation_token"' in license_manager
