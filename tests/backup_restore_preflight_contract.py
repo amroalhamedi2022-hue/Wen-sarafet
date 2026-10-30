@@ -28,6 +28,16 @@ assert "FinanceDbHelper.DB_VERSION" in SOURCE
 assert "SQLiteDatabase.OPEN_READONLY" in SOURCE
 assert "name IN ('accounts','categories','transactions','transaction_splits')" in SOURCE
 assert "try (FinanceDbHelper check = new FinanceDbHelper(context))" in RESTORE
+# Regression: a fixed snapshot filename allowed simultaneous backups to overwrite
+# each other, and malformed/absent settings could silently wipe preferences.
+assert 'File.createTempFile("wen-backup-", ".db", context.getCacheDir())' in SOURCE
+assert '"backup-snapshot.db"' not in SOURCE
+assert "BackupSettingsCodec.decode(properties)" in RESTORE
+assert RESTORE.index("BackupSettingsCodec.decode(properties)") < RESTORE.index("target.renameTo(old)")
+assert "if (foundSettings)" in RESTORE
+assert "if (decodedSettings == null) return;" in SOURCE
+assert "if (!editor.commit())" in SOURCE
+assert "failure.addSuppressed(rollbackError)" in SOURCE
 rollback = RESTORE.split("} catch (Exception error) {", 1)[-1]
 assert rollback.index('new File(target.getPath() + "-wal").delete()') < rollback.index("old.renameTo(target)")
 assert rollback.index('new File(target.getPath() + "-shm").delete()') < rollback.index("old.renameTo(target)")
