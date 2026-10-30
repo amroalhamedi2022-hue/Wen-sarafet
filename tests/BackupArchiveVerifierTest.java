@@ -176,6 +176,9 @@ public final class BackupArchiveVerifierTest {
         try {
             byte[] good = archive(true, true, false, false);
             passes(dir, good);
+            // Optional entries with distinct names must remain valid; the
+            // duplicate-name guard must not reject ordinary extra files.
+            passes(dir, archive(true, true, true, false));
             rejects(dir, archive(false, true, false, false), PASSWORD);
             rejects(dir, archive(true, false, false, false), PASSWORD);
             rejects(dir, archive(true, true, false, true), PASSWORD);
