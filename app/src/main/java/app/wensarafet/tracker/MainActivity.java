@@ -415,6 +415,10 @@ public final class MainActivity extends Activity {
 
     private void showMain(boolean showTransactions) {
         if (AppLockManager.enabled(this) && !authenticated) { showLockScreen(); return; }
+        // Recheck after saving, editing, recategorizing or deleting expenses and on
+        // reopening the dashboard. A monthly alert is still emitted only once.
+        if (BudgetAlertManager.enabled(this,"ILS") || BudgetAlertManager.enabled(this,"USD") ||
+                BudgetAlertManager.enabled(this,"JOD")) BudgetAlertManager.checkAll(this);
         lockScreenVisible = false;
         addScreenVisible = false;
         subScreenVisible = false;
