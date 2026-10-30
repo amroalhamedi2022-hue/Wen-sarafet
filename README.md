@@ -2,7 +2,15 @@
 
 Arabic-first Android personal finance tracker. Application ID: `app.wensarafet.tracker`.
 
-## Verified state — 2026-10-29
+## Verified source state — 2026-10-30
+
+**Important:** The cumulative development branch is `feature/wen-batch21-reject-duplicate-zip-entries-20261030` (PR #24), currently version `1.8.1`, versionCode `17`. It contains the financial integrity Codex work plus subsequent source, search/UI, backup and financial safety improvements. Do not ship the debug APK or CI's **unsigned** release candidate to the installed 1.8 owner.
+
+The **original release signing private key** is a hard prerequisite for updating the user's installed 1.8.0 while retaining the application identity and AndroidKeyStore-backed activation. A previously signed 1.8.1 APK is **not** proof that it contains the newest code. Compare all unsigned/signed APK ZIP payload entries with `scripts/verify_release_payload.py`, or use the owner-only `scripts/sign_verified_upgrade.sh` which enforces that comparison plus certificate pinning and source checks.
+
+For concrete signing, upgrade, data, PIN/biometrics, widgets, notifications and backup acceptance steps, see **[FINAL_1_8_1_RELEASE_HANDOFF_AR.md](docs/FINAL_1_8_1_RELEASE_HANDOFF_AR.md)**.
+
+## Verified state — 2026-10-29 (historical baseline)
 
 This public repository **does contain reconstructed application source** under `app/src/main`.
 It is a recovered and incrementally improved source tree, **not a proven
