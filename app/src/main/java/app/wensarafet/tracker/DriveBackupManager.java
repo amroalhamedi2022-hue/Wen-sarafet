@@ -125,7 +125,7 @@ public final class DriveBackupManager {
                 }
             }, java.util.UUID.randomUUID().toString());
         } finally {
-            java.util.Arrays.fill(secret, '\\0');
+            java.util.Arrays.fill(secret, '\0');
         }
     }
 
