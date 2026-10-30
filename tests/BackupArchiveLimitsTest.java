@@ -29,6 +29,18 @@ public final class BackupArchiveLimitsTest {
         rejects(new ByteArrayInputStream(data), 9);
         check(BackupArchiveLimits.copy(new ByteArrayInputStream(new byte[0]), null, 0) == 0,
                 "Empty entry rejected");
+        ByteArrayInputStream exact = new ByteArrayInputStream(data);
+        java.io.InputStream bounded = BackupArchiveLimits.bounded(exact, 10);
+        ByteArrayOutputStream boundedResult = new ByteArrayOutputStream();
+        check(BackupArchiveLimits.copy(bounded, boundedResult, 10) == 10,
+                "Exact archive cap must be accepted");
+        check(java.util.Arrays.equals(data, boundedResult.toByteArray()),
+                "Bounded archive bytes changed");
+        try {
+            BackupArchiveLimits.copy(BackupArchiveLimits.bounded(
+                    new ByteArrayInputStream(data), 9), null, 10);
+            throw new AssertionError("Oversized whole archive accepted");
+        } catch (IOException expected) { }
         Properties p = BackupArchiveLimits.readSettings(new ByteArrayInputStream(
                 "appearance|mode=S:ZGFyaw==\n".getBytes(StandardCharsets.US_ASCII)));
         check("S:ZGFyaw==".equals(p.getProperty("appearance|mode")), "Settings changed");

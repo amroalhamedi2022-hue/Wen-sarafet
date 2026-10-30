@@ -10,7 +10,7 @@ The restore path previously streamed `database.sqlite` to disk without a size ce
 
 - Add pure-Java `BackupArchiveLimits` with a 1 GiB database limit, 1.25 GiB encrypted ZIP plaintext limit, 2 MiB settings/optional-entry limit and maximum 16 entries. Limits are intentionally generous but finite; oversized archives fail explicitly, never truncate.
 - Apply bounds to manual/Drive backup creation so the app does not generate a database/settings archive it cannot restore.
-- Apply bounds to restore before database replacement and to Drive read-back, including decompressed ZIP entries (not just compressed sizes).
+- Apply bounds to restore before database replacement and to Drive read-back, including decompressed ZIP entries (not just compressed sizes). A bounded decrypted stream also covers ZIP directory/trailing bytes, not merely named entries.
 - Preserve optional legacy ZIP entries up to a bounded size and preserve all existing SQLite integrity, migration, GCM, and rollback checks.
 - Add JVM regression tests for exact-boundary behavior and compressed oversized settings/unknown entries; strengthen the restore source contract.
 

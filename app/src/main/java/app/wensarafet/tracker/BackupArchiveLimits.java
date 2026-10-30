@@ -3,6 +3,7 @@ package app.wensarafet.tracker;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.FilterInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Properties;
@@ -35,6 +36,34 @@ final class BackupArchiveLimits {
             total += count;
         }
         return total;
+    }
+
+    static InputStream bounded(InputStream source, long maxBytes) {
+        if (maxBytes < 0) throw new IllegalArgumentException("Negative archive size limit");
+        return new FilterInputStream(source) {
+            private long remaining = maxBytes;
+
+            @Override public int read() throws IOException {
+                int value = super.read();
+                if (value != -1) {
+                    if (remaining == 0)
+                        throw new IOException("Backup archive exceeds safe size limit");
+                    remaining--;
+                }
+                return value;
+            }
+
+            @Override public int read(byte[] bytes, int offset, int length) throws IOException {
+                if (length == 0) return 0;
+                if (remaining == 0) {
+                    if (super.read() == -1) return -1;
+                    throw new IOException("Backup archive exceeds safe size limit");
+                }
+                int count = super.read(bytes, offset, (int) Math.min(length, remaining));
+                if (count > 0) remaining -= count;
+                return count;
+            }
+        };
     }
 
     static Properties readSettings(InputStream source) throws IOException {

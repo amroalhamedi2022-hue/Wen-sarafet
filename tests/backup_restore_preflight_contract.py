@@ -42,8 +42,9 @@ assert "BackupArchiveLimits.readSettings(inputZip)" in RESTORE
 assert "BackupArchiveLimits.MAX_DATABASE_BYTES" in RESTORE
 assert "BackupArchiveLimits.MAX_ENTRIES" in RESTORE
 assert "BackupArchiveLimits.MAX_EXTRA_BYTES" in RESTORE
-assert "BackupRestoreAuthentication.finish(decrypted)" in RESTORE
-assert RESTORE.index("BackupRestoreAuthentication.finish(decrypted)") < RESTORE.index("validateSqlite(temp)")
+assert "BackupArchiveLimits.bounded(decrypted," in RESTORE
+assert "BackupRestoreAuthentication.finish(bounded)" in RESTORE
+assert RESTORE.index("BackupRestoreAuthentication.finish(bounded)") < RESTORE.index("validateSqlite(temp)")
 # Regression: a fixed snapshot filename allowed simultaneous backups to overwrite
 # each other, and malformed/absent settings could silently wipe preferences.
 assert 'File.createTempFile("wen-backup-", ".db", context.getCacheDir())' in SOURCE

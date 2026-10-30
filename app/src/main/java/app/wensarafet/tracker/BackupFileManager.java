@@ -67,7 +67,9 @@ public final class BackupFileManager {
         File temp = BackupRestoreStaging.createTemporaryDatabase(context.getCacheDir());
         Properties properties = new Properties(); boolean foundDatabase = false; boolean foundSettings = false;
         try (InputStream decrypted = BackupCrypto.decryptingStream(source, password);
-             ZipInputStream inputZip = new ZipInputStream(decrypted)) {
+             InputStream bounded = BackupArchiveLimits.bounded(decrypted,
+                     BackupArchiveLimits.MAX_ARCHIVE_BYTES);
+             ZipInputStream inputZip = new ZipInputStream(bounded)) {
             ZipEntry entry;
             int entryCount = 0;
             while ((entry = inputZip.getNextEntry()) != null) {
@@ -93,7 +95,7 @@ public final class BackupFileManager {
             }
             // ZipInputStream may stop before reading the encrypted GCM tag.
             // Authenticate the entire ciphertext before touching the live DB.
-            BackupRestoreAuthentication.finish(decrypted);
+            BackupRestoreAuthentication.finish(bounded);
         } catch (Exception error) {
             temp.delete();
             throw new IllegalArgumentException("النسخة تالفة أو كلمة السر غير صحيحة", error);
