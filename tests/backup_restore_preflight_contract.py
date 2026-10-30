@@ -27,6 +27,10 @@ assert "PRAGMA foreign_key_check" in SOURCE
 assert "FinanceDbHelper.DB_VERSION" in SOURCE
 assert "SQLiteDatabase.OPEN_READONLY" in SOURCE
 assert "name IN ('accounts','categories','transactions','transaction_splits')" in SOURCE
+assert "try (FinanceDbHelper check = new FinanceDbHelper(context))" in RESTORE
+rollback = RESTORE.split("} catch (Exception error) {", 1)[-1]
+assert rollback.index('new File(target.getPath() + "-wal").delete()') < rollback.index("old.renameTo(target)")
+assert rollback.index('new File(target.getPath() + "-shm").delete()') < rollback.index("old.renameTo(target)")
 
 
 def make_database(path, version=13, missing_splits=False, orphan=False):
