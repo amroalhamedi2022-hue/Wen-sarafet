@@ -516,11 +516,19 @@ public final class MainActivity extends Activity {
         LinearLayout titles = Ui.column(this);
         TextView title = Ui.text(this, "وين صرفت؟", 25, Color.WHITE, true);
         TextView subtitle = Ui.text(this, "أموالك واضحة، وخصوصيتك محفوظة", 11, Color.rgb(225, 239, 235), false);
+        // Keep labels and controls inside the fixed header on compact RTL screens.
+        title.setSingleLine(true);
+        subtitle.setSingleLine(true);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        subtitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        title.setAutoSizeTextTypeUniformWithConfiguration(17,25,1,android.util.TypedValue.COMPLEX_UNIT_SP);
         titles.addView(title);
         titles.addView(subtitle);
 
         int headerPercent = Ui.homeIconScalePercent(this, "header");
         int headerIconSize = Math.max(Ui.dp(this, 32), Math.min(Ui.dp(this, 62), Ui.homeIconDp(this, "header", 42)));
+        if(getResources().getDisplayMetrics().widthPixels < Ui.dp(this,390))
+            headerIconSize=Math.min(headerIconSize,Ui.dp(this,48));
         float headerIconText = Math.min(31f, 21f * headerPercent / 100f);
         TextView addAccount = Ui.text(this, "▦", headerIconText, Color.WHITE, true);
         addAccount.setGravity(Gravity.CENTER);
@@ -867,10 +875,16 @@ public final class MainActivity extends Activity {
 
         LinearLayout info = Ui.column(this);
         info.setPadding(Ui.dp(this, 12), 0, Ui.dp(this, 12), 0);
-        info.addView(Ui.text(this, titleValue, 15, Ui.TEXT, true));
+        TextView transactionTitle=Ui.text(this, titleValue, 15, Ui.TEXT, true);
+        transactionTitle.setSingleLine(true);
+        transactionTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        info.addView(transactionTitle);
         String secondary = tx.accountName + (tx.affectsBalance ? "" : " • للتسجيل فقط") +
                 (tx.note == null || tx.note.isEmpty() ? "" : " • " + tx.note);
-        info.addView(Ui.text(this, secondary, 11, Ui.MUTED, false));
+        TextView transactionSubtitle=Ui.text(this, secondary, 11, Ui.MUTED, false);
+        transactionSubtitle.setSingleLine(true);
+        transactionSubtitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        info.addView(transactionSubtitle);
         String date = new SimpleDateFormat("dd/MM/yyyy  hh:mm a", new Locale("ar")).format(new Date(tx.createdAt));
         info.addView(Ui.text(this, date, 10, Ui.MUTED, false));
         card.addView(info, new LinearLayout.LayoutParams(0, Ui.dp(this, 58), 1));
