@@ -11,7 +11,7 @@ public final class LicenseManager {
     public static String requestCode(Context context) {
         try {
             if (!AppIntegrity.isTrusted(context)) throw new IllegalStateException("تعذر التحقق من سلامة نسخة التطبيق");
-            if (!InstallationIdentity.provesPossession(context) && !InstallationIdentity.provesPossession(context))
+            if (!InstallationIdentity.provesPossession(context))
                 throw new IllegalStateException("تعذر استخدام مفتاح هوية التثبيت");
             return InstallationIdentity.requestCode(context);
         } catch (Exception error) { throw new IllegalStateException("تعذر إنشاء هوية التثبيت", error); }
