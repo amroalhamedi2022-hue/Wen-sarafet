@@ -63,6 +63,10 @@ compile \
 
 java -cp "$OUT_DIR" app.wensarafet.tracker.LicenseProtocolTest
 java -cp "$OUT_DIR" app.wensarafet.tracker.BackupCryptoTest
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupSettingsCodec.java" \
+  "$PROJECT_DIR/tests/BackupSettingsCodecTest.java"
+java -cp "$OUT_DIR" app.wensarafet.tracker.BackupSettingsCodecTest
 python3 "$PROJECT_DIR/tests/debt_migration_audit.py"
 python3 "$PROJECT_DIR/tests/fx_migration_audit.py"
 python3 "$PROJECT_DIR/tests/category_audit_migration_v10.py"
