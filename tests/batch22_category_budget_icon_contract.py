@@ -24,6 +24,10 @@ CREATE TABLE transactions(
   created_at INTEGER
 );
 CREATE TABLE transaction_splits(transaction_id INTEGER);
+CREATE TABLE change_history(
+ id INTEGER PRIMARY KEY,table_name TEXT,record_id INTEGER,action TEXT,undone INTEGER,
+ previous_category_id INTEGER,current_category_id INTEGER
+);
 INSERT INTO categories VALUES (1,'EXPENSE',0),(2,'EXPENSE',1),(3,'INCOME',0);
 INSERT INTO transactions VALUES
   (1,'EXPENSE','ILS',1,1,200,'مخبز','',NULL,0,100),
@@ -37,6 +41,13 @@ INSERT INTO transaction_splits VALUES (5);
 """)
 rows = db.execute(query, ("EXPENSE", "ILS")).fetchall()
 assert len(rows) == 1 and rows[0][0] == 1, rows
+assert rows[0][5] == 0, rows
+db.execute("INSERT INTO change_history VALUES (10,'transactions',1,'EDIT',0,9,1)")
+updated_rows = db.execute(query, ("EXPENSE", "ILS")).fetchall()
+assert len(updated_rows) == 1 and updated_rows[0][5] == 1, updated_rows
+db.execute("UPDATE change_history SET undone=1 WHERE id=10")
+undone_rows = db.execute(query, ("EXPENSE", "ILS")).fetchall()
+assert len(undone_rows) == 1 and undone_rows[0][5] == 0, undone_rows
 
 budget = (root / "app/src/main/java/app/wensarafet/tracker/BudgetAlertManager.java").read_text()
 assert "SDK_INT >= 33" in budget and "Manifest.permission.POST_NOTIFICATIONS" in budget
