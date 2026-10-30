@@ -9,19 +9,19 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Encrypted folder backup through Android's Storage Access Framework.
  * A Google Drive account is used when the user selects a Drive folder in the
- * system picker; the app itself deliberately has no INTERNET permission.
+ * system picker; this backup path itself never sends data over HTTP.
  */
 public final class DriveBackupManager {
     private static final String PREFS = "drive_backup";
     private static final String TREE_URI = "tree_uri";
     private static final String SECRET_NAME = "drive_backup_password";
-    private static final String FILE_NAME = "Wen-Sarafet-latest.wsb";
     private static final AtomicBoolean RUNNING = new AtomicBoolean(false);
 
     public interface Callback { void finished(boolean success, String message); }
@@ -82,30 +82,68 @@ public final class DriveBackupManager {
     private static void sync(Context context) throws Exception {
         String rawTree = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(TREE_URI, "");
         String password = SecurePinStore.read(context, SECRET_NAME);
-        if (rawTree.isEmpty() || password == null || password.length() < 6) throw new IllegalStateException("إعداد النسخة غير مكتمل");
+        if (rawTree.isEmpty() || password == null || password.length() < 6)
+            throw new IllegalStateException("إعداد النسخة غير مكتمل");
         Uri tree = Uri.parse(rawTree);
-        Uri target = findChild(context, tree, FILE_NAME);
         Uri root = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree));
-        if (target == null) target = DocumentsContract.createDocument(context.getContentResolver(), root,
-                "application/octet-stream", FILE_NAME);
-        if (target == null) throw new IllegalStateException("تعذر إنشاء ملف النسخة");
         char[] secret = password.toCharArray();
-        try (OutputStream output = context.getContentResolver().openOutputStream(target, "wt")) {
-            if (output == null) throw new IllegalStateException("تعذر فتح ملف النسخة");
-            BackupFileManager.create(context, output, secret);
-        } finally { java.util.Arrays.fill(secret, '\0'); }
+        try {
+            DriveBackupPublication.publish(new DriveBackupPublication.Store<Uri>() {
+                @Override public Uri find(String name) throws Exception {
+                    return findChild(context, tree, name);
+                }
+                @Override public Uri create(String name) throws Exception {
+                    return DocumentsContract.createDocument(context.getContentResolver(), root,
+                            "application/octet-stream", name);
+                }
+                @Override public void write(Uri document) throws Exception {
+                    try (OutputStream output = context.getContentResolver().openOutputStream(document, "wt")) {
+                        if (output == null) throw new IllegalStateException("تعذر فتح ملف النسخة");
+                        BackupFileManager.create(context, output, secret);
+                    }
+                }
+                @Override public void verify(Uri document) throws Exception {
+                    try (InputStream input = context.getContentResolver().openInputStream(document)) {
+                        if (input == null) throw new IllegalStateException("تعذر قراءة النسخة بعد رفعها");
+                        BackupArchiveVerifier.verify(input, secret, context.getCacheDir());
+                    }
+                }
+                @Override public Uri rename(Uri document, String name) throws Exception {
+                    return DocumentsContract.renameDocument(context.getContentResolver(), document, name);
+                }
+                @Override public String name(Uri document) throws Exception {
+                    String[] columns = {DocumentsContract.Document.COLUMN_DISPLAY_NAME};
+                    try (Cursor cursor = context.getContentResolver().query(document, columns, null, null, null)) {
+                        if (cursor == null || !cursor.moveToFirst())
+                            throw new IllegalStateException("تعذر التحقق من اسم ملف النسخة");
+                        return cursor.getString(0);
+                    }
+                }
+                @Override public void delete(Uri document) throws Exception {
+                    if (!DocumentsContract.deleteDocument(context.getContentResolver(), document))
+                        throw new IllegalStateException("تعذر تنظيف ملف النسخة غير المكتمل");
+                }
+            }, java.util.UUID.randomUUID().toString());
+        } finally {
+            java.util.Arrays.fill(secret, '\\0');
+        }
     }
 
-    private static Uri findChild(Context context, Uri tree, String name) {
+    private static Uri findChild(Context context, Uri tree, String name) throws Exception {
         Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree));
         String[] columns = {DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME};
+        Uri found = null;
         try (Cursor cursor = context.getContentResolver().query(children, columns, null, null, null)) {
-            while (cursor != null && cursor.moveToNext()) {
-                if (name.equals(cursor.getString(1)))
-                    return DocumentsContract.buildDocumentUriUsingTree(tree, cursor.getString(0));
+            if (cursor == null) throw new IllegalStateException("تعذر قراءة مجلد النسخ الاحتياطية");
+            while (cursor.moveToNext()) {
+                if (name.equals(cursor.getString(1))) {
+                    if (found != null)
+                        throw new IllegalStateException("أكثر من ملف بنفس اسم النسخة؛ أوقف المزامنة لحماية البيانات");
+                    found = DocumentsContract.buildDocumentUriUsingTree(tree, cursor.getString(0));
+                }
             }
-        } catch (Exception ignored) {}
-        return null;
+        }
+        return found;
     }
 
     private static void notifyFailure(Context context, String message) {
