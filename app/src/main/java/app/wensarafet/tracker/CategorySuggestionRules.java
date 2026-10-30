@@ -55,6 +55,7 @@ public final class CategorySuggestionRules {
         String desc=normalize(description), vendor=normalize(merchant);
         Map<Long, Integer> contextScore=new HashMap<>(), contextCount=new HashMap<>();
         Map<Long, Integer> amountCount=new HashMap<>();
+        Map<Long, Integer> correctedAmountCount=new HashMap<>();
         int allAmountCount=0;
         for (Example old:history) {
             if (old == null || old.categoryId <= 0 || old.amountMinor <= 0) continue;
@@ -64,6 +65,7 @@ public final class CategorySuggestionRules {
             boolean sameAmount=old.amountMinor == amountMinor;
             if (sameAccount && sameAmount) {
                 amountCount.merge(old.categoryId, 1, Integer::sum);
+                if(old.correctedByUser)correctedAmountCount.merge(old.categoryId,1,Integer::sum);
                 allAmountCount++;
             }
             boolean descMatch=!desc.isEmpty() && desc.length() >= 3 && desc.equals(normalize(old.description));
@@ -90,6 +92,10 @@ public final class CategorySuggestionRules {
             if (count>best) {second=best;best=count;bestId=entry.getKey();}
             else if (count>second) second=count;
         }
+        // If the user manually corrected a different category for this same amount,
+        // amount alone is too weak: require merchant/note confirmation instead.
+        if(!correctedAmountCount.isEmpty() &&
+                (correctedAmountCount.size()>1 || !correctedAmountCount.containsKey(bestId)))return null;
         return best >= 3 && best > second && best*4 >= allAmountCount*3
                 ? new Suggestion(bestId,"غالبًا حسب المبلغ والحساب ("+best+" مرات)",best) : null;
     }
