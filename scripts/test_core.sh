@@ -67,6 +67,15 @@ compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupSettingsCodec.java" \
   "$PROJECT_DIR/tests/BackupSettingsCodecTest.java"
 java -cp "$OUT_DIR" app.wensarafet.tracker.BackupSettingsCodecTest
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/DriveBackupPublication.java" \
+  "$PROJECT_DIR/tests/DriveBackupPublicationTest.java"
+java -cp "$OUT_DIR" app.wensarafet.tracker.DriveBackupPublicationTest
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupCrypto.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupArchiveVerifier.java" \
+  "$PROJECT_DIR/tests/BackupArchiveVerifierTest.java"
+java -cp "$OUT_DIR" app.wensarafet.tracker.BackupArchiveVerifierTest
 python3 "$PROJECT_DIR/tests/debt_migration_audit.py"
 python3 "$PROJECT_DIR/tests/fx_migration_audit.py"
 python3 "$PROJECT_DIR/tests/category_audit_migration_v10.py"
@@ -90,3 +99,4 @@ python3 "$PROJECT_DIR/tests/reminder_snooze_contract.py"
 python3 "$PROJECT_DIR/tests/chart_capture_quality_contract.py"
 
 python3 "$PROJECT_DIR/tests/backup_restore_preflight_contract.py"
+python3 "$PROJECT_DIR/tests/drive_backup_publication_contract.py"
