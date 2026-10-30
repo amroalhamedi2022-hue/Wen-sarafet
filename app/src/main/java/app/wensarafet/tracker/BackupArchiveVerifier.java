@@ -6,13 +6,18 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.util.zip.ZipFile;
 
 /**
  * Verify a newly uploaded WSB archive by reading it back from its SAF provider.
- * Drain the entire GCM stream (including its authentication tag) before parsing
- * the ZIP and checking every entry's CRC. Never publish unverified ciphertext.
+ * First authenticate the entire AES-GCM ciphertext. Then require a complete ZIP
+ * central directory and independently check each entry's uncompressed size/CRC.
+ *
+ * ZipInputStream alone accepts local entries even when the central directory or
+ * end-of-central-directory record is missing, so it cannot approve publication.
  */
 final class BackupArchiveVerifier {
     private static final byte[] SQLITE_MAGIC =
@@ -29,42 +34,26 @@ final class BackupArchiveVerifier {
                 output.getFD().sync();
             }
             boolean database = false, settings = false;
-            try (ZipInputStream zip = new ZipInputStream(new FileInputStream(plain))) {
-                ZipEntry entry;
-                byte[] buffer = new byte[32 * 1024];
+            // ZipFile requires the central directory; ZipInputStream does not.
+            try (ZipFile zip = new ZipFile(plain)) {
+                Enumeration<? extends ZipEntry> entries = zip.entries();
                 int entryCount = 0;
-                while ((entry = zip.getNextEntry()) != null) {
+                while (entries.hasMoreElements()) {
                     if (++entryCount > BackupArchiveLimits.MAX_ENTRIES)
                         throw new IllegalArgumentException("Too many backup entries");
+                    ZipEntry entry = entries.nextElement();
                     String name = entry.getName();
                     if ("database.sqlite".equals(name)) {
                         if (database) throw new IllegalArgumentException("Duplicate backup database");
                         database = true;
-                        byte[] header = new byte[SQLITE_MAGIC.length];
-                        int filled = 0, count;
-                        long databaseBytes = 0;
-                        while ((count = zip.read(buffer)) != -1) {
-                            if (count > BackupArchiveLimits.MAX_DATABASE_BYTES - databaseBytes)
-                                throw new IllegalArgumentException("Backup database exceeds size limit");
-                            databaseBytes += count;
-                            int copied = Math.min(count, header.length - filled);
-                            if (copied > 0) {
-                                System.arraycopy(buffer, 0, header, filled, copied);
-                                filled += copied;
-                            }
-                        }
-                        if (filled != header.length || !Arrays.equals(header, SQLITE_MAGIC))
-                            throw new IllegalArgumentException("Invalid backup SQLite header");
+                        inspect(zip, entry, BackupArchiveLimits.MAX_DATABASE_BYTES, true);
+                    } else if ("settings.properties".equals(name)) {
+                        if (settings) throw new IllegalArgumentException("Duplicate backup settings");
+                        settings = true;
+                        inspect(zip, entry, BackupArchiveLimits.MAX_SETTINGS_BYTES, false);
                     } else {
-                        if ("settings.properties".equals(name)) {
-                            if (settings) throw new IllegalArgumentException("Duplicate backup settings");
-                            settings = true;
-                            BackupArchiveLimits.copy(zip, null, BackupArchiveLimits.MAX_SETTINGS_BYTES);
-                        } else {
-                            BackupArchiveLimits.copy(zip, null, BackupArchiveLimits.MAX_EXTRA_BYTES);
-                        }
+                        inspect(zip, entry, BackupArchiveLimits.MAX_EXTRA_BYTES, false);
                     }
-                    zip.closeEntry();
                 }
             }
             if (!database || !settings)
@@ -72,5 +61,37 @@ final class BackupArchiveVerifier {
         } finally {
             if (!plain.delete() && plain.exists()) plain.deleteOnExit();
         }
+    }
+
+    private static void inspect(ZipFile zip, ZipEntry entry, long limit, boolean sqlite)
+            throws Exception {
+        long declaredSize = entry.getSize();
+        long declaredCrc = entry.getCrc();
+        if (declaredSize < 0 || declaredSize > limit || declaredCrc < 0)
+            throw new IllegalArgumentException("Invalid backup ZIP entry metadata");
+        byte[] header = sqlite ? new byte[SQLITE_MAGIC.length] : null;
+        int filled = 0;
+        long actualSize = 0;
+        CRC32 crc = new CRC32();
+        byte[] buffer = new byte[32 * 1024];
+        try (InputStream input = zip.getInputStream(entry)) {
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                if (count == 0) continue;
+                if (count > limit - actualSize)
+                    throw new IllegalArgumentException("Backup ZIP entry exceeds size limit");
+                actualSize += count;
+                crc.update(buffer, 0, count);
+                if (sqlite && filled < header.length) {
+                    int copied = Math.min(count, header.length - filled);
+                    System.arraycopy(buffer, 0, header, filled, copied);
+                    filled += copied;
+                }
+            }
+        }
+        if (actualSize != declaredSize || crc.getValue() != declaredCrc)
+            throw new IllegalArgumentException("Backup ZIP entry size/CRC mismatch");
+        if (sqlite && (filled != header.length || !Arrays.equals(header, SQLITE_MAGIC)))
+            throw new IllegalArgumentException("Invalid backup SQLite header");
     }
 }

@@ -64,6 +64,62 @@ public final class BackupArchiveVerifierTest {
         return bytes.toByteArray();
     }
 
+    // A ZIP with valid local file records but no end-of-central-directory
+    // was previously accepted by ZipInputStream. It is not a restorable WSB.
+    private static byte[] encryptedIncompleteCentralDirectory() throws Exception {
+        ByteArrayOutputStream plain = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(plain)) {
+            zip.putNextEntry(new ZipEntry("database.sqlite"));
+            zip.write("SQLite format 3\u0000".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1));
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("settings.properties"));
+            zip.write("appearance|mode=S:ZGFyaw==\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            zip.closeEntry();
+        }
+        // Standard ZIP with no archive comment ends in the 22-byte EOCD.
+        byte[] valid = plain.toByteArray();
+        if (valid.length < 22 || valid[valid.length - 22] != 0x50
+                || valid[valid.length - 21] != 0x4b
+                || valid[valid.length - 20] != 0x05
+                || valid[valid.length - 19] != 0x06)
+            throw new AssertionError("Expected ZIP end-of-central-directory");
+        return encryptPlain(Arrays.copyOf(valid, valid.length - 22));
+    }
+
+    // Tamper only with the central-directory CRC, keeping compressed payload
+    // and AES-GCM valid. ZipFile InputStream does not itself enforce entry CRC.
+    private static byte[] encryptedCentralDirectoryCrcMismatch() throws Exception {
+        ByteArrayOutputStream plain = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(plain)) {
+            zip.putNextEntry(new ZipEntry("database.sqlite"));
+            zip.write("SQLite format 3\u0000".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1));
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("settings.properties"));
+            zip.write("appearance|mode=S:ZGFyaw==\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            zip.closeEntry();
+        }
+        byte[] bytes = plain.toByteArray();
+        boolean changed = false;
+        for (int i = 0; i + 20 < bytes.length; i++) {
+            if (bytes[i] == 0x50 && bytes[i + 1] == 0x4b
+                    && bytes[i + 2] == 0x01 && bytes[i + 3] == 0x02) {
+                bytes[i + 16] ^= 1; // CRC32 in central directory header
+                changed = true;
+                break;
+            }
+        }
+        if (!changed) throw new AssertionError("Missing ZIP central directory");
+        return encryptPlain(bytes);
+    }
+
+    private static byte[] encryptPlain(byte[] plain) throws Exception {
+        ByteArrayOutputStream encrypted = new ByteArrayOutputStream();
+        try (java.io.OutputStream output = BackupCrypto.encryptingStream(encrypted, PASSWORD)) {
+            output.write(plain);
+        }
+        return encrypted.toByteArray();
+    }
+
     private static void passes(File dir, byte[] bytes) throws Exception {
         BackupArchiveVerifier.verify(new ByteArrayInputStream(bytes), PASSWORD, dir);
         try (java.util.stream.Stream<java.nio.file.Path> paths = Files.list(dir.toPath())) {
@@ -95,12 +151,14 @@ public final class BackupArchiveVerifierTest {
             rejects(dir, archive(true, true, false, true), PASSWORD);
             rejects(dir, oversizedEntry("settings.properties"), PASSWORD);
             rejects(dir, oversizedEntry("unrecognized-extra.bin"), PASSWORD);
+            rejects(dir, encryptedIncompleteCentralDirectory(), PASSWORD);
+            rejects(dir, encryptedCentralDirectoryCrcMismatch(), PASSWORD);
             rejects(dir, good, "wrong-password".toCharArray());
             rejects(dir, Arrays.copyOf(good, good.length - 12), PASSWORD);
             byte[] tampered = good.clone();
             tampered[tampered.length - 1] ^= 1;
             rejects(dir, tampered, PASSWORD);
-            System.out.println("BackupArchiveVerifierTest passed: authenticated read-back, required entries, cleanup");
+            System.out.println("BackupArchiveVerifierTest passed: authenticated read-back, complete ZIP directory, entry CRC, cleanup");
         } finally {
             if (!dir.delete()) throw new AssertionError("Verifier temp directory not cleaned");
         }

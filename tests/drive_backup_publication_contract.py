@@ -31,7 +31,11 @@ assert "BackupCrypto.decryptingStream" in verifier
 assert "BackupArchiveLimits.copy(decrypted, output, BackupArchiveLimits.MAX_ARCHIVE_BYTES)" in verifier
 assert "BackupArchiveLimits.MAX_SETTINGS_BYTES" in verifier
 assert "BackupArchiveLimits.MAX_ENTRIES" in verifier
-assert "zip.closeEntry()" in verifier
+assert "new ZipFile(plain)" in verifier
+assert "import java.util.zip.ZipInputStream;" not in verifier
+assert "new ZipInputStream(" not in verifier
+assert "crc.getValue() != declaredCrc" in verifier
+assert "actualSize != declaredSize" in verifier
 assert "if (!database || !settings)" in verifier
 
 print("DriveBackupPublicationContract passed: no in-place truncation, authenticated stage, recovery guards (device NOT TESTED).")
