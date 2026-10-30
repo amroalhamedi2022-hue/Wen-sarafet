@@ -2,6 +2,7 @@ package app.wensarafet.tracker;
 
 import android.Manifest;
 import android.app.NotificationManager;
+import android.app.NotificationChannel;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -48,16 +49,21 @@ public final class BudgetAlertManager {
                 if (budget <= 0 || monthKey.equals(preferences.getString("notified_" + currency, ""))) continue;
                 long spent = db.getExpenseTotal(currency, start.getTimeInMillis(), System.currentTimeMillis() + 1);
                 if (spent > budget) {
-                    notifyExceeded(context, currency, spent, budget);
-                    preferences.edit().putString("notified_" + currency, monthKey).apply();
+                    if(notifyExceeded(context, currency, spent, budget))
+                        preferences.edit().putString("notified_" + currency, monthKey).apply();
                 }
             }
         } finally { db.close(); }
     }
 
-    private static void notifyExceeded(Context context, String currency, long spent, long budget) {
+    private static boolean notifyExceeded(Context context, String currency, long spent, long budget) {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if(manager == null || !manager.areNotificationsEnabled()) return false;
         String channelId = NotificationPreferences.ensureChannel(context, NotificationPreferences.BUDGET);
+        if(android.os.Build.VERSION.SDK_INT >= 26) {
+            NotificationChannel channel = manager.getNotificationChannel(channelId);
+            if(channel == null || channel.getImportance() == NotificationManager.IMPORTANCE_NONE) return false;
+        }
         Intent openIntent = new Intent(context, MainActivity.class)
                 .putExtra("open_analytics", true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -74,6 +80,13 @@ public final class BudgetAlertManager {
                 .setContentIntent(open)
                 .setAutoCancel(true)
                 .build();
-        manager.notify(9200 + Math.abs(currency.hashCode() % 100), notification);
+        try {
+            manager.notify(9200 + Math.abs(currency.hashCode() % 100), notification);
+            return true;
+        } catch(SecurityException permissionRevoked) {
+            // The user can revoke permission between checkAll and notify().
+            // Do not mark the budget as already warned; retry after permission returns.
+            return false;
+        }
     }
 }
