@@ -1106,6 +1106,14 @@ public final class MainActivity extends Activity {
     private void showFxTransferDialog() {
         List<Models.Account> accounts=db.getAccounts();
         if(accounts.size()<2){Toast.makeText(this,"أضف حسابين مختلفين أولًا",Toast.LENGTH_LONG).show();return;}
+        boolean hasDifferentCurrencies=false;
+        for(Models.Account first:accounts){
+            for(Models.Account second:accounts){
+                if(!first.currency.equals(second.currency)){hasDifferentCurrencies=true;break;}
+            }
+            if(hasDifferentCurrencies)break;
+        }
+        if(!hasDifferentCurrencies){Toast.makeText(this,"التحويل بين عملتين يحتاج حسابين بعملتين مختلفتين",Toast.LENGTH_LONG).show();return;}
         List<String> options=new ArrayList<>();for(Models.Account a:accounts)options.add(a.displayName());
         LinearLayout form=Ui.column(this);
         form.setPadding(Ui.dp(this,18),Ui.dp(this,4),Ui.dp(this,18),Ui.dp(this,12));
@@ -1245,6 +1253,14 @@ public final class MainActivity extends Activity {
             public void onTextChanged(CharSequence s,int start,int before,int count){recalc.run();}
             public void afterTextChanged(Editable e){}};
         amount.addTextChangedListener(watcher);rate.addTextChangedListener(watcher);
+        // Prevent submitting a same-currency pair from the FX-specific form.
+        Runnable validatePair=()->{
+            int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
+            if(si>=0 && di>=0 && accounts.get(si).currency.equals(accounts.get(di).currency))
+                preview.setText("اختر حسابين بعملتين مختلفتين، أو استخدم التحويل العادي");
+        };
+        source.setOnItemSelectedListener(new SimpleItemSelected(()->{loadSavedRate.run();validatePair.run();}));
+        destination.setOnItemSelectedListener(new SimpleItemSelected(()->{loadSavedRate.run();validatePair.run();}));
         ScrollView scroll=new ScrollView(this);scroll.addView(form);
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تحويل بين عملتين")
             .setView(scroll).setNegativeButton("إلغاء",null).setPositiveButton("تأكيد التحويل",null).create();
