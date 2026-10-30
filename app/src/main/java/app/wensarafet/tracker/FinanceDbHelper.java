@@ -463,6 +463,32 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         return result;
     }
 
+    /** Local, bound-parameter history search. Offset pagination avoids a 1,000-card UI. */
+    public List<Models.Transaction> searchTransactions(String text, String type, String currency,
+                                                        int pageSize, int offset) {
+        TransactionSearchRules.Query query = TransactionSearchRules.build(text,type,currency,pageSize,offset);
+        List<Models.Transaction> result = new ArrayList<>();
+        try(Cursor c=getReadableDatabase().rawQuery(query.sql,query.args)) {
+            while(c.moveToNext()) {
+                Models.Transaction tx=new Models.Transaction();
+                tx.id=c.getLong(0);tx.type=c.getString(1);tx.amountMinor=c.getLong(2);
+                tx.currency=c.getString(3);tx.accountId=c.getLong(4);
+                tx.destinationAccountId=c.isNull(5)?null:c.getLong(5);
+                tx.accountName=c.getString(6);
+                tx.destinationName=c.isNull(7)?null:c.getString(7);
+                tx.categoryName=c.isNull(8)?null:c.getString(8);
+                tx.categoryEmoji=c.isNull(9)?null:c.getString(9);
+                tx.note=c.getString(10);
+                tx.rawText=c.isNull(11)?null:c.getString(11);
+                tx.needsReview=c.getInt(12)==1;tx.createdAt=c.getLong(13);
+                tx.hasSplits=c.getInt(14)==1;tx.affectsBalance=c.getInt(15)==1;
+                populateSpecial(tx);
+                result.add(tx);
+            }
+        }
+        return result;
+    }
+
     public List<Models.Transaction> getExpenseTransactions(String currency, long startInclusive, long endExclusive) {
         List<Models.Transaction> result = new ArrayList<>();
         String sql = "SELECT t.id,t.type,t.amount_minor,t.currency,t.account_id,t.destination_account_id,a.name,d.name,c.name,c.emoji,t.note,t.raw_text,t.needs_review,t.created_at," +
