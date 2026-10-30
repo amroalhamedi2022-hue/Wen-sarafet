@@ -1188,10 +1188,15 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             if (!FinanceRules.EXPENSE.equals(newType) && !FinanceRules.INCOME.equals(newType) && !FinanceRules.TRANSFER.equals(newType))
                 throw new IllegalArgumentException("نوع العملية غير صحيح");
             Models.Account source = getAccount(sourceId);
-            if (source == null || !currency.equals(source.currency)) throw new IllegalArgumentException("الحساب المصدر غير صالح");
+            if (source == null || !currency.equals(source.currency) ||
+                    (sourceId != oldSourceId && !isActiveAccount(writable, sourceId)))
+                throw new IllegalArgumentException("الحساب المصدر غير صالح أو غير نشط");
             Models.Account destination = destinationId == null ? null : getAccount(destinationId);
             if (FinanceRules.TRANSFER.equals(newType)) {
-                if (destination == null || source.id == destination.id) throw new IllegalArgumentException("اختر حسابين مختلفين");
+                if (destination == null || source.id == destination.id ||
+                        (destinationId != null && !destinationId.equals(oldDestinationId)
+                                && !isActiveAccount(writable, destinationId)))
+                    throw new IllegalArgumentException("اختر حسابين نشطين ومختلفين");
                 if (!currency.equals(destination.currency)) throw new IllegalArgumentException("الحسابان يجب أن يكونا بعملة " + currency);
                 categoryId = null;
                 splits = new ArrayList<>();
@@ -1200,12 +1205,19 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 if (splits != null && !splits.isEmpty()) {
                     if (!FinanceRules.EXPENSE.equals(newType)) throw new IllegalArgumentException("التقسيم متاح للمصروف فقط");
                     SplitDebtRules.checkParts(amount, splits);
-                    for (Models.SplitInput split : splits) if (split.specialKind != null) {
-                        validateDebtDirection(split.debtDirection);
-                        requireDebtPerson(split.debtPersonId);
+                    for (Models.SplitInput split : splits) {
+                        if (split.specialKind == null)
+                            requireCategoryForType(writable, split.categoryId, newType);
+                        else {
+                            validateDebtDirection(split.debtDirection);
+                            requireDebtPerson(split.debtPersonId);
+                        }
                     }
                     categoryId = null;
-                } else if (categoryId == null) throw new IllegalArgumentException("اختر تصنيف العملية");
+                } else {
+                    if (categoryId == null) throw new IllegalArgumentException("اختر تصنيف العملية");
+                    requireCategoryForType(writable, categoryId, newType);
+                }
             }
 
             try(Cursor fx=writable.rawQuery("SELECT destination_amount_minor FROM transactions WHERE id=?",
