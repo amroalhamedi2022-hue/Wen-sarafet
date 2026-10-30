@@ -2638,18 +2638,62 @@ public final class MainActivity extends Activity {
                 }).show();
     }
     private void showCategoryIconPicker(String kind){
-        List<Models.Category> categories=db.getCategories(kind);String[] labels=new String[categories.size()];
+        List<Models.Category> categories=db.getCategories(kind);
+        if(categories.isEmpty()){Toast.makeText(this,"لا توجد تصنيفات متاحة",Toast.LENGTH_SHORT).show();return;}
+        String[] labels=new String[categories.size()];
         for(int i=0;i<labels.length;i++)labels[i]=categories.get(i).displayName();
         new AlertDialog.Builder(this).setTitle("اختر التصنيف الذي تريد تغيير رمزه")
                 .setItems(labels,(dialog,which)->{
                     Models.Category chosen=categories.get(which);
-                    final String[] choices={"🚕","🛍️","🛒","🍽️","💊","📚","💼","💰","🏠","🚗","🎁","📱","✨","🏷️"};
-                    new AlertDialog.Builder(this).setTitle("رمز عصري لـ "+chosen.name)
+                    final String[] choices={
+                            "🚕","🚌","🚗","⛽","🛍️","🛒","🍽️","🥗","☕","🍞",
+                            "💊","🩺","📚","🎓","💼","💰","🏠","🧾","💡","📱",
+                            "🎁","🎮","🧸","👕","🧼","💳","🏦","🤝","🤲","✈️",
+                            "🐾","🌱","✨","🏷️","📦","🪙","💸","🔧","🎨",
+                            "✏️ رمز مخصص"
+                    };
+                    new AlertDialog.Builder(this).setTitle("اختر رمزًا لـ "+chosen.name)
                             .setItems(choices,(d,index)->{
-                                try{db.setCategoryIcon(chosen.id,choices[index]);Toast.makeText(this,"تم تغيير الرمز",Toast.LENGTH_SHORT).show();showCategoryManagementForKind(kind);}
-                                catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}
+                                if(index==choices.length-1){
+                                    showCustomCategoryIconDialog(chosen,kind);
+                                    return;
+                                }
+                                try{
+                                    db.setCategoryIcon(chosen.id,choices[index]);
+                                    Toast.makeText(this,"تم تغيير الرمز",Toast.LENGTH_SHORT).show();
+                                    showCategoryManagementForKind(kind);
+                                }catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}
                             }).setNegativeButton("إلغاء",null).show();
                 }).setNegativeButton("إلغاء",null).show();
+    }
+
+    private void showCustomCategoryIconDialog(Models.Category chosen,String kind){
+        EditText iconInput=input("أدخل رمزًا تعبيريًا مثل 🦋 أو 🪙");
+        iconInput.setSingleLine(true);
+        iconInput.setText(chosen.emoji==null?"":chosen.emoji);
+        iconInput.setSelectAllOnFocus(true);
+        LinearLayout form=Ui.column(this);
+        form.setPadding(Ui.dp(this,18),Ui.dp(this,12),Ui.dp(this,18),Ui.dp(this,12));
+        form.addView(iconInput,fieldParams());
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تخصيص رمز "+chosen.name)
+                .setView(form).setNegativeButton("إلغاء",null)
+                .setPositiveButton("حفظ الرمز",null).create();
+        dialog.setOnShowListener(ignored->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+            String symbol=iconInput.getText().toString().trim();
+            if(symbol.isEmpty() || symbol.codePointCount(0,symbol.length())>8){
+                iconInput.setError("اختر رمزًا من 1 إلى 8 أحرف Unicode");
+                return;
+            }
+            try{
+                db.setCategoryIcon(chosen.id,symbol);
+                dialog.dismiss();
+                Toast.makeText(this,"تم حفظ الرمز المخصص",Toast.LENGTH_SHORT).show();
+                showCategoryManagementForKind(kind);
+            }catch(Exception error){
+                iconInput.setError(error.getMessage()==null?"تعذر حفظ الرمز":error.getMessage());
+            }
+        }));
+        dialog.show();
     }
 
     private void showAddCategoryDialog(String kind, Runnable afterSave) {
