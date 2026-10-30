@@ -308,7 +308,8 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 if(id==null)continue;
                 try(Cursor c=writable.rawQuery("SELECT name,exclude_from_expense FROM categories WHERE id=? AND archived=0",new String[]{String.valueOf(id)})) {
                     if(!c.moveToFirst())continue;
-                    if(c.getInt(1)!=0)throw new IllegalArgumentException("التصنيف المحمي لا يمكن حذفه: "+c.getString(0));
+                    if(c.getInt(1)!=0 || CategoryNamingRules.RECEIVED_TRANSFER.equals(c.getString(0)))
+                        throw new IllegalArgumentException("التصنيف المحمي لا يمكن حذفه: "+c.getString(0));
                 }
                 long used=0;
                 try(Cursor c=writable.rawQuery("SELECT (SELECT COUNT(*) FROM transactions WHERE category_id=?) + " +
@@ -737,15 +738,66 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         }
     }
 
-    public long addCustomCategory(String name, String kind, String emoji) {
-        SQLiteDatabase db = getWritableDatabase();
-        int position = 100;
-        try (Cursor c = db.rawQuery("SELECT COALESCE(MAX(position),0)+1 FROM categories WHERE kind=?", new String[]{kind})) {
-            if (c.moveToFirst()) position = c.getInt(0);
+    /** Names remain unique even across archived categories, whose history is preserved. */
+    private static void requireUniqueCategoryName(SQLiteDatabase db, String name,
+                                                   String kind, long excludedId) {
+        try (Cursor existing=db.rawQuery(
+                "SELECT 1 FROM categories WHERE kind=? AND name=? COLLATE NOCASE AND id!=? LIMIT 1",
+                new String[]{kind,name,String.valueOf(excludedId)})) {
+            if(existing.moveToFirst())
+                throw new IllegalArgumentException("يوجد تصنيف آخر بهذا الاسم، اختر اسمًا مختلفًا");
         }
-        ContentValues cv = new ContentValues();
-        cv.put("name", name.trim()); cv.put("kind", kind); cv.put("emoji", emoji == null || emoji.trim().isEmpty() ? "🏷️" : emoji.trim()); cv.put("position", position); cv.put("exclude_from_expense", 0);
-        return db.insertOrThrow("categories", null, cv);
+    }
+
+    public long addCustomCategory(String name, String kind, String emoji) {
+        String cleanName=CategoryNamingRules.validateNewCategory(name,kind);
+        String cleanEmoji=emoji==null||emoji.trim().isEmpty()?"🏷️":emoji.trim();
+        if(cleanEmoji.codePointCount(0,cleanEmoji.length())>8)
+            throw new IllegalArgumentException("الرمز طويل جدًا");
+        SQLiteDatabase writable=getWritableDatabase();
+        writable.beginTransaction();
+        try {
+            requireUniqueCategoryName(writable,cleanName,kind,-1L);
+            int position=100;
+            try (Cursor c=writable.rawQuery(
+                    "SELECT COALESCE(MAX(position),0)+1 FROM categories WHERE kind=?",
+                    new String[]{kind})) {
+                if(c.moveToFirst())position=c.getInt(0);
+            }
+            ContentValues cv=new ContentValues();
+            cv.put("name",cleanName);cv.put("kind",kind);cv.put("emoji",cleanEmoji);
+            cv.put("position",position);cv.put("exclude_from_expense",0);
+            long id=writable.insertOrThrow("categories",null,cv);
+            writable.setTransactionSuccessful();
+            return id;
+        } finally { writable.endTransaction(); }
+    }
+
+    public void renameCategory(long categoryId, String newName) {
+        String clean=CategoryNamingRules.cleanName(newName);
+        SQLiteDatabase writable=getWritableDatabase();
+        writable.beginTransaction();
+        try {
+            String oldName,kind;
+            boolean excluded;
+            try(Cursor c=writable.rawQuery(
+                    "SELECT name,kind,exclude_from_expense FROM categories WHERE id=? AND archived=0",
+                    new String[]{String.valueOf(categoryId)})) {
+                if(!c.moveToFirst())throw new IllegalArgumentException("التصنيف غير موجود أو مؤرشف");
+                oldName=c.getString(0);kind=c.getString(1);excluded=c.getInt(2)!=0;
+            }
+            if(oldName.equals(clean)) { writable.setTransactionSuccessful(); return; }
+            CategoryNamingRules.validateRename(oldName,kind,excluded,clean);
+            requireUniqueCategoryName(writable,clean,kind,categoryId);
+            ContentValues updated=new ContentValues();
+            updated.put("name",clean);
+            if(writable.update("categories",updated,"id=? AND archived=0",
+                    new String[]{String.valueOf(categoryId)})!=1)
+                throw new IllegalStateException("تعذّر تغيير اسم التصنيف");
+            // Existing category audit trigger records the change. Transactions retain their
+            // category ID and amount, so balances, debts and old historical rows are untouched.
+            writable.setTransactionSuccessful();
+        } finally { writable.endTransaction(); }
     }
 
     public Long getAccountBalance(String name, String currency) {
