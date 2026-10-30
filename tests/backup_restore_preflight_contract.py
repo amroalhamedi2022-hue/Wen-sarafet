@@ -18,7 +18,7 @@ assert "static final int DB_VERSION = 13" in HELPER
 assert "validateSqlite(temp)" in RESTORE
 assert RESTORE.index("validateSqlite(temp)") < RESTORE.index("target.renameTo(old)")
 assert RESTORE.index("checkpointLiveDatabase(target)") < RESTORE.index("target.renameTo(old)")
-assert "wen_sarafet.pre_restore.\" + System.currentTimeMillis()" in RESTORE
+assert "BackupRestoreStaging.newRollbackDestination(target)" in RESTORE
 assert "old.delete();" not in RESTORE.split("target.renameTo(old)", 1)[0]
 assert "PRAGMA wal_checkpoint(TRUNCATE)" in SOURCE
 assert "checkpoint.getInt(0) != 0" in SOURCE
@@ -28,6 +28,14 @@ assert "FinanceDbHelper.DB_VERSION" in SOURCE
 assert "SQLiteDatabase.OPEN_READONLY" in SOURCE
 assert "name IN ('accounts','categories','transactions','transaction_splits')" in SOURCE
 assert "try (FinanceDbHelper check = new FinanceDbHelper(context))" in RESTORE
+# A timestamp-named staging file could collide and let one restore overwrite
+# another's plaintext or rollback copy; a backup could race the replacement.
+assert "public static synchronized void create(" in SOURCE
+assert "public static synchronized void restore(" in SOURCE
+assert "BackupRestoreStaging.createTemporaryDatabase(context.getCacheDir())" in RESTORE
+assert "System.currentTimeMillis()" not in RESTORE
+assert "if (foundDatabase) throw new IllegalArgumentException" in RESTORE
+assert "if (!foundDatabase)" in RESTORE
 # Regression: a fixed snapshot filename allowed simultaneous backups to overwrite
 # each other, and malformed/absent settings could silently wipe preferences.
 assert 'File.createTempFile("wen-backup-", ".db", context.getCacheDir())' in SOURCE
