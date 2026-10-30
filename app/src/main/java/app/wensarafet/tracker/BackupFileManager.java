@@ -13,29 +13,35 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 public final class BackupFileManager {
-    private static final String[] PREF_FILES = {"appearance", "daily_reminder", "monthly_budgets", "transfer_names", "notification_preferences"};
+    private static final String[] PREF_FILES = BackupSettingsCodec.PREF_FILES;
 
     private BackupFileManager() {}
 
     public static void create(Context context, OutputStream destination, char[] password) throws Exception {
         File database = context.getDatabasePath("wen_sarafet.db");
         if (!database.isFile()) throw new IllegalStateException("قاعدة البيانات غير موجودة");
-        File snapshot = new File(context.getCacheDir(), "backup-snapshot.db");
-        snapshot.delete();
-        SQLiteDatabase live = SQLiteDatabase.openDatabase(database.getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
+        // A fixed cache filename lets concurrent manual/Drive backups delete or
+        // overwrite one another. Reserve a unique name, then remove the empty
+        // placeholder because SQLite VACUUM INTO requires a nonexistent target.
+        File snapshot = File.createTempFile("wen-backup-", ".db", context.getCacheDir());
         try {
-            live.rawQuery("PRAGMA wal_checkpoint(FULL)", null).close();
-            live.execSQL("VACUUM INTO " + DatabaseUtils.sqlEscapeString(snapshot.getAbsolutePath()));
-        } finally { live.close(); }
-        try (ZipOutputStream zip = new ZipOutputStream(BackupCrypto.encryptingStream(destination, password))) {
+            if (!snapshot.delete()) throw new IllegalStateException("تعذر تجهيز ملف النسخة المؤقت");
+            SQLiteDatabase live = SQLiteDatabase.openDatabase(database.getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
+            try {
+                live.rawQuery("PRAGMA wal_checkpoint(FULL)", null).close();
+                live.execSQL("VACUUM INTO " + DatabaseUtils.sqlEscapeString(snapshot.getAbsolutePath()));
+            } finally { live.close(); }
+            try (ZipOutputStream zip = new ZipOutputStream(BackupCrypto.encryptingStream(destination, password))) {
             zip.putNextEntry(new ZipEntry("database.sqlite"));
             try (FileInputStream databaseInput = new FileInputStream(snapshot)) { copy(databaseInput, zip); }
             zip.closeEntry();
@@ -43,13 +49,14 @@ public final class BackupFileManager {
             Properties properties = collectPreferences(context);
             properties.store(zip, "Wen Sarafet backup settings");
             zip.closeEntry(); zip.finish();
+            }
         } finally { snapshot.delete(); }
     }
 
     public static void restore(Context context, InputStream source, char[] password) throws Exception {
         ZipInputStream zip = new ZipInputStream(BackupCrypto.decryptingStream(source, password));
         File temp = new File(context.getCacheDir(), "restore-" + System.currentTimeMillis() + ".db");
-        Properties properties = new Properties(); boolean foundDatabase = false;
+        Properties properties = new Properties(); boolean foundDatabase = false; boolean foundSettings = false;
         try (ZipInputStream inputZip = zip) {
             ZipEntry entry;
             while ((entry = inputZip.getNextEntry()) != null) {
@@ -58,7 +65,9 @@ public final class BackupFileManager {
                     try { copy(inputZip, databaseOutput); } finally { databaseOutput.close(); }
                     foundDatabase = true;
                 } else if ("settings.properties".equals(entry.getName())) {
+                    if (foundSettings) throw new IllegalArgumentException("إعدادات مكررة في النسخة");
                     properties.load(inputZip);
+                    foundSettings = true;
                 }
                 inputZip.closeEntry();
             }
@@ -70,6 +79,13 @@ public final class BackupFileManager {
         // Validate the decrypted snapshot before touching the currently installed database.
         try { validateSqlite(temp); }
         catch (RuntimeException error) { temp.delete(); throw error; }
+        // A legacy archive without settings must not erase the user's current
+        // preferences. Decode malformed values before touching the live ledger.
+        Map<String, Map<String, Object>> decodedSettings = null;
+        if (foundSettings) {
+            try { decodedSettings = BackupSettingsCodec.decode(properties); }
+            catch (RuntimeException error) { temp.delete(); throw error; }
+        }
         File target = context.getDatabasePath("wen_sarafet.db");
         boolean hadOldDatabase = target.exists();
         // A previous interrupted restore may have left a valuable rollback copy.
@@ -88,7 +104,7 @@ public final class BackupFileManager {
             }
             new File(target.getPath() + "-wal").delete(); new File(target.getPath() + "-shm").delete(); new File(target.getPath() + "-journal").delete();
             try (FinanceDbHelper check = new FinanceDbHelper(context)) { check.getAccounts(); }
-            restorePreferences(context, properties);
+            restorePreferences(context, decodedSettings);
             old.delete();
         } catch (Exception error) {
             // A failed upgrade/open may have created WAL sidecars for the replacement.
@@ -118,23 +134,52 @@ public final class BackupFileManager {
         return result;
     }
 
-    private static void restorePreferences(Context context, Properties properties) {
-        for (String file : PREF_FILES) context.getSharedPreferences(file, Context.MODE_PRIVATE).edit().clear().apply();
-        for (String joined : properties.stringPropertyNames()) {
-            int split = joined.indexOf('|'); if (split <= 0) continue;
-            String file = joined.substring(0, split), key = joined.substring(split + 1), value = properties.getProperty(joined);
-            if (!Arrays.asList(PREF_FILES).contains(file) || value == null || value.length() < 2) continue;
-            SharedPreferences.Editor editor = context.getSharedPreferences(file, Context.MODE_PRIVATE).edit();
-            String raw = value.substring(2);
-            try {
-                if (value.startsWith("B:")) editor.putBoolean(key, Boolean.parseBoolean(raw));
-                else if (value.startsWith("I:")) editor.putInt(key, Integer.parseInt(raw));
-                else if (value.startsWith("L:")) editor.putLong(key, Long.parseLong(raw));
-                else if (value.startsWith("F:")) editor.putFloat(key, Float.parseFloat(raw));
-                else if (value.startsWith("S:")) editor.putString(key, new String(Base64.decode(raw, Base64.NO_WRAP), StandardCharsets.UTF_8));
-                editor.apply();
-            } catch (Exception ignored) {}
+    private static void restorePreferences(Context context,
+            Map<String, Map<String, Object>> decodedSettings) {
+        if (decodedSettings == null) return;
+        // SharedPreferences.apply() is asynchronous and silently ignores disk
+        // failures. Commit each file and keep originals for best-effort rollback.
+        Map<String, Map<String, ?>> originals = new LinkedHashMap<>();
+        for (String file : PREF_FILES)
+            originals.put(file, new HashMap<>(context.getSharedPreferences(
+                    file, Context.MODE_PRIVATE).getAll()));
+        try {
+            for (String file : PREF_FILES) {
+                SharedPreferences.Editor editor = context.getSharedPreferences(
+                        file, Context.MODE_PRIVATE).edit().clear();
+                for (Map.Entry<String, Object> entry : decodedSettings.get(file).entrySet())
+                    putPreference(editor, entry.getKey(), entry.getValue());
+                if (!editor.commit())
+                    throw new IllegalStateException("تعذر حفظ إعدادات النسخة: " + file);
+            }
+        } catch (RuntimeException failure) {
+            // If any preference file fails, restore all pre-restore values before
+            // the caller rolls back the database. Never report partial success.
+            for (String file : PREF_FILES) {
+                try {
+                    SharedPreferences.Editor editor = context.getSharedPreferences(
+                            file, Context.MODE_PRIVATE).edit().clear();
+                    for (Map.Entry<String, ?> entry : originals.get(file).entrySet())
+                        putPreference(editor, entry.getKey(), entry.getValue());
+                    if (!editor.commit())
+                        throw new IllegalStateException("تعذر إرجاع الإعدادات: " + file);
+                } catch (RuntimeException rollbackError) {
+                    failure.addSuppressed(rollbackError);
+                }
+            }
+            throw failure;
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void putPreference(SharedPreferences.Editor editor, String key, Object value) {
+        if (value instanceof Boolean) editor.putBoolean(key, (Boolean) value);
+        else if (value instanceof Integer) editor.putInt(key, (Integer) value);
+        else if (value instanceof Long) editor.putLong(key, (Long) value);
+        else if (value instanceof Float) editor.putFloat(key, (Float) value);
+        else if (value instanceof String) editor.putString(key, (String) value);
+        else if (value instanceof Set<?>) editor.putStringSet(key, (Set<String>) value);
+        else throw new IllegalArgumentException("نوع إعدادات غير مدعوم: " + key);
     }
 
     private static void validateSqlite(File file) {
