@@ -782,15 +782,25 @@ public final class MainActivity extends Activity {
 
         LinearLayout labels = Ui.column(this);
         labels.setPadding(Ui.dp(this, 12), 0, Ui.dp(this, 12), 0);
-        labels.addView(Ui.text(this, account.name, 15, Ui.TEXT, true));
+        TextView accountName=Ui.text(this, account.name, 15, Ui.TEXT, true);
+        accountName.setSingleLine(true);
+        accountName.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        labels.addView(accountName);
         labels.addView(Ui.text(this, account.currency, 12, Ui.MUTED, false));
-        card.addView(labels, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1));
+        boolean compactAccountCard=getResources().getDisplayMetrics().widthPixels < Ui.dp(this,390);
         TextView balance = Ui.text(this, Money.format(account.balanceMinor, account.currency), 15, Ui.TEXT, true);
-        balance.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        card.addView(balance, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(this, 48)));
+        balance.setGravity((compactAccountCard?Gravity.START:Gravity.END) | Gravity.CENTER_VERTICAL);
+        if(compactAccountCard){
+            // Put the full balance on its own line instead of squeezing both labels on narrow displays.
+            labels.addView(balance);
+            card.addView(labels, new LinearLayout.LayoutParams(0, Ui.dp(this, 72), 1));
+        }else{
+            card.addView(labels, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1));
+            card.addView(balance, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(this, 48)));
+        }
         if (!Ui.iconsOnRight(this)) card.addView(icon, new LinearLayout.LayoutParams(iconSize, iconSize));
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(Ui.dp(this, 72), iconSize + Ui.dp(this, 26)));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(Ui.dp(this, compactAccountCard?98:72), iconSize + Ui.dp(this, 26)));
         params.setMargins(Ui.dp(this, 16), Ui.dp(this, 5), Ui.dp(this, 16), Ui.dp(this, 5));
         card.setLayoutParams(params);
         card.setOnClickListener(v -> showAccountDetails(account));
@@ -887,17 +897,19 @@ public final class MainActivity extends Activity {
         info.addView(transactionSubtitle);
         String date = new SimpleDateFormat("dd/MM/yyyy  hh:mm a", new Locale("ar")).format(new Date(tx.createdAt));
         info.addView(Ui.text(this, date, 10, Ui.MUTED, false));
-        card.addView(info, new LinearLayout.LayoutParams(0, Ui.dp(this, 58), 1));
+        boolean compactTransactionCard=getResources().getDisplayMetrics().widthPixels < Ui.dp(this,390);
 
         String prefix = FinanceRules.SPECIAL_DEBT.equals(tx.specialKind) ? "• " : FinanceRules.EXPENSE.equals(tx.type) ? "−" : FinanceRules.INCOME.equals(tx.type) ? "+" : "↔ ";
         TextView amount = Ui.text(this, prefix + Money.format(tx.amountMinor, tx.currency), 14, amountColor, true);
-        amount.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        card.addView(amount, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(this, 58)));
+        amount.setGravity((compactTransactionCard?Gravity.START:Gravity.END) | Gravity.CENTER_VERTICAL);
+        if(compactTransactionCard) info.addView(amount);
+        card.addView(info, new LinearLayout.LayoutParams(0, Ui.dp(this, compactTransactionCard?80:58), 1));
+        if(!compactTransactionCard) card.addView(amount, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(this, 58)));
         if (!Ui.iconsOnRight(this)) card.addView(icon, new LinearLayout.LayoutParams(transactionIconSize, transactionIconSize));
         card.setOnClickListener(v -> showTransactionDetails(tx));
         Ui.pressAnimation(card);
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(Ui.dp(this, 82), transactionIconSize + Ui.dp(this, 24)));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(Ui.dp(this, compactTransactionCard?106:82), transactionIconSize + Ui.dp(this, 24)));
         params.setMargins(Ui.dp(this, 16), Ui.dp(this, 5), Ui.dp(this, 16), Ui.dp(this, 5));
         card.setLayoutParams(params);
         return card;
