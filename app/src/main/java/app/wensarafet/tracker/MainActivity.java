@@ -2697,9 +2697,9 @@ public final class MainActivity extends Activity {
         if(categories.isEmpty()){Toast.makeText(this,"لا توجد تصنيفات",Toast.LENGTH_SHORT).show();return;}
         String[] labels=new String[categories.size()];boolean[] checked=new boolean[categories.size()];
         for(int i=0;i<labels.length;i++)labels[i]=categories.get(i).displayName();
-        new AlertDialog.Builder(this).setTitle("حدد التصنيفات للحذف أو اضغط تغيير الرمز")
+        new AlertDialog.Builder(this).setTitle("اختر التصنيفات للحذف أو إدارة الاسم والرمز")
                 .setMultiChoiceItems(labels,checked,(dialog,which,isChecked)->checked[which]=isChecked)
-                .setNeutralButton("تغيير رمز",(dialog,unused)->showCategoryIconPicker(kind))
+                .setNeutralButton("تعديل اسم / رمز",(dialog,unused)->showCategoryIconPicker(kind))
                 .setNegativeButton("إلغاء",null).setPositiveButton("حذف المحدد",(dialog,unused)->{
                     List<Long> ids=new ArrayList<>();for(int i=0;i<checked.length;i++)if(checked[i])ids.add(categories.get(i).id);
                     if(ids.isEmpty())return;
@@ -2716,18 +2716,23 @@ public final class MainActivity extends Activity {
         if(categories.isEmpty()){Toast.makeText(this,"لا توجد تصنيفات متاحة",Toast.LENGTH_SHORT).show();return;}
         String[] labels=new String[categories.size()];
         for(int i=0;i<labels.length;i++)labels[i]=categories.get(i).displayName();
-        new AlertDialog.Builder(this).setTitle("اختر التصنيف الذي تريد تغيير رمزه")
+        new AlertDialog.Builder(this).setTitle("اختر التصنيف لتعديل اسمه أو رمزه")
                 .setItems(labels,(dialog,which)->{
                     Models.Category chosen=categories.get(which);
                     final String[] choices={
+                            "✏️ تغيير اسم التصنيف",
                             "🚕","🚌","🚗","⛽","🛍️","🛒","🍽️","🥗","☕","🍞",
                             "💊","🩺","📚","🎓","💼","💰","🏠","🧾","💡","📱",
                             "🎁","🎮","🧸","👕","🧼","💳","🏦","🤝","🤲","✈️",
                             "🐾","🌱","✨","🏷️","📦","🪙","💸","🔧","🎨",
                             "✏️ رمز مخصص"
                     };
-                    new AlertDialog.Builder(this).setTitle("اختر رمزًا لـ "+chosen.name)
+                    new AlertDialog.Builder(this).setTitle("ماذا تريد تغييرًا في "+chosen.name+"؟")
                             .setItems(choices,(d,index)->{
+                                if(index==0){
+                                    showRenameCategoryDialog(chosen,kind);
+                                    return;
+                                }
                                 if(index==choices.length-1){
                                     showCustomCategoryIconDialog(chosen,kind);
                                     return;
@@ -2739,6 +2744,34 @@ public final class MainActivity extends Activity {
                                 }catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}
                             }).setNegativeButton("إلغاء",null).show();
                 }).setNegativeButton("إلغاء",null).show();
+    }
+
+    private void showRenameCategoryDialog(Models.Category chosen,String kind) {
+        EditText nameInput=input("الاسم الجديد للتصنيف");
+        nameInput.setSingleLine(true);
+        nameInput.setText(chosen.name);
+        nameInput.setSelectAllOnFocus(true);
+        LinearLayout form=Ui.column(this);
+        form.setPadding(Ui.dp(this,18),Ui.dp(this,8),Ui.dp(this,18),Ui.dp(this,8));
+        form.addView(Ui.text(this,
+                "سيظهر الاسم الجديد على عملياتك السابقة أيضًا، دون تغيير أي مبلغ أو رصيد.",
+                12,Ui.MUTED,false));
+        form.addView(nameInput,fieldParams());
+        AlertDialog dialog=new AlertDialog.Builder(this)
+                .setTitle("إعادة تسمية "+chosen.name)
+                .setView(form).setNegativeButton("إلغاء",null)
+                .setPositiveButton("حفظ الاسم",null).create();
+        dialog.setOnShowListener(ignored->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+            try {
+                db.renameCategory(chosen.id,nameInput.getText().toString());
+                dialog.dismiss();
+                Toast.makeText(this,"تم تحديث اسم التصنيف",Toast.LENGTH_SHORT).show();
+                showCategoryManagementForKind(kind);
+            } catch(Exception error) {
+                nameInput.setError(error.getMessage()==null?"تعذّر حفظ الاسم":error.getMessage());
+            }
+        }));
+        dialog.show();
     }
 
     private void showCustomCategoryIconDialog(Models.Category chosen,String kind){
@@ -2778,8 +2811,13 @@ public final class MainActivity extends Activity {
                 .setView(form).setNegativeButton("إلغاء", null).setPositiveButton("إضافة", null).create();
         dialog.setOnShowListener(x -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             if (name.getText().toString().trim().isEmpty()) { name.setError("اكتب اسم التصنيف"); return; }
-            db.addCustomCategory(name.getText().toString(), kind, emoji.getText().toString()); dialog.dismiss(); afterSave.run();
-            Toast.makeText(this, "تمت إضافة التصنيف", Toast.LENGTH_SHORT).show();
+            try {
+                db.addCustomCategory(name.getText().toString(), kind, emoji.getText().toString());
+                dialog.dismiss(); afterSave.run();
+                Toast.makeText(this, "تمت إضافة التصنيف", Toast.LENGTH_SHORT).show();
+            } catch(Exception error) {
+                name.setError(error.getMessage()==null?"تعذر إضافة التصنيف":error.getMessage());
+            }
         })); dialog.show();
     }
 
