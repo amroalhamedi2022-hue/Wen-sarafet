@@ -1167,6 +1167,20 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         SQLiteDatabase writable = getWritableDatabase();
         writable.beginTransaction();
         try {
+            // The generic category/type editor cannot safely reverse multi-currency
+            // exchange, debt ledger or capture-linked transactions. Route these to
+            // their dedicated flows; never silently orphan the related records.
+            try(Cursor restricted=writable.rawQuery(
+                    "SELECT 1 FROM transactions t WHERE t.id=? AND (" +
+                    "t.destination_amount_minor IS NOT NULL OR t.exchange_rate IS NOT NULL " +
+                    "OR t.special_kind IS NOT NULL OR t.debt_person_id IS NOT NULL " +
+                    "OR t.debt_direction IS NOT NULL " +
+                    "OR EXISTS(SELECT 1 FROM debt_movements d WHERE d.transaction_id=t.id) " +
+                    "OR EXISTS(SELECT 1 FROM capture_inbox i WHERE i.transaction_id=t.id))",
+                    new String[]{String.valueOf(transactionId)})) {
+                if(restricted.moveToFirst())
+                    throw new IllegalArgumentException("العملية مرتبطة بتحويل أو دين أو استيراد؛ استخدم تعديلها المخصص");
+            }
             String oldType; long amount; long oldSourceId; Long oldDestinationId; String currency; boolean affectsBalance; boolean baseAffectsBalance;
             try (Cursor c = writable.rawQuery("SELECT type,amount_minor,account_id,destination_account_id,currency,affects_balance,base_affects_balance FROM transactions WHERE id=?", new String[]{String.valueOf(transactionId)})) {
                 if (!c.moveToFirst()) throw new IllegalArgumentException("العملية غير موجودة");
