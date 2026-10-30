@@ -119,7 +119,7 @@ public final class BackupArchiveVerifierTest {
             for (String name : new String[]{"database.sqlite", "settings.properties", "extra-a.txt", "extra-b.txt"}) {
                 zip.putNextEntry(new ZipEntry(name));
                 zip.write(name.equals("database.sqlite")
-                        ? "SQLite format 3\\u0000".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1)
+                        ? "SQLite format 3\u0000".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1)
                         : new byte[]{1, 2, 3});
                 zip.closeEntry();
             }
