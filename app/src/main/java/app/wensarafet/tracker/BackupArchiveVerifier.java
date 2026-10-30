@@ -25,25 +25,28 @@ final class BackupArchiveVerifier {
         try {
             try (InputStream decrypted = BackupCrypto.decryptingStream(encrypted, password);
                  FileOutputStream output = new FileOutputStream(plain)) {
-                byte[] buffer = new byte[32 * 1024];
-                int read;
-                while ((read = decrypted.read(buffer)) != -1) {
-                    if (read > 0) output.write(buffer, 0, read);
-                }
+                BackupArchiveLimits.copy(decrypted, output, BackupArchiveLimits.MAX_ARCHIVE_BYTES);
                 output.getFD().sync();
             }
             boolean database = false, settings = false;
             try (ZipInputStream zip = new ZipInputStream(new FileInputStream(plain))) {
                 ZipEntry entry;
                 byte[] buffer = new byte[32 * 1024];
+                int entryCount = 0;
                 while ((entry = zip.getNextEntry()) != null) {
+                    if (++entryCount > BackupArchiveLimits.MAX_ENTRIES)
+                        throw new IllegalArgumentException("Too many backup entries");
                     String name = entry.getName();
                     if ("database.sqlite".equals(name)) {
                         if (database) throw new IllegalArgumentException("Duplicate backup database");
                         database = true;
                         byte[] header = new byte[SQLITE_MAGIC.length];
                         int filled = 0, count;
+                        long databaseBytes = 0;
                         while ((count = zip.read(buffer)) != -1) {
+                            if (count > BackupArchiveLimits.MAX_DATABASE_BYTES - databaseBytes)
+                                throw new IllegalArgumentException("Backup database exceeds size limit");
+                            databaseBytes += count;
                             int copied = Math.min(count, header.length - filled);
                             if (copied > 0) {
                                 System.arraycopy(buffer, 0, header, filled, copied);
@@ -56,9 +59,10 @@ final class BackupArchiveVerifier {
                         if ("settings.properties".equals(name)) {
                             if (settings) throw new IllegalArgumentException("Duplicate backup settings");
                             settings = true;
+                            BackupArchiveLimits.copy(zip, null, BackupArchiveLimits.MAX_SETTINGS_BYTES);
+                        } else {
+                            BackupArchiveLimits.copy(zip, null, BackupArchiveLimits.MAX_EXTRA_BYTES);
                         }
-                        // Consume every entry to trigger ZIP CRC validation.
-                        while (zip.read(buffer) != -1) { }
                     }
                     zip.closeEntry();
                 }

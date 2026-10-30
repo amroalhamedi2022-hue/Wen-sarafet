@@ -28,7 +28,9 @@ assert "if (store.find(LATEST_NAME) == null)" in publication
 assert "failure.addSuppressed(rollbackFailure)" in publication
 assert "if (!verified)" in publication
 assert "BackupCrypto.decryptingStream" in verifier
-assert "while ((read = decrypted.read(buffer)) != -1)" in verifier
+assert "BackupArchiveLimits.copy(decrypted, output, BackupArchiveLimits.MAX_ARCHIVE_BYTES)" in verifier
+assert "BackupArchiveLimits.MAX_SETTINGS_BYTES" in verifier
+assert "BackupArchiveLimits.MAX_ENTRIES" in verifier
 assert "zip.closeEntry()" in verifier
 assert "if (!database || !settings)" in verifier
 
