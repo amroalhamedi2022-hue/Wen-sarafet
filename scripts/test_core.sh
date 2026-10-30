@@ -153,3 +153,6 @@ compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/Money.java" \
   "$PROJECT_DIR/tests/MoneyParseSafetyTest.java"
 java -cp "$OUT_DIR" MoneyParseSafetyTest
+
+python3 "$PROJECT_DIR/tests/release_payload_contract.py"
+python3 "$PROJECT_DIR/tests/owner_signing_contract.py"
