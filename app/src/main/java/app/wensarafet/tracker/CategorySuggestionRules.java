@@ -45,7 +45,7 @@ public final class CategorySuggestionRules {
         Map<Long, Integer> amountCount=new HashMap<>();
         int allAmountCount=0;
         for (Example old:history) {
-            if (old == null || old.categoryId <= 0) continue;
+            if (old == null || old.categoryId <= 0 || old.amountMinor <= 0) continue;
             // Amount pattern is account-specific: 2 ILS of transport on cash does not
             // classify every 2 ILS transaction on the bank account as transport.
             boolean sameAccount=old.accountId == accountId;
