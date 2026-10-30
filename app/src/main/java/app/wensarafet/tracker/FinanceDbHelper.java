@@ -532,8 +532,8 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         if (!FinanceRules.EXPENSE.equals(kind) && !FinanceRules.INCOME.equals(kind)) return null;
         List<CategorySuggestionRules.Example> samples = new ArrayList<>();
         String sql="SELECT t.category_id,t.account_id,t.amount_minor,t.note,t.raw_text, " +
-                "EXISTS(SELECT 1 FROM change_history h WHERE h.table_name=\'transactions\' " +
-                "AND h.record_id=t.id AND h.action=\'EDIT\' AND h.undone=0 " +
+                "EXISTS(SELECT 1 FROM change_history h WHERE h.table_name='transactions' " +
+                "AND h.record_id=t.id AND h.action='EDIT' AND h.undone=0 " +
                 "AND h.previous_category_id IS NOT NULL " +
                 "AND h.previous_category_id!=h.current_category_id " +
                 "AND h.current_category_id=t.category_id) corrected " +
