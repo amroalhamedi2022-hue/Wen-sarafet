@@ -16,6 +16,11 @@ finance=(ROOT/"app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java").r
 screen=j.split("private void showCategoryExpenseScreen(",1)[1].split(
     "private View categoryMonthlyBudgetCard(",1)[0]
 assert "content.addView(categoryCheckpointCard(category,currency,startInclusive,endExclusive))" in screen
+assert "activeCheckpoints.get(activeCheckpoints.size()-1)" in screen
+assert '"مصروف منذ آخر نقطة بداية"' in screen
+assert 'long spent=category.amountMinor;' in j
+assert "displayedAmount=categoryCheckpointExpenseTotal(item.categoryId,dashboardCurrency,from,endExclusive)" in j
+assert '"منذ نقطة البداية داخل هذا الشهر • إجمالي الشهر: "' in j
 assert "content.addView(categoryMonthlyBudgetCard(category,currency,startInclusive,endExclusive))" in screen
 assert screen.index("categoryCheckpointCard(category,currency,startInclusive,endExclusive)") < screen.index(
     "categoryMonthlyBudgetCard(category,currency,startInclusive,endExclusive)")
@@ -33,9 +38,7 @@ for text in [
     "new AlertDialog.Builder(this)",
     "الفترات القديمة — حتى تاريخ",
     "لن يتغير أي رصيد أو دين أو استهلاك الميزانية الشهرية",
-    "الدخول",
 ]:
-    if text=="الدخول": continue
     assert text in screen,text
 assert "long spent=category.amountMinor;" in j, "monthly budget must retain original full-month total"
 assert 'getSharedPreferences(PREFS,Context.MODE_PRIVATE)' in store
