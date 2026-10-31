@@ -173,3 +173,10 @@ compile \
   "$PROJECT_DIR/tests/PalestinianMobileNumberTest.java"
 java -cp "$OUT_DIR" PalestinianMobileNumberTest
 python3 "$PROJECT_DIR/tests/widget_contact_picker_contract.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/Money.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/AuditPresentation.java" \
+  "$PROJECT_DIR/tests/AuditPresentationTest.java"
+java -cp "$OUT_DIR" AuditPresentationTest
+python3 "$PROJECT_DIR/tests/audit_ui_and_manual_entry_contract.py"
