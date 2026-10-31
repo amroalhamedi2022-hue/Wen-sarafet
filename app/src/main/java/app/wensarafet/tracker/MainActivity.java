@@ -2594,6 +2594,7 @@ public final class MainActivity extends Activity {
         totalView.setGravity(Gravity.CENTER); totalView.setBackground(Ui.layeredSoftBackground(this, 20));
         LinearLayout.LayoutParams totalParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78));
         totalParams.setMargins(Ui.dp(this, 16), Ui.dp(this, 4), Ui.dp(this, 16), Ui.dp(this, 10)); content.addView(totalView, totalParams);
+        content.addView(categoryCheckpointCard(category,currency,startInclusive,endExclusive));
         content.addView(categoryMonthlyBudgetCard(category,currency,startInclusive,endExclusive));
         content.addView(sectionTitle("تحليل آخر 6 أشهر","هذا التصنيف فقط"));
         Calendar monthCursor=midnight(Calendar.getInstance());
@@ -2616,6 +2617,138 @@ public final class MainActivity extends Activity {
         else for (Models.Transaction tx : transactions) content.addView(transactionCard(tx));
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         setContentView(page); Ui.animateScreen(page); content.post(() -> Ui.animateChildren(content));
+    }
+
+    /**
+     * Checkpoint UI is a view-only segmentation of the existing expense ledger.
+     * Monthly budget and the six-month report use their original date ranges.
+     */
+    private View categoryCheckpointCard(Models.CategoryTotal category,String currency,
+                                        long monthStart,long monthEnd) {
+        List<Long> checkpoints=CategoryCheckpointStore.get(this,category.categoryId,currency);
+        long nowExclusive=System.currentTimeMillis()+1L;
+        long activeStart=checkpoints.isEmpty()?0L:checkpoints.get(checkpoints.size()-1);
+        LinearLayout card=Ui.column(this);
+        card.setPadding(Ui.dp(this,16),Ui.dp(this,14),Ui.dp(this,16),Ui.dp(this,14));
+        card.setBackground(Ui.layeredSoftBackground(this,18));
+        card.addView(Ui.text(this,"📍 نقطة بداية تحليل التصنيف",16,Ui.TEXT,true));
+        card.addView(Ui.text(this,
+                "ابدأ عدّادًا جديدًا لهذا التصنيف دون حذف أو تعديل أي عملية. الميزانية الشهرية تحسب كل المصروفات كما هي، قبل النقطة وبعدها.",
+                12,Ui.MUTED,false));
+        if(!checkpoints.isEmpty()) {
+            long activeTotal=categoryCheckpointExpenseTotal(category.categoryId,currency,
+                    activeStart,nowExclusive);
+            String since=new SimpleDateFormat("dd/MM/yyyy  HH:mm",new Locale("ar"))
+                    .format(new Date(activeStart));
+            card.addView(Ui.text(this,"منذ آخر نقطة بداية: "+since,12,Ui.MUTED,false));
+            card.addView(Ui.text(this,Money.format(activeTotal,currency),23,Ui.INCOME,true));
+        } else {
+            card.addView(Ui.text(this,
+                    "لم تُنشأ نقطة بداية بعد. مصروف الشهر ظاهر أعلى الصفحة، وكل العمليات القديمة محفوظة.",
+                    13,Ui.TEXT,false));
+        }
+        LinearLayout actions=Ui.row(this);
+        Button create=miniButton(checkpoints.isEmpty()?"＋ بدء تحليل جديد":"＋ نقطة بداية جديدة");
+        create.setOnClickListener(v->new AlertDialog.Builder(this)
+                .setTitle("تجديد تحليل "+category.name+"؟")
+                .setMessage("سيبدأ عداد التحليل الجديد من الصفر الآن. ستبقى كل العمليات القديمة في الأرشيف، ولن يتغير أي رصيد أو دين أو استهلاك الميزانية الشهرية.")
+                .setNegativeButton("إلغاء",null)
+                .setPositiveButton("إنشاء نقطة البداية",(dialog,which)->{
+                    try {
+                        CategoryCheckpointStore.create(this,category.categoryId,currency);
+                        Toast.makeText(this,"بدأ تحليل جديد، والعمليات السابقة محفوظة",Toast.LENGTH_LONG).show();
+                        showCategoryExpenseScreen(category,currency,monthStart,monthEnd);
+                    } catch(Exception error) {
+                        Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
+                    }
+                }).show());
+        actions.addView(create,new LinearLayout.LayoutParams(0,Ui.dp(this,46),1));
+        if(!checkpoints.isEmpty()) {
+            Button undo=miniButton("↶ إلغاء آخر نقطة");
+            undo.setOnClickListener(v->new AlertDialog.Builder(this)
+                    .setTitle("إلغاء آخر نقطة بداية؟")
+                    .setMessage("ستُدمج الفترة الحالية مع الفترة السابقة في التحليل فقط. لن تتغير أي عملية مالية أو ميزانية.")
+                    .setNegativeButton("إلغاء",null)
+                    .setPositiveButton("إلغاء النقطة",(dialog,which)->{
+                        try {
+                            CategoryCheckpointStore.undoLast(this,category.categoryId,currency);
+                            showCategoryExpenseScreen(category,currency,monthStart,monthEnd);
+                        } catch(Exception error) {
+                            Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
+                        }
+                    }).show());
+            actions.addView(undo,new LinearLayout.LayoutParams(0,Ui.dp(this,46),1));
+        }
+        card.addView(actions,fieldParams());
+        if(!checkpoints.isEmpty()) {
+            card.addView(Ui.text(this,"الفترات القديمة — حتى تاريخ",14,Ui.TEXT,true));
+            SimpleDateFormat date=new SimpleDateFormat("dd/MM/yyyy  HH:mm",new Locale("ar"));
+            for(int i=checkpoints.size()-1;i>=0;i--) {
+                final long from=CategoryCheckpointRules.periodStart(checkpoints,i);
+                final long until=CategoryCheckpointRules.periodEnd(checkpoints,i,nowExclusive);
+                final String caption="حتى "+date.format(new Date(until));
+                long oldTotal=categoryCheckpointExpenseTotal(category.categoryId,currency,from,until);
+                LinearLayout period=Ui.column(this);
+                period.setPadding(Ui.dp(this,10),Ui.dp(this,9),Ui.dp(this,10),Ui.dp(this,9));
+                period.setBackground(Ui.rounded(Ui.SURFACE,12,this));
+                period.addView(Ui.text(this,caption+"   •   "+Money.format(oldTotal,currency),
+                        13,Ui.TEXT,true));
+                period.addView(Ui.text(this,
+                        (from==0L?"من أول عملية":"من "+date.format(new Date(from)))+
+                                "  •  اضغط لاستعراض العمليات القديمة",
+                        11,Ui.MUTED,false));
+                period.setOnClickListener(v->showCategoryCheckpointPeriod(category,currency,
+                        from,until,caption,monthStart,monthEnd));
+                Ui.pressAnimation(period);
+                LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
+                p.setMargins(0,Ui.dp(this,5),0,Ui.dp(this,5));
+                card.addView(period,p);
+            }
+        }
+        LinearLayout.LayoutParams layout=new LinearLayout.LayoutParams(-1,-2);
+        layout.setMargins(Ui.dp(this,16),Ui.dp(this,4),Ui.dp(this,16),Ui.dp(this,14));
+        card.setLayoutParams(layout);
+        return card;
+    }
+
+    private long categoryCheckpointExpenseTotal(long categoryId,String currency,
+                                                 long from,long until) {
+        if(until<=from)return 0L;
+        // Reuses the same split-aware, read-only query as monthly analytics.
+        for(Models.CategoryTotal item:db.getCategoryExpenseTotals(currency,from,until))
+            if(item.categoryId==categoryId)return item.amountMinor;
+        return 0L;
+    }
+
+    private void showCategoryCheckpointPeriod(Models.CategoryTotal category,String currency,
+                                               long from,long until,String title,
+                                               long monthStart,long monthEnd) {
+        addScreenVisible=false;subScreenVisible=true;
+        LinearLayout page=Ui.column(this);
+        page.setBackgroundColor(Ui.BACKGROUND);
+        page.addView(pageHeader("الأرشيف — "+category.name,
+                ()->showCategoryExpenseScreen(category,currency,monthStart,monthEnd)),
+                new LinearLayout.LayoutParams(-1,Ui.dp(this,78)));
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout content=Ui.column(this);
+        content.setPadding(Ui.dp(this,16),Ui.dp(this,10),Ui.dp(this,16),Ui.dp(this,32));
+        content.addView(Ui.text(this,title,16,Ui.TEXT,true));
+        content.addView(Ui.text(this,
+                "محفوظة ضمن سجلّك الأصلي وتدخل في ميزانيات أشهرها. العمليات المقسمة تُعرض كبطاقتها الأصلية.",
+                12,Ui.MUTED,false));
+        content.addView(Ui.text(this,
+                "مجموع هذه الفترة: "+Money.format(
+                        categoryCheckpointExpenseTotal(category.categoryId,currency,from,until),currency),
+                18,Ui.EXPENSE,true));
+        List<Models.Transaction> old=db.getExpenseTransactionsByCategory(currency,
+                category.categoryId,from,until);
+        content.addView(sectionTitle("العمليات القديمة",old.size()+" عمليات"));
+        if(old.isEmpty())content.addView(messageCard("لا توجد عمليات",
+                "لا توجد عمليات لهذا التصنيف ضمن هذه الفترة"));
+        else for(Models.Transaction tx:old)content.addView(transactionCard(tx));
+        scroll.addView(content);
+        page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        setContentView(page);Ui.animateScreen(page);
     }
 
     private View categoryMonthlyBudgetCard(Models.CategoryTotal category,String currency,
