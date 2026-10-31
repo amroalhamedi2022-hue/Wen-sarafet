@@ -14,7 +14,8 @@ final class BackupSettingsCodec {
     static final String[] PREF_FILES = {
             "appearance", "daily_reminder", "monthly_budgets",
             "transfer_names", "notification_preferences",
-            "monthly_category_caps", "manual_entry_category_defaults"
+            "monthly_category_caps", "manual_entry_category_defaults",
+            "category_analysis_checkpoints"
     };
     // Old encrypted archives predate the last two namespaces. They must not
     // wipe the user's newer local preferences when restored. A new archive
@@ -23,7 +24,8 @@ final class BackupSettingsCodec {
 
     static boolean newlyBackedUpNamespace(String file) {
         return "monthly_category_caps".equals(file)
-                || "manual_entry_category_defaults".equals(file);
+                || "manual_entry_category_defaults".equals(file)
+                || "category_analysis_checkpoints".equals(file);
     }
 
     static boolean shouldRestoreNamespace(String file, Map<String, Object> values) {
