@@ -1867,6 +1867,23 @@ public final class MainActivity extends Activity {
         addNotificationSettingRow(card,"تذكير مصاريف اليوم",NotificationPreferences.REMINDER);
         addNotificationSettingRow(card,"تجاوز الميزانية",NotificationPreferences.BUDGET);
         addNotificationSettingRow(card,"مزامنة النسخة الاحتياطية",NotificationPreferences.SYNC);
+        Button originalSounds=actionButton("🎵 تفعيل 5 أصوات هادئة ومميزة",false);
+        originalSounds.setOnClickListener(v->new AlertDialog.Builder(this)
+                .setTitle("أصوات إشعارات وين صرفت")
+                .setMessage("لكل نوع إشعار نغمة قصيرة أصلية خاصة به: مراجعة عملية، حفظ، تذكير، ميزانية ومزامنة. " +
+                        "سيُنشئ Android قنوات جديدة للأصوات التي تختارها؛ قد تحتاج لمراجعة صلاحياتها ومستوى صوتها في إعدادات الإشعارات. " +
+                        "لن تُفعّل الأصوات التي عطّلتها يدويًا تلقائيًا.")
+                .setNegativeButton("إلغاء",null)
+                .setPositiveButton("تطبيق الأصوات",(d,w)->{
+                    try {
+                        NotificationPreferences.useDistinctiveSounds(this);
+                        Toast.makeText(this,"تم إعداد النغمات المميزة للإشعارات الجديدة",Toast.LENGTH_LONG).show();
+                        showSettings();
+                    }catch(Exception error) {
+                        Toast.makeText(this,"تعذّر إعداد الأصوات: "+error.getMessage(),Toast.LENGTH_LONG).show();
+                    }
+                }).show());
+        card.addView(originalSounds,fieldParams());
         card.addView(Ui.text(this,"ملاحظة: Android يحفظ كل إعداد كقناة إشعار مستقلة، ويُطبّق اختيارك على الإشعارات الجديدة.",11,Ui.MUTED,false));return card;
     }
 
@@ -1882,6 +1899,8 @@ public final class MainActivity extends Activity {
     private String notificationSoundLabel(String type) {
         String stored = NotificationPreferences.soundUri(this, type);
         if (stored.isEmpty()) return "اختيار صوت — الافتراضي";
+        if(NotificationSoundProvider.isOurSound(Uri.parse(stored)))
+            return "🔊 الصوت المميز — "+type;
         try {
             Ringtone ringtone = RingtoneManager.getRingtone(this, Uri.parse(stored));
             return "اختيار صوت — " + (ringtone == null ? "مخصص" : ringtone.getTitle(this));
