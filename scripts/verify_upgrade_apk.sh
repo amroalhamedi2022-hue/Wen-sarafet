@@ -2,7 +2,7 @@
 # Local pre-install check only. Never uploads APKs or keystore material.
 set -euo pipefail
 if [[ $# -ne 2 ]]; then
-  echo "Usage: $0 ORIGINAL_1.8.0.apk SIGNED_CANDIDATE_1.8.1.apk" >&2
+  echo "Usage: $0 INSTALLED_1.8.0_OR_1.8.1.apk SIGNED_CANDIDATE_1.8.2.apk" >&2
   exit 2
 fi
 original="$1"
@@ -51,8 +51,8 @@ if [[ "$old_package" != "$expected_package" || "$new_package" != "$expected_pack
   exit 1
 fi
 if [[ ! "$old_version" =~ ^[0-9]+$ || ! "$new_version" =~ ^[0-9]+$ ||
-      "$old_version" -ne 16 || "$new_version" -le "$old_version" ]]; then
-  echo "BLOCKED: expected original code 16 and strictly newer candidate versionCode" >&2
+      ( "$old_version" -ne 16 && "$old_version" -ne 17 ) || "$new_version" -le "$old_version" ]]; then
+  echo "BLOCKED: installed version must be 1.8.0 (16) or 1.8.1 (17), and update must have a higher versionCode" >&2
   exit 1
 fi
 if "$aapt" dump xmltree "$candidate" AndroidManifest.xml |
@@ -62,4 +62,4 @@ if "$aapt" dump xmltree "$candidate" AndroidManifest.xml |
 fi
 echo "PASS: SAME trusted signing certificate, package and increasing versionCode ($old_version -> $new_version)."
 echo "This is a static APK check only. Test the SQLite migration and activation on a backup/test device before installation."
-echo "Do not uninstall the working 1.8.0 app or clear its data."
+echo "Do not uninstall the working 1.8.x app or clear its data."
