@@ -204,3 +204,9 @@ python3 "$PROJECT_DIR/tests/distinctive_notification_sound_contract.py"
 
 # New per-category display preferences must survive encrypted backup and legacy restores.
 python3 "$PROJECT_DIR/tests/new_category_backup_contract.py"
+
+# Analysis checkpoint divides UI periods only. Financial and debt engines stay frozen.
+compile "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/CategoryCheckpointRules.java" \
+  "$PROJECT_DIR/tests/CategoryCheckpointRulesTest.java"
+java -cp "$OUT_DIR" app.wensarafet.tracker.CategoryCheckpointRulesTest
+python3 "$PROJECT_DIR/tests/category_checkpoint_contract.py"
