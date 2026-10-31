@@ -195,3 +195,9 @@ java -cp "$OUT_DIR" MerchantNameRulesTest
 python3 "$PROJECT_DIR/tests/merchant_insights_contract.py"
 
 python3 "$PROJECT_DIR/tests/captured_merchant_suggestion_contract.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/NotificationTonePcm.java" \
+  "$PROJECT_DIR/tests/NotificationTonePcmTest.java"
+java -cp "$OUT_DIR" NotificationTonePcmTest
+python3 "$PROJECT_DIR/tests/distinctive_notification_sound_contract.py"
