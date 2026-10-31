@@ -193,3 +193,5 @@ compile \
   "$PROJECT_DIR/tests/MerchantNameRulesTest.java"
 java -cp "$OUT_DIR" MerchantNameRulesTest
 python3 "$PROJECT_DIR/tests/merchant_insights_contract.py"
+
+python3 "$PROJECT_DIR/tests/captured_merchant_suggestion_contract.py"
