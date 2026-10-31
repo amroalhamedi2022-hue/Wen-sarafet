@@ -184,3 +184,5 @@ python3 "$PROJECT_DIR/tests/audit_ui_and_manual_entry_contract.py"
 python3 "$PROJECT_DIR/tests/default_category_ui_contract.py"
 
 python3 "$PROJECT_DIR/tests/legacy_fx_account_recovery_contract.py"
+
+python3 "$PROJECT_DIR/tests/category_monthly_budget_contract.py"
