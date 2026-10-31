@@ -180,3 +180,5 @@ compile \
   "$PROJECT_DIR/tests/AuditPresentationTest.java"
 java -cp "$OUT_DIR" AuditPresentationTest
 python3 "$PROJECT_DIR/tests/audit_ui_and_manual_entry_contract.py"
+
+python3 "$PROJECT_DIR/tests/default_category_ui_contract.py"
