@@ -49,8 +49,8 @@ case "$2" in
     case "$3" in
       *original*|*same-version*) code=16 ;;
       *current-181*) code=17 ;;
-      *current-182*|*same-as-current*) code=19 ;;
-      *) code=18 ;;
+      *current-182*|*same-as-current*) code=18 ;;
+      *) code=19 ;;
     esac
     echo "package: name='$pkg' versionCode='$code' versionName='1.8.3'"
     ;;
