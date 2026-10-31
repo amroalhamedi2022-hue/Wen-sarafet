@@ -2126,7 +2126,22 @@ public final class MainActivity extends Activity {
     private void showEditDebtPerson(Models.DebtPerson person,String returnDirection){
         EditText name=input("اسم الشخص");name.setText(person.name); AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تعديل الشخص").setView(name).setNegativeButton("حذف",null).setNeutralButton("إلغاء",null).setPositiveButton("حفظ",null).create();
         dialog.setOnShowListener(x->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{db.renameDebtPerson(person.id,name.getText().toString());dialog.dismiss();showDebtPeopleManager(returnDirection);}catch(Exception error){name.setError(error.getMessage());}});
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Ui.EXPENSE);dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v->{try{db.removeDebtPerson(person.id);dialog.dismiss();showDebtPeopleManager(returnDirection);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}});});dialog.show();
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Ui.EXPENSE);
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v->{
+                new AlertDialog.Builder(this).setTitle("تأكيد حذف الشخص "+person.name)
+                        .setMessage("لا يمكن حذف شخص له أي سجل ديون أو حقوق مسجلة. لن يُحذف أي دين أو حركة مالية بهذه العملية.")
+                        .setNegativeButton("إلغاء",null)
+                        .setPositiveButton("حذف الشخص",(d,w)->{
+                            try {
+                                db.removeDebtPerson(person.id);
+                                dialog.dismiss();
+                                Toast.makeText(this,"تم حذف الشخص غير المرتبط بديون",Toast.LENGTH_LONG).show();
+                                showDebtPeopleManager(returnDirection);
+                            } catch(Exception error) {
+                                Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
+                            }
+                        }).show();
+            });});dialog.show();
     }
 
     private void showAnalyticsScreen() {
