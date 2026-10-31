@@ -15,6 +15,11 @@ assert entry[0].attrib.get(android+"exported")=="true"
 assert entry[0].attrib.get(android+"grantUriPermissions")=="true"
 assert 'if(!"r".equals(mode) || !isOurSound(uri))' in provider
 assert 'ParcelFileDescriptor.MODE_READ_ONLY' in provider
+# Crashed tone creation must not leave a permanently broken channel.
+assert 'if(finalFile.exists() && !finalFile.delete())' in provider
+assert 'if(!temporary.renameTo(finalFile))' in provider
+assert 'if(!finalFile.isFile() || finalFile.length()!=audio.length)' in provider
+assert 'if(temporary.exists())temporary.delete()' in provider
 assert 'AUTHORITY.equals(uri.getAuthority())' in provider
 assert "valid(uri.getLastPathSegment())" in provider
 assert '"review".equals(type)' in provider
