@@ -2637,13 +2637,6 @@ public final class MainActivity extends Activity {
         categoryBox.addView(label("التصنيف"));
         Spinner category = new Spinner(this);
         categoryBox.addView(category, fieldParams());
-        TextView smartHint = Ui.text(this, "", 12, Ui.BRAND, false);
-        smartHint.setVisibility(View.GONE);
-        Button applySmartHint = miniButton("تطبيق الاقتراح");
-        applySmartHint.setVisibility(View.GONE);
-        categoryBox.addView(smartHint, fieldParams());
-        categoryBox.addView(applySmartHint, fieldParams());
-        final long[] proposedCategory = {-1};
         Button addCategory = actionButton("＋ إضافة تصنيف جديد", false);
         categoryBox.addView(addCategory, fieldParams());
         form.addView(categoryBox);
@@ -2697,34 +2690,6 @@ public final class MainActivity extends Activity {
             List<String> splitLabels = new ArrayList<>(); for (Models.Category c : filteredCategories) splitLabels.add(c.displayName());
             for (SplitRowRef row : splitRows) row.category.setAdapter(adapter(splitLabels));
         };
-        Runnable refreshSuggestion = () -> {
-            proposedCategory[0]=-1;
-            smartHint.setVisibility(View.GONE);
-            applySmartHint.setVisibility(View.GONE);
-            if (splitCheck.isChecked() || FinanceRules.TRANSFER.equals(selectedType[0]) || filteredAccounts.isEmpty()) return;
-            int index = account.getSelectedItemPosition();
-            if (index<0 || index>=filteredAccounts.size()) return;
-            Long value = Money.parseMinor(amount.getText().toString());
-            if (value==null || value<=0) return;
-            String kind=selectedType[0], selectedCurrency=currency.getSelectedItem().toString();
-            CategorySuggestionRules.Suggestion suggestion=db.suggestCategory(kind,selectedCurrency,
-                    filteredAccounts.get(index).id,value,note.getText().toString());
-            if(suggestion==null)return;
-            for (Models.Category candidate:filteredCategories) if (candidate.id==suggestion.categoryId) {
-                proposedCategory[0]=candidate.id;
-                smartHint.setText("اقتراح: " + candidate.displayName()+ " — " + suggestion.reason);
-                smartHint.setVisibility(View.VISIBLE);
-                applySmartHint.setVisibility(View.VISIBLE);
-                return;
-            }
-        };
-        applySmartHint.setOnClickListener(v -> {
-            if (proposedCategory[0] <= 0) return;
-            for(int i=0;i<filteredCategories.size();i++)if(filteredCategories.get(i).id==proposedCategory[0]){
-                category.setSelection(i+2); // Two special debt entries precede normal categories.
-                break;
-            }
-        });
         Runnable refreshVisibility = () -> {
             boolean isTransfer = FinanceRules.TRANSFER.equals(selectedType[0]);
             boolean isExpense = FinanceRules.EXPENSE.equals(selectedType[0]);
@@ -2747,31 +2712,23 @@ public final class MainActivity extends Activity {
             refreshCategories.run();
             refreshAccounts.run();
             refreshVisibility.run();
-            refreshSuggestion.run();
+
         });
-        currency.setOnItemSelectedListener(new SimpleItemSelected(() -> { refreshAccounts.run(); refreshSuggestion.run(); }));
-        account.setOnItemSelectedListener(new SimpleItemSelected(refreshSuggestion));
-        TextWatcher learningInputs = new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence text,int start,int count,int after) {}
-            @Override public void onTextChanged(CharSequence text,int start,int before,int count) { refreshSuggestion.run(); }
-            @Override public void afterTextChanged(Editable text) {}
-        };
-        amount.addTextChangedListener(learningInputs);
-        note.addTextChangedListener(learningInputs);
+        currency.setOnItemSelectedListener(new SimpleItemSelected(refreshAccounts));
         splitCheck.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked && splitRows.isEmpty()) {
                 addDebtSplitRow(splitRowsBox, splitRows, filteredCategories, debtPeople);
                 addDebtSplitRow(splitRowsBox, splitRows, filteredCategories, debtPeople);
             }
             refreshVisibility.run();
-            refreshSuggestion.run();
+
         });
         addPart.setOnClickListener(v -> addDebtSplitRow(splitRowsBox, splitRows, filteredCategories, debtPeople));
 
         refreshAccounts.run();
         refreshCategories.run();
         refreshVisibility.run();
-        refreshSuggestion.run();
+
 
         save.setOnClickListener(v -> {
             try {
