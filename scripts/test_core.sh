@@ -167,3 +167,9 @@ python3 "$PROJECT_DIR/tests/debt_safe_zone_contract.py"
 
 python3 "$PROJECT_DIR/tests/mixed_currency_transfer_ui_contract.py"
 python3 "$PROJECT_DIR/tests/financial_safe_zone_guard.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/PalestinianMobileNumber.java" \
+  "$PROJECT_DIR/tests/PalestinianMobileNumberTest.java"
+java -cp "$OUT_DIR" PalestinianMobileNumberTest
+python3 "$PROJECT_DIR/tests/widget_contact_picker_contract.py"
