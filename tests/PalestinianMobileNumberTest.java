@@ -33,7 +33,7 @@ public final class PalestinianMobileNumberTest {
         reject("0521234567");
         reject("972");
         reject("+970");
-        reject("009720590000000");
+        same("009720590000000","0590000000"); // contacts may retain the trunk zero after 00972
         reject("5900000");
         reject("05900000000");
         reject("*110*123#");
