@@ -2630,7 +2630,16 @@ public final class MainActivity extends Activity {
         LinearLayout categoryBox = Ui.column(this);
         categoryBox.addView(label("التصنيف"));
         Spinner category = new Spinner(this);
-        categoryBox.addView(category, fieldParams());
+        LinearLayout categoryPickRow=Ui.row(this);
+        Button defaultCategoryButton=miniButton("☆");
+        defaultCategoryButton.setContentDescription("تحديد التصنيف الافتراضي للإضافة التالية");
+        defaultCategoryButton.setTextSize(18);
+        LinearLayout.LayoutParams pickerWidth=new LinearLayout.LayoutParams(0,Ui.dp(this,54),1);
+        LinearLayout.LayoutParams starWidth=new LinearLayout.LayoutParams(Ui.dp(this,54),Ui.dp(this,48));
+        starWidth.setMargins(Ui.dp(this,7),0,0,0);
+        categoryPickRow.addView(category,pickerWidth);
+        categoryPickRow.addView(defaultCategoryButton,starWidth);
+        categoryBox.addView(categoryPickRow,fieldParams());
         Button addCategory = actionButton("＋ إضافة تصنيف جديد", false);
         categoryBox.addView(addCategory, fieldParams());
         form.addView(categoryBox);
@@ -2681,6 +2690,13 @@ public final class MainActivity extends Activity {
             labels.add("✓ سداد دين — يؤثر على الرصيد فقط");
             for (Models.Category c : filteredCategories) labels.add(c.displayName());
             category.setAdapter(adapter(labels));
+            long preferred=DefaultCategoryStore.get(this,kind);
+            int preferredIndex=filteredCategories.isEmpty()?0:2;
+            for(int i=0;i<filteredCategories.size();i++)
+                if(filteredCategories.get(i).id==preferred){preferredIndex=i+2;break;}
+            category.setSelection(preferredIndex);
+            defaultCategoryButton.setText(preferred>0 && preferredIndex>=2 &&
+                    filteredCategories.get(preferredIndex-2).id==preferred?"★":"☆");
             List<String> splitLabels = new ArrayList<>(); for (Models.Category c : filteredCategories) splitLabels.add(c.displayName());
             for (SplitRowRef row : splitRows) row.category.setAdapter(adapter(splitLabels));
         };
@@ -2697,6 +2713,33 @@ public final class MainActivity extends Activity {
         addCategory.setOnClickListener(v -> showAddCategoryDialog(
                 FinanceRules.INCOME.equals(selectedType[0]) ? FinanceRules.INCOME : FinanceRules.EXPENSE,
                 refreshCategories));
+        Runnable updateDefaultStar=()->{
+            int index=category.getSelectedItemPosition();
+            String kind=FinanceRules.INCOME.equals(selectedType[0])?FinanceRules.INCOME:FinanceRules.EXPENSE;
+            boolean selected=index>=2 && index-2<filteredCategories.size() &&
+                    DefaultCategoryStore.get(this,kind)==filteredCategories.get(index-2).id;
+            defaultCategoryButton.setText(selected?"★":"☆");
+            defaultCategoryButton.setContentDescription(selected?
+                    "إلغاء التصنيف الافتراضي":"جعل التصنيف المحدد افتراضيًا");
+        };
+        category.setOnItemSelectedListener(new SimpleItemSelected(updateDefaultStar));
+        defaultCategoryButton.setOnClickListener(v->{
+            int index=category.getSelectedItemPosition();
+            if(index<2 || index-2>=filteredCategories.size()) {
+                Toast.makeText(this,"اختر تصنيفًا عاديًا أولًا، وليس دينًا أو سدادًا",Toast.LENGTH_LONG).show();
+                return;
+            }
+            String kind=FinanceRules.INCOME.equals(selectedType[0])?FinanceRules.INCOME:FinanceRules.EXPENSE;
+            long id=filteredCategories.get(index-2).id;
+            if(DefaultCategoryStore.get(this,kind)==id){
+                DefaultCategoryStore.clear(this,kind);
+                Toast.makeText(this,"تم إلغاء التصنيف الافتراضي",Toast.LENGTH_SHORT).show();
+            } else {
+                DefaultCategoryStore.set(this,kind,id);
+                Toast.makeText(this,"سيُختار هذا التصنيف تلقائيًا عند إضافة العملية التالية",Toast.LENGTH_SHORT).show();
+            }
+            updateDefaultStar.run();
+        });
 
         typeGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId == income.getId()) selectedType[0] = FinanceRules.INCOME;
