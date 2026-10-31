@@ -60,12 +60,18 @@ public final class BackupSettingsCodecTest {
         ownerBackup.setProperty("monthly_category_caps|category_7_ILS", "L:125000");
         ownerBackup.setProperty("monthly_category_caps|" + BackupSettingsCodec.INCLUDED_MARKER, "B:true");
         ownerBackup.setProperty("manual_entry_category_defaults|default_EXPENSE", "L:7");
+        ownerBackup.setProperty("category_analysis_checkpoints|checkpoint_7_ILS", "S:" + Base64.getEncoder().encodeToString("1000,2000".getBytes(StandardCharsets.UTF_8)));
+        ownerBackup.setProperty("category_analysis_checkpoints|" + BackupSettingsCodec.INCLUDED_MARKER, "B:true");
         ownerBackup.setProperty("manual_entry_category_defaults|" + BackupSettingsCodec.INCLUDED_MARKER, "B:true");
         Map<String, Map<String, Object>> restored = BackupSettingsCodec.decode(ownerBackup);
         check(Long.valueOf(125000).equals(restored.get("monthly_category_caps").get("category_7_ILS")),
                 "Saved category budget amount lost");
         check(Long.valueOf(7).equals(restored.get("manual_entry_category_defaults").get("default_EXPENSE")),
                 "Saved category preference lost");
+        check("1000,2000".equals(restored.get("category_analysis_checkpoints").get("checkpoint_7_ILS")),
+                "Saved archived checkpoint times lost");
+        check(BackupSettingsCodec.shouldRestoreNamespace("category_analysis_checkpoints",
+                restored.get("category_analysis_checkpoints")), "new checkpoint archive should restore");
         check(BackupSettingsCodec.shouldRestoreNamespace("monthly_category_caps",
                 restored.get("monthly_category_caps")), "new budget archive should restore");
         check(BackupSettingsCodec.shouldRestoreNamespace("manual_entry_category_defaults",
@@ -81,6 +87,8 @@ public final class BackupSettingsCodecTest {
                 legacy.get("monthly_category_caps")), "old backup must be treated as having no category budgets");
         check(!BackupSettingsCodec.shouldRestoreNamespace("manual_entry_category_defaults",
                 legacy.get("manual_entry_category_defaults")), "old backup must be treated as having no default category");
+        check(!BackupSettingsCodec.shouldRestoreNamespace("category_analysis_checkpoints",
+                legacy.get("category_analysis_checkpoints")), "old backup must not link checkpoints to unrelated category IDs");
         check(BackupSettingsCodec.shouldRestoreNamespace("appearance",
                 legacy.get("appearance")), "legacy original settings remain compatible");
         System.out.println("BackupSettingsCodecTest passed: typed roundtrip, Arabic, unknown namespace, malformed values");
