@@ -835,6 +835,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     }
 
     public void setAccountBalance(long accountId, long balanceMinor) {
+        NonNegativeBalanceRules.requireNonNegative(balanceMinor);
         ContentValues cv = new ContentValues();
         cv.put("balance_minor", balanceMinor);
         if (getWritableDatabase().update("accounts", cv, "id=? AND active=1",
@@ -1051,6 +1052,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             long destinationMinor=FxTransferMath.destinationMinor(sourceAmountMinor,destUnitsPerSourceUnit);
             long[] newBalances=FxTransferMath.balancesAfter(source.balanceMinor,destination.balanceMinor,
                     sourceAmountMinor,destinationMinor);
+            NonNegativeBalanceRules.requireNonNegative(newBalances[0]); // reject source overdraft atomically
             ContentValues tx=new ContentValues();
             tx.put("type",FinanceRules.TRANSFER);tx.put("amount_minor",sourceAmountMinor);
             tx.put("currency",source.currency);tx.put("account_id",source.id);
@@ -1161,6 +1163,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             tx.put("affects_balance", 1); tx.put("base_affects_balance", 1);
             long txId = writable.insertOrThrow("transactions", null, tx);
             long nextBalance = item.balanceMinor != null ? item.balanceMinor : FinanceRules.balancesAfter(type, item.amountMinor, account.balanceMinor, null)[0];
+            NonNegativeBalanceRules.requireNonNegative(nextBalance); // reject overdraft and negative captured balance
             ContentValues balance = new ContentValues(); balance.put("balance_minor", nextBalance);
             writable.update("accounts", balance, "id=?", new String[]{String.valueOf(accountId)});
             ContentValues done = new ContentValues(); done.put("status", "IMPORTED"); done.put("transaction_id", txId);
@@ -1196,6 +1199,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             tx.put("affects_balance", 1); tx.put("base_affects_balance", 1);
             long id = writable.insertOrThrow("transactions", null, tx);
             long[] balances = FinanceRules.balancesAfter(FinanceRules.TRANSFER, item.amountMinor, source.balanceMinor, destination.balanceMinor);
+            NonNegativeBalanceRules.requireNonNegative(balances[0]); // inbound capture cannot overdraw source
             ContentValues a = new ContentValues(); a.put("balance_minor", balances[0]); writable.update("accounts", a, "id=?", new String[]{String.valueOf(sourceId)});
             ContentValues b = new ContentValues(); b.put("balance_minor", balances[1]); writable.update("accounts", b, "id=?", new String[]{String.valueOf(destinationId)});
             writable.setTransactionSuccessful(); return id;
@@ -1717,6 +1721,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             // The stored impact is the precise amount reversed at deletion, even if
             // exclusion/category preferences changed afterward.
             long restoredBalance=SimpleUndoRules.restoredBalance(balance,type,affects==1?impact:0);
+            NonNegativeBalanceRules.requireNonNegative(restoredBalance); // Undo must not overdraw
             ContentValues tx=new ContentValues();tx.put("id",transactionId);tx.put("type",type);
             tx.put("amount_minor",amount);tx.put("currency",currency);tx.put("account_id",accountId);
             tx.put("category_id",categoryId);tx.put("note",note);
@@ -1873,7 +1878,8 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                     long destinationBalance=balanceIncludingInactive(writable, destinationId);
                     ContentValues a=new ContentValues();a.put("balance_minor",Math.addExact(sourceBalance,amount));
                     writable.update("accounts",a,"id=?",new String[]{String.valueOf(sourceId)});
-                    ContentValues b=new ContentValues();b.put("balance_minor",Math.subtractExact(destinationBalance,fxDestinationMinor));
+                    ContentValues b=new ContentValues();b.put("balance_minor",
+                            NonNegativeBalanceRules.afterDelta(destinationBalance,-fxDestinationMinor));
                     writable.update("accounts",b,"id=?",new String[]{String.valueOf(destinationId)});
                 } else reverseBalanceEffect(writable, type, balanceImpact, sourceId, destinationId);
             }
@@ -2089,7 +2095,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             current = c.getLong(0);
         }
         ContentValues values = new ContentValues();
-        values.put("balance_minor", Math.addExact(current, delta));
+        values.put("balance_minor", NonNegativeBalanceRules.afterDelta(current, delta));
         if (writable.update("accounts", values, "id=?", new String[]{String.valueOf(accountId)}) != 1)
             throw new IllegalStateException("تعذر تحديث رصيد الحساب");
     }
