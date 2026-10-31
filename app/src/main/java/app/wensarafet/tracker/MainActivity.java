@@ -613,10 +613,90 @@ public final class MainActivity extends Activity {
         return content;
     }
 
+    private void showMerchantInsightsScreen(String currency) {
+        addScreenVisible=false;subScreenVisible=true;currentTab=TAB_TRANSACTIONS;
+        LinearLayout page=Ui.column(this);
+        page.setBackgroundColor(Ui.BACKGROUND);
+        page.addView(pageHeader("أكثر الأماكن صرفًا",()->showMain(true)),
+                new LinearLayout.LayoutParams(-1,Ui.dp(this,78)));
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout content=Ui.column(this);
+        content.setPadding(Ui.dp(this,16),Ui.dp(this,8),Ui.dp(this,16),Ui.dp(this,36));
+        content.addView(Ui.text(this,
+                "حسب أسماء المحلات والأشخاص الموجودة في إشعارات الشراء والملاحظات. " +
+                "لا تُحتسب الديون أو التحويلات، وتُحسب من العمليات المقسمة أجزاء المصروف فقط. " +
+                "يُنشأ هذا التحليل عند فتح الصفحة، ولا يعمل أثناء إدخال المصروف.",
+                12,Ui.MUTED,false),fieldParams());
+        LinearLayout currencies=Ui.row(this);
+        for(String option:Arrays.asList("ILS","USD","JOD")) {
+            boolean selected=option.equals(currency);
+            Button chip=miniButton(option);
+            if(selected)chip.setTextColor(Ui.VIOLET);
+            chip.setOnClickListener(v->showMerchantInsightsScreen(option));
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,Ui.dp(this,44),1);
+            p.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
+            currencies.addView(chip,p);
+        }
+        content.addView(currencies,fieldParams());
+        content.addView(sectionTitle("أكثر الجهات خلال 12 شهرًا",currency));
+        LinearLayout results=Ui.column(this);
+        results.addView(Ui.text(this,"جارٍ حساب النتائج...",13,Ui.MUTED,false));
+        content.addView(results);
+        scroll.addView(content);
+        page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        page.addView(bottomNavigation(TAB_TRANSACTIONS),
+                new LinearLayout.LayoutParams(-1,Ui.dp(this,72)));
+        setContentView(page);
+        Calendar first=midnight(Calendar.getInstance());
+        first.set(Calendar.DAY_OF_MONTH,1);
+        first.add(Calendar.MONTH,-11);
+        final long from=first.getTimeInMillis(),until=System.currentTimeMillis()+1;
+        new Thread(()->{
+            try{
+                List<MerchantInsights.Place> places=MerchantInsights.topPlaces(db,currency,from,until);
+                runOnUiThread(()->{
+                    if(!page.isAttachedToWindow())return;
+                    results.removeAllViews();
+                    if(places.isEmpty()){
+                        results.addView(messageCard("لا توجد جهات مؤكدة بعد",
+                                "عندما تحتوي رسائل التحويل أو ملاحظات الشراء على اسم محل، سيظهر هنا."));
+                        return;
+                    }
+                    int rank=1;
+                    for(MerchantInsights.Place place:places){
+                        LinearLayout card=Ui.column(this);
+                        card.setPadding(Ui.dp(this,14),Ui.dp(this,12),Ui.dp(this,14),Ui.dp(this,12));
+                        card.setBackground(Ui.layeredSoftBackground(this,15));
+                        card.addView(Ui.text(this,(rank++)+"  •  "+place.name,
+                                15,Ui.TEXT,true));
+                        card.addView(Ui.text(this,Money.format(place.spentMinor,currency)+
+                                "  •  "+place.purchases+" مرات",13,Ui.VIOLET,false));
+                        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
+                        p.setMargins(0,Ui.dp(this,5),0,Ui.dp(this,5));
+                        results.addView(card,p);
+                    }
+                    results.addView(Ui.text(this,
+                            "تُراجع أحدث 5000 عملية ضمن الفترة. المبالغ بلا اسم جهة واضح لا تُنسب لأي محل.",
+                            11,Ui.MUTED,false));
+                });
+            }catch(Exception error){
+                runOnUiThread(()->{
+                    if(!page.isAttachedToWindow())return;
+                    results.removeAllViews();
+                    results.addView(Ui.text(this,"تعذّر إعداد التحليل: "+error.getMessage(),
+                            12,Ui.EXPENSE,false));
+                });
+            }
+        },"wen-merchant-insights").start();
+    }
+
     private LinearLayout transactionsContent(int limit) {
         LinearLayout content=Ui.column(this);
         content.setPadding(Ui.dp(this,14),Ui.dp(this,8),Ui.dp(this,14),Ui.dp(this,110));
         content.addView(sectionTitle("كل العمليات","بحث محلي وفلاتر"));
+        Button favoritePlaces=actionButton("🏪 أكثر المحلات والجهات صرفًا",false);
+        favoritePlaces.setOnClickListener(v->showMerchantInsightsScreen(dashboardCurrency));
+        content.addView(favoritePlaces,fieldParams());
 
         EditText search=input("🔎 ابحث بالملاحظة أو الحساب أو التصنيف أو المبلغ");
         search.setSingleLine(true);
