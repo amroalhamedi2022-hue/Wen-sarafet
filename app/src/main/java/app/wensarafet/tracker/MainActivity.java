@@ -1244,6 +1244,67 @@ public final class MainActivity extends Activity {
                 }).show();
     }
 
+    /** Read-only diagnosis first: legacy account currency or archived state must not be guessed. */
+    private void showFxAccountDiagnostics() {
+        List<LegacyAccountVisibility.AccountInfo> all=LegacyAccountVisibility.list(db);
+        StringBuilder message=new StringBuilder("الحسابات المسجلة وعملاتها الفعلية:\n");
+        int hidden=0;
+        for(LegacyAccountVisibility.AccountInfo account:all) {
+            if(!account.active)hidden++;
+            if(message.length()<2400)
+                message.append(account.active?"✓ ":"◌ ").append(account.name)
+                        .append(" — ").append(account.currency)
+                        .append(account.active?"":" (مخفي)")
+                        .append("\n");
+        }
+        if(all.isEmpty())message.append("لم يُعثر على أي حساب.\n");
+        message.append("\nالتحويل بين عملتين يحتاج حسابين ظاهرين بعملتين مختلفتين. " +
+                "لا يمكن اعتماد كلمة دولار في اسم حسابٍ مسجل كشيكل لتغيير قيمته تلقائيًا.");
+        final int hiddenCount=hidden;
+        AlertDialog.Builder builder=new AlertDialog.Builder(this)
+                .setTitle("فحص حسابات التحويل")
+                .setMessage(message.toString())
+                .setNegativeButton("إغلاق",null)
+                .setPositiveButton("إدارة الحسابات",(d,w)->showAccountManagement());
+        if(hiddenCount>0)
+            builder.setNeutralButton("استعادة حساب مخفي",(d,w)->showFxArchivedAccountRecovery());
+        builder.show();
+    }
+
+    private void showFxArchivedAccountRecovery() {
+        List<LegacyAccountVisibility.AccountInfo> hidden=new ArrayList<>();
+        for(LegacyAccountVisibility.AccountInfo account:LegacyAccountVisibility.list(db))
+            if(!account.active)hidden.add(account);
+        if(hidden.isEmpty()){
+            Toast.makeText(this,"لا توجد حسابات مخفية",Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] labels=new String[hidden.size()];
+        for(int i=0;i<hidden.size();i++) {
+            LegacyAccountVisibility.AccountInfo item=hidden.get(i);
+            labels[i]=item.name+" — "+Money.format(item.balanceMinor,item.currency);
+        }
+        new AlertDialog.Builder(this).setTitle("اختر الحساب القديم المراد إظهاره")
+                .setItems(labels,(dialog,index)->{
+                    LegacyAccountVisibility.AccountInfo account=hidden.get(index);
+                    new AlertDialog.Builder(this).setTitle("إظهار حساب قديم؟")
+                            .setMessage("سيظهر الحساب: "+account.name+" ("+account.currency+") من جديد. " +
+                                    "سيصبح رصيده القديم ضمن إجمالياتك، دون أي تغيير في قيمته أو في العمليات المحفوظة. " +
+                                    "لا يُحوّل التطبيق العملة تلقائيًا.")
+                            .setNegativeButton("إلغاء",null)
+                            .setPositiveButton("إظهار الحساب",(d,w)->{
+                                try{
+                                    LegacyAccountVisibility.restore(db,account.id);
+                                    BalanceWidgetProvider.updateAll(this);
+                                    Toast.makeText(this,"ظهر الحساب القديم دون تغيير رصيده",Toast.LENGTH_LONG).show();
+                                    showFxTransferDialog();
+                                }catch(Exception error){
+                                    Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
+                                }
+                            }).show();
+                }).setNegativeButton("إلغاء",null).show();
+    }
+
     private void showFxTransferDialog() { showFxTransferDialog(null,null,null); }
 
     private void showFxTransferDialog(Long preferredSourceId,Long preferredDestinationId,String initialAmount) {
@@ -1256,12 +1317,15 @@ public final class MainActivity extends Activity {
             }
             if(hasDifferentCurrencies)break;
         }
-        if(!hasDifferentCurrencies){Toast.makeText(this,"التحويل بين عملتين يحتاج حسابين بعملتين مختلفتين",Toast.LENGTH_LONG).show();return;}
+        if(!hasDifferentCurrencies){showFxAccountDiagnostics();return;}
         List<String> options=new ArrayList<>();for(Models.Account a:accounts)options.add(a.displayName());
         LinearLayout form=Ui.column(this);
         form.setPadding(Ui.dp(this,18),Ui.dp(this,4),Ui.dp(this,18),Ui.dp(this,12));
         form.addView(label("من حساب"));Spinner source=spinner(options);form.addView(source,fieldParams());
         form.addView(label("إلى حساب"));Spinner destination=spinner(options);form.addView(destination,fieldParams());
+        Button inspectAccounts=miniButton("فحص حسابات العملات");
+        inspectAccounts.setOnClickListener(v->showFxAccountDiagnostics());
+        form.addView(inspectAccounts,fieldParams());
         form.addView(label("المبلغ من الحساب المصدر"));EditText amount=input("المبلغ");
         amount.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
         form.addView(amount,fieldParams());
