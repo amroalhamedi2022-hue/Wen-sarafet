@@ -1852,19 +1852,29 @@ public final class MainActivity extends Activity {
         content.setPadding(Ui.dp(this, 16), Ui.dp(this, 10), Ui.dp(this, 16), Ui.dp(this, 34));
 
         LinearLayout actions = Ui.row(this);
+        actions.setPadding(Ui.dp(this,4),Ui.dp(this,8),Ui.dp(this,4),Ui.dp(this,14));
         Button addDebt = actionButton("＋ إضافة دين", true); addDebt.setOnClickListener(v -> showManualDebtDialog(direction));
         Button people = actionButton("👥 الأشخاص", false); people.setOnClickListener(v -> showDebtPeopleManager(direction));
-        actions.addView(addDebt, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1));
-        LinearLayout.LayoutParams peopleParams = new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1); peopleParams.setMargins(Ui.dp(this, 8), 0, 0, 0); actions.addView(people, peopleParams);
+        LinearLayout.LayoutParams addDebtParams=new LinearLayout.LayoutParams(0,Ui.dp(this,52),1);
+        addDebtParams.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
+        LinearLayout.LayoutParams peopleParams=new LinearLayout.LayoutParams(0,Ui.dp(this,52),1);
+        peopleParams.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
+        actions.addView(addDebt,addDebtParams);
+        actions.addView(people,peopleParams);
         content.addView(actions);
 
         LinearLayout tabs = Ui.row(this);
-        TextView mine = debtTab("إلي — ديون الناس إلي", FinanceRules.DEBT_RECEIVABLE.equals(direction));
-        TextView owed = debtTab("عليّ — ديوني للناس", FinanceRules.DEBT_PAYABLE.equals(direction));
+        tabs.setPadding(Ui.dp(this,4),0,Ui.dp(this,4),Ui.dp(this,16));
+        TextView mine = debtTab("إليّ — لي عند الناس", FinanceRules.DEBT_RECEIVABLE.equals(direction));
+        TextView owed = debtTab("عليّ — للناس عندي", FinanceRules.DEBT_PAYABLE.equals(direction));
         mine.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_RECEIVABLE));
         owed.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_PAYABLE));
-        tabs.addView(mine, new LinearLayout.LayoutParams(0, Ui.dp(this, 54), 1));
-        tabs.addView(owed, new LinearLayout.LayoutParams(0, Ui.dp(this, 54), 1)); content.addView(tabs);
+        LinearLayout.LayoutParams mineParams=new LinearLayout.LayoutParams(0,Ui.dp(this,54),1);
+        mineParams.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
+        LinearLayout.LayoutParams owedParams=new LinearLayout.LayoutParams(0,Ui.dp(this,54),1);
+        owedParams.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
+        tabs.addView(mine,mineParams);
+        tabs.addView(owed,owedParams);content.addView(tabs);
 
         List<Models.DebtSummary> active = db.getDebtSummaries(direction, false);
         LinkedHashMap<Long,List<Models.DebtSummary>> activePeople = groupDebtsByPerson(active);
@@ -1920,7 +1930,7 @@ public final class MainActivity extends Activity {
     private TextView debtTab(String label, boolean selected) {
         TextView tab = Ui.text(this, label, 12, selected ? Color.WHITE : Ui.TEXT, true); tab.setGravity(Gravity.CENTER);
         tab.setBackground(selected ? Ui.gradient(Ui.BRAND, Ui.VIOLET, 16, this) : Ui.rounded(Ui.BRAND_SOFT, 16, this));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, Ui.dp(this, 54), 1); params.setMargins(Ui.dp(this, 4), Ui.dp(this, 10), Ui.dp(this, 4), Ui.dp(this, 8)); tab.setLayoutParams(params);
+        tab.setPadding(Ui.dp(this,8),0,Ui.dp(this,8),0);
         Ui.pressAnimation(tab); return tab;
     }
 
@@ -1948,14 +1958,33 @@ public final class MainActivity extends Activity {
             paid.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("تأكيد اكتمال السداد")
                     .setMessage("سيصبح المتبقي صفرًا ويُنقل الدين إلى قسم المسددة، من دون تغيير أي رصيد حساب.")
                     .setNegativeButton("إلغاء", null).setPositiveButton("تم السداد", (d,w) -> {
-                        try { db.markDebtPaid(debt.id); card.animate().alpha(.25f).scaleX(.92f).scaleY(.92f).translationY(-Ui.dp(this,18)).setDuration(320).withEndAction(() -> showDebtsScreen(debt.direction)).start(); }
+                        try { db.markDebtPaid(debt.id);
+                            Toast.makeText(this,"تم تسجيل السداد وتحديث المتبقي",Toast.LENGTH_LONG).show();
+                            showDebtPersonDetails(debt.personId,debt.personName,debt.direction);
+                        }
                         catch (Exception error) { Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show(); }
                     }).show());
         }
         card.addView(buttons);
-        Button deleteDebt=actionButton("حذف سجل الدين",false);deleteDebt.setTextColor(Ui.EXPENSE);deleteDebt.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("حذف سجل الدين؟")
-                .setMessage("سيُحذف السجل وحركاته. إذا كان مرتبطًا بعمليات مالية فستُحذف تلك العمليات ويُعكس أثرها من الأرصدة. لا يمكن التراجع.")
-                .setNegativeButton("إلغاء",null).setPositiveButton("حذف",(d,w)->{try{db.deleteDebt(debt.id);showDebtsScreen(debt.direction);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}}).show());
+        Button deleteDebt=actionButton("حذف سجل الدين",false);deleteDebt.setTextColor(Ui.EXPENSE);
+        deleteDebt.setOnClickListener(v->{
+            int affected=db.countDebtLinkedFinancialTransactions(debt.id);
+            String warning="سيُحذف سجل دين "+debt.personName+" ("+debt.currency+") وجميع حركاته. "+
+                    (affected>0?"تحذير: هذا سيحذف أيضًا "+affected+" عملية مالية مرتبطة ويعكس أثرها من الأرصدة. ":
+                    "هذا الدين يدوي ولا يغيّر الحذف أرصدة الحسابات. ")+
+                    "الحذف نهائي، ولن تتم أي تغييرات إذا فشل التحقق المالي.";
+            new AlertDialog.Builder(this).setTitle("تأكيد حذف سجل الدين نهائيًا")
+                    .setMessage(warning).setNegativeButton("إلغاء",null)
+                    .setPositiveButton("حذف نهائي",(d,w)->{
+                        try {
+                            db.deleteDebt(debt.id);
+                            Toast.makeText(this,"تم حذف سجل الدين وتحديث الحسابات وسجل الحركات",Toast.LENGTH_LONG).show();
+                            showDebtPersonDetails(debt.personId,debt.personName,debt.direction);
+                        } catch(Exception error) {
+                            Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
+                        }
+                    }).show();
+        });
         card.addView(deleteDebt,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,42)));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); params.setMargins(0, Ui.dp(this, 6), 0, Ui.dp(this, 6)); card.setLayoutParams(params);
         return card;
