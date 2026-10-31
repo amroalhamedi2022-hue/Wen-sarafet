@@ -36,7 +36,6 @@ assert "showSimpleManualTransactionEditDialog(tx)" not in menu
 assert "تعديل المبلغ والملاحظة" not in menu
 # The protected edit rules are kept in Safe Zone; no blind code deletion.
 assert "db.editSimpleManualTransaction(tx.id,tx.amountMinor,tx.note,value," in ui_source
-assert "db.editSimpleManualTransaction(tx.id,tx.amountMinor,tx.note,value," in ui_source
 assert "java.math.BigDecimal.valueOf(tx.amountMinor,2).toPlainString()" in ui_source
 
 db=sqlite3.connect(":memory:")
