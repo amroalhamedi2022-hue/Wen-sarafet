@@ -13,8 +13,24 @@ import java.util.Properties;
 final class BackupSettingsCodec {
     static final String[] PREF_FILES = {
             "appearance", "daily_reminder", "monthly_budgets",
-            "transfer_names", "notification_preferences"
+            "transfer_names", "notification_preferences",
+            "monthly_category_caps", "manual_entry_category_defaults"
     };
+    // Old encrypted archives predate the last two namespaces. They must not
+    // wipe the user's newer local preferences when restored. A new archive
+    // explicitly marks included namespaces, even when their maps are empty.
+    static final String INCLUDED_MARKER = "__backup_namespace_present_v1";
+
+    static boolean newlyBackedUpNamespace(String file) {
+        return "monthly_category_caps".equals(file)
+                || "manual_entry_category_defaults".equals(file);
+    }
+
+    static boolean shouldRestoreNamespace(String file, Map<String, Object> values) {
+        return !newlyBackedUpNamespace(file)
+                || Boolean.TRUE.equals(values.get(INCLUDED_MARKER));
+    }
+
 
     private BackupSettingsCodec() {}
 
