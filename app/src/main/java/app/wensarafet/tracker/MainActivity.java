@@ -2569,9 +2569,20 @@ public final class MainActivity extends Activity {
     private View categoryAnalysisRow(Models.CategoryTotal item, long max, long startInclusive, long endExclusive) {
         LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this, 12), Ui.dp(this, 9), Ui.dp(this, 12), Ui.dp(this, 9)); card.setBackground(Ui.rounded(Ui.SURFACE, 16, this));
         LinearLayout text = Ui.row(this); text.addView(Ui.text(this, item.emoji + " " + item.name, 14, Ui.TEXT, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 32), 1));
-        TextView amount = Ui.text(this, Money.format(item.amountMinor, dashboardCurrency), 13, Ui.VIOLET, true); amount.setGravity(Gravity.END | Gravity.CENTER_VERTICAL); text.addView(amount); card.addView(text);
+        List<Long> markers=CategoryCheckpointStore.get(this,item.categoryId,dashboardCurrency);
+        long displayedAmount=item.amountMinor;
+        if(!markers.isEmpty()) {
+            long from=Math.max(startInclusive,markers.get(markers.size()-1));
+            displayedAmount=categoryCheckpointExpenseTotal(item.categoryId,dashboardCurrency,from,endExclusive);
+        }
+        TextView amount = Ui.text(this, Money.format(displayedAmount, dashboardCurrency), 13, Ui.VIOLET, true);
+        amount.setGravity(Gravity.END | Gravity.CENTER_VERTICAL); text.addView(amount); card.addView(text);
+        if(!markers.isEmpty())card.addView(Ui.text(this,
+                "منذ نقطة البداية داخل هذا الشهر • إجمالي الشهر: "+
+                        Money.format(item.amountMinor,dashboardCurrency),
+                11,Ui.MUTED,false));
         FrameLayout track = new FrameLayout(this); track.setBackground(Ui.rounded(Ui.BRAND_SOFT, 5, this)); View fill = new View(this); fill.setBackground(Ui.gradient(Ui.VIOLET, Ui.SKY, 5, this));
-        int width = Math.max(Ui.dp(this, 16), (int) (Ui.dp(this, 300) * (item.amountMinor / (float) max))); track.addView(fill, new FrameLayout.LayoutParams(width, Ui.dp(this, 8))); card.addView(track, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 8)));
+        int width = Math.max(Ui.dp(this, 16), (int) (Ui.dp(this, 300) * (displayedAmount / (float) max))); track.addView(fill, new FrameLayout.LayoutParams(width, Ui.dp(this, 8))); card.addView(track, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 8)));
         long categoryLimit=CategoryMonthlyBudgetStore.get(this,item.categoryId,dashboardCurrency);
         if(categoryLimit>0) {
             String state=item.amountMinor>categoryLimit?" • تجاوزت الحد":" • ضمن الحد";
@@ -2590,7 +2601,14 @@ public final class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78)));
         ScrollView scroll = new ScrollView(this);
         LinearLayout content = Ui.column(this); content.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 34));
-        TextView totalView = Ui.text(this, Money.format(category.amountMinor, currency), 25, Ui.EXPENSE, true);
+        List<Long> activeCheckpoints=CategoryCheckpointStore.get(this,category.categoryId,currency);
+        long visibleTotal=activeCheckpoints.isEmpty()?category.amountMinor:
+                categoryCheckpointExpenseTotal(category.categoryId,currency,
+                        activeCheckpoints.get(activeCheckpoints.size()-1),System.currentTimeMillis()+1L);
+        content.addView(Ui.text(this,activeCheckpoints.isEmpty()?
+                "مصروف هذا الشهر":"مصروف منذ آخر نقطة بداية",
+                13,Ui.MUTED,true));
+        TextView totalView = Ui.text(this, Money.format(visibleTotal, currency), 25, Ui.EXPENSE, true);
         totalView.setGravity(Gravity.CENTER); totalView.setBackground(Ui.layeredSoftBackground(this, 20));
         LinearLayout.LayoutParams totalParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78));
         totalParams.setMargins(Ui.dp(this, 16), Ui.dp(this, 4), Ui.dp(this, 16), Ui.dp(this, 10)); content.addView(totalView, totalParams);
