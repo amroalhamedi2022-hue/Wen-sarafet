@@ -1983,9 +1983,6 @@ public final class MainActivity extends Activity {
     private void showDebtHistory(Models.DebtSummary debt) {
         LinearLayout content=Ui.column(this);
         content.setPadding(Ui.dp(this,18),Ui.dp(this,4),Ui.dp(this,18),Ui.dp(this,12));
-        content.addView(Ui.text(this,
-                "اضغط على الحركة لعرض تفاصيلها. أي حركة مرتبطة بعملية مالية تُعدّل من العملية الأصلية فقط.",
-                12,Ui.MUTED,false));
         final AlertDialog[] historyDialog={null};
         List<Models.DebtMovement> movements=db.getDebtMovements(debt.id);
         if(movements.isEmpty())content.addView(Ui.text(this,"لا توجد حركات لهذا الدين",13,Ui.MUTED,false));
@@ -2000,41 +1997,38 @@ public final class MainActivity extends Activity {
             row.addView(Ui.text(this,kind+"  •  "+Money.format(movement.amountMinor,debt.currency),
                     14,Ui.TEXT,true));
             row.addView(Ui.text(this,date,11,Ui.MUTED,false));
-            if(movement.fromSplitTransaction) {
-                row.addView(Ui.text(this,
-                        "جزء من عملية مالية مقسمة إلى "+movement.linkedSplitPartCount+" أجزاء",
-                        12,Ui.VIOLET,true));
-                if(movement.linkedTransactionAmountMinor!=null)
-                    row.addView(Ui.text(this,"إجمالي العملية الأصلية: "+
-                            Money.format(movement.linkedTransactionAmountMinor,debt.currency),
-                            12,Ui.MUTED,false));
-            }
-            if(movement.linkedTransactionNote!=null && !movement.linkedTransactionNote.trim().isEmpty())
-                row.addView(Ui.text(this,"ملاحظة العملية: "+movement.linkedTransactionNote,
-                        12,Ui.MUTED,false));
-            if(movement.note!=null && !movement.note.trim().isEmpty()
-                    && !movement.note.equals(movement.linkedTransactionNote))
-                row.addView(Ui.text(this,"ملاحظة الحركة: "+movement.note,12,Ui.MUTED,false));
-            if(movement.transactionId!=null) {
-                row.addView(Ui.text(this,"اضغط لعرض تفاصيل العملية الأصلية ←",
-                        11,Ui.VIOLET,true));
-                row.setOnClickListener(v->{
+            row.setOnClickListener(v->{
+                if(movement.transactionId!=null) {
                     Models.Transaction original=db.getTransactionById(movement.transactionId);
                     if(original==null) {
                         Toast.makeText(this,"العملية المالية المرتبطة لم تعد موجودة",Toast.LENGTH_LONG).show();
                         return;
                     }
-                    if(historyDialog[0]!=null)historyDialog[0].dismiss();
-                    showTransactionDetails(original);
-                });
-            } else {
-                row.addView(Ui.text(this,"اضغط لتعديل أو حذف الحركة اليدوية",
-                        11,Ui.VIOLET,false));
-                row.setOnClickListener(v->{
+                    LinearLayout details=Ui.column(this);
+                    details.setPadding(Ui.dp(this,16),Ui.dp(this,8),Ui.dp(this,16),Ui.dp(this,8));
+                    details.addView(Ui.text(this,kind+"  •  "+Money.format(movement.amountMinor,debt.currency),16,Ui.TEXT,true));
+                    details.addView(Ui.text(this,"التاريخ: "+date,12,Ui.MUTED,false));
+                    if(movement.fromSplitTransaction) {
+                        details.addView(Ui.text(this,"جزء من عملية مالية مقسمة إلى "+movement.linkedSplitPartCount+" أجزاء",13,Ui.VIOLET,true));
+                        if(movement.linkedTransactionAmountMinor!=null)
+                            details.addView(Ui.text(this,"إجمالي العملية الأصلية: "+
+                                    Money.format(movement.linkedTransactionAmountMinor,debt.currency),13,Ui.TEXT,false));
+                    }
+                    if(movement.linkedTransactionNote!=null&&!movement.linkedTransactionNote.trim().isEmpty())
+                        details.addView(Ui.text(this,"ملاحظة العملية: "+movement.linkedTransactionNote,12,Ui.MUTED,false));
+                    if(movement.note!=null&&!movement.note.trim().isEmpty())
+                        details.addView(Ui.text(this,"ملاحظة حركة الدين: "+movement.note,12,Ui.MUTED,false));
+                    new AlertDialog.Builder(this).setTitle("تفاصيل حركة الدين")
+                            .setView(details).setNegativeButton("إغلاق",null)
+                            .setPositiveButton("العملية الأصلية",(d,w)->{
+                                if(historyDialog[0]!=null)historyDialog[0].dismiss();
+                                showTransactionDetails(original);
+                            }).show();
+                } else {
                     if(historyDialog[0]!=null)historyDialog[0].dismiss();
                     showManualDebtMovementDialog(debt,movement);
-                });
-            }
+                }
+            });
             Ui.pressAnimation(row);
             LinearLayout.LayoutParams rowParams=new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
