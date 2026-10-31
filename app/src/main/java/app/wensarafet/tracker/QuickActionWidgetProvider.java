@@ -31,6 +31,18 @@ public class QuickActionWidgetProvider extends AppWidgetProvider {
             intent.setData(Uri.parse("wensarafet://quick/" + action() + "/" + id));
             PendingIntent pending = PendingIntent.getActivity(context, 9000 + id, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.widget_root, pending);
+            boolean canChooseContact=active && ("jawwal_friend".equals(action())
+                    || "jawwal_merchant".equals(action()) || "palpay".equals(action()));
+            views.setViewVisibility(R.id.widget_choose_contact,
+                    canChooseContact ? View.VISIBLE : View.GONE);
+            if(canChooseContact) {
+                Intent pick=new Intent(context,QuickActionActivity.class)
+                        .putExtra("action",action()).putExtra("pick_contact",true);
+                pick.setData(Uri.parse("wensarafet://contact/"+action()+"/"+id));
+                PendingIntent contactPending=PendingIntent.getActivity(context,19000+id,pick,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                views.setOnClickPendingIntent(R.id.widget_choose_contact,contactPending);
+            }
             manager.updateAppWidget(id, views);
         }
     }
