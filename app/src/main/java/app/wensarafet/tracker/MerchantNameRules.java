@@ -21,9 +21,14 @@ public final class MerchantNameRules {
             return clean;
         // Some manual notes are just a clear shop name such as "طيبة مول".
         // Do not group generic memos like "مشتريات الأسبوع" as businesses.
-        if(valid(clean) && clean.matches(
-                "(?iu).*\\\\b(?:مول|ماركت|متجر|مطعم|مخبز|صيدلية|محل|سوبرماركت|كافيه)\\\\b.*"))
-            return clean;
+        if(valid(clean)) {
+            for(String word:clean.split("\\s+"))
+                if(word.equals("مول") || word.equals("ماركت") || word.equals("متجر") ||
+                        word.equals("مطعم") || word.equals("مخبز") ||
+                        word.equals("صيدلية") || word.equals("محل") ||
+                        word.equals("سوبرماركت") || word.equals("كافيه"))
+                    return clean;
+        }
         return "";
     }
 
