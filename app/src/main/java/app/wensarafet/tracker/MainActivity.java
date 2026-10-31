@@ -1991,15 +1991,72 @@ public final class MainActivity extends Activity {
     }
 
     private void showDebtHistory(Models.DebtSummary debt) {
-        LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this,18),0,Ui.dp(this,18),Ui.dp(this,8));
-        for (Models.DebtMovement movement : db.getDebtMovements(debt.id)) {
-            String title = "OPEN".equals(movement.kind) ? "إضافة دين" : "MANUAL_PAYMENT".equals(movement.kind) ? "سداد يدوي" : "سداد من عملية";
-            String date = new SimpleDateFormat("dd/MM/yyyy  hh:mm a", new Locale("ar")).format(new Date(movement.createdAt));
-            View row=detailLine(title + " — " + date, Money.format(movement.amountMinor, debt.currency));
-            if(movement.transactionId==null){row.setOnClickListener(v->showManualDebtMovementDialog(debt,movement));Ui.pressAnimation(row);}content.addView(row);
+        LinearLayout content=Ui.column(this);
+        content.setPadding(Ui.dp(this,18),Ui.dp(this,4),Ui.dp(this,18),Ui.dp(this,12));
+        content.addView(Ui.text(this,
+                "اضغط على الحركة لعرض تفاصيلها. أي حركة مرتبطة بعملية مالية تُعدّل من العملية الأصلية فقط.",
+                12,Ui.MUTED,false));
+        final AlertDialog[] historyDialog={null};
+        List<Models.DebtMovement> movements=db.getDebtMovements(debt.id);
+        if(movements.isEmpty())content.addView(Ui.text(this,"لا توجد حركات لهذا الدين",13,Ui.MUTED,false));
+        for(Models.DebtMovement movement:movements) {
+            String kind="OPEN".equals(movement.kind)?"إضافة دين":
+                    "MANUAL_PAYMENT".equals(movement.kind)?"سداد يدوي":"سداد من عملية";
+            String date=new SimpleDateFormat("dd/MM/yyyy  hh:mm a",new Locale("ar"))
+                    .format(new Date(movement.createdAt));
+            LinearLayout row=Ui.column(this);
+            row.setPadding(Ui.dp(this,12),Ui.dp(this,12),Ui.dp(this,12),Ui.dp(this,12));
+            row.setBackground(Ui.layeredSoftBackground(this,14));
+            row.addView(Ui.text(this,kind+"  •  "+Money.format(movement.amountMinor,debt.currency),
+                    14,Ui.TEXT,true));
+            row.addView(Ui.text(this,date,11,Ui.MUTED,false));
+            if(movement.fromSplitTransaction) {
+                row.addView(Ui.text(this,
+                        "جزء من عملية مالية مقسمة إلى "+movement.linkedSplitPartCount+" أجزاء",
+                        12,Ui.VIOLET,true));
+                if(movement.linkedTransactionAmountMinor!=null)
+                    row.addView(Ui.text(this,"إجمالي العملية الأصلية: "+
+                            Money.format(movement.linkedTransactionAmountMinor,debt.currency),
+                            12,Ui.MUTED,false));
+            }
+            if(movement.linkedTransactionNote!=null && !movement.linkedTransactionNote.trim().isEmpty())
+                row.addView(Ui.text(this,"ملاحظة العملية: "+movement.linkedTransactionNote,
+                        12,Ui.MUTED,false));
+            if(movement.note!=null && !movement.note.trim().isEmpty()
+                    && !movement.note.equals(movement.linkedTransactionNote))
+                row.addView(Ui.text(this,"ملاحظة الحركة: "+movement.note,12,Ui.MUTED,false));
+            if(movement.transactionId!=null) {
+                row.addView(Ui.text(this,"اضغط لعرض تفاصيل العملية الأصلية ←",
+                        11,Ui.VIOLET,true));
+                row.setOnClickListener(v->{
+                    Models.Transaction original=db.getTransactionById(movement.transactionId);
+                    if(original==null) {
+                        Toast.makeText(this,"العملية المالية المرتبطة لم تعد موجودة",Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    if(historyDialog[0]!=null)historyDialog[0].dismiss();
+                    showTransactionDetails(original);
+                });
+            } else {
+                row.addView(Ui.text(this,"اضغط لتعديل أو حذف الحركة اليدوية",
+                        11,Ui.VIOLET,false));
+                row.setOnClickListener(v->{
+                    if(historyDialog[0]!=null)historyDialog[0].dismiss();
+                    showManualDebtMovementDialog(debt,movement);
+                });
+            }
+            Ui.pressAnimation(row);
+            LinearLayout.LayoutParams rowParams=new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
+            rowParams.setMargins(0,Ui.dp(this,5),0,Ui.dp(this,5));
+            content.addView(row,rowParams);
         }
-        ScrollView scroll = new ScrollView(this); scroll.addView(content);
-        new AlertDialog.Builder(this).setTitle("سجل دين " + debt.personName).setView(scroll).setPositiveButton("إغلاق",null).show();
+        ScrollView scroll=new ScrollView(this);
+        scroll.addView(content);
+        historyDialog[0]=new AlertDialog.Builder(this)
+                .setTitle("سجل دين "+debt.personName)
+                .setView(scroll).setPositiveButton("إغلاق",null).create();
+        historyDialog[0].show();
     }
 
     private void showManualDebtPayment(Models.DebtSummary debt){
@@ -2013,7 +2070,23 @@ public final class MainActivity extends Activity {
     private void showManualDebtMovementDialog(Models.DebtSummary debt,Models.DebtMovement movement){
         LinearLayout form=Ui.column(this);form.setPadding(Ui.dp(this,18),0,Ui.dp(this,18),Ui.dp(this,8));EditText amount=input("المبلغ");amount.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);amount.setText(String.format(Locale.ROOT,"%.2f",movement.amountMinor/100.0));EditText note=input("ملاحظة");note.setText(movement.note);form.addView(amount,fieldParams());form.addView(note,fieldParams());
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تعديل حركة يدوية").setView(form).setNegativeButton("حذف",null).setNeutralButton("إلغاء",null).setPositiveButton("حفظ",null).create();
-        dialog.setOnShowListener(x->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{Long value=Money.parseMinor(amount.getText().toString());if(value==null)throw new IllegalArgumentException("اكتب مبلغًا صحيحًا");db.updateManualDebtMovement(movement.id,value,note.getText().toString());dialog.dismiss();showDebtPersonDetails(debt.personId,debt.personName,debt.direction);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}});dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Ui.EXPENSE);dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v->new AlertDialog.Builder(this).setTitle("حذف الحركة؟").setMessage("سيُعاد حساب أصل الدين والمتبقي فورًا.").setNegativeButton("إلغاء",null).setPositiveButton("حذف",(d,w)->{try{db.deleteManualDebtMovement(movement.id);dialog.dismiss();showDebtPersonDetails(debt.personId,debt.personName,debt.direction);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}}).show());});dialog.show();
+        dialog.setOnShowListener(x->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{Long value=Money.parseMinor(amount.getText().toString());if(value==null)throw new IllegalArgumentException("اكتب مبلغًا صحيحًا");db.updateManualDebtMovement(movement.id,value,note.getText().toString());dialog.dismiss();showDebtPersonDetails(debt.personId,debt.personName,debt.direction);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}});dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Ui.EXPENSE);
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v->
+                    new AlertDialog.Builder(this).setTitle("تأكيد حذف حركة الدين")
+                            .setMessage("الشخص: "+debt.personName+"\nالحركة: "+
+                                    Money.format(movement.amountMinor,debt.currency)+
+                                    "\nسيُعاد حساب أصل الدين والمتبقي. هذه حركة يدوية ولا تمس رصيد الحسابات المالية. لا يمكن التراجع.")
+                            .setNegativeButton("إلغاء",null)
+                            .setPositiveButton("حذف نهائي",(d,w)->{
+                                try {
+                                    db.deleteManualDebtMovement(movement.id);
+                                    dialog.dismiss();
+                                    Toast.makeText(this,"تم حذف الحركة وتحديث رصيد الدين فورًا",Toast.LENGTH_LONG).show();
+                                    showDebtPersonDetails(debt.personId,debt.personName,debt.direction);
+                                } catch(Exception error) {
+                                    Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
+                                }
+                            }).show());});dialog.show();
     }
 
     private void showManualDebtDialog(String direction) { showManualDebtDialog(direction, null); }
