@@ -39,14 +39,25 @@ public final class NotificationSoundProvider extends ContentProvider {
         if(finalFile.isFile() && finalFile.length()>44)return finalFile;
         File temporary=new File(directory,type+".wav.tmp");
         byte[] audio=NotificationTonePcm.wav(type);
-        try(FileOutputStream stream=new FileOutputStream(temporary)) {
-            stream.write(audio);stream.getFD().sync();
+        try {
+            try(FileOutputStream stream=new FileOutputStream(temporary)) {
+                stream.write(audio);stream.getFD().sync();
+            }
+            // If a previous app interruption left a short/corrupt WAV, never
+            // accept it just because the destination path exists.
+            if(!temporary.renameTo(finalFile)) {
+                if(finalFile.exists() && !finalFile.delete())
+                    throw new IOException("Could not replace incomplete notification tone");
+                if(!temporary.renameTo(finalFile))
+                    throw new IOException("Could not save original notification sound");
+            }
+            if(!finalFile.isFile() || finalFile.length()!=audio.length)
+                throw new IOException("Notification sound was not saved completely");
+            return finalFile;
+        } finally {
+            // Temporary tones contain generated audio only; no user data.
+            if(temporary.exists())temporary.delete();
         }
-        if(!temporary.renameTo(finalFile) && !finalFile.isFile())
-            throw new IOException("Could not save original notification sound");
-        if(!finalFile.isFile() || finalFile.length()!=audio.length)
-            throw new IOException("Notification sound was not saved completely");
-        return finalFile;
     }
     @Override public boolean onCreate() { return true; }
     @Override public String getType(Uri uri) {
