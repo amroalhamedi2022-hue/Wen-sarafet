@@ -29,7 +29,13 @@ for required in ("writable.beginTransaction();",
                  "writable.update(\"transactions\"", "writable.setTransactionSuccessful();",
                  "writable.endTransaction();", "BalanceWidgetProvider.updateAll(appContext);"):
     assert required in method,required
-assert "showSimpleManualTransactionEditDialog(tx)" in ui_source
+# Owner explicitly removed this action from the edit menu: no UI call path is allowed.
+menu=ui_source.split("private void showTransactionEditMenu(Models.Transaction tx)",1)[1].split(
+    "private void showSimpleManualTransactionEditDialog(",1)[0]
+assert "showSimpleManualTransactionEditDialog(tx)" not in menu
+assert "تعديل المبلغ والملاحظة" not in menu
+# The protected edit rules are kept in Safe Zone; no blind code deletion.
+assert "db.editSimpleManualTransaction(tx.id,tx.amountMinor,tx.note,value," in ui_source
 assert "db.editSimpleManualTransaction(tx.id,tx.amountMinor,tx.note,value," in ui_source
 assert "java.math.BigDecimal.valueOf(tx.amountMinor,2).toPlainString()" in ui_source
 
