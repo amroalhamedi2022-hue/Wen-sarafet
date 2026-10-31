@@ -186,3 +186,10 @@ python3 "$PROJECT_DIR/tests/default_category_ui_contract.py"
 python3 "$PROJECT_DIR/tests/legacy_fx_account_recovery_contract.py"
 
 python3 "$PROJECT_DIR/tests/category_monthly_budget_contract.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/CategorySuggestionRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/MerchantNameRules.java" \
+  "$PROJECT_DIR/tests/MerchantNameRulesTest.java"
+java -cp "$OUT_DIR" MerchantNameRulesTest
+python3 "$PROJECT_DIR/tests/merchant_insights_contract.py"
