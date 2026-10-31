@@ -14,6 +14,10 @@ assert 'return false;' in budget.split('catch(SecurityException permissionRevoke
 assert 'if(oldAmount==newAmountMinor && oldNote.equals(cleanNote))' in db
 assert 'oldAmount!=expectedAmountMinor' in db
 assert 'writable.setTransactionSuccessful();' in db
-assert 'showSimpleManualTransactionEditDialog(tx)' in ui
+# User removed the menu entry intentionally; financial Safe Zone routine remains protected.
+menu=ui.split("private void showTransactionEditMenu(Models.Transaction tx)",1)[1].split(
+    "private void showSimpleManualTransactionEditDialog(",1)[0]
+assert 'showSimpleManualTransactionEditDialog(tx)' not in menu
+assert 'تعديل المبلغ والملاحظة' not in menu
 assert 'BudgetAlertManager.checkAll(this);' in ui
 print("BudgetNotificationContract PASS: denied channel/permission cannot consume monthly alert, no-op edit guard.")
