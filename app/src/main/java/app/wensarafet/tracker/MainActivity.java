@@ -1064,26 +1064,16 @@ public final class MainActivity extends Activity {
             return;
         }
         if (tx.specialKind != null) { showEditDebtTransactionDialog(tx); return; }
-        boolean simpleEditable=db.canEditSimpleManualTransaction(tx.id);
-        String[] standardOptions = {"مصروف — اختيار تصنيف", "دخل — اختيار تصنيف",
+        // Owner-requested: no amount/note editor in the generic edit menu.
+        // Keep all financial mutation methods untouched in the Safe Zone.
+        String[] options = {"مصروف — اختيار تصنيف", "دخل — اختيار تصنيف",
                 "تقسيم المصروف", "تحويل بين حساباتي", "دَين", "سداد دين"};
-        String[] options;
-        if(simpleEditable) {
-            options=new String[standardOptions.length+1];
-            options[0]="✏️ تعديل المبلغ والملاحظة";
-            System.arraycopy(standardOptions,0,options,1,standardOptions.length);
-        } else options=standardOptions;
         new AlertDialog.Builder(this).setTitle("تعديل العملية").setItems(options, (d, which) -> {
-            if(simpleEditable && which==0) {
-                showSimpleManualTransactionEditDialog(tx);
-                return;
-            }
-            int action=simpleEditable?which-1:which;
-            if (action == 0) showCategoryPicker(tx, FinanceRules.EXPENSE);
-            else if (action == 1) showCategoryPicker(tx, FinanceRules.INCOME);
-            else if (action == 2) showSplitTransactionDialog(tx);
-            else if (action == 3) showTransactionTransferDialog(tx);
-            else if (action == 4) showDebtClassificationDialog(tx, FinanceRules.SPECIAL_DEBT);
+            if (which == 0) showCategoryPicker(tx, FinanceRules.EXPENSE);
+            else if (which == 1) showCategoryPicker(tx, FinanceRules.INCOME);
+            else if (which == 2) showSplitTransactionDialog(tx);
+            else if (which == 3) showTransactionTransferDialog(tx);
+            else if (which == 4) showDebtClassificationDialog(tx, FinanceRules.SPECIAL_DEBT);
             else showDebtClassificationDialog(tx, FinanceRules.SPECIAL_DEBT_PAYMENT);
         }).setNegativeButton("إلغاء", null).show();
     }
