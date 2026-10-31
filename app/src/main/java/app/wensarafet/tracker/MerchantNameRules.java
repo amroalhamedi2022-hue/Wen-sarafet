@@ -16,10 +16,14 @@ public final class MerchantNameRules {
         if(!result.isEmpty())return result;
         // Captured transactions usually store the counterparty as their note.
         // Do not treat every arbitrary free-text manual memo as a business.
-        if("CAPTURED".equals(source) || "SMS".equals(source)) {
-            String clean=clean(note);
-            if(valid(clean))return clean;
-        }
+        String clean=clean(note);
+        if(("CAPTURED".equals(source) || "SMS".equals(source)) && valid(clean))
+            return clean;
+        // Some manual notes are just a clear shop name such as "طيبة مول".
+        // Do not group generic memos like "مشتريات الأسبوع" as businesses.
+        if(valid(clean) && clean.matches(
+                "(?iu).*\\\\b(?:مول|ماركت|متجر|مطعم|مخبز|صيدلية|محل|سوبرماركت|كافيه)\\\\b.*"))
+            return clean;
         return "";
     }
 
