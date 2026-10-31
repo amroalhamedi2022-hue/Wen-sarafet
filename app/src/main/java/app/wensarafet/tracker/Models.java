@@ -95,6 +95,11 @@ public final class Models {
         public long amountMinor;
         public long createdAt;
         public String note;
+        /** Read-only provenance; debt movement remains linked to its financial transaction. */
+        public boolean fromSplitTransaction;
+        public int linkedSplitPartCount;
+        public Long linkedTransactionAmountMinor;
+        public String linkedTransactionNote;
     }
 
     public static final class CaptureItem {
