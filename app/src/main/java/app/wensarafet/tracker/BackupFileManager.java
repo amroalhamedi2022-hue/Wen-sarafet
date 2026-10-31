@@ -178,12 +178,14 @@ public final class BackupFileManager {
         try {
             for (String file : PREF_FILES) {
                 Map<String, Object> restored=decodedSettings.get(file);
-                // Keep newer preferences when restoring an older archive that
-                // never knew about category budgets or default categories.
-                if(!BackupSettingsCodec.shouldRestoreNamespace(file,restored))continue;
+                // An older archive has no category budgets/defaults. Clear
+                // those category-ID-bound preferences rather than accidentally
+                // applying them to a DIFFERENT category in the restored ledger.
+                // Current archives carry the marker even for an empty namespace.
+                boolean included=BackupSettingsCodec.shouldRestoreNamespace(file,restored);
                 SharedPreferences.Editor editor = context.getSharedPreferences(
                         file, Context.MODE_PRIVATE).edit().clear();
-                for (Map.Entry<String, Object> entry : restored.entrySet()) {
+                if(included)for (Map.Entry<String, Object> entry : restored.entrySet()) {
                     if (BackupSettingsCodec.INCLUDED_MARKER.equals(entry.getKey())) continue;
                     putPreference(editor, entry.getKey(), entry.getValue());
                 }
