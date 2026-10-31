@@ -1,0 +1,10 @@
+# Financial Safe Zone baseline: Git object SHA-1 blob, not raw file SHA-1.
+# FinanceDbHelper and pure accounting routines are frozen after explicit owner request.
+# Updating any pinned path requires explicit user approval AND revised audit tests.
+b14e4c9e6ba37cfe56fcbdf59278fc14cca55a4c  app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java
+dce70ca5413f04b7b2801a9301356f2b0b896216  app/src/main/java/app/wensarafet/tracker/FinanceRules.java
+6a0fb5a1af1cba7f25f5bdd1206163086e025a71  app/src/main/java/app/wensarafet/tracker/DebtLedgerRules.java
+29f4d3383e97ed45e3b7574056e5adadb0b52486  app/src/main/java/app/wensarafet/tracker/FxTransferMath.java
+63a6d37314ec8f0d4cf76af83831abec21ce2289  app/src/main/java/app/wensarafet/tracker/SplitDebtRules.java
+81c4742442374b642a60a5ecc80092ddd05c3e3b  app/src/main/java/app/wensarafet/tracker/NonNegativeBalanceRules.java
+3a551c8bc2f370981cf59684c9d2ff6eefc7b9e4  app/src/main/java/app/wensarafet/tracker/Money.java
