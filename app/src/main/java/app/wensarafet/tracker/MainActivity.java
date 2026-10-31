@@ -1254,7 +1254,9 @@ public final class MainActivity extends Activity {
                 }).show();
     }
 
-    private void showFxTransferDialog() {
+    private void showFxTransferDialog() { showFxTransferDialog(null,null,null); }
+
+    private void showFxTransferDialog(Long preferredSourceId,Long preferredDestinationId,String initialAmount) {
         List<Models.Account> accounts=db.getAccounts();
         if(accounts.size()<2){Toast.makeText(this,"أضف حسابين مختلفين أولًا",Toast.LENGTH_LONG).show();return;}
         boolean hasDifferentCurrencies=false;
@@ -1273,6 +1275,11 @@ public final class MainActivity extends Activity {
         form.addView(label("المبلغ من الحساب المصدر"));EditText amount=input("المبلغ");
         amount.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
         form.addView(amount,fieldParams());
+        if(initialAmount!=null)amount.setText(initialAmount);
+        if(preferredSourceId!=null)for(int i=0;i<accounts.size();i++)
+            if(accounts.get(i).id==preferredSourceId){source.setSelection(i);break;}
+        if(preferredDestinationId!=null)for(int i=0;i<accounts.size();i++)
+            if(accounts.get(i).id==preferredDestinationId){destination.setSelection(i);break;}
         TextView rateGuide=Ui.text(this,"سعر الصرف: كم وحدة يستلم الحساب الثاني مقابل 1 من عملة الحساب الأول",12,Ui.MUTED,false);
         form.addView(rateGuide,fieldParams());
         EditText rate=input("سعر الصرف الفعلي");
@@ -2490,7 +2497,8 @@ public final class MainActivity extends Activity {
         amount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         form.addView(amount, fieldParams());
 
-        form.addView(label("العملة"));
+        TextView currencyLabel=label("العملة");
+        form.addView(currencyLabel);
         Spinner currency = spinner(Arrays.asList("ILS", "USD", "JOD"));
         form.addView(currency, fieldParams());
 
@@ -2562,7 +2570,9 @@ public final class MainActivity extends Activity {
         Runnable refreshAccounts = () -> {
             String selectedCurrency = currency.getSelectedItem().toString();
             filteredAccounts.clear();
-            for (Models.Account a : db.getAccounts()) if (a.currency.equals(selectedCurrency)) filteredAccounts.add(a);
+            for (Models.Account a : db.getAccounts())
+                if (FinanceRules.TRANSFER.equals(selectedType[0]) || a.currency.equals(selectedCurrency))
+                    filteredAccounts.add(a);
             List<String> labels = new ArrayList<>();
             for (Models.Account a : filteredAccounts) labels.add(a.displayName());
             account.setAdapter(adapter(labels));
@@ -2612,6 +2622,8 @@ public final class MainActivity extends Activity {
             boolean isTransfer = FinanceRules.TRANSFER.equals(selectedType[0]);
             boolean isExpense = FinanceRules.EXPENSE.equals(selectedType[0]);
             destinationBox.setVisibility(isTransfer ? View.VISIBLE : View.GONE);
+            currency.setVisibility(isTransfer ? View.GONE : View.VISIBLE);
+            currencyLabel.setVisibility(isTransfer ? View.GONE : View.VISIBLE);
             categoryBox.setVisibility(isTransfer || (isExpense && splitCheck.isChecked()) ? View.GONE : View.VISIBLE);
             splitCheck.setVisibility(isExpense ? View.VISIBLE : View.GONE);
             splitBox.setVisibility(isExpense && splitCheck.isChecked() ? View.VISIBLE : View.GONE);
@@ -2626,6 +2638,7 @@ public final class MainActivity extends Activity {
             else selectedType[0] = FinanceRules.EXPENSE;
             if (!FinanceRules.EXPENSE.equals(selectedType[0])) splitCheck.setChecked(false);
             refreshCategories.run();
+            refreshAccounts.run();
             refreshVisibility.run();
             refreshSuggestion.run();
         });
@@ -2666,6 +2679,11 @@ public final class MainActivity extends Activity {
                     if (destination.getSelectedItemPosition() < 0) throw new IllegalArgumentException("اختر الحساب المستلم");
                     Models.Account dest = filteredAccounts.get(destination.getSelectedItemPosition());
                     if (dest.id == source.id) throw new IllegalArgumentException("اختر حسابًا مختلفًا للاستلام");
+                    if(!dest.currency.equals(source.currency)) {
+                        // Cross-currency transfer has its own dedicated rate-confirmation flow.
+                        showFxTransferDialog(source.id,dest.id,amount.getText().toString());
+                        return;
+                    }
                     destinationId = dest.id;
                 } else if (splitCheck.isChecked()) {
                     List<Long> parts = new ArrayList<>();
@@ -2698,7 +2716,9 @@ public final class MainActivity extends Activity {
                     }
                     categoryId = filteredCategories.get(selectedCategory - 2).id;
                 }
-                db.addTransaction(selectedType[0], amountMinor, currency.getSelectedItem().toString(), source.id,
+                String transactionCurrency=FinanceRules.TRANSFER.equals(selectedType[0])
+                        ? source.currency:currency.getSelectedItem().toString();
+                db.addTransaction(selectedType[0], amountMinor, transactionCurrency, source.id,
                         destinationId, categoryId, note.getText().toString(), splits, affectsBalance.isChecked());
                 Toast.makeText(this, "تم حفظ العملية", Toast.LENGTH_SHORT).show();
                 showMain(false);
