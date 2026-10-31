@@ -44,13 +44,13 @@ jobs:
         run: |
           set -euo pipefail
           INPUT="app/build/outputs/apk/release/app-release-unsigned.apk"
-          OUTPUT="build/unsigned/Wen-Sarafet-1.8.1-aligned-UNSIGNED.apk"
+          OUTPUT="build/unsigned/Wen-Sarafet-1.8.2-aligned-UNSIGNED.apk"
           test -s "$INPUT"
           mkdir -p build/unsigned
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -P 16 -v 4 "$INPUT" "$OUTPUT"
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$OUTPUT"
           BADGING="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$OUTPUT")"
-          grep -Fq "package: name='app.wensarafet.tracker' versionCode='17' versionName='1.8.1'" <<< "$BADGING"
+          grep -Fq "package: name='app.wensarafet.tracker' versionCode='18' versionName='1.8.2'" <<< "$BADGING"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$OUTPUT" | head -4
           if "$ANDROID_HOME/build-tools/35.0.0/aapt" dump xmltree "$OUTPUT" AndroidManifest.xml | grep -Eq 'android:debuggable.*0xffffffff'; then
             echo 'ERROR: release is debuggable' >&2
@@ -72,7 +72,7 @@ jobs:
       - name: Upload UNSIGNED original application package for private offline signing
         uses: actions/upload-artifact@v4
         with:
-          name: wen-1-8-1-original-package-unsigned
-          path: build/unsigned/Wen-Sarafet-1.8.1-aligned-UNSIGNED.apk
+          name: wen-1-8-2-original-package-unsigned
+          path: build/unsigned/Wen-Sarafet-1.8.2-aligned-UNSIGNED.apk
           if-no-files-found: error
           retention-days: 2
