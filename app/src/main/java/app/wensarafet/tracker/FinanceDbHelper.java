@@ -1606,39 +1606,48 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     }
 
     public void deleteDebt(long debtId) {
+        // Keep validation, account reversal, transaction removal and debt deletion
+        // in ONE SQLite transaction; no stale preflight outside the lock.
+        SQLiteDatabase writable=getWritableDatabase();
+        writable.beginTransaction();
+        try {
+        try(Cursor exists=writable.rawQuery("SELECT 1 FROM debts WHERE id=?",
+                new String[]{String.valueOf(debtId)})) {
+            if(!exists.moveToFirst())throw new IllegalArgumentException("سجل الدين غير موجود أو حُذف مسبقًا");
+        }
         List<Long> transactionIds = new ArrayList<>();
-        try (Cursor c = getReadableDatabase().rawQuery(
+        try (Cursor c = writable.rawQuery(
                 "SELECT DISTINCT transaction_id FROM debt_movements WHERE debt_id=? AND transaction_id IS NOT NULL",
                 new String[]{String.valueOf(debtId)})) { while (c.moveToNext()) transactionIds.add(c.getLong(0)); }
         for (Long txId : transactionIds) {
-            try (Cursor c = getReadableDatabase().rawQuery("SELECT 1 FROM transaction_splits WHERE transaction_id=? LIMIT 1",
+            try (Cursor c = writable.rawQuery("SELECT 1 FROM transaction_splits WHERE transaction_id=? LIMIT 1",
                     new String[]{String.valueOf(txId)})) {
                 if (c.moveToFirst()) throw new IllegalArgumentException("الدين مرتبط بمصروف مقسّم؛ عدّل أو احذف العملية من تفاصيلها لحماية الأجزاء الأخرى");
             }
-            try (Cursor c = getReadableDatabase().rawQuery("SELECT COUNT(DISTINCT debt_id) FROM debt_movements WHERE transaction_id=?",
+            try (Cursor c = writable.rawQuery("SELECT COUNT(DISTINCT debt_id) FROM debt_movements WHERE transaction_id=?",
                     new String[]{String.valueOf(txId)})) {
                 if (c.moveToFirst() && c.getInt(0) > 1)
                     throw new IllegalArgumentException("هذا الدين مرتبط بسداد موزع على أكثر من سجل؛ احذف العملية المشتركة أولًا");
             }
         }
-        SQLiteDatabase writable = getWritableDatabase(); writable.beginTransaction();
-        try {
             for (Long txId : transactionIds) {
                 String type; long amount, sourceId; Long destinationId; boolean affects;
                 try (Cursor c = writable.rawQuery("SELECT type,amount_minor,account_id,destination_account_id,affects_balance,base_affects_balance," +
                     "category_id,currency,note,raw_text,source,needs_review,created_at," +
                     "special_kind,debt_person_id,debt_direction,destination_amount_minor,exchange_rate FROM transactions WHERE id=?",
                         new String[]{String.valueOf(txId)})) {
-                    if (!c.moveToFirst()) continue;
+                    if (!c.moveToFirst()) throw new IllegalStateException("عملية مالية مرتبطة بالدين لم تعد موجودة");
                     type=c.getString(0); amount=c.getLong(1); sourceId=c.getLong(2); destinationId=c.isNull(3)?null:c.getLong(3); affects=c.getInt(4)==1;
                 }
                 if (affects) reverseBalanceEffect(writable, type, amount, sourceId, destinationId);
                 ContentValues capture = new ContentValues(); capture.put("status", "IGNORED"); capture.putNull("transaction_id");
                 writable.update("capture_inbox", capture, "transaction_id=?", new String[]{String.valueOf(txId)});
-                writable.delete("transactions", "id=?", new String[]{String.valueOf(txId)});
+                if(writable.delete("transactions", "id=?", new String[]{String.valueOf(txId)})!=1)
+                    throw new IllegalStateException("تعذّر حذف العملية المالية المرتبطة");
             }
             writable.delete("debt_movements", "debt_id=?", new String[]{String.valueOf(debtId)});
-            writable.delete("debts", "id=?", new String[]{String.valueOf(debtId)});
+            if(writable.delete("debts", "id=?", new String[]{String.valueOf(debtId)})!=1)
+                throw new IllegalStateException("تعذّر حذف سجل الدين");
             writable.setTransactionSuccessful();
         } finally {
             writable.endTransaction(); BalanceWidgetProvider.updateAll(appContext); BudgetAlertManager.checkAll(appContext);
