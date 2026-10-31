@@ -201,3 +201,6 @@ compile \
   "$PROJECT_DIR/tests/NotificationTonePcmTest.java"
 java -cp "$OUT_DIR" NotificationTonePcmTest
 python3 "$PROJECT_DIR/tests/distinctive_notification_sound_contract.py"
+
+# New per-category display preferences must survive encrypted backup and legacy restores.
+python3 "$PROJECT_DIR/tests/new_category_backup_contract.py"
