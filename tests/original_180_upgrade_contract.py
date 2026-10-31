@@ -17,8 +17,8 @@ assert "MessageDigest.isEqual(RELEASE_CERT_SHA256, actual)" in integrity
 assert "FLAG_DEBUGGABLE" in integrity
 assert "getApkContentsSigners()" in integrity
 assert 'applicationId "app.wensarafet.tracker"' in gradle
-assert re.search(r"versionCode\s+17\b", gradle)
-assert 'versionName "1.8.1"' in gradle
+assert re.search(r"versionCode\s+18\b", gradle)
+assert 'versionName "1.8.2"' in gradle
 assert 'applicationIdSuffix ".recovered.debug"' in gradle
 assert "minifyEnabled true" in gradle
 assert "debuggable false" in gradle
