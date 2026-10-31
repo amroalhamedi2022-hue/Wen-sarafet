@@ -9,6 +9,15 @@ public class MonthlySavingsRulesTest {
     MonthlySavingsRules.State exceeded=MonthlySavingsRules.calculate(50000,60000,true);
     ok(exceeded.exceeded && exceeded.overspendMinor==10000 && exceeded.savedMinor==0);
     ok(!MonthlySavingsRules.calculate(0,0,true).configured);
+    try {
+      MonthlySavingsRules.calculate(-100,0,true);
+      throw new AssertionError("negative cap was silently accepted");
+    } catch (IllegalArgumentException expected) {}
+    try {
+      MonthlySavingsRules.calculate(0,-1,true);
+      throw new AssertionError("negative expense total accepted for disabled cap");
+    } catch (IllegalArgumentException expected) {}
+    ok(!MonthlySavingsRules.calculate(0,0,false).configured);
     System.out.println("MonthlySavingsRulesTest passed");
   }
 }

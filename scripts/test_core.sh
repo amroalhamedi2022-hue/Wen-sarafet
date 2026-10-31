@@ -114,3 +114,90 @@ python3 "$PROJECT_DIR/tests/chart_capture_quality_contract.py"
 
 python3 "$PROJECT_DIR/tests/backup_restore_preflight_contract.py"
 python3 "$PROJECT_DIR/tests/drive_backup_publication_contract.py"
+
+python3 "$PROJECT_DIR/tests/batch22_category_budget_icon_contract.py"
+
+python3 "$PROJECT_DIR/tests/original_180_upgrade_contract.py"
+
+python3 "$PROJECT_DIR/tests/upgrade_gate_contract.py"
+
+compile "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/SimpleTransactionEditRules.java" \
+  "$PROJECT_DIR/tests/SimpleTransactionEditRulesTest.java"
+java -cp "$OUT_DIR" SimpleTransactionEditRulesTest
+python3 "$PROJECT_DIR/tests/simple_manual_edit_contract.py"
+
+python3 "$PROJECT_DIR/tests/budget_notification_contract.py"
+
+python3 "$PROJECT_DIR/tests/reclassification_integrity_contract.py"
+
+python3 "$PROJECT_DIR/tests/reclassification_reference_integrity.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/CategoryNamingRules.java" \
+  "$PROJECT_DIR/tests/CategoryNamingRulesTest.java"
+java -cp "$OUT_DIR" CategoryNamingRulesTest
+python3 "$PROJECT_DIR/tests/category_rename_integrity.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/Money.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/TransactionSearchRules.java" \
+  "$PROJECT_DIR/tests/TransactionSearchRulesTest.java" \
+  "$PROJECT_DIR/tests/TransactionSearchDump.java"
+java -cp "$OUT_DIR" TransactionSearchRulesTest
+python3 "$PROJECT_DIR/tests/transaction_search_sql_contract.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/Money.java" \
+  "$PROJECT_DIR/tests/MoneyParseSafetyTest.java"
+java -cp "$OUT_DIR" MoneyParseSafetyTest
+
+python3 "$PROJECT_DIR/tests/release_payload_contract.py"
+python3 "$PROJECT_DIR/tests/owner_signing_contract.py"
+
+# Financial Safe Zone: no overdrafts, protected debt ledger origins,
+# explicit split provenance and cross-currency transfer routing.
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/NonNegativeBalanceRules.java" \
+  "$PROJECT_DIR/tests/NonNegativeBalanceRulesTest.java"
+java -cp "$OUT_DIR" NonNegativeBalanceRulesTest
+python3 "$PROJECT_DIR/tests/debt_safe_zone_contract.py"
+
+python3 "$PROJECT_DIR/tests/mixed_currency_transfer_ui_contract.py"
+python3 "$PROJECT_DIR/tests/financial_safe_zone_guard.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/PalestinianMobileNumber.java" \
+  "$PROJECT_DIR/tests/PalestinianMobileNumberTest.java"
+java -cp "$OUT_DIR" PalestinianMobileNumberTest
+python3 "$PROJECT_DIR/tests/widget_contact_picker_contract.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/Money.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/AuditPresentation.java" \
+  "$PROJECT_DIR/tests/AuditPresentationTest.java"
+java -cp "$OUT_DIR" AuditPresentationTest
+python3 "$PROJECT_DIR/tests/audit_ui_and_manual_entry_contract.py"
+
+python3 "$PROJECT_DIR/tests/default_category_ui_contract.py"
+
+python3 "$PROJECT_DIR/tests/legacy_fx_account_recovery_contract.py"
+
+python3 "$PROJECT_DIR/tests/category_monthly_budget_contract.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/CategorySuggestionRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/MerchantNameRules.java" \
+  "$PROJECT_DIR/tests/MerchantNameRulesTest.java"
+java -cp "$OUT_DIR" MerchantNameRulesTest
+python3 "$PROJECT_DIR/tests/merchant_insights_contract.py"
+
+python3 "$PROJECT_DIR/tests/captured_merchant_suggestion_contract.py"
+
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/NotificationTonePcm.java" \
+  "$PROJECT_DIR/tests/NotificationTonePcmTest.java"
+java -cp "$OUT_DIR" NotificationTonePcmTest
+python3 "$PROJECT_DIR/tests/distinctive_notification_sound_contract.py"

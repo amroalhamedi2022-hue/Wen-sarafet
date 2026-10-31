@@ -4,6 +4,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
+import android.database.Cursor;
+import android.provider.ContactsContract;
+import android.widget.Button;
 import android.os.Bundle;
 import android.text.InputFilter;
 import android.text.InputType;
@@ -16,6 +19,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public final class QuickActionActivity extends Activity {
+    private static final int CONTACT_PICK_REQUEST=421;
+    private EditText pendingContactPhone;
+    private TextView selectedContactLabel;
     @Override protected void onCreate(Bundle savedInstanceState) {
         Ui.applyTheme(this);
         if (Ui.DARK) setTheme(android.R.style.Theme_Material_NoActionBar);
@@ -43,17 +49,29 @@ public final class QuickActionActivity extends Activity {
         EditText phone = field("ثمانية أرقام", InputType.TYPE_CLASS_PHONE); phone.setFilters(new InputFilter[]{new InputFilter.LengthFilter(8)}); phone.setTextDirection(View.TEXT_DIRECTION_LTR);
         phoneRow.addView(prefix, new LinearLayout.LayoutParams(Ui.dp(this, 58), ViewGroup.LayoutParams.MATCH_PARENT)); phoneRow.addView(phone, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
         EditText amount = field("المبلغ", InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        form.addView(phoneRow, params());
+        LinearLayout contactPickerRow=Ui.row(this);
+        Button chooseContact=new Button(this);
+        chooseContact.setText("👤 من جهات الاتصال");
+        chooseContact.setTextSize(12);
+        chooseContact.setAllCaps(false);
+        chooseContact.setOnClickListener(v->openContactPicker());
+        contactPickerRow.addView(chooseContact,
+                new LinearLayout.LayoutParams(0,Ui.dp(this,42),1));
+        selectedContactLabel=Ui.text(this,"",12,Ui.MUTED,false);
+        form.addView(phoneRow,params());
+        form.addView(contactPickerRow,params());
+        form.addView(selectedContactLabel,params());
         form.addView(amount, params());
+        pendingContactPhone=phone;
         String title = "jawwal_friend".equals(action) ? "دفع لصديق" : "jawwal_merchant".equals(action) ? "دفع لتاجر" : "تحويل PalPay";
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle(title).setView(form)
                 .setNegativeButton("إلغاء", (d, w) -> finish()).setPositiveButton("فتح الهاتف", null).create();
         dialog.setOnCancelListener(d -> finish());
         dialog.setOnShowListener(x -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String tail = phone.getText().toString().trim().replace(" ", "");
-            String mobile = "05" + tail;
+            String tail=phone.getText().toString().trim();
+            String mobile=PalestinianMobileNumber.normalize("05"+tail);
             String money = amount.getText().toString().trim().replace(',', '.');
-            if (!tail.matches("[0-9]{8}")) { phone.setError("اكتب 8 أرقام بعد 05"); return; }
+            if (mobile==null) { phone.setError("اختر رقم جوال فلسطيني صالح (059 أو 056)"); return; }
             Long minor = Money.parseMinor(money);
             if (minor == null || minor <= 0) { amount.setError("اكتب مبلغًا صحيحًا"); return; }
             String code;
@@ -63,6 +81,41 @@ public final class QuickActionActivity extends Activity {
             dialog.dismiss(); dial(code);
         }));
         dialog.show();
+        if(getIntent().getBooleanExtra("pick_contact",false))
+            phone.post(this::openContactPicker);
+    }
+
+    private void openContactPicker() {
+        if(pendingContactPhone==null)return;
+        try {
+            Intent picker=new Intent(Intent.ACTION_PICK,
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI);
+            picker.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivityForResult(picker,CONTACT_PICK_REQUEST);
+        } catch(Exception error) {
+            Toast.makeText(this,"تعذر فتح جهات الاتصال",Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override protected void onActivityResult(int requestCode,int resultCode,Intent data) {
+        super.onActivityResult(requestCode,resultCode,data);
+        if(requestCode!=CONTACT_PICK_REQUEST || resultCode!=RESULT_OK ||
+                data==null || data.getData()==null || pendingContactPhone==null)return;
+        try(Cursor c=getContentResolver().query(data.getData(),
+                new String[]{ContactsContract.CommonDataKinds.Phone.NUMBER,
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME},
+                null,null,null)) {
+            if(c==null || !c.moveToFirst())throw new IllegalArgumentException("لا يوجد رقم في جهة الاتصال");
+            String mobile=PalestinianMobileNumber.normalize(c.getString(0));
+            if(mobile==null)throw new IllegalArgumentException(
+                    "الرقم المختار ليس جوالًا فلسطينيًا صالحًا (059 أو 056)");
+            pendingContactPhone.setText(mobile.substring(2));
+            if(selectedContactLabel!=null)
+                selectedContactLabel.setText("✓ "+c.getString(1)+"  •  "+mobile);
+        } catch(Exception error) {
+            Toast.makeText(this,error.getMessage()==null?"تعذر قراءة الرقم":error.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private EditText field(String hint, int type) {

@@ -11,7 +11,10 @@ public final class FxRateRefreshPolicy {
 
     public static boolean needsDailyRefresh(long lastSuccessfulFetch, long now, TimeZone zone) {
         if(now <= 0 || zone == null)throw new IllegalArgumentException("invalid clock");
-        if(lastSuccessfulFetch<=0 || lastSuccessfulFetch>now)return true;
+        // Reject dates implausibly far in the future instead of treating a corrupt
+        // cached timestamp as a successful refresh for today.
+        if(lastSuccessfulFetch > now)return true;
+        if(lastSuccessfulFetch<=0)return true;
         Calendar last=Calendar.getInstance(zone);
         last.setTimeInMillis(lastSuccessfulFetch);
         Calendar current=Calendar.getInstance(zone);

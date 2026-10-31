@@ -415,6 +415,10 @@ public final class MainActivity extends Activity {
 
     private void showMain(boolean showTransactions) {
         if (AppLockManager.enabled(this) && !authenticated) { showLockScreen(); return; }
+        // Recheck after saving, editing, recategorizing or deleting expenses and on
+        // reopening the dashboard. A monthly alert is still emitted only once.
+        if (BudgetAlertManager.enabled(this,"ILS") || BudgetAlertManager.enabled(this,"USD") ||
+                BudgetAlertManager.enabled(this,"JOD")) BudgetAlertManager.checkAll(this);
         lockScreenVisible = false;
         addScreenVisible = false;
         subScreenVisible = false;
@@ -516,11 +520,19 @@ public final class MainActivity extends Activity {
         LinearLayout titles = Ui.column(this);
         TextView title = Ui.text(this, "وين صرفت؟", 25, Color.WHITE, true);
         TextView subtitle = Ui.text(this, "أموالك واضحة، وخصوصيتك محفوظة", 11, Color.rgb(225, 239, 235), false);
+        // Keep labels and controls inside the fixed header on compact RTL screens.
+        title.setSingleLine(true);
+        subtitle.setSingleLine(true);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        subtitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        title.setAutoSizeTextTypeUniformWithConfiguration(17,25,1,android.util.TypedValue.COMPLEX_UNIT_SP);
         titles.addView(title);
         titles.addView(subtitle);
 
         int headerPercent = Ui.homeIconScalePercent(this, "header");
         int headerIconSize = Math.max(Ui.dp(this, 32), Math.min(Ui.dp(this, 62), Ui.homeIconDp(this, "header", 42)));
+        if(getResources().getConfiguration().screenWidthDp < 390)
+            headerIconSize=Math.min(headerIconSize,Ui.dp(this,48));
         float headerIconText = Math.min(31f, 21f * headerPercent / 100f);
         TextView addAccount = Ui.text(this, "▦", headerIconText, Color.WHITE, true);
         addAccount.setGravity(Gravity.CENTER);
@@ -601,13 +613,170 @@ public final class MainActivity extends Activity {
         return content;
     }
 
+    private void showMerchantInsightsScreen(String currency) {
+        addScreenVisible=false;subScreenVisible=true;currentTab=TAB_TRANSACTIONS;
+        LinearLayout page=Ui.column(this);
+        page.setBackgroundColor(Ui.BACKGROUND);
+        page.addView(pageHeader("أكثر الأماكن صرفًا",()->showMain(true)),
+                new LinearLayout.LayoutParams(-1,Ui.dp(this,78)));
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout content=Ui.column(this);
+        content.setPadding(Ui.dp(this,16),Ui.dp(this,8),Ui.dp(this,16),Ui.dp(this,36));
+        content.addView(Ui.text(this,
+                "حسب أسماء المحلات والأشخاص الموجودة في إشعارات الشراء والملاحظات. " +
+                "لا تُحتسب الديون أو التحويلات، وتُحسب من العمليات المقسمة أجزاء المصروف فقط. " +
+                "يُنشأ هذا التحليل عند فتح الصفحة، ولا يعمل أثناء إدخال المصروف.",
+                12,Ui.MUTED,false),fieldParams());
+        LinearLayout currencies=Ui.row(this);
+        for(String option:Arrays.asList("ILS","USD","JOD")) {
+            boolean selected=option.equals(currency);
+            Button chip=miniButton(option);
+            if(selected)chip.setTextColor(Ui.VIOLET);
+            chip.setOnClickListener(v->showMerchantInsightsScreen(option));
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,Ui.dp(this,44),1);
+            p.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
+            currencies.addView(chip,p);
+        }
+        content.addView(currencies,fieldParams());
+        content.addView(sectionTitle("أكثر الجهات خلال 12 شهرًا",currency));
+        LinearLayout results=Ui.column(this);
+        results.addView(Ui.text(this,"جارٍ حساب النتائج...",13,Ui.MUTED,false));
+        content.addView(results);
+        scroll.addView(content);
+        page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        page.addView(bottomNavigation(TAB_TRANSACTIONS),
+                new LinearLayout.LayoutParams(-1,Ui.dp(this,72)));
+        setContentView(page);
+        Calendar first=midnight(Calendar.getInstance());
+        first.set(Calendar.DAY_OF_MONTH,1);
+        first.add(Calendar.MONTH,-11);
+        final long from=first.getTimeInMillis(),until=System.currentTimeMillis()+1;
+        new Thread(()->{
+            try{
+                List<MerchantInsights.Place> places=MerchantInsights.topPlaces(db,currency,from,until);
+                runOnUiThread(()->{
+                    if(!page.isAttachedToWindow())return;
+                    results.removeAllViews();
+                    if(places.isEmpty()){
+                        results.addView(messageCard("لا توجد جهات مؤكدة بعد",
+                                "عندما تحتوي رسائل التحويل أو ملاحظات الشراء على اسم محل، سيظهر هنا."));
+                        return;
+                    }
+                    int rank=1;
+                    for(MerchantInsights.Place place:places){
+                        LinearLayout card=Ui.column(this);
+                        card.setPadding(Ui.dp(this,14),Ui.dp(this,12),Ui.dp(this,14),Ui.dp(this,12));
+                        card.setBackground(Ui.layeredSoftBackground(this,15));
+                        card.addView(Ui.text(this,(rank++)+"  •  "+place.name,
+                                15,Ui.TEXT,true));
+                        card.addView(Ui.text(this,Money.format(place.spentMinor,currency)+
+                                "  •  "+place.purchases+" مرات",13,Ui.VIOLET,false));
+                        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
+                        p.setMargins(0,Ui.dp(this,5),0,Ui.dp(this,5));
+                        results.addView(card,p);
+                    }
+                    results.addView(Ui.text(this,
+                            "تُراجع أحدث 5000 عملية ضمن الفترة. المبالغ بلا اسم جهة واضح لا تُنسب لأي محل.",
+                            11,Ui.MUTED,false));
+                });
+            }catch(Exception error){
+                runOnUiThread(()->{
+                    if(!page.isAttachedToWindow())return;
+                    results.removeAllViews();
+                    results.addView(Ui.text(this,"تعذّر إعداد التحليل: "+error.getMessage(),
+                            12,Ui.EXPENSE,false));
+                });
+            }
+        },"wen-merchant-insights").start();
+    }
+
     private LinearLayout transactionsContent(int limit) {
-        LinearLayout content = Ui.column(this);
-        content.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 110));
-        List<Models.Transaction> all = db.getTransactions(limit);
-        content.addView(sectionTitle("كل العمليات", String.valueOf(all.size())));
-        if (all.isEmpty()) content.addView(emptyCard());
-        else for (Models.Transaction tx : all) content.addView(transactionCard(tx));
+        LinearLayout content=Ui.column(this);
+        content.setPadding(Ui.dp(this,14),Ui.dp(this,8),Ui.dp(this,14),Ui.dp(this,110));
+        content.addView(sectionTitle("كل العمليات","بحث محلي وفلاتر"));
+        Button favoritePlaces=actionButton("🏪 أكثر المحلات والجهات صرفًا",false);
+        favoritePlaces.setOnClickListener(v->showMerchantInsightsScreen(dashboardCurrency));
+        content.addView(favoritePlaces,fieldParams());
+
+        EditText search=input("🔎 ابحث بالملاحظة أو الحساب أو التصنيف أو المبلغ");
+        search.setSingleLine(true);
+        search.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        content.addView(search,fieldParams());
+
+        LinearLayout filters=Ui.row(this);
+        Spinner type=spinner(Arrays.asList("كل الأنواع","مصروف","دخل","تحويل"));
+        Spinner currency=spinner(Arrays.asList("كل العملات","ILS","USD","JOD"));
+        LinearLayout.LayoutParams typeParams=new LinearLayout.LayoutParams(0,Ui.dp(this,50),1);
+        typeParams.setMargins(Ui.dp(this,3),Ui.dp(this,5),Ui.dp(this,3),Ui.dp(this,5));
+        LinearLayout.LayoutParams currencyParams=new LinearLayout.LayoutParams(0,Ui.dp(this,50),1);
+        currencyParams.setMargins(Ui.dp(this,3),Ui.dp(this,5),Ui.dp(this,3),Ui.dp(this,5));
+        filters.addView(type,typeParams);
+        filters.addView(currency,currencyParams);
+        content.addView(filters,new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,62)));
+
+        TextView status=Ui.text(this,"",12,Ui.MUTED,false);
+        status.setPadding(Ui.dp(this,6),Ui.dp(this,8),Ui.dp(this,6),Ui.dp(this,8));
+        content.addView(status);
+
+        LinearLayout results=Ui.column(this);
+        content.addView(results);
+        final int pageSize=Math.max(20,Math.min(75,limit));
+        final int[] offset={0};
+        final Runnable[] loadNext={null};
+        loadNext[0]=()->{
+            int typeIndex=type.getSelectedItemPosition();
+            String chosenType=typeIndex==1?FinanceRules.EXPENSE:
+                    typeIndex==2?FinanceRules.INCOME:typeIndex==3?FinanceRules.TRANSFER:null;
+            int currencyIndex=currency.getSelectedItemPosition();
+            String chosenCurrency=currencyIndex==1?"ILS":currencyIndex==2?"USD":
+                    currencyIndex==3?"JOD":null;
+            List<Models.Transaction> page;
+            try {
+                // The extra result indicates whether a next page is available.
+                page=db.searchTransactions(search.getText().toString(),chosenType,chosenCurrency,
+                        pageSize+1,offset[0]);
+            } catch(Exception error) {
+                search.setError(error.getMessage()==null?"تعذّر البحث":error.getMessage());
+                return;
+            }
+            int shown=Math.min(pageSize,page.size());
+            for(int i=0;i<shown;i++)results.addView(transactionCard(page.get(i)));
+            offset[0]+=shown;
+            if(offset[0]==0)results.addView(emptyCard());
+            status.setText(offset[0]==0?"لا توجد عمليات مطابقة":
+                    "عُرضت "+offset[0]+" عملية"+(page.size()>pageSize?" — يوجد المزيد":""));
+            if(page.size()>pageSize) {
+                Button more=actionButton("عرض "+pageSize+" عملية أخرى",false);
+                more.setOnClickListener(v->{
+                    results.removeView(more);
+                    loadNext[0].run();
+                });
+                results.addView(more,fieldParams());
+            }
+        };
+        Runnable reset=()->{
+            offset[0]=0;
+            results.removeAllViews();
+            loadNext[0].run();
+        };
+        // Debounce typing, rather than rebuilding up to 75 transaction cards every keystroke.
+        android.os.Handler searchHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+        final Runnable[] pendingSearch={null};
+        search.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence text,int start,int count,int after) {}
+            @Override public void onTextChanged(CharSequence text,int start,int before,int count) {
+                if(pendingSearch[0]!=null)searchHandler.removeCallbacks(pendingSearch[0]);
+                pendingSearch[0]=()->{
+                    if(content.isAttachedToWindow())reset.run();
+                };
+                searchHandler.postDelayed(pendingSearch[0],180L);
+            }
+            @Override public void afterTextChanged(Editable text) {}
+        });
+        type.setOnItemSelectedListener(new SimpleItemSelected(reset));
+        currency.setOnItemSelectedListener(new SimpleItemSelected(reset));
+        reset.run();
         return content;
     }
 
@@ -774,15 +943,25 @@ public final class MainActivity extends Activity {
 
         LinearLayout labels = Ui.column(this);
         labels.setPadding(Ui.dp(this, 12), 0, Ui.dp(this, 12), 0);
-        labels.addView(Ui.text(this, account.name, 15, Ui.TEXT, true));
+        TextView accountName=Ui.text(this, account.name, 15, Ui.TEXT, true);
+        accountName.setSingleLine(true);
+        accountName.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        labels.addView(accountName);
         labels.addView(Ui.text(this, account.currency, 12, Ui.MUTED, false));
-        card.addView(labels, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1));
+        boolean compactAccountCard=getResources().getConfiguration().screenWidthDp < 390;
         TextView balance = Ui.text(this, Money.format(account.balanceMinor, account.currency), 15, Ui.TEXT, true);
-        balance.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        card.addView(balance, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(this, 48)));
+        balance.setGravity((compactAccountCard?Gravity.START:Gravity.END) | Gravity.CENTER_VERTICAL);
+        if(compactAccountCard){
+            // Put the full balance on its own line instead of squeezing both labels on narrow displays.
+            labels.addView(balance);
+            card.addView(labels, new LinearLayout.LayoutParams(0, Ui.dp(this, 72), 1));
+        }else{
+            card.addView(labels, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1));
+            card.addView(balance, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(this, 48)));
+        }
         if (!Ui.iconsOnRight(this)) card.addView(icon, new LinearLayout.LayoutParams(iconSize, iconSize));
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(Ui.dp(this, 72), iconSize + Ui.dp(this, 26)));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(Ui.dp(this, compactAccountCard?98:72), iconSize + Ui.dp(this, 26)));
         params.setMargins(Ui.dp(this, 16), Ui.dp(this, 5), Ui.dp(this, 16), Ui.dp(this, 5));
         card.setLayoutParams(params);
         card.setOnClickListener(v -> showAccountDetails(account));
@@ -867,23 +1046,31 @@ public final class MainActivity extends Activity {
 
         LinearLayout info = Ui.column(this);
         info.setPadding(Ui.dp(this, 12), 0, Ui.dp(this, 12), 0);
-        info.addView(Ui.text(this, titleValue, 15, Ui.TEXT, true));
+        TextView transactionTitle=Ui.text(this, titleValue, 15, Ui.TEXT, true);
+        transactionTitle.setSingleLine(true);
+        transactionTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        info.addView(transactionTitle);
         String secondary = tx.accountName + (tx.affectsBalance ? "" : " • للتسجيل فقط") +
                 (tx.note == null || tx.note.isEmpty() ? "" : " • " + tx.note);
-        info.addView(Ui.text(this, secondary, 11, Ui.MUTED, false));
+        TextView transactionSubtitle=Ui.text(this, secondary, 11, Ui.MUTED, false);
+        transactionSubtitle.setSingleLine(true);
+        transactionSubtitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        info.addView(transactionSubtitle);
         String date = new SimpleDateFormat("dd/MM/yyyy  hh:mm a", new Locale("ar")).format(new Date(tx.createdAt));
         info.addView(Ui.text(this, date, 10, Ui.MUTED, false));
-        card.addView(info, new LinearLayout.LayoutParams(0, Ui.dp(this, 58), 1));
+        boolean compactTransactionCard=getResources().getConfiguration().screenWidthDp < 390;
 
         String prefix = FinanceRules.SPECIAL_DEBT.equals(tx.specialKind) ? "• " : FinanceRules.EXPENSE.equals(tx.type) ? "−" : FinanceRules.INCOME.equals(tx.type) ? "+" : "↔ ";
         TextView amount = Ui.text(this, prefix + Money.format(tx.amountMinor, tx.currency), 14, amountColor, true);
-        amount.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        card.addView(amount, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(this, 58)));
+        amount.setGravity((compactTransactionCard?Gravity.START:Gravity.END) | Gravity.CENTER_VERTICAL);
+        if(compactTransactionCard) info.addView(amount);
+        card.addView(info, new LinearLayout.LayoutParams(0, Ui.dp(this, compactTransactionCard?80:58), 1));
+        if(!compactTransactionCard) card.addView(amount, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(this, 58)));
         if (!Ui.iconsOnRight(this)) card.addView(icon, new LinearLayout.LayoutParams(transactionIconSize, transactionIconSize));
         card.setOnClickListener(v -> showTransactionDetails(tx));
         Ui.pressAnimation(card);
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(Ui.dp(this, 82), transactionIconSize + Ui.dp(this, 24)));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(Ui.dp(this, compactTransactionCard?106:82), transactionIconSize + Ui.dp(this, 24)));
         params.setMargins(Ui.dp(this, 16), Ui.dp(this, 5), Ui.dp(this, 16), Ui.dp(this, 5));
         card.setLayoutParams(params);
         return card;
@@ -957,7 +1144,10 @@ public final class MainActivity extends Activity {
             return;
         }
         if (tx.specialKind != null) { showEditDebtTransactionDialog(tx); return; }
-        String[] options = {"مصروف — اختيار تصنيف", "دخل — اختيار تصنيف", "تقسيم المصروف", "تحويل بين حساباتي", "دَين", "سداد دين"};
+        // Owner-requested: no amount/note editor in the generic edit menu.
+        // Keep all financial mutation methods untouched in the Safe Zone.
+        String[] options = {"مصروف — اختيار تصنيف", "دخل — اختيار تصنيف",
+                "تقسيم المصروف", "تحويل بين حساباتي", "دَين", "سداد دين"};
         new AlertDialog.Builder(this).setTitle("تعديل العملية").setItems(options, (d, which) -> {
             if (which == 0) showCategoryPicker(tx, FinanceRules.EXPENSE);
             else if (which == 1) showCategoryPicker(tx, FinanceRules.INCOME);
@@ -966,6 +1156,37 @@ public final class MainActivity extends Activity {
             else if (which == 4) showDebtClassificationDialog(tx, FinanceRules.SPECIAL_DEBT);
             else showDebtClassificationDialog(tx, FinanceRules.SPECIAL_DEBT_PAYMENT);
         }).setNegativeButton("إلغاء", null).show();
+    }
+
+    private void showSimpleManualTransactionEditDialog(Models.Transaction tx) {
+        LinearLayout form=Ui.column(this);
+        form.setPadding(Ui.dp(this,18),Ui.dp(this,8),Ui.dp(this,18),Ui.dp(this,8));
+        form.addView(Ui.text(this,"سيُعدّل التطبيق الرصيد تلقائيًا بمقدار الفرق، مع الاحتفاظ بالتاريخ والتصنيف وسجل التدقيق.",12,Ui.MUTED,false));
+        EditText amount=input("المبلغ");
+        amount.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        amount.setText(java.math.BigDecimal.valueOf(tx.amountMinor,2).toPlainString());
+        amount.setSelectAllOnFocus(true);
+        EditText note=input("الملاحظة");
+        note.setText(tx.note==null?"":tx.note);
+        note.setMinLines(2);
+        form.addView(amount,fieldParams());
+        form.addView(note,fieldParams());
+        AlertDialog dialog=new AlertDialog.Builder(this)
+                .setTitle("تعديل العملية اليدوية").setView(form)
+                .setNegativeButton("إلغاء",null).setPositiveButton("حفظ التعديل",null).create();
+        dialog.setOnShowListener(ignored->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+            Long value=Money.parseMinor(amount.getText().toString());
+            if(value==null || value<=0) { amount.setError("أدخل مبلغًا موجبًا صحيحًا"); return; }
+            try {
+                db.editSimpleManualTransaction(tx.id,tx.amountMinor,tx.note,value,note.getText().toString());
+                dialog.dismiss();
+                Toast.makeText(this,"تم تعديل العملية والرصيد بأمان",Toast.LENGTH_SHORT).show();
+                showMain(transactionsTab);
+            } catch(Exception error) {
+                Toast.makeText(this,error.getMessage()==null?"تعذّر تعديل العملية":error.getMessage(),Toast.LENGTH_LONG).show();
+            }
+        }));
+        dialog.show();
     }
 
     private void showDebtClassificationDialog(Models.Transaction tx, String specialKind) {
@@ -1103,17 +1324,96 @@ public final class MainActivity extends Activity {
                 }).show();
     }
 
-    private void showFxTransferDialog() {
+    /** Read-only diagnosis first: legacy account currency or archived state must not be guessed. */
+    private void showFxAccountDiagnostics() {
+        List<LegacyAccountVisibility.AccountInfo> all=LegacyAccountVisibility.list(db);
+        StringBuilder message=new StringBuilder("الحسابات المسجلة وعملاتها الفعلية:\n");
+        int hidden=0;
+        for(LegacyAccountVisibility.AccountInfo account:all) {
+            if(!account.active)hidden++;
+            if(message.length()<2400)
+                message.append(account.active?"✓ ":"◌ ").append(account.name)
+                        .append(" — ").append(account.currency)
+                        .append(account.active?"":" (مخفي)")
+                        .append("\n");
+        }
+        if(all.isEmpty())message.append("لم يُعثر على أي حساب.\n");
+        message.append("\nالتحويل بين عملتين يحتاج حسابين ظاهرين بعملتين مختلفتين. " +
+                "لا يمكن اعتماد كلمة دولار في اسم حسابٍ مسجل كشيكل لتغيير قيمته تلقائيًا.");
+        final int hiddenCount=hidden;
+        AlertDialog.Builder builder=new AlertDialog.Builder(this)
+                .setTitle("فحص حسابات التحويل")
+                .setMessage(message.toString())
+                .setNegativeButton("إغلاق",null)
+                .setPositiveButton("إدارة الحسابات",(d,w)->showAccountManagement());
+        if(hiddenCount>0)
+            builder.setNeutralButton("استعادة حساب مخفي",(d,w)->showFxArchivedAccountRecovery());
+        builder.show();
+    }
+
+    private void showFxArchivedAccountRecovery() {
+        List<LegacyAccountVisibility.AccountInfo> hidden=new ArrayList<>();
+        for(LegacyAccountVisibility.AccountInfo account:LegacyAccountVisibility.list(db))
+            if(!account.active)hidden.add(account);
+        if(hidden.isEmpty()){
+            Toast.makeText(this,"لا توجد حسابات مخفية",Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] labels=new String[hidden.size()];
+        for(int i=0;i<hidden.size();i++) {
+            LegacyAccountVisibility.AccountInfo item=hidden.get(i);
+            labels[i]=item.name+" — "+Money.format(item.balanceMinor,item.currency);
+        }
+        new AlertDialog.Builder(this).setTitle("اختر الحساب القديم المراد إظهاره")
+                .setItems(labels,(dialog,index)->{
+                    LegacyAccountVisibility.AccountInfo account=hidden.get(index);
+                    new AlertDialog.Builder(this).setTitle("إظهار حساب قديم؟")
+                            .setMessage("سيظهر الحساب: "+account.name+" ("+account.currency+") من جديد. " +
+                                    "سيصبح رصيده القديم ضمن إجمالياتك، دون أي تغيير في قيمته أو في العمليات المحفوظة. " +
+                                    "لا يُحوّل التطبيق العملة تلقائيًا.")
+                            .setNegativeButton("إلغاء",null)
+                            .setPositiveButton("إظهار الحساب",(d,w)->{
+                                try{
+                                    LegacyAccountVisibility.restore(db,account.id);
+                                    BalanceWidgetProvider.updateAll(this);
+                                    Toast.makeText(this,"ظهر الحساب القديم دون تغيير رصيده",Toast.LENGTH_LONG).show();
+                                    showFxTransferDialog();
+                                }catch(Exception error){
+                                    Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
+                                }
+                            }).show();
+                }).setNegativeButton("إلغاء",null).show();
+    }
+
+    private void showFxTransferDialog() { showFxTransferDialog(null,null,null); }
+
+    private void showFxTransferDialog(Long preferredSourceId,Long preferredDestinationId,String initialAmount) {
         List<Models.Account> accounts=db.getAccounts();
         if(accounts.size()<2){Toast.makeText(this,"أضف حسابين مختلفين أولًا",Toast.LENGTH_LONG).show();return;}
+        boolean hasDifferentCurrencies=false;
+        for(Models.Account first:accounts){
+            for(Models.Account second:accounts){
+                if(!first.currency.equals(second.currency)){hasDifferentCurrencies=true;break;}
+            }
+            if(hasDifferentCurrencies)break;
+        }
+        if(!hasDifferentCurrencies){showFxAccountDiagnostics();return;}
         List<String> options=new ArrayList<>();for(Models.Account a:accounts)options.add(a.displayName());
         LinearLayout form=Ui.column(this);
         form.setPadding(Ui.dp(this,18),Ui.dp(this,4),Ui.dp(this,18),Ui.dp(this,12));
         form.addView(label("من حساب"));Spinner source=spinner(options);form.addView(source,fieldParams());
         form.addView(label("إلى حساب"));Spinner destination=spinner(options);form.addView(destination,fieldParams());
+        Button inspectAccounts=miniButton("فحص حسابات العملات");
+        inspectAccounts.setOnClickListener(v->showFxAccountDiagnostics());
+        form.addView(inspectAccounts,fieldParams());
         form.addView(label("المبلغ من الحساب المصدر"));EditText amount=input("المبلغ");
         amount.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
         form.addView(amount,fieldParams());
+        if(initialAmount!=null)amount.setText(initialAmount);
+        if(preferredSourceId!=null)for(int i=0;i<accounts.size();i++)
+            if(accounts.get(i).id==preferredSourceId){source.setSelection(i);break;}
+        if(preferredDestinationId!=null)for(int i=0;i<accounts.size();i++)
+            if(accounts.get(i).id==preferredDestinationId){destination.setSelection(i);break;}
         TextView rateGuide=Ui.text(this,"سعر الصرف: كم وحدة يستلم الحساب الثاني مقابل 1 من عملة الحساب الأول",12,Ui.MUTED,false);
         form.addView(rateGuide,fieldParams());
         EditText rate=input("سعر الصرف الفعلي");
@@ -1245,6 +1545,14 @@ public final class MainActivity extends Activity {
             public void onTextChanged(CharSequence s,int start,int before,int count){recalc.run();}
             public void afterTextChanged(Editable e){}};
         amount.addTextChangedListener(watcher);rate.addTextChangedListener(watcher);
+        // Prevent submitting a same-currency pair from the FX-specific form.
+        Runnable validatePair=()->{
+            int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
+            if(si>=0 && di>=0 && accounts.get(si).currency.equals(accounts.get(di).currency))
+                preview.setText("اختر حسابين بعملتين مختلفتين، أو استخدم التحويل العادي");
+        };
+        source.setOnItemSelectedListener(new SimpleItemSelected(()->{loadSavedRate.run();validatePair.run();}));
+        destination.setOnItemSelectedListener(new SimpleItemSelected(()->{loadSavedRate.run();validatePair.run();}));
         ScrollView scroll=new ScrollView(this);scroll.addView(form);
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تحويل بين عملتين")
             .setView(scroll).setNegativeButton("إلغاء",null).setPositiveButton("تأكيد التحويل",null).create();
@@ -1559,6 +1867,23 @@ public final class MainActivity extends Activity {
         addNotificationSettingRow(card,"تذكير مصاريف اليوم",NotificationPreferences.REMINDER);
         addNotificationSettingRow(card,"تجاوز الميزانية",NotificationPreferences.BUDGET);
         addNotificationSettingRow(card,"مزامنة النسخة الاحتياطية",NotificationPreferences.SYNC);
+        Button originalSounds=actionButton("🎵 تفعيل 5 أصوات هادئة ومميزة",false);
+        originalSounds.setOnClickListener(v->new AlertDialog.Builder(this)
+                .setTitle("أصوات إشعارات وين صرفت")
+                .setMessage("لكل نوع إشعار نغمة قصيرة أصلية خاصة به: مراجعة عملية، حفظ، تذكير، ميزانية ومزامنة. " +
+                        "سيُنشئ Android قنوات جديدة للأصوات التي تختارها؛ قد تحتاج لمراجعة صلاحياتها ومستوى صوتها في إعدادات الإشعارات. " +
+                        "لن تُفعّل الأصوات التي عطّلتها يدويًا تلقائيًا.")
+                .setNegativeButton("إلغاء",null)
+                .setPositiveButton("تطبيق الأصوات",(d,w)->{
+                    try {
+                        NotificationPreferences.useDistinctiveSounds(this);
+                        Toast.makeText(this,"تم إعداد النغمات المميزة للإشعارات الجديدة",Toast.LENGTH_LONG).show();
+                        showSettings();
+                    }catch(Exception error) {
+                        Toast.makeText(this,"تعذّر إعداد الأصوات: "+error.getMessage(),Toast.LENGTH_LONG).show();
+                    }
+                }).show());
+        card.addView(originalSounds,fieldParams());
         card.addView(Ui.text(this,"ملاحظة: Android يحفظ كل إعداد كقناة إشعار مستقلة، ويُطبّق اختيارك على الإشعارات الجديدة.",11,Ui.MUTED,false));return card;
     }
 
@@ -1574,6 +1899,8 @@ public final class MainActivity extends Activity {
     private String notificationSoundLabel(String type) {
         String stored = NotificationPreferences.soundUri(this, type);
         if (stored.isEmpty()) return "اختيار صوت — الافتراضي";
+        if(NotificationSoundProvider.isOurSound(Uri.parse(stored)))
+            return "🔊 الصوت المميز — "+type;
         try {
             Ringtone ringtone = RingtoneManager.getRingtone(this, Uri.parse(stored));
             return "اختيار صوت — " + (ringtone == null ? "مخصص" : ringtone.getTitle(this));
@@ -1678,19 +2005,29 @@ public final class MainActivity extends Activity {
         content.setPadding(Ui.dp(this, 16), Ui.dp(this, 10), Ui.dp(this, 16), Ui.dp(this, 34));
 
         LinearLayout actions = Ui.row(this);
+        actions.setPadding(Ui.dp(this,4),Ui.dp(this,8),Ui.dp(this,4),Ui.dp(this,14));
         Button addDebt = actionButton("＋ إضافة دين", true); addDebt.setOnClickListener(v -> showManualDebtDialog(direction));
         Button people = actionButton("👥 الأشخاص", false); people.setOnClickListener(v -> showDebtPeopleManager(direction));
-        actions.addView(addDebt, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1));
-        LinearLayout.LayoutParams peopleParams = new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1); peopleParams.setMargins(Ui.dp(this, 8), 0, 0, 0); actions.addView(people, peopleParams);
+        LinearLayout.LayoutParams addDebtParams=new LinearLayout.LayoutParams(0,Ui.dp(this,52),1);
+        addDebtParams.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
+        LinearLayout.LayoutParams peopleParams=new LinearLayout.LayoutParams(0,Ui.dp(this,52),1);
+        peopleParams.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
+        actions.addView(addDebt,addDebtParams);
+        actions.addView(people,peopleParams);
         content.addView(actions);
 
         LinearLayout tabs = Ui.row(this);
-        TextView mine = debtTab("إلي — ديون الناس إلي", FinanceRules.DEBT_RECEIVABLE.equals(direction));
-        TextView owed = debtTab("عليّ — ديوني للناس", FinanceRules.DEBT_PAYABLE.equals(direction));
+        tabs.setPadding(Ui.dp(this,4),0,Ui.dp(this,4),Ui.dp(this,16));
+        TextView mine = debtTab("إليّ — لي عند الناس", FinanceRules.DEBT_RECEIVABLE.equals(direction));
+        TextView owed = debtTab("عليّ — للناس عندي", FinanceRules.DEBT_PAYABLE.equals(direction));
         mine.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_RECEIVABLE));
         owed.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_PAYABLE));
-        tabs.addView(mine, new LinearLayout.LayoutParams(0, Ui.dp(this, 54), 1));
-        tabs.addView(owed, new LinearLayout.LayoutParams(0, Ui.dp(this, 54), 1)); content.addView(tabs);
+        LinearLayout.LayoutParams mineParams=new LinearLayout.LayoutParams(0,Ui.dp(this,54),1);
+        mineParams.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
+        LinearLayout.LayoutParams owedParams=new LinearLayout.LayoutParams(0,Ui.dp(this,54),1);
+        owedParams.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
+        tabs.addView(mine,mineParams);
+        tabs.addView(owed,owedParams);content.addView(tabs);
 
         List<Models.DebtSummary> active = db.getDebtSummaries(direction, false);
         LinkedHashMap<Long,List<Models.DebtSummary>> activePeople = groupDebtsByPerson(active);
@@ -1746,7 +2083,7 @@ public final class MainActivity extends Activity {
     private TextView debtTab(String label, boolean selected) {
         TextView tab = Ui.text(this, label, 12, selected ? Color.WHITE : Ui.TEXT, true); tab.setGravity(Gravity.CENTER);
         tab.setBackground(selected ? Ui.gradient(Ui.BRAND, Ui.VIOLET, 16, this) : Ui.rounded(Ui.BRAND_SOFT, 16, this));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, Ui.dp(this, 54), 1); params.setMargins(Ui.dp(this, 4), Ui.dp(this, 10), Ui.dp(this, 4), Ui.dp(this, 8)); tab.setLayoutParams(params);
+        tab.setPadding(Ui.dp(this,8),0,Ui.dp(this,8),0);
         Ui.pressAnimation(tab); return tab;
     }
 
@@ -1774,29 +2111,99 @@ public final class MainActivity extends Activity {
             paid.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("تأكيد اكتمال السداد")
                     .setMessage("سيصبح المتبقي صفرًا ويُنقل الدين إلى قسم المسددة، من دون تغيير أي رصيد حساب.")
                     .setNegativeButton("إلغاء", null).setPositiveButton("تم السداد", (d,w) -> {
-                        try { db.markDebtPaid(debt.id); card.animate().alpha(.25f).scaleX(.92f).scaleY(.92f).translationY(-Ui.dp(this,18)).setDuration(320).withEndAction(() -> showDebtsScreen(debt.direction)).start(); }
+                        try { db.markDebtPaid(debt.id);
+                            Toast.makeText(this,"تم تسجيل السداد وتحديث المتبقي",Toast.LENGTH_LONG).show();
+                            showDebtPersonDetails(debt.personId,debt.personName,debt.direction);
+                        }
                         catch (Exception error) { Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show(); }
                     }).show());
         }
         card.addView(buttons);
-        Button deleteDebt=actionButton("حذف سجل الدين",false);deleteDebt.setTextColor(Ui.EXPENSE);deleteDebt.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("حذف سجل الدين؟")
-                .setMessage("سيُحذف السجل وحركاته. إذا كان مرتبطًا بعمليات مالية فستُحذف تلك العمليات ويُعكس أثرها من الأرصدة. لا يمكن التراجع.")
-                .setNegativeButton("إلغاء",null).setPositiveButton("حذف",(d,w)->{try{db.deleteDebt(debt.id);showDebtsScreen(debt.direction);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}}).show());
+        Button deleteDebt=actionButton("حذف سجل الدين",false);deleteDebt.setTextColor(Ui.EXPENSE);
+        deleteDebt.setOnClickListener(v->{
+            int affected=db.countDebtLinkedFinancialTransactions(debt.id);
+            String warning="سيُحذف سجل دين "+debt.personName+" ("+debt.currency+") وجميع حركاته. "+
+                    (affected>0?"تحذير: هذا سيحذف أيضًا "+affected+" عملية مالية مرتبطة ويعكس أثرها من الأرصدة. ":
+                    "هذا الدين يدوي ولا يغيّر الحذف أرصدة الحسابات. ")+
+                    "الحذف نهائي، ولن تتم أي تغييرات إذا فشل التحقق المالي.";
+            new AlertDialog.Builder(this).setTitle("تأكيد حذف سجل الدين نهائيًا")
+                    .setMessage(warning).setNegativeButton("إلغاء",null)
+                    .setPositiveButton("حذف نهائي",(d,w)->{
+                        try {
+                            db.deleteDebt(debt.id);
+                            Toast.makeText(this,"تم حذف سجل الدين وتحديث الحسابات وسجل الحركات",Toast.LENGTH_LONG).show();
+                            showDebtPersonDetails(debt.personId,debt.personName,debt.direction);
+                        } catch(Exception error) {
+                            Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
+                        }
+                    }).show();
+        });
         card.addView(deleteDebt,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,42)));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); params.setMargins(0, Ui.dp(this, 6), 0, Ui.dp(this, 6)); card.setLayoutParams(params);
         return card;
     }
 
     private void showDebtHistory(Models.DebtSummary debt) {
-        LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this,18),0,Ui.dp(this,18),Ui.dp(this,8));
-        for (Models.DebtMovement movement : db.getDebtMovements(debt.id)) {
-            String title = "OPEN".equals(movement.kind) ? "إضافة دين" : "MANUAL_PAYMENT".equals(movement.kind) ? "سداد يدوي" : "سداد من عملية";
-            String date = new SimpleDateFormat("dd/MM/yyyy  hh:mm a", new Locale("ar")).format(new Date(movement.createdAt));
-            View row=detailLine(title + " — " + date, Money.format(movement.amountMinor, debt.currency));
-            if(movement.transactionId==null){row.setOnClickListener(v->showManualDebtMovementDialog(debt,movement));Ui.pressAnimation(row);}content.addView(row);
+        LinearLayout content=Ui.column(this);
+        content.setPadding(Ui.dp(this,18),Ui.dp(this,4),Ui.dp(this,18),Ui.dp(this,12));
+        final AlertDialog[] historyDialog={null};
+        List<Models.DebtMovement> movements=db.getDebtMovements(debt.id);
+        if(movements.isEmpty())content.addView(Ui.text(this,"لا توجد حركات لهذا الدين",13,Ui.MUTED,false));
+        for(Models.DebtMovement movement:movements) {
+            String kind="OPEN".equals(movement.kind)?"إضافة دين":
+                    "MANUAL_PAYMENT".equals(movement.kind)?"سداد يدوي":"سداد من عملية";
+            String date=new SimpleDateFormat("dd/MM/yyyy  hh:mm a",new Locale("ar"))
+                    .format(new Date(movement.createdAt));
+            LinearLayout row=Ui.column(this);
+            row.setPadding(Ui.dp(this,12),Ui.dp(this,12),Ui.dp(this,12),Ui.dp(this,12));
+            row.setBackground(Ui.layeredSoftBackground(this,14));
+            row.addView(Ui.text(this,kind+"  •  "+Money.format(movement.amountMinor,debt.currency),
+                    14,Ui.TEXT,true));
+            row.addView(Ui.text(this,date,11,Ui.MUTED,false));
+            row.setOnClickListener(v->{
+                if(movement.transactionId!=null) {
+                    Models.Transaction original=db.getTransactionById(movement.transactionId);
+                    if(original==null) {
+                        Toast.makeText(this,"العملية المالية المرتبطة لم تعد موجودة",Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    LinearLayout details=Ui.column(this);
+                    details.setPadding(Ui.dp(this,16),Ui.dp(this,8),Ui.dp(this,16),Ui.dp(this,8));
+                    details.addView(Ui.text(this,kind+"  •  "+Money.format(movement.amountMinor,debt.currency),16,Ui.TEXT,true));
+                    details.addView(Ui.text(this,"التاريخ: "+date,12,Ui.MUTED,false));
+                    if(movement.fromSplitTransaction) {
+                        details.addView(Ui.text(this,"جزء من عملية مالية مقسمة إلى "+movement.linkedSplitPartCount+" أجزاء",13,Ui.VIOLET,true));
+                        if(movement.linkedTransactionAmountMinor!=null)
+                            details.addView(Ui.text(this,"إجمالي العملية الأصلية: "+
+                                    Money.format(movement.linkedTransactionAmountMinor,debt.currency),13,Ui.TEXT,false));
+                    }
+                    if(movement.linkedTransactionNote!=null&&!movement.linkedTransactionNote.trim().isEmpty())
+                        details.addView(Ui.text(this,"ملاحظة العملية: "+movement.linkedTransactionNote,12,Ui.MUTED,false));
+                    if(movement.note!=null&&!movement.note.trim().isEmpty())
+                        details.addView(Ui.text(this,"ملاحظة حركة الدين: "+movement.note,12,Ui.MUTED,false));
+                    new AlertDialog.Builder(this).setTitle("تفاصيل حركة الدين")
+                            .setView(details).setNegativeButton("إغلاق",null)
+                            .setPositiveButton("العملية الأصلية",(d,w)->{
+                                if(historyDialog[0]!=null)historyDialog[0].dismiss();
+                                showTransactionDetails(original);
+                            }).show();
+                } else {
+                    if(historyDialog[0]!=null)historyDialog[0].dismiss();
+                    showManualDebtMovementDialog(debt,movement);
+                }
+            });
+            Ui.pressAnimation(row);
+            LinearLayout.LayoutParams rowParams=new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
+            rowParams.setMargins(0,Ui.dp(this,5),0,Ui.dp(this,5));
+            content.addView(row,rowParams);
         }
-        ScrollView scroll = new ScrollView(this); scroll.addView(content);
-        new AlertDialog.Builder(this).setTitle("سجل دين " + debt.personName).setView(scroll).setPositiveButton("إغلاق",null).show();
+        ScrollView scroll=new ScrollView(this);
+        scroll.addView(content);
+        historyDialog[0]=new AlertDialog.Builder(this)
+                .setTitle("سجل دين "+debt.personName)
+                .setView(scroll).setPositiveButton("إغلاق",null).create();
+        historyDialog[0].show();
     }
 
     private void showManualDebtPayment(Models.DebtSummary debt){
@@ -1810,7 +2217,23 @@ public final class MainActivity extends Activity {
     private void showManualDebtMovementDialog(Models.DebtSummary debt,Models.DebtMovement movement){
         LinearLayout form=Ui.column(this);form.setPadding(Ui.dp(this,18),0,Ui.dp(this,18),Ui.dp(this,8));EditText amount=input("المبلغ");amount.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);amount.setText(String.format(Locale.ROOT,"%.2f",movement.amountMinor/100.0));EditText note=input("ملاحظة");note.setText(movement.note);form.addView(amount,fieldParams());form.addView(note,fieldParams());
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تعديل حركة يدوية").setView(form).setNegativeButton("حذف",null).setNeutralButton("إلغاء",null).setPositiveButton("حفظ",null).create();
-        dialog.setOnShowListener(x->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{Long value=Money.parseMinor(amount.getText().toString());if(value==null)throw new IllegalArgumentException("اكتب مبلغًا صحيحًا");db.updateManualDebtMovement(movement.id,value,note.getText().toString());dialog.dismiss();showDebtPersonDetails(debt.personId,debt.personName,debt.direction);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}});dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Ui.EXPENSE);dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v->new AlertDialog.Builder(this).setTitle("حذف الحركة؟").setMessage("سيُعاد حساب أصل الدين والمتبقي فورًا.").setNegativeButton("إلغاء",null).setPositiveButton("حذف",(d,w)->{try{db.deleteManualDebtMovement(movement.id);dialog.dismiss();showDebtPersonDetails(debt.personId,debt.personName,debt.direction);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}}).show());});dialog.show();
+        dialog.setOnShowListener(x->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{Long value=Money.parseMinor(amount.getText().toString());if(value==null)throw new IllegalArgumentException("اكتب مبلغًا صحيحًا");db.updateManualDebtMovement(movement.id,value,note.getText().toString());dialog.dismiss();showDebtPersonDetails(debt.personId,debt.personName,debt.direction);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}});dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Ui.EXPENSE);
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v->
+                    new AlertDialog.Builder(this).setTitle("تأكيد حذف حركة الدين")
+                            .setMessage("الشخص: "+debt.personName+"\nالحركة: "+
+                                    Money.format(movement.amountMinor,debt.currency)+
+                                    "\nسيُعاد حساب أصل الدين والمتبقي. هذه حركة يدوية ولا تمس رصيد الحسابات المالية. لا يمكن التراجع.")
+                            .setNegativeButton("إلغاء",null)
+                            .setPositiveButton("حذف نهائي",(d,w)->{
+                                try {
+                                    db.deleteManualDebtMovement(movement.id);
+                                    dialog.dismiss();
+                                    Toast.makeText(this,"تم حذف الحركة وتحديث رصيد الدين فورًا",Toast.LENGTH_LONG).show();
+                                    showDebtPersonDetails(debt.personId,debt.personName,debt.direction);
+                                } catch(Exception error) {
+                                    Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
+                                }
+                            }).show());});dialog.show();
     }
 
     private void showManualDebtDialog(String direction) { showManualDebtDialog(direction, null); }
@@ -1850,7 +2273,22 @@ public final class MainActivity extends Activity {
     private void showEditDebtPerson(Models.DebtPerson person,String returnDirection){
         EditText name=input("اسم الشخص");name.setText(person.name); AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تعديل الشخص").setView(name).setNegativeButton("حذف",null).setNeutralButton("إلغاء",null).setPositiveButton("حفظ",null).create();
         dialog.setOnShowListener(x->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{db.renameDebtPerson(person.id,name.getText().toString());dialog.dismiss();showDebtPeopleManager(returnDirection);}catch(Exception error){name.setError(error.getMessage());}});
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Ui.EXPENSE);dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v->{try{db.removeDebtPerson(person.id);dialog.dismiss();showDebtPeopleManager(returnDirection);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}});});dialog.show();
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Ui.EXPENSE);
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v->{
+                new AlertDialog.Builder(this).setTitle("تأكيد حذف الشخص "+person.name)
+                        .setMessage("لا يمكن حذف شخص له أي سجل ديون أو حقوق مسجلة. لن يُحذف أي دين أو حركة مالية بهذه العملية.")
+                        .setNegativeButton("إلغاء",null)
+                        .setPositiveButton("حذف الشخص",(d,w)->{
+                            try {
+                                db.removeDebtPerson(person.id);
+                                dialog.dismiss();
+                                Toast.makeText(this,"تم حذف الشخص غير المرتبط بديون",Toast.LENGTH_LONG).show();
+                                showDebtPeopleManager(returnDirection);
+                            } catch(Exception error) {
+                                Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
+                            }
+                        }).show();
+            });});dialog.show();
     }
 
     private void showAnalyticsScreen() {
@@ -1934,9 +2372,20 @@ public final class MainActivity extends Activity {
 
         content.addView(Ui.text(this, "تصنيفات هذا الشهر", 17, Ui.TEXT, true));
         List<Models.CategoryTotal> totals = db.getCategoryExpenseTotals(dashboardCurrency, monthStart.getTimeInMillis(), now);
-        long max = totals.isEmpty() ? 1 : totals.get(0).amountMinor;
-        if (totals.isEmpty()) content.addView(Ui.text(this, "لا توجد مصروفات بهذه العملة هذا الشهر.", 13, Ui.MUTED, false));
-        for (Models.CategoryTotal item : totals) content.addView(categoryAnalysisRow(item, max, monthStart.getTimeInMillis(), now));
+        long max = totals.isEmpty() ? 1 : Math.max(1,totals.get(0).amountMinor);
+        Map<Long,Boolean> shownCategories=new LinkedHashMap<>();
+        for(Models.CategoryTotal item:totals) {
+            shownCategories.put(item.categoryId,true);
+            content.addView(categoryAnalysisRow(item,max,monthStart.getTimeInMillis(),now));
+        }
+        // Include categories with zero expenses so users can set a cap BEFORE buying.
+        for(Models.Category available:db.getCategories(FinanceRules.EXPENSE)) {
+            if(available.excludeFromExpense || shownCategories.containsKey(available.id))continue;
+            Models.CategoryTotal empty=new Models.CategoryTotal();
+            empty.categoryId=available.id;empty.name=available.name;
+            empty.emoji=available.emoji;empty.amountMinor=0;
+            content.addView(categoryAnalysisRow(empty,max,monthStart.getTimeInMillis(),now));
+        }
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         page.addView(bottomNavigation(TAB_ANALYTICS), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72)));
         setContentView(page); Ui.animateScreen(page);
@@ -2123,9 +2572,15 @@ public final class MainActivity extends Activity {
         TextView amount = Ui.text(this, Money.format(item.amountMinor, dashboardCurrency), 13, Ui.VIOLET, true); amount.setGravity(Gravity.END | Gravity.CENTER_VERTICAL); text.addView(amount); card.addView(text);
         FrameLayout track = new FrameLayout(this); track.setBackground(Ui.rounded(Ui.BRAND_SOFT, 5, this)); View fill = new View(this); fill.setBackground(Ui.gradient(Ui.VIOLET, Ui.SKY, 5, this));
         int width = Math.max(Ui.dp(this, 16), (int) (Ui.dp(this, 300) * (item.amountMinor / (float) max))); track.addView(fill, new FrameLayout.LayoutParams(width, Ui.dp(this, 8))); card.addView(track, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 8)));
+        long categoryLimit=CategoryMonthlyBudgetStore.get(this,item.categoryId,dashboardCurrency);
+        if(categoryLimit>0) {
+            String state=item.amountMinor>categoryLimit?" • تجاوزت الحد":" • ضمن الحد";
+            card.addView(Ui.text(this,"الحد الشهري: "+Money.format(categoryLimit,dashboardCurrency)+state,
+                    11,item.amountMinor>categoryLimit?Ui.EXPENSE:Ui.MUTED,false));
+        }
         card.setOnClickListener(v -> showCategoryExpenseScreen(item, dashboardCurrency, startInclusive, endExclusive));
         Ui.pressAnimation(card);
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 62)); p.setMargins(0, Ui.dp(this, 4), 0, Ui.dp(this, 4)); card.setLayoutParams(p); return card;
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); p.setMargins(0, Ui.dp(this, 4), 0, Ui.dp(this, 4)); card.setLayoutParams(p); return card;
     }
 
     private void showCategoryExpenseScreen(Models.CategoryTotal category, String currency, long startInclusive, long endExclusive) {
@@ -2139,12 +2594,96 @@ public final class MainActivity extends Activity {
         totalView.setGravity(Gravity.CENTER); totalView.setBackground(Ui.layeredSoftBackground(this, 20));
         LinearLayout.LayoutParams totalParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78));
         totalParams.setMargins(Ui.dp(this, 16), Ui.dp(this, 4), Ui.dp(this, 16), Ui.dp(this, 10)); content.addView(totalView, totalParams);
+        content.addView(categoryMonthlyBudgetCard(category,currency,startInclusive,endExclusive));
+        content.addView(sectionTitle("تحليل آخر 6 أشهر","هذا التصنيف فقط"));
+        Calendar monthCursor=midnight(Calendar.getInstance());
+        monthCursor.setTimeInMillis(startInclusive);
+        monthCursor.set(Calendar.DAY_OF_MONTH,1);
+        monthCursor.add(Calendar.MONTH,-5);
+        for(int m=0;m<6;m++) {
+            long first=monthCursor.getTimeInMillis();
+            String monthName=new SimpleDateFormat("MMMM yyyy",new Locale("ar")).format(monthCursor.getTime());
+            monthCursor.add(Calendar.MONTH,1);
+            long last=monthCursor.getTimeInMillis();
+            long monthly=0;
+            for(Models.CategoryTotal row:db.getCategoryExpenseTotals(currency,first,last))
+                if(row.categoryId==category.categoryId){monthly=row.amountMinor;break;}
+            content.addView(detailLine(monthName,Money.format(monthly,currency)));
+        }
         List<Models.Transaction> transactions = db.getExpenseTransactionsByCategory(currency, category.categoryId, startInclusive, endExclusive);
         content.addView(sectionTitle("عمليات هذا الشهر", transactions.size() + " عمليات"));
         if (transactions.isEmpty()) content.addView(messageCard("لا توجد عمليات", "لم نجد عمليات لهذا التصنيف"));
         else for (Models.Transaction tx : transactions) content.addView(transactionCard(tx));
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         setContentView(page); Ui.animateScreen(page); content.post(() -> Ui.animateChildren(content));
+    }
+
+    private View categoryMonthlyBudgetCard(Models.CategoryTotal category,String currency,
+                                           long startInclusive,long endExclusive) {
+        long cap=CategoryMonthlyBudgetStore.get(this,category.categoryId,currency);
+        long spent=category.amountMinor;
+        LinearLayout card=Ui.column(this);
+        card.setPadding(Ui.dp(this,16),Ui.dp(this,14),Ui.dp(this,16),Ui.dp(this,14));
+        card.setBackground(Ui.layeredSoftBackground(this,18));
+        LinearLayout header=Ui.row(this);
+        header.addView(Ui.text(this,"حد "+category.name+" الشهري",16,Ui.TEXT,true),
+                new LinearLayout.LayoutParams(0,Ui.dp(this,42),1));
+        Button edit=miniButton(cap>0?"تعديل":"تحديد حد");
+        header.addView(edit,new LinearLayout.LayoutParams(Ui.dp(this,92),Ui.dp(this,42)));
+        edit.setOnClickListener(v->showCategoryMonthlyBudgetDialog(
+                category,currency,startInclusive,endExclusive));
+        card.addView(header);
+        if(cap<=0) {
+            card.addView(Ui.text(this,"يمكنك تحديد ميزانية شهرية لهذا التصنيف دون تغيير الأرصدة أو العمليات.",
+                    13,Ui.MUTED,false));
+        } else {
+            boolean exceeded=spent>cap;
+            long difference=exceeded?spent-cap:cap-spent;
+            card.addView(Ui.text(this,exceeded?"تجاوزت الحد بـ "+Money.format(difference,currency):
+                    "المتبقي من الحد "+Money.format(difference,currency),
+                    15,exceeded?Ui.EXPENSE:Ui.INCOME,true));
+            card.addView(Ui.text(this,"صرفت "+Money.format(spent,currency)+
+                    " من "+Money.format(cap,currency),12,Ui.MUTED,false));
+            FrameLayout track=new FrameLayout(this);
+            track.setBackground(Ui.rounded(Ui.BRAND_SOFT,6,this));
+            View fill=new View(this);
+            fill.setBackground(Ui.rounded(exceeded?Ui.EXPENSE:Ui.BRAND,6,this));
+            double ratio=Math.min(1.0,(double)spent/cap);
+            track.addView(fill,new FrameLayout.LayoutParams(
+                    Math.max(Ui.dp(this,4),(int)(Ui.dp(this,280)*ratio)),Ui.dp(this,8)));
+            card.addView(track,new LinearLayout.LayoutParams(-1,Ui.dp(this,8)));
+        }
+        LinearLayout.LayoutParams layout=new LinearLayout.LayoutParams(-1,-2);
+        layout.setMargins(Ui.dp(this,16),Ui.dp(this,4),Ui.dp(this,16),Ui.dp(this,14));
+        card.setLayoutParams(layout);
+        return card;
+    }
+
+    private void showCategoryMonthlyBudgetDialog(Models.CategoryTotal category,String currency,
+                                                  long startInclusive,long endExclusive) {
+        EditText input=input("الحد الشهري للتصنيف ("+currency+")");
+        input.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        long current=CategoryMonthlyBudgetStore.get(this,category.categoryId,currency);
+        if(current>0)input.setText(java.math.BigDecimal.valueOf(current,2).toPlainString());
+        LinearLayout form=Ui.column(this);
+        form.setPadding(Ui.dp(this,18),Ui.dp(this,8),Ui.dp(this,18),Ui.dp(this,8));
+        form.addView(Ui.text(this,"يتجدد الحد كل شهر ويخص هذا التصنيف وهذه العملة فقط. أدخل صفرًا لإلغاء الحد.",
+                12,Ui.MUTED,false));
+        form.addView(input,fieldParams());
+        AlertDialog dialog=new AlertDialog.Builder(this)
+                .setTitle("ميزانية "+category.name+" الشهرية")
+                .setView(form).setNegativeButton("إلغاء",null)
+                .setPositiveButton("حفظ",null).create();
+        dialog.setOnShowListener(x->dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v->{
+                    Long value=Money.parseMinor(input.getText().toString());
+                    if(value==null || value<0){input.setError("اكتب مبلغًا صالحًا أو صفرًا");return;}
+                    CategoryMonthlyBudgetStore.save(this,category.categoryId,currency,value);
+                    dialog.dismiss();
+                    Toast.makeText(this,"تم حفظ الحد الشهري للتصنيف",Toast.LENGTH_SHORT).show();
+                    showCategoryExpenseScreen(category,currency,startInclusive,endExclusive);
+                }));
+        dialog.show();
     }
 
     private void showAccountManagement() {
@@ -2323,7 +2862,8 @@ public final class MainActivity extends Activity {
         amount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         form.addView(amount, fieldParams());
 
-        form.addView(label("العملة"));
+        TextView currencyLabel=label("العملة");
+        form.addView(currencyLabel);
         Spinner currency = spinner(Arrays.asList("ILS", "USD", "JOD"));
         form.addView(currency, fieldParams());
 
@@ -2354,14 +2894,16 @@ public final class MainActivity extends Activity {
         LinearLayout categoryBox = Ui.column(this);
         categoryBox.addView(label("التصنيف"));
         Spinner category = new Spinner(this);
-        categoryBox.addView(category, fieldParams());
-        TextView smartHint = Ui.text(this, "", 12, Ui.BRAND, false);
-        smartHint.setVisibility(View.GONE);
-        Button applySmartHint = miniButton("تطبيق الاقتراح");
-        applySmartHint.setVisibility(View.GONE);
-        categoryBox.addView(smartHint, fieldParams());
-        categoryBox.addView(applySmartHint, fieldParams());
-        final long[] proposedCategory = {-1};
+        LinearLayout categoryPickRow=Ui.row(this);
+        Button defaultCategoryButton=miniButton("☆");
+        defaultCategoryButton.setContentDescription("تحديد التصنيف الافتراضي للإضافة التالية");
+        defaultCategoryButton.setTextSize(18);
+        LinearLayout.LayoutParams pickerWidth=new LinearLayout.LayoutParams(0,Ui.dp(this,54),1);
+        LinearLayout.LayoutParams starWidth=new LinearLayout.LayoutParams(Ui.dp(this,54),Ui.dp(this,48));
+        starWidth.setMargins(Ui.dp(this,7),0,0,0);
+        categoryPickRow.addView(category,pickerWidth);
+        categoryPickRow.addView(defaultCategoryButton,starWidth);
+        categoryBox.addView(categoryPickRow,fieldParams());
         Button addCategory = actionButton("＋ إضافة تصنيف جديد", false);
         categoryBox.addView(addCategory, fieldParams());
         form.addView(categoryBox);
@@ -2395,7 +2937,9 @@ public final class MainActivity extends Activity {
         Runnable refreshAccounts = () -> {
             String selectedCurrency = currency.getSelectedItem().toString();
             filteredAccounts.clear();
-            for (Models.Account a : db.getAccounts()) if (a.currency.equals(selectedCurrency)) filteredAccounts.add(a);
+            for (Models.Account a : db.getAccounts())
+                if (FinanceRules.TRANSFER.equals(selectedType[0]) || a.currency.equals(selectedCurrency))
+                    filteredAccounts.add(a);
             List<String> labels = new ArrayList<>();
             for (Models.Account a : filteredAccounts) labels.add(a.displayName());
             account.setAdapter(adapter(labels));
@@ -2410,41 +2954,22 @@ public final class MainActivity extends Activity {
             labels.add("✓ سداد دين — يؤثر على الرصيد فقط");
             for (Models.Category c : filteredCategories) labels.add(c.displayName());
             category.setAdapter(adapter(labels));
+            long preferred=DefaultCategoryStore.get(this,kind);
+            int preferredIndex=filteredCategories.isEmpty()?0:2;
+            for(int i=0;i<filteredCategories.size();i++)
+                if(filteredCategories.get(i).id==preferred){preferredIndex=i+2;break;}
+            category.setSelection(preferredIndex);
+            defaultCategoryButton.setText(preferred>0 && preferredIndex>=2 &&
+                    filteredCategories.get(preferredIndex-2).id==preferred?"★":"☆");
             List<String> splitLabels = new ArrayList<>(); for (Models.Category c : filteredCategories) splitLabels.add(c.displayName());
             for (SplitRowRef row : splitRows) row.category.setAdapter(adapter(splitLabels));
         };
-        Runnable refreshSuggestion = () -> {
-            proposedCategory[0]=-1;
-            smartHint.setVisibility(View.GONE);
-            applySmartHint.setVisibility(View.GONE);
-            if (splitCheck.isChecked() || FinanceRules.TRANSFER.equals(selectedType[0]) || filteredAccounts.isEmpty()) return;
-            int index = account.getSelectedItemPosition();
-            if (index<0 || index>=filteredAccounts.size()) return;
-            Long value = Money.parseMinor(amount.getText().toString());
-            if (value==null || value<=0) return;
-            String kind=selectedType[0], selectedCurrency=currency.getSelectedItem().toString();
-            CategorySuggestionRules.Suggestion suggestion=db.suggestCategory(kind,selectedCurrency,
-                    filteredAccounts.get(index).id,value,note.getText().toString());
-            if(suggestion==null)return;
-            for (Models.Category candidate:filteredCategories) if (candidate.id==suggestion.categoryId) {
-                proposedCategory[0]=candidate.id;
-                smartHint.setText("اقتراح: " + candidate.displayName()+ " — " + suggestion.reason);
-                smartHint.setVisibility(View.VISIBLE);
-                applySmartHint.setVisibility(View.VISIBLE);
-                return;
-            }
-        };
-        applySmartHint.setOnClickListener(v -> {
-            if (proposedCategory[0] <= 0) return;
-            for(int i=0;i<filteredCategories.size();i++)if(filteredCategories.get(i).id==proposedCategory[0]){
-                category.setSelection(i+2); // Two special debt entries precede normal categories.
-                break;
-            }
-        });
         Runnable refreshVisibility = () -> {
             boolean isTransfer = FinanceRules.TRANSFER.equals(selectedType[0]);
             boolean isExpense = FinanceRules.EXPENSE.equals(selectedType[0]);
             destinationBox.setVisibility(isTransfer ? View.VISIBLE : View.GONE);
+            currency.setVisibility(isTransfer ? View.GONE : View.VISIBLE);
+            currencyLabel.setVisibility(isTransfer ? View.GONE : View.VISIBLE);
             categoryBox.setVisibility(isTransfer || (isExpense && splitCheck.isChecked()) ? View.GONE : View.VISIBLE);
             splitCheck.setVisibility(isExpense ? View.VISIBLE : View.GONE);
             splitBox.setVisibility(isExpense && splitCheck.isChecked() ? View.VISIBLE : View.GONE);
@@ -2452,6 +2977,33 @@ public final class MainActivity extends Activity {
         addCategory.setOnClickListener(v -> showAddCategoryDialog(
                 FinanceRules.INCOME.equals(selectedType[0]) ? FinanceRules.INCOME : FinanceRules.EXPENSE,
                 refreshCategories));
+        Runnable updateDefaultStar=()->{
+            int index=category.getSelectedItemPosition();
+            String kind=FinanceRules.INCOME.equals(selectedType[0])?FinanceRules.INCOME:FinanceRules.EXPENSE;
+            boolean selected=index>=2 && index-2<filteredCategories.size() &&
+                    DefaultCategoryStore.get(this,kind)==filteredCategories.get(index-2).id;
+            defaultCategoryButton.setText(selected?"★":"☆");
+            defaultCategoryButton.setContentDescription(selected?
+                    "إلغاء التصنيف الافتراضي":"جعل التصنيف المحدد افتراضيًا");
+        };
+        category.setOnItemSelectedListener(new SimpleItemSelected(updateDefaultStar));
+        defaultCategoryButton.setOnClickListener(v->{
+            int index=category.getSelectedItemPosition();
+            if(index<2 || index-2>=filteredCategories.size()) {
+                Toast.makeText(this,"اختر تصنيفًا عاديًا أولًا، وليس دينًا أو سدادًا",Toast.LENGTH_LONG).show();
+                return;
+            }
+            String kind=FinanceRules.INCOME.equals(selectedType[0])?FinanceRules.INCOME:FinanceRules.EXPENSE;
+            long id=filteredCategories.get(index-2).id;
+            if(DefaultCategoryStore.get(this,kind)==id){
+                DefaultCategoryStore.clear(this,kind);
+                Toast.makeText(this,"تم إلغاء التصنيف الافتراضي",Toast.LENGTH_SHORT).show();
+            } else {
+                DefaultCategoryStore.set(this,kind,id);
+                Toast.makeText(this,"سيُختار هذا التصنيف تلقائيًا عند إضافة العملية التالية",Toast.LENGTH_SHORT).show();
+            }
+            updateDefaultStar.run();
+        });
 
         typeGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId == income.getId()) selectedType[0] = FinanceRules.INCOME;
@@ -2459,32 +3011,25 @@ public final class MainActivity extends Activity {
             else selectedType[0] = FinanceRules.EXPENSE;
             if (!FinanceRules.EXPENSE.equals(selectedType[0])) splitCheck.setChecked(false);
             refreshCategories.run();
+            refreshAccounts.run();
             refreshVisibility.run();
-            refreshSuggestion.run();
+
         });
-        currency.setOnItemSelectedListener(new SimpleItemSelected(() -> { refreshAccounts.run(); refreshSuggestion.run(); }));
-        account.setOnItemSelectedListener(new SimpleItemSelected(refreshSuggestion));
-        TextWatcher learningInputs = new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence text,int start,int count,int after) {}
-            @Override public void onTextChanged(CharSequence text,int start,int before,int count) { refreshSuggestion.run(); }
-            @Override public void afterTextChanged(Editable text) {}
-        };
-        amount.addTextChangedListener(learningInputs);
-        note.addTextChangedListener(learningInputs);
+        currency.setOnItemSelectedListener(new SimpleItemSelected(refreshAccounts));
         splitCheck.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked && splitRows.isEmpty()) {
                 addDebtSplitRow(splitRowsBox, splitRows, filteredCategories, debtPeople);
                 addDebtSplitRow(splitRowsBox, splitRows, filteredCategories, debtPeople);
             }
             refreshVisibility.run();
-            refreshSuggestion.run();
+
         });
         addPart.setOnClickListener(v -> addDebtSplitRow(splitRowsBox, splitRows, filteredCategories, debtPeople));
 
         refreshAccounts.run();
         refreshCategories.run();
         refreshVisibility.run();
-        refreshSuggestion.run();
+
 
         save.setOnClickListener(v -> {
             try {
@@ -2499,6 +3044,11 @@ public final class MainActivity extends Activity {
                     if (destination.getSelectedItemPosition() < 0) throw new IllegalArgumentException("اختر الحساب المستلم");
                     Models.Account dest = filteredAccounts.get(destination.getSelectedItemPosition());
                     if (dest.id == source.id) throw new IllegalArgumentException("اختر حسابًا مختلفًا للاستلام");
+                    if(!dest.currency.equals(source.currency)) {
+                        // Cross-currency transfer has its own dedicated rate-confirmation flow.
+                        showFxTransferDialog(source.id,dest.id,amount.getText().toString());
+                        return;
+                    }
                     destinationId = dest.id;
                 } else if (splitCheck.isChecked()) {
                     List<Long> parts = new ArrayList<>();
@@ -2531,7 +3081,9 @@ public final class MainActivity extends Activity {
                     }
                     categoryId = filteredCategories.get(selectedCategory - 2).id;
                 }
-                db.addTransaction(selectedType[0], amountMinor, currency.getSelectedItem().toString(), source.id,
+                String transactionCurrency=FinanceRules.TRANSFER.equals(selectedType[0])
+                        ? source.currency:currency.getSelectedItem().toString();
+                db.addTransaction(selectedType[0], amountMinor, transactionCurrency, source.id,
                         destinationId, categoryId, note.getText().toString(), splits, affectsBalance.isChecked());
                 Toast.makeText(this, "تم حفظ العملية", Toast.LENGTH_SHORT).show();
                 showMain(false);
@@ -2566,15 +3118,51 @@ public final class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,78)));
         ScrollView scroll=new ScrollView(this);LinearLayout body=Ui.column(this);
         body.setPadding(Ui.dp(this,16),Ui.dp(this,12),Ui.dp(this,16),Ui.dp(this,32));
-        body.addView(Ui.text(this,"سجل محفوظ على الجهاز: يبيّن الإضافة والتعديل والحذف والتقسيم. التراجع متاح لتغيير التصنيف العادي الأخير أو حذف عملية يدوية بسيطة حُذفت بعد هذا التحديث. لا يمكن استرجاع الديون أو التحويلات أو العمليات المقسّمة تلقائيًا، حفاظًا على الأرصدة.",12,Ui.MUTED,false));
+        body.addView(Ui.text(this,"مراجعة واضحة لما أُضيف أو عُدّل أو حُذف. اضغط على أي بطاقة لعرض التفاصيل، ويظهر زر التراجع فقط عندما يكون آمنًا ماليًا.",12,Ui.MUTED,false));
         List<FinanceDbHelper.AuditEntry> events=db.getChangeHistory(200);
-        if(events.isEmpty())body.addView(Ui.text(this,"لا توجد تعديلات مسجّلة بعد تحديث هذه النسخة.",14,Ui.MUTED,false));
-        for(FinanceDbHelper.AuditEntry entry:events){
-            LinearLayout card=Ui.column(this);card.setPadding(Ui.dp(this,12),Ui.dp(this,8),Ui.dp(this,12),Ui.dp(this,8));
-            card.setBackground(Ui.rounded(Ui.SURFACE,14,this));
-            card.addView(Ui.text(this,entry.action+" · #"+entry.recordId+" · " + new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.ROOT).format(new Date(entry.createdAt)),12,Ui.TEXT,true));
-            if(entry.before!=null)card.addView(Ui.text(this,"قبل: "+entry.before,12,Ui.MUTED,false));
-            if(entry.after!=null)card.addView(Ui.text(this,"بعد: "+entry.after,12,Ui.MUTED,false));
+        Map<Long,String> auditAccounts=new LinkedHashMap<>();
+        Map<Long,String> auditCurrencies=new LinkedHashMap<>();
+        Map<Long,String> auditCategories=new LinkedHashMap<>();
+        // Two small, read-only lookups for the screen; avoid one DB query per audit card.
+        try(android.database.Cursor accounts=db.getReadableDatabase().rawQuery(
+                "SELECT id,name,currency FROM accounts",null)) {
+            while(accounts.moveToNext()) {
+                auditAccounts.put(accounts.getLong(0),accounts.getString(1));
+                auditCurrencies.put(accounts.getLong(0),accounts.getString(2));
+            }
+        }
+        try(android.database.Cursor categories=db.getReadableDatabase().rawQuery(
+                "SELECT id,name FROM categories",null)) {
+            while(categories.moveToNext())
+                auditCategories.put(categories.getLong(0),categories.getString(1));
+        }
+        if(events.isEmpty())
+            body.addView(Ui.text(this,"لا توجد تعديلات مسجّلة بعد تحديث هذه النسخة.",14,Ui.MUTED,false));
+        for(FinanceDbHelper.AuditEntry entry:events) {
+            String title=AuditPresentation.title(entry.action,entry.table,entry.before,entry.after);
+            List<String> details=AuditPresentation.details(entry.action,entry.before,entry.after,
+                    auditAccounts,auditCategories,auditCurrencies);
+            LinearLayout card=Ui.column(this);
+            card.setPadding(Ui.dp(this,14),Ui.dp(this,12),Ui.dp(this,14),Ui.dp(this,12));
+            card.setBackground(Ui.layeredSoftBackground(this,16));
+            card.addView(Ui.text(this,title,16,Ui.TEXT,true));
+            String when=new SimpleDateFormat("dd/MM/yyyy  hh:mm a",new Locale("ar"))
+                    .format(new Date(entry.createdAt));
+            card.addView(Ui.text(this,when+"  •  سجل رقم "+entry.recordId,11,Ui.MUTED,false));
+            int visible=Math.min(2,details.size());
+            for(int i=0;i<visible;i++)
+                card.addView(Ui.text(this,details.get(i),13,Ui.TEXT,false));
+            card.addView(Ui.text(this,"اضغط لعرض تفاصيل هذا التغيير",11,Ui.VIOLET,false));
+            card.setOnClickListener(v->{
+                LinearLayout more=Ui.column(this);
+                more.setPadding(Ui.dp(this,20),Ui.dp(this,8),Ui.dp(this,20),Ui.dp(this,14));
+                for(String line:details)more.addView(Ui.text(this,line,14,Ui.TEXT,false),fieldParams());
+                more.addView(Ui.text(this,"رقم العملية/السجل: "+entry.recordId+" — "+when,
+                        12,Ui.MUTED,false),fieldParams());
+                new AlertDialog.Builder(this).setTitle(title).setView(more)
+                        .setPositiveButton("إغلاق",null).show();
+            });
+            Ui.pressAnimation(card);
             if(entry.undoable && "transactions".equals(entry.table)) {
                 boolean deleted="DELETE".equals(entry.action);
                 Button undo=miniButton(deleted?"↶ استرجاع العملية المحذوفة":"↶ تراجع عن تغيير التصنيف");
@@ -2607,9 +3195,9 @@ public final class MainActivity extends Activity {
         if(categories.isEmpty()){Toast.makeText(this,"لا توجد تصنيفات",Toast.LENGTH_SHORT).show();return;}
         String[] labels=new String[categories.size()];boolean[] checked=new boolean[categories.size()];
         for(int i=0;i<labels.length;i++)labels[i]=categories.get(i).displayName();
-        new AlertDialog.Builder(this).setTitle("حدد التصنيفات للحذف أو اضغط تغيير الرمز")
+        new AlertDialog.Builder(this).setTitle("اختر التصنيفات للحذف أو إدارة الاسم والرمز")
                 .setMultiChoiceItems(labels,checked,(dialog,which,isChecked)->checked[which]=isChecked)
-                .setNeutralButton("تغيير رمز",(dialog,unused)->showCategoryIconPicker(kind))
+                .setNeutralButton("تعديل اسم / رمز",(dialog,unused)->showCategoryIconPicker(kind))
                 .setNegativeButton("إلغاء",null).setPositiveButton("حذف المحدد",(dialog,unused)->{
                     List<Long> ids=new ArrayList<>();for(int i=0;i<checked.length;i++)if(checked[i])ids.add(categories.get(i).id);
                     if(ids.isEmpty())return;
@@ -2622,18 +3210,95 @@ public final class MainActivity extends Activity {
                 }).show();
     }
     private void showCategoryIconPicker(String kind){
-        List<Models.Category> categories=db.getCategories(kind);String[] labels=new String[categories.size()];
+        List<Models.Category> categories=db.getCategories(kind);
+        if(categories.isEmpty()){Toast.makeText(this,"لا توجد تصنيفات متاحة",Toast.LENGTH_SHORT).show();return;}
+        String[] labels=new String[categories.size()];
         for(int i=0;i<labels.length;i++)labels[i]=categories.get(i).displayName();
-        new AlertDialog.Builder(this).setTitle("اختر التصنيف الذي تريد تغيير رمزه")
+        new AlertDialog.Builder(this).setTitle("اختر التصنيف لتعديل اسمه أو رمزه")
                 .setItems(labels,(dialog,which)->{
                     Models.Category chosen=categories.get(which);
-                    final String[] choices={"🚕","🛍️","🛒","🍽️","💊","📚","💼","💰","🏠","🚗","🎁","📱","✨","🏷️"};
-                    new AlertDialog.Builder(this).setTitle("رمز عصري لـ "+chosen.name)
+                    final String[] choices={
+                            "✏️ تغيير اسم التصنيف",
+                            "🚕","🚌","🚗","⛽","🛍️","🛒","🍽️","🥗","☕","🍞",
+                            "💊","🩺","📚","🎓","💼","💰","🏠","🧾","💡","📱",
+                            "🎁","🎮","🧸","👕","🧼","💳","🏦","🤝","🤲","✈️",
+                            "🐾","🌱","✨","🏷️","📦","🪙","💸","🔧","🎨",
+                            "✏️ رمز مخصص"
+                    };
+                    new AlertDialog.Builder(this).setTitle("ماذا تريد تغييرًا في "+chosen.name+"؟")
                             .setItems(choices,(d,index)->{
-                                try{db.setCategoryIcon(chosen.id,choices[index]);Toast.makeText(this,"تم تغيير الرمز",Toast.LENGTH_SHORT).show();showCategoryManagementForKind(kind);}
-                                catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}
+                                if(index==0){
+                                    showRenameCategoryDialog(chosen,kind);
+                                    return;
+                                }
+                                if(index==choices.length-1){
+                                    showCustomCategoryIconDialog(chosen,kind);
+                                    return;
+                                }
+                                try{
+                                    db.setCategoryIcon(chosen.id,choices[index]);
+                                    Toast.makeText(this,"تم تغيير الرمز",Toast.LENGTH_SHORT).show();
+                                    showCategoryManagementForKind(kind);
+                                }catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}
                             }).setNegativeButton("إلغاء",null).show();
                 }).setNegativeButton("إلغاء",null).show();
+    }
+
+    private void showRenameCategoryDialog(Models.Category chosen,String kind) {
+        EditText nameInput=input("الاسم الجديد للتصنيف");
+        nameInput.setSingleLine(true);
+        nameInput.setText(chosen.name);
+        nameInput.setSelectAllOnFocus(true);
+        LinearLayout form=Ui.column(this);
+        form.setPadding(Ui.dp(this,18),Ui.dp(this,8),Ui.dp(this,18),Ui.dp(this,8));
+        form.addView(Ui.text(this,
+                "سيظهر الاسم الجديد على عملياتك السابقة أيضًا، دون تغيير أي مبلغ أو رصيد.",
+                12,Ui.MUTED,false));
+        form.addView(nameInput,fieldParams());
+        AlertDialog dialog=new AlertDialog.Builder(this)
+                .setTitle("إعادة تسمية "+chosen.name)
+                .setView(form).setNegativeButton("إلغاء",null)
+                .setPositiveButton("حفظ الاسم",null).create();
+        dialog.setOnShowListener(ignored->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+            try {
+                db.renameCategory(chosen.id,nameInput.getText().toString());
+                dialog.dismiss();
+                Toast.makeText(this,"تم تحديث اسم التصنيف",Toast.LENGTH_SHORT).show();
+                showCategoryManagementForKind(kind);
+            } catch(Exception error) {
+                nameInput.setError(error.getMessage()==null?"تعذّر حفظ الاسم":error.getMessage());
+            }
+        }));
+        dialog.show();
+    }
+
+    private void showCustomCategoryIconDialog(Models.Category chosen,String kind){
+        EditText iconInput=input("أدخل رمزًا تعبيريًا مثل 🦋 أو 🪙");
+        iconInput.setSingleLine(true);
+        iconInput.setText(chosen.emoji==null?"":chosen.emoji);
+        iconInput.setSelectAllOnFocus(true);
+        LinearLayout form=Ui.column(this);
+        form.setPadding(Ui.dp(this,18),Ui.dp(this,12),Ui.dp(this,18),Ui.dp(this,12));
+        form.addView(iconInput,fieldParams());
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تخصيص رمز "+chosen.name)
+                .setView(form).setNegativeButton("إلغاء",null)
+                .setPositiveButton("حفظ الرمز",null).create();
+        dialog.setOnShowListener(ignored->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+            String symbol=iconInput.getText().toString().trim();
+            if(symbol.isEmpty() || symbol.codePointCount(0,symbol.length())>8){
+                iconInput.setError("اختر رمزًا من 1 إلى 8 أحرف Unicode");
+                return;
+            }
+            try{
+                db.setCategoryIcon(chosen.id,symbol);
+                dialog.dismiss();
+                Toast.makeText(this,"تم حفظ الرمز المخصص",Toast.LENGTH_SHORT).show();
+                showCategoryManagementForKind(kind);
+            }catch(Exception error){
+                iconInput.setError(error.getMessage()==null?"تعذر حفظ الرمز":error.getMessage());
+            }
+        }));
+        dialog.show();
     }
 
     private void showAddCategoryDialog(String kind, Runnable afterSave) {
@@ -2644,8 +3309,13 @@ public final class MainActivity extends Activity {
                 .setView(form).setNegativeButton("إلغاء", null).setPositiveButton("إضافة", null).create();
         dialog.setOnShowListener(x -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             if (name.getText().toString().trim().isEmpty()) { name.setError("اكتب اسم التصنيف"); return; }
-            db.addCustomCategory(name.getText().toString(), kind, emoji.getText().toString()); dialog.dismiss(); afterSave.run();
-            Toast.makeText(this, "تمت إضافة التصنيف", Toast.LENGTH_SHORT).show();
+            try {
+                db.addCustomCategory(name.getText().toString(), kind, emoji.getText().toString());
+                dialog.dismiss(); afterSave.run();
+                Toast.makeText(this, "تمت إضافة التصنيف", Toast.LENGTH_SHORT).show();
+            } catch(Exception error) {
+                name.setError(error.getMessage()==null?"تعذر إضافة التصنيف":error.getMessage());
+            }
         })); dialog.show();
     }
 

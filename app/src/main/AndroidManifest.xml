@@ -29,6 +29,12 @@
             </intent-filter>
         </activity>
         <activity android:name=".QuickActionActivity" android:exported="false" android:theme="@style/AppTheme" />
+        <!-- Only the five locally synthesized audio clips are public; no app data is exposed. -->
+        <provider
+            android:name=".NotificationSoundProvider"
+            android:authorities="app.wensarafet.tracker.notification-sounds"
+            android:exported="true"
+            android:grantUriPermissions="true" />
 
         <receiver android:name=".ReminderReceiver" android:exported="false" />
         <receiver android:name=".CaptureActionReceiver" android:exported="false" />
