@@ -53,6 +53,36 @@ public final class BackupSettingsCodecTest {
 
         check(BackupSettingsCodec.decode(new Properties()).get("appearance").isEmpty(),
                 "Empty but present settings should decode safely");
+        // New UI-only budget and preferred-category settings must round-trip,
+        // but legacy backups without their namespace markers must preserve
+        // newer preferences rather than wiping them.
+        Properties ownerBackup = new Properties();
+        ownerBackup.setProperty("monthly_category_caps|category_7_ILS", "L:125000");
+        ownerBackup.setProperty("monthly_category_caps|" + BackupSettingsCodec.INCLUDED_MARKER, "B:true");
+        ownerBackup.setProperty("manual_entry_category_defaults|default_EXPENSE", "L:7");
+        ownerBackup.setProperty("manual_entry_category_defaults|" + BackupSettingsCodec.INCLUDED_MARKER, "B:true");
+        Map<String, Map<String, Object>> restored = BackupSettingsCodec.decode(ownerBackup);
+        check(Long.valueOf(125000).equals(restored.get("monthly_category_caps").get("category_7_ILS")),
+                "Saved category budget amount lost");
+        check(Long.valueOf(7).equals(restored.get("manual_entry_category_defaults").get("default_EXPENSE")),
+                "Saved category preference lost");
+        check(BackupSettingsCodec.shouldRestoreNamespace("monthly_category_caps",
+                restored.get("monthly_category_caps")), "new budget archive should restore");
+        check(BackupSettingsCodec.shouldRestoreNamespace("manual_entry_category_defaults",
+                restored.get("manual_entry_category_defaults")), "new default archive should restore");
+        Properties emptyNewBackup = new Properties();
+        emptyNewBackup.setProperty("monthly_category_caps|" + BackupSettingsCodec.INCLUDED_MARKER,
+                "B:true");
+        Map<String, Map<String, Object>> decodedEmpty = BackupSettingsCodec.decode(emptyNewBackup);
+        check(BackupSettingsCodec.shouldRestoreNamespace("monthly_category_caps",
+                decodedEmpty.get("monthly_category_caps")), "explicit empty budget should clear on restore");
+        Map<String, Map<String, Object>> legacy = BackupSettingsCodec.decode(new Properties());
+        check(!BackupSettingsCodec.shouldRestoreNamespace("monthly_category_caps",
+                legacy.get("monthly_category_caps")), "old backup must not erase new budgets");
+        check(!BackupSettingsCodec.shouldRestoreNamespace("manual_entry_category_defaults",
+                legacy.get("manual_entry_category_defaults")), "old backup must not erase defaults");
+        check(BackupSettingsCodec.shouldRestoreNamespace("appearance",
+                legacy.get("appearance")), "legacy original settings remain compatible");
         System.out.println("BackupSettingsCodecTest passed: typed roundtrip, Arabic, unknown namespace, malformed values");
     }
 }
