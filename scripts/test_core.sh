@@ -156,3 +156,11 @@ java -cp "$OUT_DIR" MoneyParseSafetyTest
 
 python3 "$PROJECT_DIR/tests/release_payload_contract.py"
 python3 "$PROJECT_DIR/tests/owner_signing_contract.py"
+
+# Financial Safe Zone: no overdrafts, protected debt ledger origins,
+# explicit split provenance and cross-currency transfer routing.
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/NonNegativeBalanceRules.java" \
+  "$PROJECT_DIR/tests/NonNegativeBalanceRulesTest.java"
+java -cp "$OUT_DIR" NonNegativeBalanceRulesTest
+python3 "$PROJECT_DIR/tests/debt_safe_zone_contract.py"
