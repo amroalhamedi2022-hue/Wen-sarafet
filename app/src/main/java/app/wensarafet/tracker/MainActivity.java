@@ -2273,9 +2273,20 @@ public final class MainActivity extends Activity {
 
         content.addView(Ui.text(this, "تصنيفات هذا الشهر", 17, Ui.TEXT, true));
         List<Models.CategoryTotal> totals = db.getCategoryExpenseTotals(dashboardCurrency, monthStart.getTimeInMillis(), now);
-        long max = totals.isEmpty() ? 1 : totals.get(0).amountMinor;
-        if (totals.isEmpty()) content.addView(Ui.text(this, "لا توجد مصروفات بهذه العملة هذا الشهر.", 13, Ui.MUTED, false));
-        for (Models.CategoryTotal item : totals) content.addView(categoryAnalysisRow(item, max, monthStart.getTimeInMillis(), now));
+        long max = totals.isEmpty() ? 1 : Math.max(1,totals.get(0).amountMinor);
+        Map<Long,Boolean> shownCategories=new LinkedHashMap<>();
+        for(Models.CategoryTotal item:totals) {
+            shownCategories.put(item.categoryId,true);
+            content.addView(categoryAnalysisRow(item,max,monthStart.getTimeInMillis(),now));
+        }
+        // Include categories with zero expenses so users can set a cap BEFORE buying.
+        for(Models.Category available:db.getCategories(FinanceRules.EXPENSE)) {
+            if(available.excludeFromExpense || shownCategories.containsKey(available.id))continue;
+            Models.CategoryTotal empty=new Models.CategoryTotal();
+            empty.categoryId=available.id;empty.name=available.name;
+            empty.emoji=available.emoji;empty.amountMinor=0;
+            content.addView(categoryAnalysisRow(empty,max,monthStart.getTimeInMillis(),now));
+        }
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         page.addView(bottomNavigation(TAB_ANALYTICS), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72)));
         setContentView(page); Ui.animateScreen(page);
@@ -2462,9 +2473,15 @@ public final class MainActivity extends Activity {
         TextView amount = Ui.text(this, Money.format(item.amountMinor, dashboardCurrency), 13, Ui.VIOLET, true); amount.setGravity(Gravity.END | Gravity.CENTER_VERTICAL); text.addView(amount); card.addView(text);
         FrameLayout track = new FrameLayout(this); track.setBackground(Ui.rounded(Ui.BRAND_SOFT, 5, this)); View fill = new View(this); fill.setBackground(Ui.gradient(Ui.VIOLET, Ui.SKY, 5, this));
         int width = Math.max(Ui.dp(this, 16), (int) (Ui.dp(this, 300) * (item.amountMinor / (float) max))); track.addView(fill, new FrameLayout.LayoutParams(width, Ui.dp(this, 8))); card.addView(track, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 8)));
+        long categoryLimit=CategoryMonthlyBudgetStore.get(this,item.categoryId,dashboardCurrency);
+        if(categoryLimit>0) {
+            String state=item.amountMinor>categoryLimit?" • تجاوزت الحد":" • ضمن الحد";
+            card.addView(Ui.text(this,"الحد الشهري: "+Money.format(categoryLimit,dashboardCurrency)+state,
+                    11,item.amountMinor>categoryLimit?Ui.EXPENSE:Ui.MUTED,false));
+        }
         card.setOnClickListener(v -> showCategoryExpenseScreen(item, dashboardCurrency, startInclusive, endExclusive));
         Ui.pressAnimation(card);
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 62)); p.setMargins(0, Ui.dp(this, 4), 0, Ui.dp(this, 4)); card.setLayoutParams(p); return card;
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); p.setMargins(0, Ui.dp(this, 4), 0, Ui.dp(this, 4)); card.setLayoutParams(p); return card;
     }
 
     private void showCategoryExpenseScreen(Models.CategoryTotal category, String currency, long startInclusive, long endExclusive) {
@@ -2478,12 +2495,96 @@ public final class MainActivity extends Activity {
         totalView.setGravity(Gravity.CENTER); totalView.setBackground(Ui.layeredSoftBackground(this, 20));
         LinearLayout.LayoutParams totalParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78));
         totalParams.setMargins(Ui.dp(this, 16), Ui.dp(this, 4), Ui.dp(this, 16), Ui.dp(this, 10)); content.addView(totalView, totalParams);
+        content.addView(categoryMonthlyBudgetCard(category,currency,startInclusive,endExclusive));
+        content.addView(sectionTitle("تحليل آخر 6 أشهر","هذا التصنيف فقط"));
+        Calendar monthCursor=midnight(Calendar.getInstance());
+        monthCursor.setTimeInMillis(startInclusive);
+        monthCursor.set(Calendar.DAY_OF_MONTH,1);
+        monthCursor.add(Calendar.MONTH,-5);
+        for(int m=0;m<6;m++) {
+            long first=monthCursor.getTimeInMillis();
+            String monthName=new SimpleDateFormat("MMMM yyyy",new Locale("ar")).format(monthCursor.getTime());
+            monthCursor.add(Calendar.MONTH,1);
+            long last=monthCursor.getTimeInMillis();
+            long monthly=0;
+            for(Models.CategoryTotal row:db.getCategoryExpenseTotals(currency,first,last))
+                if(row.categoryId==category.categoryId){monthly=row.amountMinor;break;}
+            content.addView(detailLine(monthName,Money.format(monthly,currency)));
+        }
         List<Models.Transaction> transactions = db.getExpenseTransactionsByCategory(currency, category.categoryId, startInclusive, endExclusive);
         content.addView(sectionTitle("عمليات هذا الشهر", transactions.size() + " عمليات"));
         if (transactions.isEmpty()) content.addView(messageCard("لا توجد عمليات", "لم نجد عمليات لهذا التصنيف"));
         else for (Models.Transaction tx : transactions) content.addView(transactionCard(tx));
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         setContentView(page); Ui.animateScreen(page); content.post(() -> Ui.animateChildren(content));
+    }
+
+    private View categoryMonthlyBudgetCard(Models.CategoryTotal category,String currency,
+                                           long startInclusive,long endExclusive) {
+        long cap=CategoryMonthlyBudgetStore.get(this,category.categoryId,currency);
+        long spent=category.amountMinor;
+        LinearLayout card=Ui.column(this);
+        card.setPadding(Ui.dp(this,16),Ui.dp(this,14),Ui.dp(this,16),Ui.dp(this,14));
+        card.setBackground(Ui.layeredSoftBackground(this,18));
+        LinearLayout header=Ui.row(this);
+        header.addView(Ui.text(this,"حد "+category.name+" الشهري",16,Ui.TEXT,true),
+                new LinearLayout.LayoutParams(0,Ui.dp(this,42),1));
+        Button edit=miniButton(cap>0?"تعديل":"تحديد حد");
+        header.addView(edit,new LinearLayout.LayoutParams(Ui.dp(this,92),Ui.dp(this,42)));
+        edit.setOnClickListener(v->showCategoryMonthlyBudgetDialog(
+                category,currency,startInclusive,endExclusive));
+        card.addView(header);
+        if(cap<=0) {
+            card.addView(Ui.text(this,"يمكنك تحديد ميزانية شهرية لهذا التصنيف دون تغيير الأرصدة أو العمليات.",
+                    13,Ui.MUTED,false));
+        } else {
+            boolean exceeded=spent>cap;
+            long difference=exceeded?spent-cap:cap-spent;
+            card.addView(Ui.text(this,exceeded?"تجاوزت الحد بـ "+Money.format(difference,currency):
+                    "المتبقي من الحد "+Money.format(difference,currency),
+                    15,exceeded?Ui.EXPENSE:Ui.INCOME,true));
+            card.addView(Ui.text(this,"صرفت "+Money.format(spent,currency)+
+                    " من "+Money.format(cap,currency),12,Ui.MUTED,false));
+            FrameLayout track=new FrameLayout(this);
+            track.setBackground(Ui.rounded(Ui.BRAND_SOFT,6,this));
+            View fill=new View(this);
+            fill.setBackground(Ui.rounded(exceeded?Ui.EXPENSE:Ui.BRAND,6,this));
+            double ratio=Math.min(1.0,(double)spent/cap);
+            track.addView(fill,new FrameLayout.LayoutParams(
+                    Math.max(Ui.dp(this,4),(int)(Ui.dp(this,280)*ratio)),Ui.dp(this,8)));
+            card.addView(track,new LinearLayout.LayoutParams(-1,Ui.dp(this,8)));
+        }
+        LinearLayout.LayoutParams layout=new LinearLayout.LayoutParams(-1,-2);
+        layout.setMargins(Ui.dp(this,16),Ui.dp(this,4),Ui.dp(this,16),Ui.dp(this,14));
+        card.setLayoutParams(layout);
+        return card;
+    }
+
+    private void showCategoryMonthlyBudgetDialog(Models.CategoryTotal category,String currency,
+                                                  long startInclusive,long endExclusive) {
+        EditText input=input("الحد الشهري للتصنيف ("+currency+")");
+        input.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        long current=CategoryMonthlyBudgetStore.get(this,category.categoryId,currency);
+        if(current>0)input.setText(java.math.BigDecimal.valueOf(current,2).toPlainString());
+        LinearLayout form=Ui.column(this);
+        form.setPadding(Ui.dp(this,18),Ui.dp(this,8),Ui.dp(this,18),Ui.dp(this,8));
+        form.addView(Ui.text(this,"يتجدد الحد كل شهر ويخص هذا التصنيف وهذه العملة فقط. أدخل صفرًا لإلغاء الحد.",
+                12,Ui.MUTED,false));
+        form.addView(input,fieldParams());
+        AlertDialog dialog=new AlertDialog.Builder(this)
+                .setTitle("ميزانية "+category.name+" الشهرية")
+                .setView(form).setNegativeButton("إلغاء",null)
+                .setPositiveButton("حفظ",null).create();
+        dialog.setOnShowListener(x->dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(v->{
+                    Long value=Money.parseMinor(input.getText().toString());
+                    if(value==null || value<0){input.setError("اكتب مبلغًا صالحًا أو صفرًا");return;}
+                    CategoryMonthlyBudgetStore.save(this,category.categoryId,currency,value);
+                    dialog.dismiss();
+                    Toast.makeText(this,"تم حفظ الحد الشهري للتصنيف",Toast.LENGTH_SHORT).show();
+                    showCategoryExpenseScreen(category,currency,startInclusive,endExclusive);
+                }));
+        dialog.show();
     }
 
     private void showAccountManagement() {
