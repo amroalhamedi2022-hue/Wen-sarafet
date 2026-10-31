@@ -489,6 +489,32 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         return result;
     }
 
+    /** Fetch one original financial row for linked debt history, not an unbounded history scan. */
+    public Models.Transaction getTransactionById(long transactionId) {
+        String sql="SELECT t.id,t.type,t.amount_minor,t.currency,t.account_id,t.destination_account_id," +
+                "a.name,d.name,c.name,c.emoji,t.note,t.raw_text,t.needs_review,t.created_at," +
+                "EXISTS(SELECT 1 FROM transaction_splits s WHERE s.transaction_id=t.id),t.affects_balance " +
+                "FROM transactions t JOIN accounts a ON a.id=t.account_id " +
+                "LEFT JOIN accounts d ON d.id=t.destination_account_id " +
+                "LEFT JOIN categories c ON c.id=t.category_id WHERE t.id=?";
+        try(Cursor c=getReadableDatabase().rawQuery(sql,new String[]{String.valueOf(transactionId)})) {
+            if(!c.moveToFirst())return null;
+            Models.Transaction tx=new Models.Transaction();
+            tx.id=c.getLong(0);tx.type=c.getString(1);tx.amountMinor=c.getLong(2);
+            tx.currency=c.getString(3);tx.accountId=c.getLong(4);
+            tx.destinationAccountId=c.isNull(5)?null:c.getLong(5);
+            tx.accountName=c.getString(6);
+            tx.destinationName=c.isNull(7)?null:c.getString(7);
+            tx.categoryName=c.isNull(8)?null:c.getString(8);
+            tx.categoryEmoji=c.isNull(9)?null:c.getString(9);
+            tx.note=c.getString(10);tx.rawText=c.isNull(11)?null:c.getString(11);
+            tx.needsReview=c.getInt(12)==1;tx.createdAt=c.getLong(13);
+            tx.hasSplits=c.getInt(14)==1;tx.affectsBalance=c.getInt(15)==1;
+            populateSpecial(tx);
+            return tx;
+        }
+    }
+
     public List<Models.Transaction> getExpenseTransactions(String currency, long startInclusive, long endExclusive) {
         List<Models.Transaction> result = new ArrayList<>();
         String sql = "SELECT t.id,t.type,t.amount_minor,t.currency,t.account_id,t.destination_account_id,a.name,d.name,c.name,c.emoji,t.note,t.raw_text,t.needs_review,t.created_at," +
@@ -1487,16 +1513,38 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
 
     public List<Models.DebtMovement> getDebtMovements(long debtId) {
         List<Models.DebtMovement> result = new ArrayList<>();
-        try (Cursor c = getReadableDatabase().rawQuery(
-                "SELECT id,debt_id,transaction_id,kind,amount_minor,created_at,note FROM debt_movements WHERE debt_id=? ORDER BY created_at DESC,id DESC",
-                new String[]{String.valueOf(debtId)})) {
+        // Read-only provenance: a split portion must link back to the original
+        // financial operation, including its full total and note.
+        String sql="SELECT m.id,m.debt_id,m.transaction_id,m.kind,m.amount_minor,m.created_at,m.note," +
+                "(SELECT COUNT(*) FROM transaction_splits s WHERE s.transaction_id=m.transaction_id)," +
+                "t.amount_minor,t.note FROM debt_movements m " +
+                "LEFT JOIN transactions t ON t.id=m.transaction_id " +
+                "WHERE m.debt_id=? ORDER BY m.created_at DESC,m.id DESC";
+        try (Cursor c = getReadableDatabase().rawQuery(sql,new String[]{String.valueOf(debtId)})) {
             while (c.moveToNext()) {
-                Models.DebtMovement item = new Models.DebtMovement(); item.id = c.getLong(0); item.debtId = c.getLong(1);
-                item.transactionId = c.isNull(2) ? null : c.getLong(2); item.kind = c.getString(3);
-                item.amountMinor = c.getLong(4); item.createdAt = c.getLong(5); item.note = c.getString(6); result.add(item);
+                Models.DebtMovement item = new Models.DebtMovement();
+                item.id=c.getLong(0); item.debtId=c.getLong(1);
+                item.transactionId=c.isNull(2)?null:c.getLong(2);
+                item.kind=c.getString(3); item.amountMinor=c.getLong(4);
+                item.createdAt=c.getLong(5); item.note=c.getString(6);
+                item.linkedSplitPartCount=c.getInt(7);
+                item.fromSplitTransaction=item.transactionId!=null && item.linkedSplitPartCount>0;
+                item.linkedTransactionAmountMinor=c.isNull(8)?null:c.getLong(8);
+                item.linkedTransactionNote=c.isNull(9)?null:c.getString(9);
+                result.add(item);
             }
         }
         return result;
+    }
+
+    /** How many original financial operations would disappear if this entire debt is deleted. */
+    public int countDebtLinkedFinancialTransactions(long debtId) {
+        try(Cursor c=getReadableDatabase().rawQuery(
+                "SELECT COUNT(DISTINCT transaction_id) FROM debt_movements " +
+                "WHERE debt_id=? AND transaction_id IS NOT NULL",
+                new String[]{String.valueOf(debtId)})) {
+            return c.moveToFirst()?c.getInt(0):0;
+        }
     }
 
     public void markDebtPaid(long debtId) {
@@ -1550,7 +1598,9 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 debtId = c.getLong(0);
                 if (!c.isNull(1)) throw new IllegalArgumentException("احذف هذه الحركة من تفاصيل العملية المالية");
             }
-            writable.delete("debt_movements", "id=?", new String[]{String.valueOf(movementId)});
+            if(writable.delete("debt_movements", "id=? AND transaction_id IS NULL",
+                    new String[]{String.valueOf(movementId)})!=1)
+                throw new IllegalStateException("تعذّر حذف حركة الدين؛ لم يتغير السجل");
             ensureDebtTotalsValid(writable, debtId); recomputeDebt(writable, debtId); writable.setTransactionSuccessful();
         } finally { writable.endTransaction(); }
     }
