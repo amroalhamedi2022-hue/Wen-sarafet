@@ -2811,15 +2811,51 @@ public final class MainActivity extends Activity {
                 new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,78)));
         ScrollView scroll=new ScrollView(this);LinearLayout body=Ui.column(this);
         body.setPadding(Ui.dp(this,16),Ui.dp(this,12),Ui.dp(this,16),Ui.dp(this,32));
-        body.addView(Ui.text(this,"سجل محفوظ على الجهاز: يبيّن الإضافة والتعديل والحذف والتقسيم. التراجع متاح لتغيير التصنيف العادي الأخير أو حذف عملية يدوية بسيطة حُذفت بعد هذا التحديث. لا يمكن استرجاع الديون أو التحويلات أو العمليات المقسّمة تلقائيًا، حفاظًا على الأرصدة.",12,Ui.MUTED,false));
+        body.addView(Ui.text(this,"مراجعة واضحة لما أُضيف أو عُدّل أو حُذف. اضغط على أي بطاقة لعرض التفاصيل، ويظهر زر التراجع فقط عندما يكون آمنًا ماليًا.",12,Ui.MUTED,false));
         List<FinanceDbHelper.AuditEntry> events=db.getChangeHistory(200);
-        if(events.isEmpty())body.addView(Ui.text(this,"لا توجد تعديلات مسجّلة بعد تحديث هذه النسخة.",14,Ui.MUTED,false));
-        for(FinanceDbHelper.AuditEntry entry:events){
-            LinearLayout card=Ui.column(this);card.setPadding(Ui.dp(this,12),Ui.dp(this,8),Ui.dp(this,12),Ui.dp(this,8));
-            card.setBackground(Ui.rounded(Ui.SURFACE,14,this));
-            card.addView(Ui.text(this,entry.action+" · #"+entry.recordId+" · " + new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.ROOT).format(new Date(entry.createdAt)),12,Ui.TEXT,true));
-            if(entry.before!=null)card.addView(Ui.text(this,"قبل: "+entry.before,12,Ui.MUTED,false));
-            if(entry.after!=null)card.addView(Ui.text(this,"بعد: "+entry.after,12,Ui.MUTED,false));
+        Map<Long,String> auditAccounts=new LinkedHashMap<>();
+        Map<Long,String> auditCurrencies=new LinkedHashMap<>();
+        Map<Long,String> auditCategories=new LinkedHashMap<>();
+        // Two small, read-only lookups for the screen; avoid one DB query per audit card.
+        try(android.database.Cursor accounts=db.getReadableDatabase().rawQuery(
+                "SELECT id,name,currency FROM accounts",null)) {
+            while(accounts.moveToNext()) {
+                auditAccounts.put(accounts.getLong(0),accounts.getString(1));
+                auditCurrencies.put(accounts.getLong(0),accounts.getString(2));
+            }
+        }
+        try(android.database.Cursor categories=db.getReadableDatabase().rawQuery(
+                "SELECT id,name FROM categories",null)) {
+            while(categories.moveToNext())
+                auditCategories.put(categories.getLong(0),categories.getString(1));
+        }
+        if(events.isEmpty())
+            body.addView(Ui.text(this,"لا توجد تعديلات مسجّلة بعد تحديث هذه النسخة.",14,Ui.MUTED,false));
+        for(FinanceDbHelper.AuditEntry entry:events) {
+            String title=AuditPresentation.title(entry.action,entry.table,entry.before,entry.after);
+            List<String> details=AuditPresentation.details(entry.action,entry.before,entry.after,
+                    auditAccounts,auditCategories,auditCurrencies);
+            LinearLayout card=Ui.column(this);
+            card.setPadding(Ui.dp(this,14),Ui.dp(this,12),Ui.dp(this,14),Ui.dp(this,12));
+            card.setBackground(Ui.layeredSoftBackground(this,16));
+            card.addView(Ui.text(this,title,16,Ui.TEXT,true));
+            String when=new SimpleDateFormat("dd/MM/yyyy  hh:mm a",new Locale("ar"))
+                    .format(new Date(entry.createdAt));
+            card.addView(Ui.text(this,when+"  •  سجل رقم "+entry.recordId,11,Ui.MUTED,false));
+            int visible=Math.min(2,details.size());
+            for(int i=0;i<visible;i++)
+                card.addView(Ui.text(this,details.get(i),13,Ui.TEXT,false));
+            card.addView(Ui.text(this,"اضغط لعرض تفاصيل هذا التغيير",11,Ui.VIOLET,false));
+            card.setOnClickListener(v->{
+                LinearLayout more=Ui.column(this);
+                more.setPadding(Ui.dp(this,20),Ui.dp(this,8),Ui.dp(this,20),Ui.dp(this,14));
+                for(String line:details)more.addView(Ui.text(this,line,14,Ui.TEXT,false),fieldParams());
+                more.addView(Ui.text(this,"رقم العملية/السجل: "+entry.recordId+" — "+when,
+                        12,Ui.MUTED,false),fieldParams());
+                new AlertDialog.Builder(this).setTitle(title).setView(more)
+                        .setPositiveButton("إغلاق",null).show();
+            });
+            Ui.pressAnimation(card);
             if(entry.undoable && "transactions".equals(entry.table)) {
                 boolean deleted="DELETE".equals(entry.action);
                 Button undo=miniButton(deleted?"↶ استرجاع العملية المحذوفة":"↶ تراجع عن تغيير التصنيف");
