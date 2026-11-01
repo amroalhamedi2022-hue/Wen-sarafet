@@ -2118,13 +2118,13 @@ public final class MainActivity extends Activity {
 
     private View debtPersonCard(List<Models.DebtSummary> debts, boolean closed) {
         Models.DebtSummary first = debts.get(0);
-        LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this,14),Ui.dp(this,12),Ui.dp(this,14),Ui.dp(this,12));
-        card.setBackground(Ui.layeredSoftBackground(this,20)); card.setElevation(Ui.dp(this,3));
+        LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this,18),Ui.dp(this,16),Ui.dp(this,18),Ui.dp(this,16));
+        card.setBackground(Ui.rounded(Ui.SURFACE,18,this)); card.setElevation(Ui.dp(this,2));
         LinearLayout head=Ui.row(this); head.addView(Ui.text(this,"▤  "+first.personName+(closed?" ✓":""),17,closed?Ui.INCOME:Ui.TEXT,true),new LinearLayout.LayoutParams(0,Ui.dp(this,40),1));
         TextView arrow=Ui.text(this,"›",28,Ui.VIOLET,true);arrow.setGravity(Gravity.CENTER);head.addView(arrow,new LinearLayout.LayoutParams(Ui.dp(this,36),Ui.dp(this,40)));card.addView(head);
         long last=0; int openCount=0;
-        for(Models.DebtSummary debt:debts){last=Math.max(last,debt.lastMovementAt);if(!debt.closed)openCount++;card.addView(Ui.text(this,(debt.closed?"✓ ":"")+debt.currency+"  •  المتبقي "+Money.format(debt.remainingMinor,debt.currency),12,debt.closed?Ui.MUTED:Ui.VIOLET,true));}
-        if(last>0){String date=new SimpleDateFormat("dd/MM/yyyy  hh:mm a",new Locale("ar")).format(new Date(last));card.addView(Ui.text(this,"آخر حركة: "+date+(openCount>0?"  •  "+openCount+" نشط":""),11,Ui.MUTED,false));}
+        for(Models.DebtSummary debt:debts){last=Math.max(last,debt.lastMovementAt);if(!debt.closed)openCount++;card.addView(Ui.text(this,(debt.closed?"✓ ":"")+debt.currency+"  •  المتبقي "+Money.format(debt.remainingMinor,debt.currency),14,debt.closed?Ui.MUTED:Ui.VIOLET,true));}
+        if(last>0){String date=new SimpleDateFormat("dd/MM/yyyy  hh:mm a",new Locale("ar")).format(new Date(last));card.addView(Ui.text(this,"آخر حركة: "+date+(openCount>0?"  •  "+openCount+" نشط":""),12,Ui.MUTED,false));}
         card.setOnClickListener(v->showDebtPersonDetails(first.personId,first.personName,first.direction));Ui.pressAnimation(card);
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);params.setMargins(0,Ui.dp(this,6),0,Ui.dp(this,6));card.setLayoutParams(params);return card;
     }
@@ -2133,13 +2133,23 @@ public final class MainActivity extends Activity {
         addScreenVisible=false;subScreenVisible=true;
         LinearLayout page=Ui.column(this);page.setBackgroundColor(Ui.BACKGROUND);
         page.addView(pageHeader("ديون "+personName,()->showDebtsScreen(direction)),new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,78)));
-        ScrollView scroll=new ScrollView(this);LinearLayout content=Ui.column(this);content.setPadding(Ui.dp(this,16),Ui.dp(this,10),Ui.dp(this,16),Ui.dp(this,34));
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout centered=Ui.column(this);
+        centered.setGravity(Gravity.CENTER_HORIZONTAL);
+        LinearLayout content=Ui.column(this);
+        content.setPadding(Ui.dp(this,16),Ui.dp(this,10),
+                Ui.dp(this,16),Ui.dp(this,34));
         Button add=actionButton("＋ إضافة دين جديد لنفس الشخص",true);add.setOnClickListener(v->showManualDebtDialog(direction,personId));content.addView(add,fieldParams());
         List<Models.DebtSummary> active=db.getDebtSummariesForPerson(personId,direction,false);
         content.addView(sectionTitle("الديون النشطة",active.isEmpty()?"✓ كل الديون مسددة":active.size()+" سجلات"));for(Models.DebtSummary debt:active)content.addView(debtCard(debt));
         List<Models.DebtSummary> closed=db.getDebtSummariesForPerson(personId,direction,true);
         content.addView(sectionTitle("المسددة والمغلقة",closed.isEmpty()?"لا يوجد سجل بعد":closed.size()+" سجلات"));for(Models.DebtSummary debt:closed)content.addView(debtCard(debt));
-        scroll.addView(content);page.addView(scroll,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1));setContentView(page);Ui.animateScreen(page);content.post(()->Ui.animateChildren(content));
+        int detailWidthDp=Math.min(760,Math.max(240,
+                getResources().getConfiguration().screenWidthDp));
+        centered.addView(content,new LinearLayout.LayoutParams(
+                Ui.dp(this,detailWidthDp),ViewGroup.LayoutParams.WRAP_CONTENT));
+        scroll.addView(centered);
+        page.addView(scroll,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1));setContentView(page);Ui.animateScreen(page);content.post(()->Ui.animateChildren(content));
     }
 
     private TextView debtTab(String label, boolean selected) {
@@ -2150,26 +2160,50 @@ public final class MainActivity extends Activity {
     }
 
     private View debtCard(Models.DebtSummary debt) {
-        LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
-        card.setBackground(Ui.layeredSoftBackground(this, 20)); card.setElevation(Ui.dp(this, 3));
+        LinearLayout card=Ui.column(this);
+        card.setPadding(Ui.dp(this,18),Ui.dp(this,16),Ui.dp(this,18),Ui.dp(this,18));
+        card.setBackground(Ui.rounded(Ui.SURFACE,20,this));
+        card.setElevation(Ui.dp(this,2));
         LinearLayout head = Ui.row(this); String check = debt.closed ? " ✓" : "";
         head.addView(Ui.text(this, "▤ " + debt.personName + check, 16, debt.closed ? Ui.INCOME : Ui.TEXT, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 38), 1));
         TextView remaining = Ui.text(this, Money.format(debt.remainingMinor, debt.currency), 16, debt.closed ? Ui.INCOME : Ui.VIOLET, true);
         remaining.setGravity(Gravity.END | Gravity.CENTER_VERTICAL); head.addView(remaining); card.addView(head);
-        card.addView(Ui.text(this, "الأصلي " + Money.format(debt.originalMinor, debt.currency) + "  •  المسدد " + Money.format(debt.paidMinor, debt.currency), 12, Ui.MUTED, false));
+        card.addView(Ui.text(this, "الأصلي " + Money.format(debt.originalMinor, debt.currency) + "  •  المسدد " + Money.format(debt.paidMinor, debt.currency), 14, Ui.MUTED, false));
         String last = new SimpleDateFormat("dd/MM/yyyy  hh:mm a", new Locale("ar")).format(new Date(debt.lastMovementAt));
-        card.addView(Ui.text(this, "آخر حركة: " + last, 11, Ui.MUTED, false));
+        card.addView(Ui.text(this, "آخر حركة: " + last, 13, Ui.MUTED, false));
         FrameLayout track = new FrameLayout(this); track.setBackground(Ui.rounded(Ui.BRAND_SOFT, 5, this));
         View fill = new View(this); fill.setBackground(Ui.gradient(Ui.BRAND, Ui.SKY, 5, this));
         float paidRatio = debt.originalMinor <= 0 ? 0f : Math.min(1f, debt.paidMinor / (float) debt.originalMinor);
         track.addView(fill, new FrameLayout.LayoutParams(Math.max(Ui.dp(this, 8), (int) (Ui.dp(this, 270) * paidRatio)), Ui.dp(this, 8)));
         LinearLayout.LayoutParams trackParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 8)); trackParams.setMargins(0, Ui.dp(this, 10), 0, Ui.dp(this, 8)); card.addView(track, trackParams);
-        LinearLayout buttons = Ui.row(this); Button history = actionButton("سجل الحركات", false); history.setOnClickListener(v -> showDebtHistory(debt));
-        buttons.addView(history, new LinearLayout.LayoutParams(0, Ui.dp(this, 44), 1));
+        // Spacious action targets on tablets, separate vertical rows on compact phones.
+        boolean compact=getResources().getConfiguration().screenWidthDp<430;
+        LinearLayout buttons=Ui.row(this);
+        buttons.setOrientation(compact?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);
+        Button history=actionButton("سجل الحركات",false);
+        history.setTextSize(14);
+        history.setOnClickListener(v->showDebtHistory(debt));
+        LinearLayout.LayoutParams historyParams=new LinearLayout.LayoutParams(
+                compact?-1:0,Ui.dp(this,50),compact?0:1);
+        historyParams.setMargins(Ui.dp(this,5),Ui.dp(this,5),
+                Ui.dp(this,5),Ui.dp(this,5));
+        buttons.addView(history,historyParams);
         if (!debt.closed && debt.remainingMinor > 0) {
-            Button partial = actionButton("سداد جزئي", false); LinearLayout.LayoutParams partialParams = new LinearLayout.LayoutParams(0,Ui.dp(this,44),1);partialParams.setMargins(Ui.dp(this,8),0,0,0);buttons.addView(partial,partialParams);
+            Button partial=actionButton("سداد جزئي",false);
+            partial.setTextSize(14);
+            LinearLayout.LayoutParams partialParams=new LinearLayout.LayoutParams(
+                    compact?-1:0,Ui.dp(this,50),compact?0:1);
+            partialParams.setMargins(Ui.dp(this,5),Ui.dp(this,5),
+                    Ui.dp(this,5),Ui.dp(this,5));
+            buttons.addView(partial,partialParams);
             partial.setOnClickListener(v->showManualDebtPayment(debt));
-            Button paid = actionButton("✓ تم السداد", true); LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(0, Ui.dp(this, 44), 1); pp.setMargins(Ui.dp(this, 8),0,0,0); buttons.addView(paid, pp);
+            Button paid=actionButton("✓ تم السداد",true);
+            paid.setTextSize(14);
+            LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(
+                    compact?-1:0,Ui.dp(this,50),compact?0:1);
+            pp.setMargins(Ui.dp(this,5),Ui.dp(this,5),
+                    Ui.dp(this,5),Ui.dp(this,5));
+            buttons.addView(paid,pp);
             paid.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("تأكيد اكتمال السداد")
                     .setMessage("سيصبح المتبقي صفرًا ويُنقل الدين إلى قسم المسددة، من دون تغيير أي رصيد حساب.")
                     .setNegativeButton("إلغاء", null).setPositiveButton("تم السداد", (d,w) -> {
@@ -2200,8 +2234,11 @@ public final class MainActivity extends Activity {
                         }
                     }).show();
         });
-        card.addView(deleteDebt,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,42)));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); params.setMargins(0, Ui.dp(this, 6), 0, Ui.dp(this, 6)); card.setLayoutParams(params);
+        deleteDebt.setTextSize(14);
+        LinearLayout.LayoutParams deleteParams=new LinearLayout.LayoutParams(-1,Ui.dp(this,48));
+        deleteParams.setMargins(Ui.dp(this,5),Ui.dp(this,14),Ui.dp(this,5),0);
+        card.addView(deleteDebt,deleteParams);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); params.setMargins(0,Ui.dp(this,9),0,Ui.dp(this,9)); card.setLayoutParams(params);
         return card;
     }
 
