@@ -192,8 +192,8 @@ public final class WenGlassDrawable extends Drawable {
         ambient.setAlpha(alpha);
         glint.setAlpha(Math.round(alpha * (strong ? .25f : .19f)));
         wave.setAlpha(Math.round(alpha * (strong ? .17f : .10f)));
-        outline.setAlpha(Math.round(alpha * (strong ? .79f : .62f)));
-        innerRim.setAlpha(Math.round(alpha * .30f));
+        outline.setAlpha(Math.round(alpha * (strong ? .46f : .48f)));
+        innerRim.setAlpha(Math.round(alpha * .16f));
         bubble.setAlpha(Math.round(alpha * .66f));
     }
 

@@ -24,6 +24,8 @@ assert 'if (SandboxMode.isSandbox(this))' in M
 assert '🧪 نسخة اختبار مستقلة' in M
 assert 'android.view.WindowInsets.Type.systemBars()' in M
 assert 'screenHost.setOnApplyWindowInsetsListener' in M
+assert 'control.setSystemBarsAppearance' in M
+assert '0xFFE9F3FF' in (J/"Ui.java").read_text(encoding="utf-8")
 assert 'android:allowBackup="false"' in overlay
 assert '${applicationId}.notification-sounds' in overlay
 P=(J/"NotificationSoundProvider.java").read_text(encoding="utf-8")

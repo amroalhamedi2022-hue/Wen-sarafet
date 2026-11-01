@@ -108,6 +108,21 @@ public final class MainActivity extends Activity {
                 });
             }
             super.setContentView(screenHost);
+            if (SandboxMode.isSandbox(this)) {
+                // Android 15 icon contrast after decor attachment; OEM-safe fallback.
+                screenHost.post(() -> {
+                    try {
+                        android.view.WindowInsetsController control = getWindow().getInsetsController();
+                        if (control != null) {
+                            int flags = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                                    | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                            control.setSystemBarsAppearance(Ui.DARK ? 0 : flags, flags);
+                        }
+                    } catch (RuntimeException ignored) {
+                        // Production and OEM fallback continue to use the existing decor flags.
+                    }
+                });
+            }
             screenHost.addView(next, match);
             activeScreen = next;
             // A disabled system animator scale must never leave the first screen
