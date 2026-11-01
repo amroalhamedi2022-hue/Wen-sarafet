@@ -48,3 +48,12 @@ No form actually saves anything or accesses the original finance app.
 QA can start the separate Android demo with `--ei preview_theme 0 --ei preview_page 0`.
 These optional Intent extras render mock data only. No account or finance app API is accessed.
 CI screenshot workflow uses this to capture five pages on Android emulator for inspection.
+
+## Emulator screenshot review (2026-11-01)
+The first real emulator screenshot exposed three concrete discrepancies: screenshot
+captured controls occupying excessive space; title/header and chart panels too
+tall; Android 15 edge-to-edge system bars overlap the page. This pass adds explicit
+window inset handling, hides lab controls by default behind the grid icon, uses a
+more compact chart and account rows, and gives tab icons a two-line layout.
+No background work is added. Automated screenshot review is not a claim of
+pixel-perfect match; next compare the newly rendered app shot to the concept crop.

@@ -33,6 +33,7 @@ public final class MainActivity extends Activity {
     private boolean eco = false;
     private boolean optics = false;
     private boolean bars = false;
+    private boolean controlsVisible = false;
     private GlassPalette theme;
 
     @Override protected void onCreate(Bundle saved) {
@@ -117,14 +118,14 @@ public final class MainActivity extends Activity {
     private void section(LinearLayout body, String title, String desc) {
         LinearLayout titleRow = row(this);
         titleRow.setGravity(Gravity.CENTER_VERTICAL);
-        TextView titleView = text(title, 18, theme.ink, true);
+        TextView titleView = text(title, 16, theme.ink, true);
         TextView subView = text(desc, 11, theme.muted, false);
         subView.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        titleRow.addView(titleView, new LinearLayout.LayoutParams(0, d(40), 1));
+        titleRow.addView(titleView, new LinearLayout.LayoutParams(0, d(34), 1));
         titleRow.addView(subView, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, d(40)));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(44));
-        lp.topMargin = d(12);
+                ViewGroup.LayoutParams.WRAP_CONTENT, d(34)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(36));
+        lp.topMargin = d(7);
         body.addView(titleRow, lp);
     }
 
@@ -139,13 +140,21 @@ public final class MainActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         root.setBackground(GlassSurfaces.backdrop(this, theme, eco));
+        // Target SDK 35 is edge-to-edge: reserve system-bar space in the root
+        // to prevent unreadable status time and bottom gesture overlap.
+        root.setOnApplyWindowInsetsListener((view, insets) -> {
+            android.graphics.Insets bars = insets.getInsets(
+                    android.view.WindowInsets.Type.systemBars());
+            view.setPadding(0, bars.top, 0, bars.bottom);
+            return insets;
+        });
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setClipToPadding(false);
         scroll.setVerticalScrollBarEnabled(false);
         LinearLayout body = column(this);
-        body.setPadding(d(14), d(12), d(14), d(108));
+        body.setPadding(d(14), d(8), d(14), d(105));
         scroll.addView(body);
         root.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
 
@@ -162,13 +171,14 @@ public final class MainActivity extends Activity {
         navigation.setPadding(d(6), d(7), d(6), d(7));
         navigation.setBackground(GlassSurfaces.navigation(this, theme, 27, eco));
         navigation.setElevation(d(8));
-        String[] titles = {"⌂  الرئيسية", "▤  العمليات", "◴  التحليل", "◈  الديون"};
+        String[] titles = {"⌂\nالرئيسية", "▤\nالعمليات", "◴\nالتحليل", "◈\nالديون"};
         for (int i = 0; i < titles.length; i++) {
             final int tab = i;
             TextView item = text(titles[i], 11.5f,
                     currentPage == i ? theme.deep : theme.muted, currentPage == i);
             item.setGravity(Gravity.CENTER);
-            item.setPadding(d(3), d(8), d(3), d(8));
+            item.setLineSpacing(d(2), 1f);
+            item.setPadding(d(3), d(5), d(3), d(5));
             if (currentPage == i) {
                 item.setBackground(GlassSurfaces.selectedTab(this, theme, 19));
             }
@@ -215,17 +225,18 @@ public final class MainActivity extends Activity {
         TextView gridIcon = text("▦", 22, Color.WHITE, false);
         gridIcon.setGravity(Gravity.CENTER);
         gridIcon.setBackground(GlassSurfaces.headerButton(this, theme));
-        gridIcon.setContentDescription("العودة إلى معاينة الرئيسية");
-        gridIcon.setOnClickListener(v -> { currentPage = 0; render(); });
+        gridIcon.setContentDescription("إظهار أو إخفاء خيارات الثيم وجودة الرسم");
+        gridIcon.setOnClickListener(v -> { controlsVisible = !controlsVisible; render(); });
         tap(gridIcon);
         hero.addView(gridIcon, new LinearLayout.LayoutParams(d(43), d(43)));
 
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(104));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(91));
         lp.bottomMargin = d(10);
         body.addView(hero, lp);
     }
 
     private void buildSelectors(LinearLayout body) {
+        if (!controlsVisible) return;
         // The lab controls are deliberately compact: original app content remains
         // visually comparable while quality and palette can be switched instantly.
         HorizontalScrollView themeScroll = new HorizontalScrollView(this);
@@ -275,7 +286,7 @@ public final class MainActivity extends Activity {
             LinearLayout.LayoutParams amountP = new LinearLayout.LayoutParams(-1, -2);
             amountP.topMargin = d(6);
             card.addView(amount, amountP);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, d(85), 1);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, d(74), 1);
             p.setMargins(d(3), 0, d(3), 0);
             balances.addView(card, p);
         }
@@ -293,7 +304,7 @@ public final class MainActivity extends Activity {
             money.setAutoSizeTextTypeUniformWithConfiguration(11, 17, 1,
                     android.util.TypedValue.COMPLEX_UNIT_SP);
             card.addView(money);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, d(78), 1);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, d(71), 1);
             p.setMargins(d(3), 0, d(3), 0);
             stats.addView(card, p);
         }
@@ -498,9 +509,9 @@ public final class MainActivity extends Activity {
         outer.addView(heading);
         LabChartView chart = new LabChartView(this, theme, bars);
         chart.setContentDescription("منحنى مصروفات تجريبية لسبعة أيام");
-        outer.addView(chart, new LinearLayout.LayoutParams(-1, d(172)));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(233));
-        lp.topMargin = d(12);
+        outer.addView(chart, new LinearLayout.LayoutParams(-1, d(137)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(187));
+        lp.topMargin = d(8);
         body.addView(outer, lp);
     }
 
@@ -518,8 +529,8 @@ public final class MainActivity extends Activity {
         textCol.addView(text("حساب للمعاينة فقط", 11, theme.muted, false));
         card.addView(textCol, new LinearLayout.LayoutParams(0, -2, 1));
         card.addView(text(amount, 13, theme.ink, true));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(79));
-        lp.setMargins(0, d(5), 0, d(5));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(69));
+        lp.setMargins(0, d(4), 0, d(4));
         body.addView(card, lp);
     }
 

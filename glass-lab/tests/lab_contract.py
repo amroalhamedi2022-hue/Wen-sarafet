@@ -27,6 +27,9 @@ assert "GlassPalette.at(themeIndex)" in screen
 assert 'getIntent().getIntExtra("preview_page", 0)' in screen
 assert 'getIntent().getIntExtra("preview_theme", 0)' in screen
 assert "GlassSurfaces.navigation(this, theme, 27, eco)" in screen
+assert "if (!controlsVisible) return;" in screen
+assert 'android.view.WindowInsets.Type.systemBars()' in screen
+assert 'd(187)' in screen
 assert "GlassSurfaces.headerButton(this, theme)" in screen
 assert "private void showSettings(LinearLayout body)" in screen
 assert "private void addSettingsRow(" in screen
