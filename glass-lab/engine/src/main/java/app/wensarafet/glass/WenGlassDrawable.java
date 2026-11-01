@@ -144,7 +144,8 @@ public final class WenGlassDrawable extends Drawable {
                 new int[]{opacity(Color.WHITE, 240), opacity(accentColor, 100),
                         opacity(Color.WHITE, 155)},
                 new float[]{0f, .52f, 1f}, Shader.TileMode.CLAMP));
-        innerRim.setColor(blend(startColor, Color.BLACK, .22f));
+        // The reference has a pearly inner rim rather than an almost-black contour.
+        innerRim.setColor(Color.WHITE);
 
         // One static glass bubble only on wide hero surfaces, away from RTL labels.
         showLens = strong && w > h * 3.1f && !lowPower;
@@ -192,7 +193,7 @@ public final class WenGlassDrawable extends Drawable {
         glint.setAlpha(Math.round(alpha * (strong ? .25f : .19f)));
         wave.setAlpha(Math.round(alpha * (strong ? .17f : .10f)));
         outline.setAlpha(Math.round(alpha * (strong ? .79f : .62f)));
-        innerRim.setAlpha(Math.round(alpha * .20f));
+        innerRim.setAlpha(Math.round(alpha * .30f));
         bubble.setAlpha(Math.round(alpha * .66f));
     }
 

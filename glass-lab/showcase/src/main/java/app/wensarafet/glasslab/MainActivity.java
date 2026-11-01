@@ -175,7 +175,8 @@ public final class MainActivity extends Activity {
         for (int i = 0; i < titles.length; i++) {
             final int tab = i;
             TextView item = text(titles[i], 11.5f,
-                    currentPage == i ? theme.deep : theme.muted, currentPage == i);
+                    currentPage == i ? (theme.dark ? Color.WHITE : theme.deep)
+                            : theme.muted, currentPage == i);
             item.setGravity(Gravity.CENTER);
             item.setLineSpacing(d(2), 1f);
             item.setPadding(d(3), d(5), d(3), d(5));
@@ -586,6 +587,8 @@ public final class MainActivity extends Activity {
         private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint area = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint points = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint daysPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final String[] days = {"الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"};
         private final Path linePath = new Path();
         private final Path areaPath = new Path();
         private final float[] heights = {.47f,.74f,.94f,.43f,.09f,.27f,.10f};
@@ -603,13 +606,16 @@ public final class MainActivity extends Activity {
             line.setStrokeJoin(Paint.Join.ROUND);
             line.setStyle(Paint.Style.STROKE);
             points.setColor(p.brand);
+            daysPaint.setColor(p.muted);
+            daysPaint.setTextAlign(Paint.Align.CENTER);
+            daysPaint.setTextSize(9f * context.getResources().getDisplayMetrics().scaledDensity);
         }
 
         @Override protected void onSizeChanged(int w, int h, int oldW, int oldH) {
             super.onSizeChanged(w, h, oldW, oldH);
             if (w <= 0 || h <= 0) return;
             slot = w / 7f;
-            chartBottom = h * .91f;
+            chartBottom = h * .80f;
             linePath.reset();
             areaPath.reset();
             for (int i=0;i<7;i++) {
@@ -647,6 +653,9 @@ public final class MainActivity extends Activity {
                 canvas.drawPath(linePath, line);
                 points.setColor(p.brand);
                 for (int i=0;i<7;i++) canvas.drawCircle(slot*(i+.5f),y[i],dpx(),points);
+            }
+            for (int i=0;i<7;i++) {
+                canvas.drawText(days[i], slot*(i+.5f), getHeight()*.985f, daysPaint);
             }
         }
         private float dpx() { return 4f * getResources().getDisplayMetrics().density; }

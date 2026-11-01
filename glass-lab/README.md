@@ -57,3 +57,11 @@ window inset handling, hides lab controls by default behind the grid icon, uses 
 more compact chart and account rows, and gives tab icons a two-line layout.
 No background work is added. Automated screenshot review is not a claim of
 pixel-perfect match; next compare the newly rendered app shot to the concept crop.
+
+## Second actual emulator-render pass
+A successful Android 35 emulator screenshot confirms the fully drawn UI without
+activation or crash. Review identified a heavy black inner contour and missing
+Arabic weekday names. This pass makes rims pearly and adds weekday labels using
+a cached Paint. Automated QA now captures eight synthetic previews (five pages in
+blue and home in each alternate palette), and captures emulator gfxinfo as
+**developer evidence only**, not a physical battery benchmark.

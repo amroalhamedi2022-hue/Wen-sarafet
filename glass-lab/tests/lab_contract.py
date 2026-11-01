@@ -24,6 +24,8 @@ for forbidden in ["postDelayed", "while (true)", "Choreographer", "TimerTask",
                   "Handler", "requestAnimationFrame", "setRepeatCount", "Thread.sleep"]:
     assert forbidden not in engine + screen, forbidden
 assert "GlassPalette.at(themeIndex)" in screen
+assert 'canvas.drawText(days[i]' in screen
+assert 'currentPage == i ? (theme.dark ? Color.WHITE : theme.deep)' in screen
 assert 'getIntent().getIntExtra("preview_page", 0)' in screen
 assert 'getIntent().getIntExtra("preview_theme", 0)' in screen
 assert "GlassSurfaces.navigation(this, theme, 27, eco)" in screen
