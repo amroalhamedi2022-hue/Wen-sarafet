@@ -32,7 +32,8 @@ assert "chartCard.setBackground(Ui.glassSoftBackground(this, 22));" in main
 assert "card.setBackground(Ui.glassAccentBackground(this, 20));" in main
 
 assert "glassNavigationBackground(this, 26)" in main
-assert main.count("if (Ui.isLiquidTheme(this))") >= 4, "Liquid-only floating navigation and FAB required"
+assert main.count("if (Ui.isLiquidTheme(this))") >= 3, "All primary tab bars need Liquid-only floating insets"
+assert "fab.setBackground(Ui.isLiquidTheme(this) ?" in main
 assert "debtNavParams.setMargins" in main
 assert "analyticsNavParams.setMargins" in main
 assert "glassSelectedNavigationBackground(this, 18)" in main
