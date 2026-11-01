@@ -2057,11 +2057,16 @@ public final class MainActivity extends Activity {
 
     private void showDebtsScreen(String direction) {
         addScreenVisible = false; subScreenVisible = false; currentTab = TAB_DEBTS;
-        LinearLayout page = Ui.column(this); page.setBackgroundColor(Ui.BACKGROUND);
+        FrameLayout primaryRoot=new FrameLayout(this);
+        primaryRoot.setBackgroundColor(Ui.BACKGROUND);
+        primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        LinearLayout page=Ui.column(this);
+        page.setBackgroundColor(Ui.BACKGROUND);
+        primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View debtTopBar=mainTopBar();
         page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
         ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this);
-        content.setPadding(Ui.dp(this, 16), Ui.dp(this, 10), Ui.dp(this, 16), Ui.dp(this, 34));
+        content.setPadding(Ui.dp(this, 16), Ui.dp(this, 10), Ui.dp(this, 16), Ui.dp(this, 110));
         content.addView(sectionTitle("دفتر الديون","أرصدة الديون وحركاتها"));
 
         LinearLayout actions = Ui.row(this);
@@ -2101,9 +2106,10 @@ public final class MainActivity extends Activity {
         for (List<Models.DebtSummary> personDebts : closedPeople.values()) content.addView(debtPersonCard(personDebts, true));
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         View debtNav=bottomNavigation(TAB_DEBTS);
-        page.addView(debtNav,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72)));
+        primaryRoot.addView(debtNav,new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM));
         bindPrimaryNavigationScroll(scroll,debtTopBar,debtNav);
-        setContentView(page); Ui.animateScreen(page); content.post(() -> Ui.animateChildren(content));
+        setContentView(primaryRoot); Ui.animateScreen(primaryRoot); content.post(() -> Ui.animateChildren(content));
     }
 
     private LinkedHashMap<Long,List<Models.DebtSummary>> groupDebtsByPerson(List<Models.DebtSummary> debts) {
@@ -2392,10 +2398,15 @@ public final class MainActivity extends Activity {
 
     private void showAnalyticsScreen() {
         addScreenVisible = false; subScreenVisible = false; currentTab = TAB_ANALYTICS;
-        LinearLayout page = Ui.column(this); page.setBackgroundColor(Ui.BACKGROUND);
+        FrameLayout primaryRoot=new FrameLayout(this);
+        primaryRoot.setBackgroundColor(Ui.BACKGROUND);
+        primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        LinearLayout page=Ui.column(this);
+        page.setBackgroundColor(Ui.BACKGROUND);
+        primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View analyticsTopBar=mainTopBar();
         page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112)));
-        ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 34));
+        ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 110));
         content.addView(sectionTitle("تحليل المصروفات","تقاريرك حسب العملة"));
         content.addView(Ui.text(this, "اختر عملة التحليل", 14, Ui.TEXT, true));
         LinearLayout currencyRow = Ui.row(this);
@@ -2489,9 +2500,10 @@ public final class MainActivity extends Activity {
         }
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         View analyticsNav=bottomNavigation(TAB_ANALYTICS);
-        page.addView(analyticsNav,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72)));
+        primaryRoot.addView(analyticsNav,new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM));
         bindPrimaryNavigationScroll(scroll,analyticsTopBar,analyticsNav);
-        setContentView(page); Ui.animateScreen(page);
+        setContentView(primaryRoot); Ui.animateScreen(primaryRoot);
     }
 
     private View monthlyBudgetCard(String currency, long spentMinor) {
