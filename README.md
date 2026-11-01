@@ -2,19 +2,23 @@
 
 Arabic-first Android personal finance tracker. Application ID: `app.wensarafet.tracker`.
 
-## Current source candidate — 2026-10-31
+## Current source candidate — 2026-11-01
 
-**Important:** The cumulative development branch is `feature/wen-batch21-reject-duplicate-zip-entries-20261030` (PR #24), currently version `1.8.4`, versionCode `20`. It contains the financial integrity Codex work plus subsequent source, search/UI, backup and financial safety improvements. Do not ship the debug APK or CI's **unsigned** release candidate to the installed 1.8 owner.
+**Important:** The cumulative development branch is `feature/wen-batch21-reject-duplicate-zip-entries-20261030` (PR #24), currently version `1.8.5`, versionCode `21`. It contains the financial integrity Codex work plus subsequent source, search/UI, backup and financial safety improvements. Do not ship the debug APK or CI's **unsigned** release candidate to the installed 1.8 owner.
 
 The **original release signing private key** is a hard prerequisite for updating the user's installed 1.8.0 while retaining the application identity and AndroidKeyStore-backed activation. A previously signed 1.8.1 APK is **not** proof that it contains the newest code. Compare all unsigned/signed APK ZIP payload entries with `scripts/verify_release_payload.py`, or use the owner-only `scripts/sign_verified_upgrade.sh` which enforces that comparison plus certificate pinning and source checks.
+
+### UI consistency and collapsible category history (1.8.5)
+
+Analytics and Debts now use the same primary header and scrolling bottom nav as Home/Transactions; debt action buttons get responsive spacing; category detail typography/cards are readable on tablets and phones, and the six-month history is collapsed and lazy-loaded. See **[UI_POLISH_1_8_5_AR.md](docs/UI_POLISH_1_8_5_AR.md)**. All financial Safe Zone engines and licensing remain unchanged.
 
 ### Category analysis checkpoints (1.8.4)
 
 The per-category/currency **analysis-only** checkpoint keeps all old transactions and split allocations, moves historic periods under their dated archive rows, and displays a fresh running analysis counter. **Monthly budgets and 6-month history use the unchanged full financial totals**, including older transactions in the same month. Undoing the last checkpoint never reverses a financial transaction. Checkpoint dates are backed up in the existing encrypted settings archive; restoring a pre-checkpoint backup safely clears unrecognized checkpoint IDs. See [CATEGORY_CHECKPOINT_1_8_4_AR.md](docs/CATEGORY_CHECKPOINT_1_8_4_AR.md).
 
-For current financial freeze, debt lineage and cross-currency fixes, see **[FINANCIAL_SAFE_ZONE_AR.md](docs/FINANCIAL_SAFE_ZONE_AR.md)**. Version 1.8.4 is the next patch candidate **for updating installed 1.8.0, 1.8.1, 1.8.2, or 1.8.3**, provided the APK has been signed with the original certificate and verified against the current unsigned CI payload. Preserve the installed data and existing certificate.
+For current financial freeze, debt lineage and cross-currency fixes, see **[FINANCIAL_SAFE_ZONE_AR.md](docs/FINANCIAL_SAFE_ZONE_AR.md)**. Version 1.8.5 is the next patch candidate **for updating installed 1.8.0, 1.8.1, 1.8.2, 1.8.3, or 1.8.4**, provided the APK has been signed with the original certificate and verified against the current unsigned CI payload. Preserve the installed data and existing certificate.
 
-For historical signing, upgrade, data, PIN/biometrics, widgets, notifications and backup acceptance steps, see **[FINAL_1_8_1_RELEASE_HANDOFF_AR.md](docs/FINAL_1_8_1_RELEASE_HANDOFF_AR.md)**. The current upgrade gate retains the original signer pin and checks installed 1.8.0, 1.8.1, 1.8.2, and 1.8.3 as possible upgrade sources. Read **[FINAL_1_8_3_ACCEPTANCE_AR.md](docs/FINAL_1_8_3_ACCEPTANCE_AR.md)** for current test status; old 1.8.1 instructions are historical.
+For historical signing, upgrade, data, PIN/biometrics, widgets, notifications and backup acceptance steps, see **[FINAL_1_8_1_RELEASE_HANDOFF_AR.md](docs/FINAL_1_8_1_RELEASE_HANDOFF_AR.md)**. The current upgrade gate retains the original signer pin and checks installed 1.8.0, 1.8.1, 1.8.2, 1.8.3, and 1.8.4 as possible upgrade sources. Read **[FINAL_1_8_3_ACCEPTANCE_AR.md](docs/FINAL_1_8_3_ACCEPTANCE_AR.md)** for current test status; old 1.8.1 instructions are historical.
 
 ## Verified state — 2026-10-29 (historical baseline)
 
