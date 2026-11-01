@@ -49,6 +49,13 @@ public final class WenGlassBackdropDrawable extends Drawable {
         return Color.argb(value, Color.red(color), Color.green(color), Color.blue(color));
     }
 
+    private static int blend(int a, int b, float t) {
+        float f = Math.max(0f, Math.min(1f, t));
+        return Color.rgb(Math.round(Color.red(a) * (1f - f) + Color.red(b) * f),
+                Math.round(Color.green(a) * (1f - f) + Color.green(b) * f),
+                Math.round(Color.blue(a) * (1f - f) + Color.blue(b) * f));
+    }
+
     @Override protected void onBoundsChange(Rect rect) {
         super.onBoundsChange(rect);
         boundsRect.set(rect);
@@ -58,7 +65,7 @@ public final class WenGlassBackdropDrawable extends Drawable {
         if (!lowPower) {
             base.setShader(new LinearGradient(boundsRect.left, boundsRect.top,
                     boundsRect.left, boundsRect.bottom,
-                    new int[]{opacity(accent, dark ? 94 : 31), background, background},
+                    new int[]{blend(background, accent, dark ? .20f : .09f), background, background},
                     new float[]{0f, .44f, 1f}, Shader.TileMode.CLAMP));
             float radius = Math.max(1f, Math.max(w * .80f, h * .40f));
             glowLeft.setShader(new RadialGradient(
