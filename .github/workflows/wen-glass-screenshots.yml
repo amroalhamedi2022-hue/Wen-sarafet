@@ -43,18 +43,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: |
-            adb install -r glass-lab/showcase/build/outputs/apk/debug/showcase-debug.apk
-            mkdir -p glass-lab/screenshot-results
-            for theme in 0 1 2 3; do
-              for page in 0 1 2 3 4; do
-                adb shell am force-stop app.wensarafet.glasslab || true
-                adb shell am start -n app.wensarafet.glasslab/.MainActivity --ei preview_theme "$theme" --ei preview_page "$page"
-                sleep 2
-                adb shell screencap -p /sdcard/glass-screenshot.png
-                adb pull /sdcard/glass-screenshot.png "glass-lab/screenshot-results/theme-${theme}-page-${page}.png"
-              done
-            done
+          script: bash glass-lab/tools/capture_screenshots.sh
       - name: Upload private-data-free screenshots
         if: always()
         uses: actions/upload-artifact@v4
