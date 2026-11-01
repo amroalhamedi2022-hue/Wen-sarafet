@@ -9,5 +9,14 @@
             android:name=".NotificationSoundProvider"
             android:authorities="app.wensarafet.tracker.recovered.debug.notification-sounds"
             tools:replace="android:authorities" />
+        <activity
+            android:name=".ContactPickerSmokeActivity"
+            android:exported="true"
+            android:label="اختبار جهات الاتصال">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

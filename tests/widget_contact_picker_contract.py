@@ -49,4 +49,16 @@ main_provider=[p for p in ET.fromstring(manifest).iter("provider")
 assert len(main_provider)==1
 assert main_provider[0].attrib.get(ns+"authorities")!=debug_provider[0].attrib.get(ns+"authorities")
 assert 'tools:replace="android:authorities"' in debug_manifest_path.read_text(encoding="utf-8")
+# A separate, no-license/no-USSD test launcher uses the same four Android intent forms.
+debug_probe=(root/"app/src/debug/java/app/wensarafet/tracker/ContactPickerSmokeActivity.java").read_text(encoding="utf-8")
+assert "Intent.ACTION_GET_CONTENT" in debug_probe
+assert "ContactsContract.CommonDataKinds.Phone.CONTENT_URI" in debug_probe
+assert "PalestinianMobileNumber.normalize" in debug_probe
+assert "LicenseManager" not in debug_probe
+assert "UssdCodes" not in debug_probe
+assert "ACTION_DIAL" not in debug_probe
+probe=[a for a in debug_manifest.iter("activity")
+       if a.attrib.get(ns+"name")==".ContactPickerSmokeActivity"]
+assert len(probe)==1
+assert probe[0].attrib.get(ns+"exported")=="true"
 print("WidgetContactPickerContract PASS: contact URI picker, permission-safe, small widget button, normalizer")
