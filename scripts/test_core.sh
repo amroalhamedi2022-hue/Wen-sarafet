@@ -108,6 +108,7 @@ python3 "$PROJECT_DIR/tests/finance_delete_cursor_and_category_undo_contract.py"
 python3 "$PROJECT_DIR/tests/financial_analytics_contract.py"
 
 python3 "$PROJECT_DIR/tests/motion_accessibility_contract.py"
+python3 "$PROJECT_DIR/tests/glass_energy_contract.py"
 python3 "$PROJECT_DIR/tests/income_drilldown_contract.py"
 python3 "$PROJECT_DIR/tests/reminder_snooze_contract.py"
 python3 "$PROJECT_DIR/tests/chart_capture_quality_contract.py"

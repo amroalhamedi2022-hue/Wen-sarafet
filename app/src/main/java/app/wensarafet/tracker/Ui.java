@@ -79,6 +79,30 @@ public final class Ui {
             {0xFF1E2559,0xFF456AD9,0xFF9A5DE1,0xFFF5A26D}
     };
 
+
+    // The pilot is opt-in through the two existing Liquid theme indices only.
+    // No new settings keys, preferences, listeners or financial behavior.
+    // The engine is an independent reusable Android graphics component.
+    public static android.graphics.drawable.Drawable glassHeaderBackground(Context context, int radiusDp) {
+        if (themeIndex(context) < 16) return layeredBackground(context, radiusDp);
+        return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
+                mix(BRAND_DARK, BRAND, .12f), BRAND, SKY, true);
+    }
+
+    public static android.graphics.drawable.Drawable glassSoftBackground(Context context, int radiusDp) {
+        if (themeIndex(context) < 16) return layeredSoftBackground(context, radiusDp);
+        int upper = DARK ? mix(SURFACE, BRAND, .10f) : mix(BRAND_SOFT, SURFACE, .32f);
+        int lower = DARK ? mix(SURFACE, SKY, .16f) : mix(BRAND_SOFT, SKY, .08f);
+        return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
+                upper, lower, SKY, false);
+    }
+
+    public static android.graphics.drawable.Drawable glassAccentBackground(Context context, int radiusDp) {
+        if (themeIndex(context) < 16) return gradient(BRAND_DARK, BRAND, radiusDp, context);
+        return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
+                mix(BRAND_DARK, BRAND, .18f), mix(BRAND, VIOLET, .28f), SKY, true);
+    }
+
     private Ui() {}
 
     public static void applyTheme(Context context) {

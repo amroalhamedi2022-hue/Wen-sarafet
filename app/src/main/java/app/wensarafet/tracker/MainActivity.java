@@ -510,7 +510,7 @@ public final class MainActivity extends Activity {
         FrameLayout layers = new FrameLayout(this);
         View background = new View(this);
         background.setTag("main_header_background");
-        background.setBackground(Ui.layeredBackground(this, 24));
+        background.setBackground(Ui.glassHeaderBackground(this, 24));
         background.setElevation(Ui.dp(this, 7));
         layers.addView(background, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         LinearLayout bar = Ui.row(this);
@@ -843,7 +843,7 @@ public final class MainActivity extends Activity {
         for (String currency : Arrays.asList("ILS", "USD", "JOD")) {
             LinearLayout card = Ui.column(this);
             card.setPadding(Ui.dp(this, 16), Ui.dp(this, 14), Ui.dp(this, 16), Ui.dp(this, 14));
-            card.setBackground(Ui.layeredSoftBackground(this, 22));
+            card.setBackground(Ui.glassSoftBackground(this, 22));
             card.setElevation(Ui.dp(this, 2));
             card.addView(Ui.text(this, currency, 13, Ui.DARK ? Ui.TEXT : Ui.BRAND_DARK, true));
             TextView amount = Ui.text(this, Money.format(totals.get(currency), currency), 20, Ui.TEXT, true);
@@ -908,7 +908,7 @@ public final class MainActivity extends Activity {
 
         LinearLayout chartCard = Ui.column(this);
         chartCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 10));
-        chartCard.setBackground(Ui.layeredSoftBackground(this, 22));
+        chartCard.setBackground(Ui.glassSoftBackground(this, 22));
         chartCard.setElevation(Ui.dp(this, 2));
         chartCard.addView(Ui.text(this, "مصاريف الأيام السبعة", 15, Ui.TEXT, true));
         FrameLayout chartHost = new FrameLayout(this);
@@ -940,7 +940,7 @@ public final class MainActivity extends Activity {
     private View statCard(String label, String amount) {
         LinearLayout card = Ui.column(this);
         card.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 7));
-        card.setBackground(Ui.gradient(Ui.BRAND_DARK, Ui.BRAND, 20, this));
+        card.setBackground(Ui.glassAccentBackground(this, 20));
         card.setElevation(Ui.dp(this, 3));
         card.addView(Ui.text(this, label, 12, Color.rgb(239, 244, 255), false));
         TextView amountView = Ui.text(this, amount, 20, Color.WHITE, true);
