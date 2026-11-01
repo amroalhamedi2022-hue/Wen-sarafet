@@ -55,7 +55,7 @@ assert "months.setVisibility(expanded?View.VISIBLE:View.GONE)" in category
 assert "setGravity(Gravity.CENTER_HORIZONTAL)" in category
 assert "Math.min(760,availableDp)" in category
 assert "getExpenseTransactionsByCategory" in category
-assert "Money.format(visibleTotal, currency)" in category
+assert "Money.format(visibleTotal,currency)" in category
 
 assert "long spent=category.amountMinor;" in budget, "Budget uses untouched whole-month total"
 assert "double ratio=Math.min(1.0,(double)spent/cap);" in budget
