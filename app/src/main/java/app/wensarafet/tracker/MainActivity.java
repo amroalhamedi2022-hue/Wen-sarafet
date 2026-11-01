@@ -97,6 +97,16 @@ public final class MainActivity extends Activity {
         if (screenHost == null) {
             screenHost = new FrameLayout(this);
             screenHost.setBackgroundColor(Ui.BACKGROUND);
+            if (SandboxMode.isSandbox(this)) {
+                // Android 15 edge-to-edge safe area for visual parity on tablets.
+                // Keep the production app's window behavior unchanged.
+                screenHost.setOnApplyWindowInsetsListener((v, insets) -> {
+                    android.graphics.Insets system = insets.getInsets(
+                            android.view.WindowInsets.Type.systemBars());
+                    v.setPadding(0, system.top, 0, system.bottom);
+                    return insets;
+                });
+            }
             super.setContentView(screenHost);
             screenHost.addView(next, match);
             activeScreen = next;
