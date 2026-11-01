@@ -13,7 +13,7 @@ engine_files = list((root / "engine/src/main/java").rglob("*.java"))
 engine = "\n".join(p.read_text(encoding="utf-8") for p in engine_files)
 assert "applicationId 'app.wensarafet.glasslab'" in app
 assert "implementation project(':engine')" in app
-assert len(engine_files) >= 4
+assert len(engine_files) >= 5
 for forbidden in [
     "LicenseManager", "Activation", "FinanceDb", "sqlite", "SQLite",
     "BroadcastReceiver", "TextWatcher", "READ_SMS", "INTERNET",
@@ -24,6 +24,11 @@ for forbidden in ["postDelayed", "while (true)", "Choreographer", "TimerTask",
                   "Handler", "requestAnimationFrame", "setRepeatCount", "Thread.sleep"]:
     assert forbidden not in engine + screen, forbidden
 assert "GlassPalette.at(themeIndex)" in screen
+assert "GlassSurfaces.opticalHero(this, theme, 28, eco, optics)" in screen
+assert "WenOpticalDrawable" in engine
+assert "new RuntimeShader(AGSL)" in engine
+assert "canvas.isHardwareAccelerated()" in engine
+assert 'runtime.setInputShader("scene"' in engine
 assert "GlassSurfaces.backdrop(this, theme, eco)" in screen
 assert "if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return false;" in screen
 assert "case" not in manifest.read_text(encoding="utf-8").lower()  # no background service

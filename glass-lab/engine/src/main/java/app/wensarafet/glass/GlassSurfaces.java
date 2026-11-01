@@ -27,6 +27,13 @@ public final class GlassSurfaces {
         return new WenGlassDrawable(c, dp(c, radius),
                 blend(p.deep, p.brand, .25f), p.brand, p.accent, true);
     }
+    /** GPU-only optional lens; default and eco remain passive Canvas paths. */
+    public static Drawable opticalHero(Context c, GlassPalette p, int radius,
+                                        boolean eco, boolean optics) {
+        if (!optics || eco) return hero(c, p, radius, eco);
+        return new WenOpticalDrawable(c, dp(c, radius), p.deep, p.brand, p.accent);
+    }
+
     public static Drawable frosted(Context c, GlassPalette p, int radius, boolean eco) {
         if (eco) return gradient(c, p.soft, p.surface, radius, true);
         int top = p.dark ? blend(p.surface, p.brand, .20f) : blend(p.soft, p.brand, .16f);

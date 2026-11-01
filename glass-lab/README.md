@@ -20,3 +20,11 @@ Android 13+ is required. It can coexist with the financial app.
 ## Guardrails
 Screenshots for precise matching must be measured on real tablet/phone before signing
 or integration. **Do not merge the earlier design PR into the financial app.**
+
+## Experimental Android 13 GPU lens
+Optional **عدسة GPU** toggle on the demo's top hero enables `WenOpticalDrawable`.
+It uses Android AGSL `RuntimeShader` to offset samples from a locally generated
+static gradient; this is not real-time refraction of content beneath the card.
+No screen readback, no timers, no shader animation, and automatic fallback in battery
+saver, low-RAM or unsupported environments. Default is OFF. This experiment remains
+strictly separate from the financial app until measured on physical devices.

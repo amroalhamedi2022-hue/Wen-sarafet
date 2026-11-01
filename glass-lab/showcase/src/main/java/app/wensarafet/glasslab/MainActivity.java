@@ -31,6 +31,7 @@ public final class MainActivity extends Activity {
     private int themeIndex = 0;
     private int currentPage = 0;
     private boolean eco = false;
+    private boolean optics = false;
     private boolean bars = false;
     private GlassPalette theme;
 
@@ -175,6 +176,8 @@ public final class MainActivity extends Activity {
 
     private void buildHeader(LinearLayout body) {
         LinearLayout hero = glassCard(true, 28, 19);
+        // GPU lens mode is opted into for this single hero only, never long lists.
+        hero.setBackground(GlassSurfaces.opticalHero(this, theme, 28, eco, optics));
         TextView micro = text("WEN GLASS  /  DESIGN LAB", 10, 0xFFDCEDFF, true);
         micro.setLetterSpacing(.10f);
         hero.addView(micro);
@@ -214,10 +217,11 @@ public final class MainActivity extends Activity {
         TextView ecoSwitch = pill(eco ? "🔋 موفر البطارية: مفعل" : "💎 جودة الزجاج: مفعل", false, false);
         ecoSwitch.setOnClickListener(v -> { eco = !eco; render(); });
         controls.addView(ecoSwitch, new LinearLayout.LayoutParams(0, d(50), 1));
-        TextView detail = text("تبديل الجودة للتجربة", 11, theme.muted, false);
-        detail.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams detailParams = new LinearLayout.LayoutParams(0, d(50), 1);
-        controls.addView(detail, detailParams);
+        TextView opticsSwitch = pill(optics ? "✨ عدسة GPU: مفعّلة" : "✨ عدسة GPU: مطفأة", false, false);
+        opticsSwitch.setOnClickListener(v -> { optics = !optics; render(); });
+        LinearLayout.LayoutParams opticalParams = new LinearLayout.LayoutParams(0, d(50), 1);
+        opticalParams.setMargins(d(5), 0, d(5), 0);
+        controls.addView(opticsSwitch, opticalParams);
         LinearLayout.LayoutParams outer = new LinearLayout.LayoutParams(-1, d(54));
         outer.topMargin = d(7);
         body.addView(controls, outer);
