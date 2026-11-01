@@ -61,7 +61,8 @@ for name in ["زجاج سائل أزرق", "فقاعات أكوا", "أورور�
 backdrop = (root / "glass-engine/src/main/java/app/wensarafet/glass/WenGlassBackdropDrawable.java").read_text(encoding="utf-8")
 assert "new RadialGradient" in backdrop
 assert "onBoundsChange" in backdrop
-assert "if (lowPower)" in backdrop
+assert "if (!lowPower)" in backdrop
+assert "if (!lowPower) {" in backdrop.split("@Override public void draw(Canvas canvas)",1)[1]
 assert "new " not in backdrop.split("@Override public void draw(Canvas canvas)",1)[1].split("@Override public void setAlpha",1)[0]
 assert "glassScreenBackground(this)" in main
 assert main.count("setBackground(Ui.glassScreenBackground(this))") == 4
