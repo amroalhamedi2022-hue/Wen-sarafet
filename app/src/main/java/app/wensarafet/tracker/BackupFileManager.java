@@ -149,7 +149,8 @@ public final class BackupFileManager {
 
     private static Properties collectPreferences(Context context) {
         Properties result = new Properties();
-        for (String file : PREF_FILES) for (Map.Entry<String, ?> item : context.getSharedPreferences(file, Context.MODE_PRIVATE).getAll().entrySet()) {
+        for (String file : PREF_FILES) {
+            for (Map.Entry<String, ?> item : context.getSharedPreferences(file, Context.MODE_PRIVATE).getAll().entrySet()) {
             Object value = item.getValue(); String encoded;
             if (value instanceof Boolean) encoded = "B:" + value;
             else if (value instanceof Integer) encoded = "I:" + value;
@@ -158,6 +159,9 @@ public final class BackupFileManager {
             else if (value instanceof String) encoded = "S:" + Base64.encodeToString(((String) value).getBytes(StandardCharsets.UTF_8), Base64.NO_WRAP);
             else continue;
             result.setProperty(file + "|" + item.getKey(), encoded);
+            }
+            if (BackupSettingsCodec.newlyBackedUpNamespace(file))
+                result.setProperty(file + "|" + BackupSettingsCodec.INCLUDED_MARKER, "B:true");
         }
         return result;
     }
@@ -173,10 +177,18 @@ public final class BackupFileManager {
                     file, Context.MODE_PRIVATE).getAll()));
         try {
             for (String file : PREF_FILES) {
+                Map<String, Object> restored=decodedSettings.get(file);
+                // An older archive has no category budgets/defaults. Clear
+                // those category-ID-bound preferences rather than accidentally
+                // applying them to a DIFFERENT category in the restored ledger.
+                // Current archives carry the marker even for an empty namespace.
+                boolean included=BackupSettingsCodec.shouldRestoreNamespace(file,restored);
                 SharedPreferences.Editor editor = context.getSharedPreferences(
                         file, Context.MODE_PRIVATE).edit().clear();
-                for (Map.Entry<String, Object> entry : decodedSettings.get(file).entrySet())
+                if(included)for (Map.Entry<String, Object> entry : restored.entrySet()) {
+                    if (BackupSettingsCodec.INCLUDED_MARKER.equals(entry.getKey())) continue;
                     putPreference(editor, entry.getKey(), entry.getValue());
+                }
                 if (!editor.commit())
                     throw new IllegalStateException("تعذر حفظ إعدادات النسخة: " + file);
             }

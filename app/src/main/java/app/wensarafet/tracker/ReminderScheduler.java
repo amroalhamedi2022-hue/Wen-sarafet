@@ -24,7 +24,8 @@ public final class ReminderScheduler {
     public static void scheduleDaily(Context context) {
         SharedPreferences p = prefs(context);
         if (!p.getBoolean("enabled", false)) { cancel(context); return; }
-        int hour = p.getInt("hour", 20), minute = p.getInt("minute", 0);
+        int hour = Math.max(0, Math.min(23, p.getInt("hour", 20)));
+        int minute = Math.max(0, Math.min(59, p.getInt("minute", 0)));
         Calendar target = Calendar.getInstance();
         target.set(Calendar.HOUR_OF_DAY, hour); target.set(Calendar.MINUTE, minute); target.set(Calendar.SECOND, 0); target.set(Calendar.MILLISECOND, 0);
         if (target.getTimeInMillis() <= System.currentTimeMillis()) target.add(Calendar.DAY_OF_YEAR, 1);
@@ -42,8 +43,15 @@ public final class ReminderScheduler {
         AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(context, ReminderReceiver.class).setAction(action);
         PendingIntent pending = PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        if (manager.canScheduleExactAlarms()) manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pending);
-        else manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pending);
+        if (manager == null) return;
+        try {
+            if (manager.canScheduleExactAlarms()) manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pending);
+            else manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pending);
+        } catch (SecurityException exactAlarmPermissionRevoked) {
+            // The user may revoke exact-alarm access after canScheduleExactAlarms().
+            // A non-exact reminder is safer than dropping daily reminders altogether.
+            manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, pending);
+        }
     }
 
     public static void cancel(Context context) {

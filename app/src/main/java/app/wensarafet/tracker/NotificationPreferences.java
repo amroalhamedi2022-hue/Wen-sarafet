@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import java.io.IOException;
 
 public final class NotificationPreferences {
     public static final String REVIEW = "review";
@@ -38,6 +39,16 @@ public final class NotificationPreferences {
         prefs(context).edit().putString(type + "_sound_uri", uri == null ? "" : uri).apply();
     }
 
+    /** Explicit opt-in: generate originals first, then atomically save tone preferences. */
+    public static void useDistinctiveSounds(Context context) throws IOException {
+        String[] kinds={REVIEW,SAVED,REMINDER,BUDGET,SYNC};
+        for(String type:kinds)NotificationSoundProvider.ensureSound(context,type);
+        SharedPreferences.Editor edit=prefs(context).edit();
+        for(String type:kinds)edit.putString(type+"_sound_uri",
+                NotificationSoundProvider.uri(type).toString());
+        edit.apply();
+    }
+
     public static String ensureChannel(Context context, String type) {
         boolean sound = sound(context, type), vibration = vibration(context, type);
         String storedUri = soundUri(context, type);
@@ -51,7 +62,16 @@ public final class NotificationPreferences {
         if (vibration) channel.setVibrationPattern(new long[]{0, 150, 90, 150});
         if (sound) {
             AudioAttributes attributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build();
-            Uri selected = storedUri.isEmpty() ? RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION) : Uri.parse(storedUri);
+            Uri selected = storedUri.isEmpty()
+                    ? RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                    : Uri.parse(storedUri);
+            if(NotificationSoundProvider.isOurSound(selected)) {
+                try {
+                    NotificationSoundProvider.ensureSound(context,type);
+                } catch(IOException error) {
+                    selected=RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                }
+            }
             channel.setSound(selected, attributes);
         } else channel.setSound(null, null);
         manager.createNotificationChannel(channel); return id;

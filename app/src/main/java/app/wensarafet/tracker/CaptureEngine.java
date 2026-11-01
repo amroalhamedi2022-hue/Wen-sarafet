@@ -27,7 +27,7 @@ public final class CaptureEngine {
             if (id < 0) return;
             if (parsed.amountMinor != null && parsed.currency != null && parsed.type != null && !FinanceRules.TRANSFER.equals(parsed.type) && parsed.confidence >= 90) {
                 long txId = db.importCapture(id, parsed.type);
-                if (txId >= 0) notifySaved(context, id, parsed); else notifyReview(context, id, parsed);
+                if (txId >= 0) notifySaved(context, id, parsed, db, txId, clean); else notifyReview(context, id, parsed);
             } else notifyReview(context, id, parsed);
         } finally { db.close(); }
     }
@@ -71,14 +71,29 @@ public final class CaptureEngine {
         return new android.app.Notification.Action.Builder(null, title, pending).build();
     }
 
-    private static void notifySaved(Context context, long id, TransactionParser.Result parsed) {
+    private static void notifySaved(Context context, long id, TransactionParser.Result parsed,
+                                    FinanceDbHelper db,long transactionId,String originalMessage) {
         if (!canNotify(context)) return;
         String channelId = NotificationPreferences.ensureChannel(context, NotificationPreferences.SAVED);
         String kind = FinanceRules.EXPENSE.equals(parsed.type) ? "مصروف" : "دخل";
         String amount = Money.format(parsed.amountMinor, parsed.currency);
+        String merchantSuggestion=null;
+        try {
+            merchantSuggestion=CaptureSuggestionPolicy.suggest(context,db,transactionId,
+                    parsed,originalMessage);
+        } catch(Exception ignored) {
+            // A heuristic or its cache must never block a confirmed financial receipt.
+        }
+        String text=merchantSuggestion==null
+                ?amount+" — اضغط لاختيار التصنيف"
+                :amount+" — اقتراح حسب المحل: "+merchantSuggestion;
+        String extended=merchantSuggestion==null?text:
+                text+"\nهذا اقتراح فقط، ولم يُغيّر التطبيق تصنيف العملية تلقائيًا.";
         android.app.Notification notification = new android.app.Notification.Builder(context, channelId)
                 .setSmallIcon(R.drawable.ic_notification).setColor(Color.rgb(11, 107, 87))
-                .setContentTitle("تم حفظ " + kind + " تلقائيًا").setContentText(amount + " — اضغط لاختيار التصنيف")
+                .setContentTitle("تم حفظ " + kind + " تلقائيًا")
+                .setContentText(text)
+                .setStyle(new android.app.Notification.BigTextStyle().bigText(extended))
                 .setContentIntent(openTransactions(context, id)).setAutoCancel(true).build();
         ((NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE)).notify(16000 + (int) (id % 1000), notification);
     }

@@ -16,6 +16,14 @@ KEYSTORE="${SIGNING_KEYSTORE:-$KEY_DIR/wen-sarafet-test.jks}"
 STORE_PASS="${SIGNING_STORE_PASSWORD:-}"
 EXPECTED_CERT_SHA256="6B8268E5B647B12A2AA055D7A22F7B8EA888E40FB863E74409938AAD4EC789C9"
 ECJ_JAR="${ECJ_JAR:-}"
+# Derive release metadata from Gradle; the old 1.8.0 is preserved on the phone.
+GRADLE_CONFIG="$PROJECT_DIR/app/build.gradle"
+APP_VERSION_CODE="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*$/\1/p' "$GRADLE_CONFIG" | head -1)"
+APP_VERSION_NAME="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\1/p' "$GRADLE_CONFIG" | head -1)"
+[[ "$APP_VERSION_CODE" =~ ^[0-9]+$ && "$APP_VERSION_CODE" -gt 16 && "$APP_VERSION_NAME" =~ ^1\.8\.[0-9]+$ ]] || {
+  echo "Refusing to build: missing/invalid newer release metadata in app/build.gradle" >&2; exit 1;
+}
+SIGNING_KEY_ALIAS="${SIGNING_KEY_ALIAS:-wen-sarafet-test}"
 
 rm -rf "$BUILD_DIR"
 mkdir -p "$GENERATED_DIR" "$CLASSES_DIR" "$DEX_DIR" "$KEY_DIR"
@@ -27,8 +35,8 @@ mkdir -p "$GENERATED_DIR" "$CLASSES_DIR" "$DEX_DIR" "$KEY_DIR"
   --java "$GENERATED_DIR" \
   --min-sdk-version 33 \
   --target-sdk-version 35 \
-  --version-code 16 \
-  --version-name 1.8.0 \
+  --version-code "$APP_VERSION_CODE" \
+  --version-name "$APP_VERSION_NAME" \
   -o "$BUILD_DIR/unsigned.apk" \
   "$BUILD_DIR/resources.zip"
 
@@ -47,12 +55,12 @@ java -cp "$R8_JAR" com.android.tools.r8.R8 --release --min-api 33 --lib "$ANDROI
 "$BUILD_TOOLS/zipalign" -f 4 "$BUILD_DIR/unsigned.apk" "$BUILD_DIR/aligned.apk"
 
 if [[ ! -f "$KEYSTORE" || -z "$STORE_PASS" ]]; then
-  cp "$BUILD_DIR/aligned.apk" "$BUILD_DIR/Wen-Sarafet-1.8.0-unsigned.apk"
+  cp "$BUILD_DIR/aligned.apk" "$BUILD_DIR/Wen-Sarafet-${APP_VERSION_NAME}-UNSIGNED.apk"
   echo "Unsigned build created. It cannot pass production integrity checks or update the installed release." >&2
-  echo "$BUILD_DIR/Wen-Sarafet-1.8.0-unsigned.apk"
+  echo "$BUILD_DIR/Wen-Sarafet-${APP_VERSION_NAME}-UNSIGNED.apk"
   exit 0
 fi
-ACTUAL_CERT_SHA256="$(keytool -list -v -keystore "$KEYSTORE" -storepass "$STORE_PASS" -alias wen-sarafet-test | sed -n 's/.*SHA256: //p' | tr -d ':' | head -1)"
+ACTUAL_CERT_SHA256="$(keytool -list -v -keystore "$KEYSTORE" -storepass "$STORE_PASS" -alias "$SIGNING_KEY_ALIAS" | sed -n 's/.*SHA256: //p' | tr -d ':' | head -1)"
 if [[ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]]; then
   echo "Signing certificate does not match AppIntegrity.java" >&2
   exit 1
@@ -60,12 +68,12 @@ fi
 
 "$BUILD_TOOLS/apksigner" sign \
   --ks "$KEYSTORE" \
-  --ks-key-alias wen-sarafet-test \
+  --ks-key-alias "$SIGNING_KEY_ALIAS" \
   --ks-pass "pass:$STORE_PASS" \
   --key-pass "pass:$STORE_PASS" \
-  --out "$BUILD_DIR/Wen-Sarafet-1.8.0.apk" \
+  --out "$BUILD_DIR/Wen-Sarafet-${APP_VERSION_NAME}.apk" \
   "$BUILD_DIR/aligned.apk"
 
-"$BUILD_TOOLS/apksigner" verify --verbose "$BUILD_DIR/Wen-Sarafet-1.8.0.apk"
-"$BUILD_TOOLS/aapt2" dump badging "$BUILD_DIR/Wen-Sarafet-1.8.0.apk" | head -10
-echo "$BUILD_DIR/Wen-Sarafet-1.8.0.apk"
+"$BUILD_TOOLS/apksigner" verify --verbose "$BUILD_DIR/Wen-Sarafet-${APP_VERSION_NAME}.apk"
+"$BUILD_TOOLS/aapt2" dump badging "$BUILD_DIR/Wen-Sarafet-${APP_VERSION_NAME}.apk" | head -10
+echo "$BUILD_DIR/Wen-Sarafet-${APP_VERSION_NAME}.apk"

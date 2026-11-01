@@ -308,7 +308,8 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 if(id==null)continue;
                 try(Cursor c=writable.rawQuery("SELECT name,exclude_from_expense FROM categories WHERE id=? AND archived=0",new String[]{String.valueOf(id)})) {
                     if(!c.moveToFirst())continue;
-                    if(c.getInt(1)!=0)throw new IllegalArgumentException("التصنيف المحمي لا يمكن حذفه: "+c.getString(0));
+                    if(c.getInt(1)!=0 || CategoryNamingRules.RECEIVED_TRANSFER.equals(c.getString(0)))
+                        throw new IllegalArgumentException("التصنيف المحمي لا يمكن حذفه: "+c.getString(0));
                 }
                 long used=0;
                 try(Cursor c=writable.rawQuery("SELECT (SELECT COUNT(*) FROM transactions WHERE category_id=?) + " +
@@ -462,6 +463,58 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         return result;
     }
 
+    /** Local, bound-parameter history search. Offset pagination avoids a 1,000-card UI. */
+    public List<Models.Transaction> searchTransactions(String text, String type, String currency,
+                                                        int pageSize, int offset) {
+        TransactionSearchRules.Query query = TransactionSearchRules.build(text,type,currency,pageSize,offset);
+        List<Models.Transaction> result = new ArrayList<>();
+        try(Cursor c=getReadableDatabase().rawQuery(query.sql,query.args)) {
+            while(c.moveToNext()) {
+                Models.Transaction tx=new Models.Transaction();
+                tx.id=c.getLong(0);tx.type=c.getString(1);tx.amountMinor=c.getLong(2);
+                tx.currency=c.getString(3);tx.accountId=c.getLong(4);
+                tx.destinationAccountId=c.isNull(5)?null:c.getLong(5);
+                tx.accountName=c.getString(6);
+                tx.destinationName=c.isNull(7)?null:c.getString(7);
+                tx.categoryName=c.isNull(8)?null:c.getString(8);
+                tx.categoryEmoji=c.isNull(9)?null:c.getString(9);
+                tx.note=c.getString(10);
+                tx.rawText=c.isNull(11)?null:c.getString(11);
+                tx.needsReview=c.getInt(12)==1;tx.createdAt=c.getLong(13);
+                tx.hasSplits=c.getInt(14)==1;tx.affectsBalance=c.getInt(15)==1;
+                populateSpecial(tx);
+                result.add(tx);
+            }
+        }
+        return result;
+    }
+
+    /** Fetch one original financial row for linked debt history, not an unbounded history scan. */
+    public Models.Transaction getTransactionById(long transactionId) {
+        String sql="SELECT t.id,t.type,t.amount_minor,t.currency,t.account_id,t.destination_account_id," +
+                "a.name,d.name,c.name,c.emoji,t.note,t.raw_text,t.needs_review,t.created_at," +
+                "EXISTS(SELECT 1 FROM transaction_splits s WHERE s.transaction_id=t.id),t.affects_balance " +
+                "FROM transactions t JOIN accounts a ON a.id=t.account_id " +
+                "LEFT JOIN accounts d ON d.id=t.destination_account_id " +
+                "LEFT JOIN categories c ON c.id=t.category_id WHERE t.id=?";
+        try(Cursor c=getReadableDatabase().rawQuery(sql,new String[]{String.valueOf(transactionId)})) {
+            if(!c.moveToFirst())return null;
+            Models.Transaction tx=new Models.Transaction();
+            tx.id=c.getLong(0);tx.type=c.getString(1);tx.amountMinor=c.getLong(2);
+            tx.currency=c.getString(3);tx.accountId=c.getLong(4);
+            tx.destinationAccountId=c.isNull(5)?null:c.getLong(5);
+            tx.accountName=c.getString(6);
+            tx.destinationName=c.isNull(7)?null:c.getString(7);
+            tx.categoryName=c.isNull(8)?null:c.getString(8);
+            tx.categoryEmoji=c.isNull(9)?null:c.getString(9);
+            tx.note=c.getString(10);tx.rawText=c.isNull(11)?null:c.getString(11);
+            tx.needsReview=c.getInt(12)==1;tx.createdAt=c.getLong(13);
+            tx.hasSplits=c.getInt(14)==1;tx.affectsBalance=c.getInt(15)==1;
+            populateSpecial(tx);
+            return tx;
+        }
+    }
+
     public List<Models.Transaction> getExpenseTransactions(String currency, long startInclusive, long endExclusive) {
         List<Models.Transaction> result = new ArrayList<>();
         String sql = "SELECT t.id,t.type,t.amount_minor,t.currency,t.account_id,t.destination_account_id,a.name,d.name,c.name,c.emoji,t.note,t.raw_text,t.needs_review,t.created_at," +
@@ -531,8 +584,14 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                     long accountId, long amountMinor, String description) {
         if (!FinanceRules.EXPENSE.equals(kind) && !FinanceRules.INCOME.equals(kind)) return null;
         List<CategorySuggestionRules.Example> samples = new ArrayList<>();
-        String sql="SELECT t.category_id,t.account_id,t.amount_minor,t.note,t.raw_text FROM transactions t " +
-                "JOIN categories c ON c.id=t.category_id WHERE t.type=? AND t.currency=? " +
+        String sql="SELECT t.category_id,t.account_id,t.amount_minor,t.note,t.raw_text, " +
+                "EXISTS(SELECT 1 FROM change_history h WHERE h.table_name='transactions' " +
+                "AND h.record_id=t.id AND h.action='EDIT' AND h.undone=0 " +
+                "AND h.previous_category_id IS NOT NULL " +
+                "AND h.previous_category_id!=h.current_category_id " +
+                "AND h.current_category_id=t.category_id) corrected " +
+                "FROM transactions t JOIN categories c ON c.id=t.category_id WHERE t.type=? AND t.currency=? " +
+                "AND c.archived=0 AND c.kind=t.type AND t.amount_minor>0 " +
                 "AND t.special_kind IS NULL AND t.needs_review=0 " +
                 "AND NOT EXISTS(SELECT 1 FROM transaction_splits s WHERE s.transaction_id=t.id) " +
                 "ORDER BY t.created_at DESC,t.id DESC LIMIT 200";
@@ -543,7 +602,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 // Merchant signals in automatic messages, or a merchant named in a note.
                 String merchant=extractMerchant(raw);
                 samples.add(new CategorySuggestionRules.Example(c.getLong(0),c.getLong(1),
-                        c.getLong(2),note,merchant));
+                        c.getLong(2),note,merchant,c.getInt(5)==1));
             }
         }
         return CategorySuggestionRules.suggest(accountId,amountMinor,description,description,samples);
@@ -731,15 +790,66 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         }
     }
 
-    public long addCustomCategory(String name, String kind, String emoji) {
-        SQLiteDatabase db = getWritableDatabase();
-        int position = 100;
-        try (Cursor c = db.rawQuery("SELECT COALESCE(MAX(position),0)+1 FROM categories WHERE kind=?", new String[]{kind})) {
-            if (c.moveToFirst()) position = c.getInt(0);
+    /** Names remain unique even across archived categories, whose history is preserved. */
+    private static void requireUniqueCategoryName(SQLiteDatabase db, String name,
+                                                   String kind, long excludedId) {
+        try (Cursor existing=db.rawQuery(
+                "SELECT 1 FROM categories WHERE kind=? AND name=? COLLATE NOCASE AND id!=? LIMIT 1",
+                new String[]{kind,name,String.valueOf(excludedId)})) {
+            if(existing.moveToFirst())
+                throw new IllegalArgumentException("يوجد تصنيف آخر بهذا الاسم، اختر اسمًا مختلفًا");
         }
-        ContentValues cv = new ContentValues();
-        cv.put("name", name.trim()); cv.put("kind", kind); cv.put("emoji", emoji == null || emoji.trim().isEmpty() ? "🏷️" : emoji.trim()); cv.put("position", position); cv.put("exclude_from_expense", 0);
-        return db.insertOrThrow("categories", null, cv);
+    }
+
+    public long addCustomCategory(String name, String kind, String emoji) {
+        String cleanName=CategoryNamingRules.validateNewCategory(name,kind);
+        String cleanEmoji=emoji==null||emoji.trim().isEmpty()?"🏷️":emoji.trim();
+        if(cleanEmoji.codePointCount(0,cleanEmoji.length())>8)
+            throw new IllegalArgumentException("الرمز طويل جدًا");
+        SQLiteDatabase writable=getWritableDatabase();
+        writable.beginTransaction();
+        try {
+            requireUniqueCategoryName(writable,cleanName,kind,-1L);
+            int position=100;
+            try (Cursor c=writable.rawQuery(
+                    "SELECT COALESCE(MAX(position),0)+1 FROM categories WHERE kind=?",
+                    new String[]{kind})) {
+                if(c.moveToFirst())position=c.getInt(0);
+            }
+            ContentValues cv=new ContentValues();
+            cv.put("name",cleanName);cv.put("kind",kind);cv.put("emoji",cleanEmoji);
+            cv.put("position",position);cv.put("exclude_from_expense",0);
+            long id=writable.insertOrThrow("categories",null,cv);
+            writable.setTransactionSuccessful();
+            return id;
+        } finally { writable.endTransaction(); }
+    }
+
+    public void renameCategory(long categoryId, String newName) {
+        String clean=CategoryNamingRules.cleanName(newName);
+        SQLiteDatabase writable=getWritableDatabase();
+        writable.beginTransaction();
+        try {
+            String oldName,kind;
+            boolean excluded;
+            try(Cursor c=writable.rawQuery(
+                    "SELECT name,kind,exclude_from_expense FROM categories WHERE id=? AND archived=0",
+                    new String[]{String.valueOf(categoryId)})) {
+                if(!c.moveToFirst())throw new IllegalArgumentException("التصنيف غير موجود أو مؤرشف");
+                oldName=c.getString(0);kind=c.getString(1);excluded=c.getInt(2)!=0;
+            }
+            if(oldName.equals(clean)) { writable.setTransactionSuccessful(); return; }
+            CategoryNamingRules.validateRename(oldName,kind,excluded,clean);
+            requireUniqueCategoryName(writable,clean,kind,categoryId);
+            ContentValues updated=new ContentValues();
+            updated.put("name",clean);
+            if(writable.update("categories",updated,"id=? AND archived=0",
+                    new String[]{String.valueOf(categoryId)})!=1)
+                throw new IllegalStateException("تعذّر تغيير اسم التصنيف");
+            // Existing category audit trigger records the change. Transactions retain their
+            // category ID and amount, so balances, debts and old historical rows are untouched.
+            writable.setTransactionSuccessful();
+        } finally { writable.endTransaction(); }
     }
 
     public Long getAccountBalance(String name, String currency) {
@@ -751,6 +861,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     }
 
     public void setAccountBalance(long accountId, long balanceMinor) {
+        NonNegativeBalanceRules.requireNonNegative(balanceMinor);
         ContentValues cv = new ContentValues();
         cv.put("balance_minor", balanceMinor);
         if (getWritableDatabase().update("accounts", cv, "id=? AND active=1",
@@ -967,6 +1078,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             long destinationMinor=FxTransferMath.destinationMinor(sourceAmountMinor,destUnitsPerSourceUnit);
             long[] newBalances=FxTransferMath.balancesAfter(source.balanceMinor,destination.balanceMinor,
                     sourceAmountMinor,destinationMinor);
+            NonNegativeBalanceRules.requireNonNegative(newBalances[0]); // reject source overdraft atomically
             ContentValues tx=new ContentValues();
             tx.put("type",FinanceRules.TRANSFER);tx.put("amount_minor",sourceAmountMinor);
             tx.put("currency",source.currency);tx.put("account_id",source.id);
@@ -1077,6 +1189,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             tx.put("affects_balance", 1); tx.put("base_affects_balance", 1);
             long txId = writable.insertOrThrow("transactions", null, tx);
             long nextBalance = item.balanceMinor != null ? item.balanceMinor : FinanceRules.balancesAfter(type, item.amountMinor, account.balanceMinor, null)[0];
+            NonNegativeBalanceRules.requireNonNegative(nextBalance); // reject overdraft and negative captured balance
             ContentValues balance = new ContentValues(); balance.put("balance_minor", nextBalance);
             writable.update("accounts", balance, "id=?", new String[]{String.valueOf(accountId)});
             ContentValues done = new ContentValues(); done.put("status", "IMPORTED"); done.put("transaction_id", txId);
@@ -1112,6 +1225,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             tx.put("affects_balance", 1); tx.put("base_affects_balance", 1);
             long id = writable.insertOrThrow("transactions", null, tx);
             long[] balances = FinanceRules.balancesAfter(FinanceRules.TRANSFER, item.amountMinor, source.balanceMinor, destination.balanceMinor);
+            NonNegativeBalanceRules.requireNonNegative(balances[0]); // inbound capture cannot overdraw source
             ContentValues a = new ContentValues(); a.put("balance_minor", balances[0]); writable.update("accounts", a, "id=?", new String[]{String.valueOf(sourceId)});
             ContentValues b = new ContentValues(); b.put("balance_minor", balances[1]); writable.update("accounts", b, "id=?", new String[]{String.valueOf(destinationId)});
             writable.setTransactionSuccessful(); return id;
@@ -1161,6 +1275,19 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         SQLiteDatabase writable = getWritableDatabase();
         writable.beginTransaction();
         try {
+            // The generic category/type editor cannot safely reverse multi-currency
+            // exchange or debt ledger transactions. Route these to
+            // their dedicated flows; never silently orphan the related records.
+            try(Cursor restricted=writable.rawQuery(
+                    "SELECT 1 FROM transactions t WHERE t.id=? AND (" +
+                    "t.destination_amount_minor IS NOT NULL OR t.exchange_rate IS NOT NULL " +
+                    "OR t.special_kind IS NOT NULL OR t.debt_person_id IS NOT NULL " +
+                    "OR t.debt_direction IS NOT NULL " +
+                    "OR EXISTS(SELECT 1 FROM debt_movements d WHERE d.transaction_id=t.id))",
+                    new String[]{String.valueOf(transactionId)})) {
+                if(restricted.moveToFirst())
+                    throw new IllegalArgumentException("العملية مرتبطة بتحويل أو دين؛ استخدم تعديلها المخصص");
+            }
             String oldType; long amount; long oldSourceId; Long oldDestinationId; String currency; boolean affectsBalance; boolean baseAffectsBalance;
             try (Cursor c = writable.rawQuery("SELECT type,amount_minor,account_id,destination_account_id,currency,affects_balance,base_affects_balance FROM transactions WHERE id=?", new String[]{String.valueOf(transactionId)})) {
                 if (!c.moveToFirst()) throw new IllegalArgumentException("العملية غير موجودة");
@@ -1169,10 +1296,15 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             if (!FinanceRules.EXPENSE.equals(newType) && !FinanceRules.INCOME.equals(newType) && !FinanceRules.TRANSFER.equals(newType))
                 throw new IllegalArgumentException("نوع العملية غير صحيح");
             Models.Account source = getAccount(sourceId);
-            if (source == null || !currency.equals(source.currency)) throw new IllegalArgumentException("الحساب المصدر غير صالح");
+            if (source == null || !currency.equals(source.currency) ||
+                    (sourceId != oldSourceId && !isActiveAccount(writable, sourceId)))
+                throw new IllegalArgumentException("الحساب المصدر غير صالح أو غير نشط");
             Models.Account destination = destinationId == null ? null : getAccount(destinationId);
             if (FinanceRules.TRANSFER.equals(newType)) {
-                if (destination == null || source.id == destination.id) throw new IllegalArgumentException("اختر حسابين مختلفين");
+                if (destination == null || source.id == destination.id ||
+                        (destinationId != null && !destinationId.equals(oldDestinationId)
+                                && !isActiveAccount(writable, destinationId)))
+                    throw new IllegalArgumentException("اختر حسابين نشطين ومختلفين");
                 if (!currency.equals(destination.currency)) throw new IllegalArgumentException("الحسابان يجب أن يكونا بعملة " + currency);
                 categoryId = null;
                 splits = new ArrayList<>();
@@ -1181,12 +1313,19 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 if (splits != null && !splits.isEmpty()) {
                     if (!FinanceRules.EXPENSE.equals(newType)) throw new IllegalArgumentException("التقسيم متاح للمصروف فقط");
                     SplitDebtRules.checkParts(amount, splits);
-                    for (Models.SplitInput split : splits) if (split.specialKind != null) {
-                        validateDebtDirection(split.debtDirection);
-                        requireDebtPerson(split.debtPersonId);
+                    for (Models.SplitInput split : splits) {
+                        if (split.specialKind == null)
+                            requireCategoryForType(writable, split.categoryId, newType);
+                        else {
+                            validateDebtDirection(split.debtDirection);
+                            requireDebtPerson(split.debtPersonId);
+                        }
                     }
                     categoryId = null;
-                } else if (categoryId == null) throw new IllegalArgumentException("اختر تصنيف العملية");
+                } else {
+                    if (categoryId == null) throw new IllegalArgumentException("اختر تصنيف العملية");
+                    requireCategoryForType(writable, categoryId, newType);
+                }
             }
 
             try(Cursor fx=writable.rawQuery("SELECT destination_amount_minor FROM transactions WHERE id=?",
@@ -1374,16 +1513,38 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
 
     public List<Models.DebtMovement> getDebtMovements(long debtId) {
         List<Models.DebtMovement> result = new ArrayList<>();
-        try (Cursor c = getReadableDatabase().rawQuery(
-                "SELECT id,debt_id,transaction_id,kind,amount_minor,created_at,note FROM debt_movements WHERE debt_id=? ORDER BY created_at DESC,id DESC",
-                new String[]{String.valueOf(debtId)})) {
+        // Read-only provenance: a split portion must link back to the original
+        // financial operation, including its full total and note.
+        String sql="SELECT m.id,m.debt_id,m.transaction_id,m.kind,m.amount_minor,m.created_at,m.note," +
+                "(SELECT COUNT(*) FROM transaction_splits s WHERE s.transaction_id=m.transaction_id)," +
+                "t.amount_minor,t.note FROM debt_movements m " +
+                "LEFT JOIN transactions t ON t.id=m.transaction_id " +
+                "WHERE m.debt_id=? ORDER BY m.created_at DESC,m.id DESC";
+        try (Cursor c = getReadableDatabase().rawQuery(sql,new String[]{String.valueOf(debtId)})) {
             while (c.moveToNext()) {
-                Models.DebtMovement item = new Models.DebtMovement(); item.id = c.getLong(0); item.debtId = c.getLong(1);
-                item.transactionId = c.isNull(2) ? null : c.getLong(2); item.kind = c.getString(3);
-                item.amountMinor = c.getLong(4); item.createdAt = c.getLong(5); item.note = c.getString(6); result.add(item);
+                Models.DebtMovement item = new Models.DebtMovement();
+                item.id=c.getLong(0); item.debtId=c.getLong(1);
+                item.transactionId=c.isNull(2)?null:c.getLong(2);
+                item.kind=c.getString(3); item.amountMinor=c.getLong(4);
+                item.createdAt=c.getLong(5); item.note=c.getString(6);
+                item.linkedSplitPartCount=c.getInt(7);
+                item.fromSplitTransaction=item.transactionId!=null && item.linkedSplitPartCount>0;
+                item.linkedTransactionAmountMinor=c.isNull(8)?null:c.getLong(8);
+                item.linkedTransactionNote=c.isNull(9)?null:c.getString(9);
+                result.add(item);
             }
         }
         return result;
+    }
+
+    /** How many original financial operations would disappear if this entire debt is deleted. */
+    public int countDebtLinkedFinancialTransactions(long debtId) {
+        try(Cursor c=getReadableDatabase().rawQuery(
+                "SELECT COUNT(DISTINCT transaction_id) FROM debt_movements " +
+                "WHERE debt_id=? AND transaction_id IS NOT NULL",
+                new String[]{String.valueOf(debtId)})) {
+            return c.moveToFirst()?c.getInt(0):0;
+        }
     }
 
     public void markDebtPaid(long debtId) {
@@ -1437,45 +1598,56 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 debtId = c.getLong(0);
                 if (!c.isNull(1)) throw new IllegalArgumentException("احذف هذه الحركة من تفاصيل العملية المالية");
             }
-            writable.delete("debt_movements", "id=?", new String[]{String.valueOf(movementId)});
+            if(writable.delete("debt_movements", "id=? AND transaction_id IS NULL",
+                    new String[]{String.valueOf(movementId)})!=1)
+                throw new IllegalStateException("تعذّر حذف حركة الدين؛ لم يتغير السجل");
             ensureDebtTotalsValid(writable, debtId); recomputeDebt(writable, debtId); writable.setTransactionSuccessful();
         } finally { writable.endTransaction(); }
     }
 
     public void deleteDebt(long debtId) {
+        // Keep validation, account reversal, transaction removal and debt deletion
+        // in ONE SQLite transaction; no stale preflight outside the lock.
+        SQLiteDatabase writable=getWritableDatabase();
+        writable.beginTransaction();
+        try {
+        try(Cursor exists=writable.rawQuery("SELECT 1 FROM debts WHERE id=?",
+                new String[]{String.valueOf(debtId)})) {
+            if(!exists.moveToFirst())throw new IllegalArgumentException("سجل الدين غير موجود أو حُذف مسبقًا");
+        }
         List<Long> transactionIds = new ArrayList<>();
-        try (Cursor c = getReadableDatabase().rawQuery(
+        try (Cursor c = writable.rawQuery(
                 "SELECT DISTINCT transaction_id FROM debt_movements WHERE debt_id=? AND transaction_id IS NOT NULL",
                 new String[]{String.valueOf(debtId)})) { while (c.moveToNext()) transactionIds.add(c.getLong(0)); }
         for (Long txId : transactionIds) {
-            try (Cursor c = getReadableDatabase().rawQuery("SELECT 1 FROM transaction_splits WHERE transaction_id=? LIMIT 1",
+            try (Cursor c = writable.rawQuery("SELECT 1 FROM transaction_splits WHERE transaction_id=? LIMIT 1",
                     new String[]{String.valueOf(txId)})) {
                 if (c.moveToFirst()) throw new IllegalArgumentException("الدين مرتبط بمصروف مقسّم؛ عدّل أو احذف العملية من تفاصيلها لحماية الأجزاء الأخرى");
             }
-            try (Cursor c = getReadableDatabase().rawQuery("SELECT COUNT(DISTINCT debt_id) FROM debt_movements WHERE transaction_id=?",
+            try (Cursor c = writable.rawQuery("SELECT COUNT(DISTINCT debt_id) FROM debt_movements WHERE transaction_id=?",
                     new String[]{String.valueOf(txId)})) {
                 if (c.moveToFirst() && c.getInt(0) > 1)
                     throw new IllegalArgumentException("هذا الدين مرتبط بسداد موزع على أكثر من سجل؛ احذف العملية المشتركة أولًا");
             }
         }
-        SQLiteDatabase writable = getWritableDatabase(); writable.beginTransaction();
-        try {
             for (Long txId : transactionIds) {
                 String type; long amount, sourceId; Long destinationId; boolean affects;
                 try (Cursor c = writable.rawQuery("SELECT type,amount_minor,account_id,destination_account_id,affects_balance,base_affects_balance," +
                     "category_id,currency,note,raw_text,source,needs_review,created_at," +
                     "special_kind,debt_person_id,debt_direction,destination_amount_minor,exchange_rate FROM transactions WHERE id=?",
                         new String[]{String.valueOf(txId)})) {
-                    if (!c.moveToFirst()) continue;
+                    if (!c.moveToFirst()) throw new IllegalStateException("عملية مالية مرتبطة بالدين لم تعد موجودة");
                     type=c.getString(0); amount=c.getLong(1); sourceId=c.getLong(2); destinationId=c.isNull(3)?null:c.getLong(3); affects=c.getInt(4)==1;
                 }
                 if (affects) reverseBalanceEffect(writable, type, amount, sourceId, destinationId);
                 ContentValues capture = new ContentValues(); capture.put("status", "IGNORED"); capture.putNull("transaction_id");
                 writable.update("capture_inbox", capture, "transaction_id=?", new String[]{String.valueOf(txId)});
-                writable.delete("transactions", "id=?", new String[]{String.valueOf(txId)});
+                if(writable.delete("transactions", "id=?", new String[]{String.valueOf(txId)})!=1)
+                    throw new IllegalStateException("تعذّر حذف العملية المالية المرتبطة");
             }
             writable.delete("debt_movements", "debt_id=?", new String[]{String.valueOf(debtId)});
-            writable.delete("debts", "id=?", new String[]{String.valueOf(debtId)});
+            if(writable.delete("debts", "id=?", new String[]{String.valueOf(debtId)})!=1)
+                throw new IllegalStateException("تعذّر حذف سجل الدين");
             writable.setTransactionSuccessful();
         } finally {
             writable.endTransaction(); BalanceWidgetProvider.updateAll(appContext); BudgetAlertManager.checkAll(appContext);
@@ -1608,6 +1780,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             // The stored impact is the precise amount reversed at deletion, even if
             // exclusion/category preferences changed afterward.
             long restoredBalance=SimpleUndoRules.restoredBalance(balance,type,affects==1?impact:0);
+            NonNegativeBalanceRules.requireNonNegative(restoredBalance); // Undo must not overdraw
             ContentValues tx=new ContentValues();tx.put("id",transactionId);tx.put("type",type);
             tx.put("amount_minor",amount);tx.put("currency",currency);tx.put("account_id",accountId);
             tx.put("category_id",categoryId);tx.put("note",note);
@@ -1653,6 +1826,76 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         }
     }
 
+    /**
+     * Only ordinary manually entered, confirmed expense/income rows can be edited
+     * in-place. Debt, FX, imports, split and capture-linked operations remain on
+     * their dedicated edit paths to protect financial integrity.
+     */
+    private static final String SAFE_SIMPLE_MANUAL_EDIT =
+            "t.source='MANUAL' AND t.needs_review=0 " +
+            "AND t.type IN ('EXPENSE','INCOME') AND t.category_id IS NOT NULL AND t.amount_minor>0 " +
+            "AND t.destination_account_id IS NULL AND t.special_kind IS NULL " +
+            "AND t.debt_person_id IS NULL AND t.debt_direction IS NULL " +
+            "AND t.destination_amount_minor IS NULL AND t.exchange_rate IS NULL " +
+            "AND t.exchange_rate_source IS NULL AND t.exchange_rate_checked_at IS NULL " +
+            "AND NOT EXISTS(SELECT 1 FROM transaction_splits s WHERE s.transaction_id=t.id) " +
+            "AND NOT EXISTS(SELECT 1 FROM debt_movements d WHERE d.transaction_id=t.id) " +
+            "AND NOT EXISTS(SELECT 1 FROM capture_inbox i WHERE i.transaction_id=t.id) " +
+            "AND EXISTS(SELECT 1 FROM categories c WHERE c.id=t.category_id AND c.kind=t.type) ";
+
+    public boolean canEditSimpleManualTransaction(long transactionId) {
+        try(Cursor c=getReadableDatabase().rawQuery(
+                "SELECT 1 FROM transactions t WHERE t.id=? AND " + SAFE_SIMPLE_MANUAL_EDIT,
+                new String[]{String.valueOf(transactionId)})) {
+            return c.moveToFirst();
+        }
+    }
+
+    public void editSimpleManualTransaction(long transactionId, long expectedAmountMinor,
+                                            String expectedNote, long newAmountMinor, String newNote) {
+        if(newAmountMinor<=0)throw new IllegalArgumentException("المبلغ يجب أن يكون أكبر من صفر");
+        String cleanNote=newNote==null?"":newNote.trim();
+        if(cleanNote.length()>2000)throw new IllegalArgumentException("الملاحظة طويلة جدًا");
+        SQLiteDatabase writable=getWritableDatabase();
+        writable.beginTransaction();
+        try {
+            String type, oldNote;
+            long oldAmount, accountId, categoryId;
+            boolean affectsBalance;
+            try(Cursor c=writable.rawQuery(
+                    "SELECT t.type,t.amount_minor,t.account_id,t.category_id,t.affects_balance,t.note " +
+                    "FROM transactions t WHERE t.id=? AND "+SAFE_SIMPLE_MANUAL_EDIT,
+                    new String[]{String.valueOf(transactionId)})) {
+                if(!c.moveToFirst())
+                    throw new IllegalArgumentException("هذه العملية ليست يدوية بسيطة؛ استخدم تعديلها المخصص");
+                type=c.getString(0);oldAmount=c.getLong(1);accountId=c.getLong(2);
+                categoryId=c.getLong(3);affectsBalance=c.getInt(4)==1;
+                oldNote=c.isNull(5)?"":c.getString(5);
+            }
+            if(oldAmount!=expectedAmountMinor ||
+                    !oldNote.equals(expectedNote==null?"":expectedNote))
+                throw new IllegalStateException("تغيرت العملية بعد فتحها؛ افتحها من جديد قبل تعديلها");
+            // Do not create a fake EDIT audit record or wake widgets for a no-op.
+            if(oldAmount==newAmountMinor && oldNote.equals(cleanNote)) {
+                writable.setTransactionSuccessful();
+                return;
+            }
+            boolean excludedExpense=FinanceRules.EXPENSE.equals(type) && categoryExcluded(writable,categoryId);
+            long delta=SimpleTransactionEditRules.balanceDelta(type,oldAmount,newAmountMinor,
+                    affectsBalance,excludedExpense);
+            if(delta!=0L)adjustBalance(writable,accountId,delta);
+            ContentValues cv=new ContentValues();
+            cv.put("amount_minor",newAmountMinor);
+            cv.put("note",cleanNote);
+            if(writable.update("transactions",cv,"id=?",new String[]{String.valueOf(transactionId)})!=1)
+                throw new IllegalStateException("تعذّر حفظ تعديل العملية");
+            // Audited by the existing transaction_update trigger; account + row
+            // changes commit atomically and roll back together on any error.
+            writable.setTransactionSuccessful();
+        } finally { writable.endTransaction(); }
+        BalanceWidgetProvider.updateAll(appContext);
+    }
+
     public void deleteTransaction(long transactionId) {
         SQLiteDatabase writable = getWritableDatabase();
         writable.beginTransaction();
@@ -1694,7 +1937,8 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                     long destinationBalance=balanceIncludingInactive(writable, destinationId);
                     ContentValues a=new ContentValues();a.put("balance_minor",Math.addExact(sourceBalance,amount));
                     writable.update("accounts",a,"id=?",new String[]{String.valueOf(sourceId)});
-                    ContentValues b=new ContentValues();b.put("balance_minor",Math.subtractExact(destinationBalance,fxDestinationMinor));
+                    ContentValues b=new ContentValues();b.put("balance_minor",
+                            NonNegativeBalanceRules.afterDelta(destinationBalance,-fxDestinationMinor));
                     writable.update("accounts",b,"id=?",new String[]{String.valueOf(destinationId)});
                 } else reverseBalanceEffect(writable, type, balanceImpact, sourceId, destinationId);
             }
@@ -1910,7 +2154,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             current = c.getLong(0);
         }
         ContentValues values = new ContentValues();
-        values.put("balance_minor", Math.addExact(current, delta));
+        values.put("balance_minor", NonNegativeBalanceRules.afterDelta(current, delta));
         if (writable.update("accounts", values, "id=?", new String[]{String.valueOf(accountId)}) != 1)
             throw new IllegalStateException("تعذر تحديث رصيد الحساب");
     }
