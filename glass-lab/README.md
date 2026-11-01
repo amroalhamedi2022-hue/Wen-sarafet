@@ -43,3 +43,8 @@ visual controls and a long scrolling list. Analytics has currency pills, 2x2 sta
 monthly budget, chart and categories. Debts has action tabs and active/closed rows.
 A fifth Settings mock is opened from the header gear. All names/amounts are fake.
 No form actually saves anything or accesses the original finance app.
+
+## Deterministic screenshot capture
+QA can start the separate Android demo with `--ei preview_theme 0 --ei preview_page 0`.
+These optional Intent extras render mock data only. No account or finance app API is accessed.
+CI screenshot workflow uses this to capture five pages on Android emulator for inspection.

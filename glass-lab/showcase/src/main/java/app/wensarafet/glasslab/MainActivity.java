@@ -37,6 +37,11 @@ public final class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle saved) {
         super.onCreate(saved);
+        // Only synthetic mock content: deterministic image capture for visual QA.
+        themeIndex = Math.max(0, Math.min(3, getIntent().getIntExtra("preview_theme", 0)));
+        currentPage = Math.max(0, Math.min(4, getIntent().getIntExtra("preview_page", 0)));
+        eco = getIntent().getBooleanExtra("preview_eco", false);
+        optics = getIntent().getBooleanExtra("preview_optics", false);
         render();
     }
 

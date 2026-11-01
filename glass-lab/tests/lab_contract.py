@@ -24,6 +24,8 @@ for forbidden in ["postDelayed", "while (true)", "Choreographer", "TimerTask",
                   "Handler", "requestAnimationFrame", "setRepeatCount", "Thread.sleep"]:
     assert forbidden not in engine + screen, forbidden
 assert "GlassPalette.at(themeIndex)" in screen
+assert 'getIntent().getIntExtra("preview_page", 0)' in screen
+assert 'getIntent().getIntExtra("preview_theme", 0)' in screen
 assert "GlassSurfaces.navigation(this, theme, 27, eco)" in screen
 assert "GlassSurfaces.headerButton(this, theme)" in screen
 assert "private void showSettings(LinearLayout body)" in screen
@@ -34,7 +36,7 @@ assert "ميزانية الشهر — ILS" in screen
 assert "تجربة تمرير بدون حسابات فعلية" not in screen
 assert "currentPage = 4; render();" in screen
 assert "GlassSurfaces.selectedTab(this, theme, 19)" in screen
-assert "GlassSurfaces.opticalHero(this, theme, 28, eco, optics)" in screen
+assert "GlassSurfaces.opticalHero(this, theme, 26, eco, optics)" in screen
 assert "WenOpticalDrawable" in engine
 assert "new RuntimeShader(AGSL)" in engine
 assert "canvas.isHardwareAccelerated()" in engine
