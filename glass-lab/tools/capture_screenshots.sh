@@ -4,13 +4,16 @@ adb wait-for-device
 adb install -r glass-lab/showcase/build/outputs/apk/debug/showcase-debug.apk
 adb shell wm dismiss-keyguard || true
 mkdir -p glass-lab/screenshot-results
-# This laboratory displays only synthetic mock data. No access to other apps.
-for theme in 0 1 2 3; do
-  for page in 0 1 2 3 4; do
-    adb shell am force-stop app.wensarafet.glasslab || true
-    adb shell am start -n app.wensarafet.glasslab/.MainActivity --ei preview_theme "$theme" --ei preview_page "$page"
-    sleep 1
-    adb shell screencap -p /sdcard/glass-screenshot.png
-    adb pull /sdcard/glass-screenshot.png "glass-lab/screenshot-results/theme-${theme}-page-${page}.png"
-  done
-done
+adb logcat -c || true
+adb shell am force-stop app.wensarafet.glasslab || true
+adb shell am start -W -n app.wensarafet.glasslab/.MainActivity --ei preview_theme 0 --ei preview_page 0 || true
+sleep 4
+adb logcat -d -v time -s AndroidRuntime:E ActivityTaskManager:E > glass-lab/screenshot-results/android-runtime.log || true
+adb shell dumpsys activity activities > glass-lab/screenshot-results/activity-state.txt || true
+adb shell screencap -p /sdcard/glass-screenshot.png || true
+adb pull /sdcard/glass-screenshot.png glass-lab/screenshot-results/theme-0-page-0.png || true
+if ! adb shell pidof app.wensarafet.glasslab >/dev/null 2>&1; then
+  echo "Lab activity exited/crashed. See android-runtime.log; do not claim screenshot parity."
+  tail -120 glass-lab/screenshot-results/android-runtime.log
+  exit 1
+fi

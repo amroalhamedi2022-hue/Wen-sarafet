@@ -49,6 +49,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wen-glass-synthetic-ui-screenshots
-          path: glass-lab/screenshot-results/*.png
+          path: glass-lab/screenshot-results/*
           retention-days: 7
           if-no-files-found: warn
