@@ -1,0 +1,54 @@
+name: Wen Glass visual screenshot capture
+on:
+  pull_request:
+    paths:
+      - 'glass-lab/**'
+      - '.github/workflows/wen-glass-screenshots.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: glass-screenshots-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable KVM group on runner
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' |
+            sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build isolated demo
+        run: gradle -p glass-lab :showcase:assembleDebug --no-daemon --console=plain
+      - name: Capture synthetic mock screens on Android 35
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash glass-lab/tools/capture_screenshots.sh
+      - name: Upload private-data-free screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wen-glass-synthetic-ui-screenshots
+          path: glass-lab/screenshot-results/*
+          retention-days: 7
+          if-no-files-found: warn
