@@ -106,6 +106,24 @@ public final class Ui {
                 upper, lower, SKY, false);
     }
 
+    /** Reference-matched frosted balance tiles. Light fill ~#A0BDF6 to ice blue. */
+    public static android.graphics.drawable.Drawable glassBalanceBackground(Context context, int radiusDp) {
+        if (!isLiquidTheme(context)) return layeredSoftBackground(context, radiusDp);
+        int top = DARK ? mix(SURFACE, BRAND, .20f) : mix(BRAND_SOFT, BRAND, .34f);
+        int bottom = DARK ? mix(SURFACE, SKY, .13f) : mix(BRAND_SOFT, SKY, .05f);
+        return new app.wensarafet.glass.WenGlassDrawable(context,
+                dp(context, radiusDp), top, bottom, SKY, false);
+    }
+
+    /** Cyan-blue chart atmosphere stays separate from the denser balance tiles. */
+    public static android.graphics.drawable.Drawable glassChartBackground(Context context, int radiusDp) {
+        if (!isLiquidTheme(context)) return layeredSoftBackground(context, radiusDp);
+        int top = DARK ? mix(SURFACE, BRAND, .12f) : mix(BRAND_SOFT, BRAND, .22f);
+        int bottom = DARK ? mix(SURFACE, SKY, .16f) : mix(BRAND_SOFT, SKY, .20f);
+        return new app.wensarafet.glass.WenGlassDrawable(context,
+                dp(context, radiusDp), top, bottom, SKY, false);
+    }
+
     public static android.graphics.drawable.Drawable glassAccentBackground(Context context, int radiusDp) {
         if (themeIndex(context) < 16) return gradient(BRAND_DARK, BRAND, radiusDp, context);
         return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
@@ -133,7 +151,7 @@ public final class Ui {
      */
     public static android.graphics.drawable.Drawable glassListBackground(Context context, int radiusDp) {
         if (!isLiquidTheme(context)) return rounded(SURFACE, radiusDp, context);
-        int first = mix(SURFACE, BRAND_SOFT, DARK ? .10f : .36f);
+        int first = mix(SURFACE, BRAND_SOFT, DARK ? .10f : .64f);
         int second = mix(SURFACE, SKY, DARK ? .07f : .11f);
         GradientDrawable plate = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{first, second});

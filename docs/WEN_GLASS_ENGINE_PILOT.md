@@ -90,3 +90,11 @@ white rim to match the approved dashboard direction. The previous software rende
 layer and Canvas shadow blur have been removed. Geometry/gradient are regenerated
 only on view size changes; source values, chronology, currency switching and click
 behavior remain untouched. Device screenshot and frame profiling still required.
+
+## Poster palette calibration (from approved blue concept)
+Sampling representative, non-text regions gives approximate displayed reference colors:
+header deep blue #2355C6, bright header #4484E8, summary tile #2F60E3,
+frosted balance #9CC3FC, chart #B8D3FC, list row #E8F1FE.
+This is design calibration, not a device screenshot comparison or verified Delta-E metric.
+The Balance and Chart containers now use separate frosted recipes rather than
+one generic surface; rows remain lighter and cheaper to render.

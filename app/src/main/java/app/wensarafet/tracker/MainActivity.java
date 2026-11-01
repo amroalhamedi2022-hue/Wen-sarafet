@@ -847,7 +847,7 @@ public final class MainActivity extends Activity {
         for (String currency : Arrays.asList("ILS", "USD", "JOD")) {
             LinearLayout card = Ui.column(this);
             card.setPadding(Ui.dp(this, 16), Ui.dp(this, 14), Ui.dp(this, 16), Ui.dp(this, 14));
-            card.setBackground(Ui.glassSoftBackground(this, 22));
+            card.setBackground(Ui.glassBalanceBackground(this, 22));
             card.setElevation(Ui.dp(this, 2));
             card.addView(Ui.text(this, currency, 13, Ui.DARK ? Ui.TEXT : Ui.BRAND_DARK, true));
             TextView amount = Ui.text(this, Money.format(totals.get(currency), currency), 20, Ui.TEXT, true);
@@ -912,7 +912,7 @@ public final class MainActivity extends Activity {
 
         LinearLayout chartCard = Ui.column(this);
         chartCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 10));
-        chartCard.setBackground(Ui.glassSoftBackground(this, 22));
+        chartCard.setBackground(Ui.glassChartBackground(this, 22));
         chartCard.setElevation(Ui.dp(this, 2));
         chartCard.addView(Ui.text(this, "مصاريف الأيام السبعة", 15, Ui.TEXT, true));
         FrameLayout chartHost = new FrameLayout(this);
@@ -2477,7 +2477,7 @@ public final class MainActivity extends Activity {
                     + Money.format(finished.savedMinor,dashboardCurrency),14,Ui.INCOME,true));
         }
 
-        LinearLayout chartCard = Ui.column(this); chartCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 10)); chartCard.setBackground(Ui.glassSoftBackground(this, 22)); chartCard.setElevation(Ui.dp(this, 3));
+        LinearLayout chartCard = Ui.column(this); chartCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 10)); chartCard.setBackground(Ui.glassChartBackground(this, 22)); chartCard.setElevation(Ui.dp(this, 3));
         LinearLayout chartHead = Ui.row(this); chartHead.addView(Ui.text(this, "آخر 7 أيام", 16, Ui.TEXT, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 42), 1));
         TextView toggle = Ui.text(this, chartLineMode ? "▥ أعمدة" : "⌁ خط بياني", 12, Ui.VIOLET, true); toggle.setGravity(Gravity.CENTER); toggle.setBackground(Ui.rounded(Ui.BRAND_SOFT, 14, this));
         toggle.setOnClickListener(v -> { chartLineMode = !chartLineMode; getSharedPreferences("appearance", MODE_PRIVATE).edit().putBoolean("chart_line", chartLineMode).apply(); showAnalyticsScreen(); }); chartHead.addView(toggle, new LinearLayout.LayoutParams(Ui.dp(this, 105), Ui.dp(this, 36))); chartCard.addView(chartHead);

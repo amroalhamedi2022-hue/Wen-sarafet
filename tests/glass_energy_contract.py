@@ -27,8 +27,8 @@ for entry in ["glassHeaderBackground", "glassSoftBackground", "glassAccentBackgr
     assert "public static android.graphics.drawable.Drawable " + entry in ui
 assert ui.count("if (themeIndex(context) < 16)") == 3, "Non-Liquid themes must remain unchanged"
 assert "background.setBackground(Ui.glassHeaderBackground(this, 24));" in main
-assert "card.setBackground(Ui.glassSoftBackground(this, 22));" in main
-assert "chartCard.setBackground(Ui.glassSoftBackground(this, 22));" in main
+assert "card.setBackground(Ui.glassBalanceBackground(this, 22));" in main
+assert "chartCard.setBackground(Ui.glassChartBackground(this, 22));" in main
 assert "card.setBackground(Ui.glassAccentBackground(this, 20));" in main
 
 assert "glassNavigationBackground(this, 26)" in main
@@ -41,7 +41,7 @@ assert "glassActionBackground(this, 16, primary)" in main
 for block in [
     "card.setBackground(Ui.glassListBackground(this, 18));",
     "card.setBackground(Ui.glassListBackground(this,18));",
-    "chartCard.setBackground(Ui.glassSoftBackground(this, 22));",
+    "chartCard.setBackground(Ui.glassChartBackground(this, 22));",
     "layoutCard.setBackground(Ui.glassListBackground(this, 20));",
     "lockCard.setBackground(Ui.glassListBackground(this, 20));",
     "reminderCard.setBackground(Ui.glassListBackground(this, 20));",
@@ -51,6 +51,10 @@ for helper in ["glassListBackground", "glassNavigationBackground",
                "glassSelectedNavigationBackground", "glassActionBackground"]:
     assert " " + helper + "(" in ui
 assert "new GradientDrawable(GradientDrawable.Orientation.TL_BR" in ui
+assert "glassBalanceBackground(Context context" in ui
+assert "glassChartBackground(Context context" in ui
+assert "int first = mix(SURFACE, BRAND_SOFT, DARK ? .10f : .64f);" in ui
+assert main.count("chartCard.setBackground(Ui.glassChartBackground(this, 22));") == 2
 assert "if (!isLiquidTheme(context))" in ui
 assert "return index >= 16 && index < THEMES.length;" in ui
 assert "DARK = theme == 20 ||" in ui
