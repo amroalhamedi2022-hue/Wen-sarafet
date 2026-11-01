@@ -38,7 +38,11 @@ assert "main_header_background" in primary_nav
 assert "ValueAnimator.areAnimatorsEnabled()" in primary_nav
 assert "nav.setVisibility(View.INVISIBLE)" in primary_nav
 assert "nav.setVisibility(View.VISIBLE)" in primary_nav
-assert "Ui.layeredBackground(this,20)" in header
+# The Liquid-only renderer replaces the header call, but legacy themes still
+# use the original layered background in the Ui factory.
+assert "Ui.glassHeaderBackground(this,20)" in header
+factory=(root/"app/src/main/java/app/wensarafet/tracker/Ui.java").read_text(encoding="utf-8")
+assert "if (themeIndex(context) < 16) return layeredBackground(context, radiusDp);" in factory
 assert "setContentDescription(\"رجوع\")" in header
 assert "title.setAutoSizeTextTypeUniformWithConfiguration(16,22,1," in header
 
