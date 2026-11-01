@@ -40,3 +40,8 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 }
+
+dependencies {
+    // Android-only visual module: no repository access or finance logic.
+    implementation project(":glass-engine")
+}

@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'app/**'
+      - 'glass-engine/**'
       - 'build.gradle'
       - 'settings.gradle'
       - 'gradle.properties'

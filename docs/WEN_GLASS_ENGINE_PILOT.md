@@ -42,3 +42,12 @@ Host apps pass radius and palette: the engine does not own finance logic or sett
 - Standard 16 themes still use the same rounded-color drawables as before.
 - Remaining visual work: design-reference parity, device-tuned typography, icon placement,
   safe-area adjustment, true on-interaction optical refraction if real-device benchmarks allow.
+
+## Reusable Gradle module — phase 3
+The renderer is now built as its own Android library module `:glass-engine`.
+The original class is removed from the application source directory, so no duplicate
+class remains. Apps can consume the library as a Gradle project dependency or build an AAR.
+The engine's API uses only Android SDK classes (Context, Drawable, Canvas), no third-party
+runtime dependencies, databases, preferences, or finance-app code.
+No extra background services, receivers, threads, permissions, or work schedulers.
+This module should be independently versioned before it is reused by other applications.
