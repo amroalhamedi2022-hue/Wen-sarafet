@@ -1,0 +1,51 @@
+name: Wen Glass standalone unprotected demo
+
+on:
+  pull_request:
+    paths:
+      - 'glass-lab/**'
+      - '.github/workflows/wen-glass-standalone.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: glass-standalone-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  glass-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK 35
+        run: |
+          test -n "$ANDROID_HOME"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+      - name: Gradle 8.10.2
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Test standalone lab source contracts
+        run: python3 glass-lab/tests/lab_contract.py
+      - name: Compile installable standalone APK and lint
+        run: gradle -p glass-lab :showcase:assembleDebug :showcase:lintDebug --no-daemon --console=plain
+      - name: Verify standalone package output
+        run: |
+          test -s glass-lab/showcase/build/outputs/apk/debug/showcase-debug.apk
+          sha256sum glass-lab/showcase/build/outputs/apk/debug/showcase-debug.apk
+      - name: Upload standalone demo APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: wen-glass-lab-installable-demo
+          path: glass-lab/showcase/build/outputs/apk/debug/showcase-debug.apk
+          retention-days: 14
+          if-no-files-found: error
