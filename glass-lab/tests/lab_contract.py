@@ -25,6 +25,9 @@ for forbidden in ["postDelayed", "while (true)", "Choreographer", "TimerTask",
     assert forbidden not in engine + screen, forbidden
 assert "GlassPalette.at(themeIndex)" in screen
 assert 'canvas.drawText(days[i]' in screen
+assert "glassCard(false, 23, 8)" in screen
+assert "new LinearLayout.LayoutParams(-1, d(130))" in screen
+assert "new LinearLayout.LayoutParams(-1, d(61))" in screen
 assert 'currentPage == i ? (theme.dark ? Color.WHITE : theme.deep)' in screen
 assert 'getIntent().getIntExtra("preview_page", 0)' in screen
 assert 'getIntent().getIntExtra("preview_theme", 0)' in screen

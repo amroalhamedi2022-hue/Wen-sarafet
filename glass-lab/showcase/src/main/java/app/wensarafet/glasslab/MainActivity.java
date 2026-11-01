@@ -498,7 +498,7 @@ public final class MainActivity extends Activity {
     }
 
     private void chart(LinearLayout body) {
-        LinearLayout outer = glassCard(false, 23, 12);
+        LinearLayout outer = glassCard(false, 23, 8);
         outer.setBackground(GlassSurfaces.chart(this, theme, 23, eco));
         LinearLayout heading = row(this);
         heading.setGravity(Gravity.CENTER_VERTICAL);
@@ -510,7 +510,7 @@ public final class MainActivity extends Activity {
         outer.addView(heading);
         LabChartView chart = new LabChartView(this, theme, bars);
         chart.setContentDescription("منحنى مصروفات تجريبية لسبعة أيام");
-        outer.addView(chart, new LinearLayout.LayoutParams(-1, d(137)));
+        outer.addView(chart, new LinearLayout.LayoutParams(-1, d(130)));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(187));
         lp.topMargin = d(8);
         body.addView(outer, lp);
@@ -519,18 +519,18 @@ public final class MainActivity extends Activity {
     private void addAccount(LinearLayout body, String title, String amount, String icon) {
         LinearLayout card = row(this);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(d(14), d(10), d(14), d(10));
+        card.setPadding(d(14), d(8), d(14), d(8));
         card.setBackground(GlassSurfaces.row(this, theme, 19));
         TextView ico = pill(icon, false, false);
         ico.setTextSize(20);
-        card.addView(ico, new LinearLayout.LayoutParams(d(49), d(49)));
+        card.addView(ico, new LinearLayout.LayoutParams(d(43), d(43)));
         LinearLayout textCol = column(this);
         textCol.setPadding(d(12), 0, d(12), 0);
         textCol.addView(text(title, 14, theme.ink, true));
         textCol.addView(text("حساب للمعاينة فقط", 11, theme.muted, false));
         card.addView(textCol, new LinearLayout.LayoutParams(0, -2, 1));
         card.addView(text(amount, 13, theme.ink, true));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(69));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(61));
         lp.setMargins(0, d(4), 0, d(4));
         body.addView(card, lp);
     }

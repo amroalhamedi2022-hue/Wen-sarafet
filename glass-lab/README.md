@@ -65,3 +65,9 @@ Arabic weekday names. This pass makes rims pearly and adds weekday labels using
 a cached Paint. Automated QA now captures eight synthetic previews (five pages in
 blue and home in each alternate palette), and captures emulator gfxinfo as
 **developer evidence only**, not a physical battery benchmark.
+
+## Clip fix found from real screenshot
+The chart footer labels were missing in Android screenshots because the chart's
+39dp heading, 137dp view and 24dp padding exceeded the 187dp fixed panel height.
+We reduced chart padding/view, leaving 39+130+16=185dp inside 187dp. Account
+icon and row sizes were also reduced without clipping their two text lines.
