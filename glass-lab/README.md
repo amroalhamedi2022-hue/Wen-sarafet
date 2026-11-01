@@ -35,3 +35,11 @@ screen *content fidelity* over a marketing-style banner: compact RTL header,
 paired icon buttons, airy light glass tab bar, small theme/energy controls, and
 separate chart frost recipes. Since the concept includes decorative mockup frames,
 its overall pixel diff is NOT an Android target. We match the inner screen only.
+
+## Visual structure pass — inner screen fidelity
+The demo now has mock-up-aligned home balances, three dense blue stats, chart,
+three accounts and a five-item activity list. Transactions show local-search/filter
+visual controls and a long scrolling list. Analytics has currency pills, 2x2 stats,
+monthly budget, chart and categories. Debts has action tabs and active/closed rows.
+A fifth Settings mock is opened from the header gear. All names/amounts are fake.
+No form actually saves anything or accesses the original finance app.

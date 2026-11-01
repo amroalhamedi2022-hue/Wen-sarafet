@@ -255,107 +255,234 @@ public final class MainActivity extends Activity {
     }
 
     private void showDashboard(LinearLayout body) {
-        section(body, "نظرة عامة", "أرقام تجريبية فقط");
+        section(body, "إجمالي أرصدتك", "حسب العملة • بيانات للمعاينة");
         LinearLayout balances = row(this);
         String[] codes = {"ILS", "USD", "JOD"};
-        String[] amounts = {"209.83", "80.00", "0.00"};
-        for (int i = 0; i < 3; i++) {
-            LinearLayout card = glassCard(false, 22, 11);
-            TextView code = text(codes[i], 11, theme.muted, false);
-            card.addView(code);
-            TextView amount = text(amounts[i], 19, theme.ink, true);
+        String[] amounts = {"209.83", "0.00", "0.00"};
+        for (int i = 0; i < codes.length; i++) {
+            LinearLayout card = glassCard(false, 20, 12);
+            TextView currency = text(codes[i], 11, theme.muted, false);
+            card.addView(currency);
+            TextView amount = text(codes[i] + " " + amounts[i], 17, theme.ink, true);
             amount.setSingleLine(true);
-            amount.setAutoSizeTextTypeUniformWithConfiguration(12, 19, 1,
+            amount.setAutoSizeTextTypeUniformWithConfiguration(12, 17, 1,
                     android.util.TypedValue.COMPLEX_UNIT_SP);
-            card.addView(amount);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, d(87), 1);
-            lp.setMargins(d(4), 0, d(4), 0);
-            balances.addView(card, lp);
+            LinearLayout.LayoutParams amountP = new LinearLayout.LayoutParams(-1, -2);
+            amountP.topMargin = d(6);
+            card.addView(amount, amountP);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, d(85), 1);
+            p.setMargins(d(3), 0, d(3), 0);
+            balances.addView(card, p);
         }
         body.addView(balances);
 
-        section(body, "ملخص المصروفات", "بالشيكل");
-        LinearLayout summary = row(this);
-        String[] caps = {"مصاريف اليوم", "آخر 7 أيام", "هذا الشهر"};
-        String[] values = {"0.00", "393.80", "2,210.80"};
-        for (int i = 0; i < 3; i++) {
-            LinearLayout card = glassCard(true, 21, 11);
-            card.addView(text(caps[i], 11, 0xFFE5F0FF, false));
-            TextView amount = text(values[i], 18, Color.WHITE, true);
-            amount.setSingleLine(true);
-            amount.setAutoSizeTextTypeUniformWithConfiguration(12, 18, 1,
-                    android.util.TypedValue.COMPLEX_UNIT_SP);
-            card.addView(amount);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, d(78), 1);
-            lp.setMargins(d(4), 0, d(4), 0);
-            summary.addView(card, lp);
-        }
-        body.addView(summary);
-        chart(body);
-        section(body, "الحسابات", "بطاقات خفيفة");
-        addAccount(body, "بنك مثال", "ILS 101.26", "🏦");
-        addAccount(body, "محفظة تجريبية", "ILS 81.79", "💠");
-        section(body, "عمليات حديثة", "بيانات وهمية");
-        addOperation(body, "أكل وشرب", "− ILS 12.00", "🥣", 0xFFA44865);
-        addOperation(body, "استرداد مبلغ", "+ ILS 6.00", "↩", 0xFF008D79);
-    }
-
-    private void showOperations(LinearLayout body) {
-        section(body, "كل العمليات", "تجربة تمرير بدون حسابات فعلية");
-        String[] names = {"أكل وشرب", "مواصلات", "مواد منزلية", "استرداد مبلغ",
-                "تسوق", "مستلزمات", "صيانة", "فواتير", "أكل وشرب", "مواصلات",
-                "مصروف متكرر", "استرداد مبلغ", "شراء", "اشتراك", "مشتريات", "مكافأة"};
-        String[] icons = {"🍲", "🚕", "🏠", "↩", "🛍", "📦", "🔧", "💡",
-                "🥗", "🚌", "🛒", "↩", "🏬", "📱", "🛒", "★"};
-        for (int i = 0; i < names.length; i++) {
-            boolean income = i == 3 || i == 11 || i == 15;
-            addOperation(body, names[i], (income ? "+ ILS " : "− ILS ") +
-                    String.format(java.util.Locale.US, "%.2f", 3.5 + i * 2.25),
-                    icons[i], income ? 0xFF008D79 : 0xFFA44865);
-        }
-        TextView note = text("العناصر المعروضة مجرد أمثلة. لا يوجد حفظ أو قاعدة بيانات.", 11,
-                theme.muted, false);
-        note.setGravity(Gravity.CENTER);
-        body.addView(note);
-    }
-
-    private void showAnalytics(LinearLayout body) {
-        section(body, "تحليل المصروفات", "محتوى تجريبي");
+        section(body, "نظرة على مصروفك", "عملة العرض: ILS");
         LinearLayout stats = row(this);
-        String[] names = {"اليوم", "الأسبوع", "الشهر"};
-        String[] amounts = {"ILS 0.00", "ILS 393.80", "ILS 2,210.80"};
-        for (int i = 0; i < 3; i++) {
-            LinearLayout c = glassCard(true, 20, 10);
-            c.addView(text(names[i], 11, Color.WHITE, false));
-            c.addView(text(amounts[i], 13, Color.WHITE, true));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, d(79), 1);
-            lp.setMargins(d(3), 0, d(3), 0);
-            stats.addView(c, lp);
+        String[] captions = {"مصاريف اليوم", "آخر 7 أيام", "هذا الشهر"};
+        String[] totals = {"0.00", "393.80", "2,210.80"};
+        for (int i = 0; i < captions.length; i++) {
+            LinearLayout card = glassCard(true, 21, 11);
+            card.addView(text(captions[i], 11, 0xFFEAF2FF, false));
+            TextView money = text("ILS " + totals[i], 17, Color.WHITE, true);
+            money.setSingleLine(true);
+            money.setAutoSizeTextTypeUniformWithConfiguration(11, 17, 1,
+                    android.util.TypedValue.COMPLEX_UNIT_SP);
+            card.addView(money);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, d(78), 1);
+            p.setMargins(d(3), 0, d(3), 0);
+            stats.addView(card, p);
         }
         body.addView(stats);
         chart(body);
-        section(body, "التصنيفات", "تجربة مكونات الزجاج");
+
+        section(body, "الحسابات", "3 حسابات تجريبية");
+        addAccount(body, "بنك فلسطين • عرض", "ILS 101.26", "🏦");
+        addAccount(body, "Jawwal Pay • عرض", "ILS 81.79", "💠");
+        addAccount(body, "PalPay • عرض", "ILS 26.78", "◆");
+
+        section(body, "آخر العمليات", "أحدث 5");
+        addOperation(body, "استرداد مبلغ", "+ ILS 6.00", "↩", 0xFF078C79);
+        addOperation(body, "أكل وشرب", "− ILS 12.00", "♨", 0xFFB34B70);
+        addOperation(body, "أكل وشرب", "− ILS 13.00", "♨", 0xFFB34B70);
+        addOperation(body, "أكل وشرب", "− ILS 4.00", "♨", 0xFFB34B70);
+        addOperation(body, "سداد دين", "+ ILS 20.00", "✓", 0xFF376AC8);
+    }
+
+    private void showOperations(LinearLayout body) {
+        section(body, "كل العمليات", "بحث وعرض تجريبي");
+        TextView search = text("⌕   ابحث بالملاحظة أو الحساب أو التصنيف أو المبلغ", 13,
+                theme.muted, false);
+        search.setGravity(Gravity.CENTER_VERTICAL);
+        search.setPadding(d(17), 0, d(17), 0);
+        search.setBackground(GlassSurfaces.row(this, theme, 19));
+        search.setContentDescription("حقل بحث للعرض البصري فقط، بدون بيانات محفوظة");
+        LinearLayout.LayoutParams searchP = new LinearLayout.LayoutParams(-1, d(50));
+        searchP.bottomMargin = d(8);
+        body.addView(search, searchP);
+        LinearLayout filters = row(this);
+        String[] names = {"كل الأنواع  ⌄", "كل العملات  ⌄"};
+        for (String name : names) {
+            TextView filter = pill(name, false, false);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, d(46), 1);
+            lp.setMargins(d(3), 0, d(3), 0);
+            filters.addView(filter, lp);
+        }
+        body.addView(filters);
+        TextView count = text("عُرضت معاملات تجريبية • القائمة طويلة لاختبار التمرير", 11,
+                theme.muted, false);
+        LinearLayout.LayoutParams countP = new LinearLayout.LayoutParams(-1, d(46));
+        body.addView(count, countP);
+
+        String[] categories = {"استرداد مبلغ","أكل وشرب","أكل وشرب","أكل وشرب",
+                "سداد دين","خاص بي","أكل وشرب","مواصلات","شراء","استرداد مبلغ",
+                "مستلزمات","فواتير","أكل وشرب","تسوق","مكافأة"};
+        String[] icons = {"↩","♨","♨","♨","✓","♙","♨","🚕","▣","↩",
+                "◈","◫","♨","▣","★"};
+        for (int i = 0; i < categories.length; i++) {
+            boolean received = i == 0 || i == 4 || i == 9 || i == 14;
+            String amount = (received ? "+ ILS " : "− ILS ") +
+                    String.format(java.util.Locale.US, "%.2f", received ? 6.0 + i :
+                            12.0 + (i % 5) * 1.5);
+            addOperation(body, categories[i], amount, icons[i],
+                    received ? 0xFF078C79 : 0xFFB34B70);
+        }
+    }
+
+    private void showAnalytics(LinearLayout body) {
+        section(body, "تحليل المصروفات", "معاينة تجريبية");
+        LinearLayout currencies = row(this);
+        for (String code : new String[]{"ILS", "USD", "JOD"}) {
+            TextView chip = pill(code, "ILS".equals(code), false);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, d(42), 1);
+            lp.setMargins(d(3), 0, d(3), 0);
+            currencies.addView(chip, lp);
+        }
+        body.addView(currencies);
+
+        LinearLayout large = glassCard(true, 22, 16);
+        large.addView(text("مصاريف اليوم", 12, 0xFFE3EDFF, false));
+        large.addView(text("ILS 0.00", 24, Color.WHITE, true));
+        large.addView(text("اضغط لعرض التفاصيل • معاينة فقط", 11, 0xFFDFEAFF, false));
+        LinearLayout.LayoutParams largeP = new LinearLayout.LayoutParams(-1, d(100));
+        largeP.topMargin = d(12);
+        body.addView(large, largeP);
+
+        LinearLayout metrics = row(this);
+        for (int i = 0; i < 2; i++) {
+            LinearLayout group = column(this);
+            String[] names = i == 0 ?
+                    new String[]{"هذا الأسبوع","الدخل هذا الشهر"} :
+                    new String[]{"هذا الشهر","المستلم هذا الشهر"};
+            String[] values = i == 0 ?
+                    new String[]{"ILS 393.80","ILS 850.00"} :
+                    new String[]{"ILS 2,210.80","ILS 500.00"};
+            for (int j = 0; j < 2; j++) {
+                LinearLayout card = glassCard(true, 19, 12);
+                card.addView(text(names[j], 11, 0xFFE6EDFF, false));
+                card.addView(text(values[j], 16, Color.WHITE, true));
+                LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, d(80));
+                cp.topMargin = d(7);
+                group.addView(card, cp);
+            }
+            LinearLayout.LayoutParams groupP = new LinearLayout.LayoutParams(0, -2, 1);
+            groupP.setMargins(d(3), 0, d(3), 0);
+            metrics.addView(group, groupP);
+        }
+        body.addView(metrics);
+
+        LinearLayout budget = glassCard(false, 22, 16);
+        budget.addView(text("ميزانية الشهر — ILS", 16, theme.ink, true));
+        budget.addView(text("حدد سقفًا شهريًا لتعرف فورًا إن كنت ضمن الميزانية أو تجاوزتها.", 12,
+                theme.muted, false));
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, d(91));
+        bp.topMargin = d(12);
+        body.addView(budget, bp);
+
+        chart(body);
+        section(body, "تصنيفات هذا الشهر", "توزيع تجريبي");
         addProgress(body, "أكل وشرب", .80f);
         addProgress(body, "المواصلات", .54f);
         addProgress(body, "الفواتير", .27f);
     }
 
     private void showDebts(LinearLayout body) {
-        section(body, "دفتر الديون", "أمثلة للعرض فقط");
-        addAccount(body, "شخص تجريبي أ", "ILS 125.00", "👤");
-        addAccount(body, "شخص تجريبي ب", "USD 25.00", "👤");
-        addAccount(body, "شخص تجريبي ج", "ILS 40.00", "👤");
-        section(body, "المسددة والمغلقة", "نموذج تصميم");
-        addAccount(body, "دين مسدد", "ILS 0.00", "✓");
-        LinearLayout info = glassCard(false, 22, 17);
-        info.addView(text("لا توجد أموال أو ديون حقيقية داخل المختبر.", 15, theme.ink, true));
-        info.addView(text("زر الجودة والثيمات بالأعلى يغيران المظهر هنا أيضًا.", 12,
-                theme.muted, false));
-        body.addView(info);
+        section(body, "دفتر الديون", "بيانات تجريبية");
+        LinearLayout actions = row(this);
+        for (String label : new String[]{"＋ إضافة دين", "♧ الأشخاص"}) {
+            TextView btn = pill(label, false, true);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, d(46), 1);
+            lp.setMargins(d(3), 0, d(3), 0);
+            actions.addView(btn, lp);
+        }
+        body.addView(actions);
+        LinearLayout debtsFilter = row(this);
+        for (String label : new String[]{"إليّ — لي عند الناس", "عليّ — للناس عندي"}) {
+            TextView chip = pill(label, label.startsWith("إلي"), false);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, d(45), 1);
+            lp.setMargins(d(3), d(8), d(3), 0);
+            debtsFilter.addView(chip, lp);
+        }
+        body.addView(debtsFilter);
+        section(body, "الديون النشطة", "6 أشخاص");
+        for (int i = 0; i < 6; i++) {
+            LinearLayout card = row(this);
+            card.setGravity(Gravity.CENTER_VERTICAL);
+            card.setPadding(d(16), 0, d(16), 0);
+            card.setBackground(GlassSurfaces.row(this, theme, 19));
+            LinearLayout label = column(this);
+            label.addView(text("شخص تجريبي " + (i + 1), 14, theme.ink, true));
+            label.addView(text("المتبقي: ILS " + (20 + 15 * i) + ".00 • 1 نشط",
+                    11, theme.muted, false));
+            card.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
+            TextView arrow = text("‹", 27, theme.brand, true);
+            card.addView(arrow);
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, d(74));
+            cp.setMargins(0, d(5), 0, d(5));
+            body.addView(card, cp);
+        }
+        section(body, "المسددة والمغلقة", "3 أشخاص");
+        addAccount(body, "دين مغلق", "ILS 0.00", "✓");
+    }
+
+    private void showSettings(LinearLayout body) {
+        section(body, "الإعدادات", "تصميم للعرض فقط");
+        section(body, "مظهر التطبيق", "٤ تنسيقات");
+        TextView detail = text("اختيار الثيم متاح أعلى الشاشة، ولا يتم حفظ أي إعداد في المختبر.", 12,
+                theme.muted, false);
+        body.addView(detail, new LinearLayout.LayoutParams(-1, d(42)));
+        section(body, "تخصيص الواجهة", "مكونات زجاجية موحدة");
+        addSettingsRow(body, "تخطيط الصفحة الرئيسية", "الحجم والموقع أسفل الشاشة", "تخصيص");
+        addSettingsRow(body, "سجل التعديلات", "نموذج مرئي فقط", "◷");
+        addSettingsRow(body, "إدارة التصنيفات والرموز", "نموذج مرئي فقط", "◇");
+        section(body, "حماية التطبيق", "غير مطبقة في المختبر");
+        addSettingsRow(body, "رمز دخول وبصمة", "النسخة المستقلة بلا تفعيل أو بيانات", "—");
+        section(body, "تذكير المصاريف", "تجربة تصميم");
+        addSettingsRow(body, "تذكير يومي", "20:00 • بدون إشعارات حقيقية", "◯");
+        addSettingsRow(body, "صوت واهتزاز الإشعارات", "لا تُشغَّل خدمات خلفية", "◯");
+    }
+
+    private void addSettingsRow(LinearLayout body, String title, String subtitle, String action) {
+        LinearLayout card = row(this);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(d(14), d(10), d(14), d(10));
+        card.setBackground(GlassSurfaces.row(this, theme, 20));
+        LinearLayout information = column(this);
+        information.addView(text(title, 14, theme.ink, true));
+        information.addView(text(subtitle, 11, theme.muted, false));
+        card.addView(information, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView indicator = text(action, 12, theme.brand, true);
+        indicator.setGravity(Gravity.CENTER);
+        indicator.setPadding(d(9), d(6), d(9), d(6));
+        indicator.setBackground(GlassSurfaces.selectedTab(this, theme, 13));
+        card.addView(indicator);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(72));
+        lp.setMargins(0, d(5), 0, d(5));
+        body.addView(card, lp);
     }
 
     private void chart(LinearLayout body) {
         LinearLayout outer = glassCard(false, 23, 12);
+        outer.setBackground(GlassSurfaces.chart(this, theme, 23, eco));
         LinearLayout heading = row(this);
         heading.setGravity(Gravity.CENTER_VERTICAL);
         heading.addView(text("مصاريف الأيام السبعة", 15, theme.ink, true),

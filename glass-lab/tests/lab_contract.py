@@ -26,6 +26,12 @@ for forbidden in ["postDelayed", "while (true)", "Choreographer", "TimerTask",
 assert "GlassPalette.at(themeIndex)" in screen
 assert "GlassSurfaces.navigation(this, theme, 27, eco)" in screen
 assert "GlassSurfaces.headerButton(this, theme)" in screen
+assert "private void showSettings(LinearLayout body)" in screen
+assert "private void addSettingsRow(" in screen
+assert "GlassSurfaces.chart(this, theme, 23, eco)" in screen
+assert "إجمالي أرصدتك" in screen
+assert "ميزانية الشهر — ILS" in screen
+assert "تجربة تمرير بدون حسابات فعلية" not in screen
 assert "currentPage = 4; render();" in screen
 assert "GlassSurfaces.selectedTab(this, theme, 19)" in screen
 assert "GlassSurfaces.opticalHero(this, theme, 28, eco, optics)" in screen
