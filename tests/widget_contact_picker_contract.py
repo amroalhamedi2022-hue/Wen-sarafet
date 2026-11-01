@@ -17,7 +17,10 @@ assert "android.permission.WRITE_CONTACTS" not in manifest
 assert "Intent.ACTION_PICK" in java
 assert "ContactsContract.CommonDataKinds.Phone.CONTENT_URI" in java
 assert "FLAG_GRANT_READ_URI_PERMISSION" in java
-assert "PalestinianMobileNumber.normalize(c.getString(0))" in java
+assert "PalestinianMobileNumber.normalize(c.getString(numberIndex))" in java
+assert "ContactsContract.CommonDataKinds.Phone.NUMBER" in java
+assert "ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME" in java
+assert "if(numberIndex<0)" in java
 assert "pendingContactPhone.setText(mobile.substring(2))" in java
 assert 'PalestinianMobileNumber.normalize("05"+tail)' in java
 assert "new Intent(context,QuickActionActivity.class)" in widget
@@ -29,4 +32,9 @@ assert '"palpay".equals(action())' in widget
 assert "if(canChooseContact)" in widget
 assert "views.setOnClickPendingIntent(R.id.widget_root, pending)" in widget
 assert ET.parse(root/"app/src/main/res/drawable/widget_contact_chip.xml") is not None
+assert "Intent.ACTION_GET_CONTENT" in java
+assert "startActivityForResult(choice,CONTACT_PICK_REQUEST)" in java
+assert "<queries>" in manifest
+assert "vnd.android.cursor.dir/phone_v2" in manifest
+assert "vnd.android.cursor.item/phone_v2" in manifest
 print("WidgetContactPickerContract PASS: contact URI picker, permission-safe, small widget button, normalizer")
