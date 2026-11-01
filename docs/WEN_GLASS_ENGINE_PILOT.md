@@ -77,3 +77,9 @@ a rounded rectangle and outline, entirely avoiding canvas clip/save overhead.
 - Canvas work has zero new object allocations within draw(), no timer or live sampling.
 - This is an approximation of the approved concept's optical properties; it is NOT
   actual content refraction. Real screenshot parity and power measurement remain open.
+
+## Atmospheric screen parity
+Primary home, analytics, debts, and settings screens receive a shared gradient backdrop
+with two cached radial accent glows behind the UI. The root draws once per invalidation,
+never on a timer and never per row. Non-Liquid themes keep the old flat background.
+Power saver/low-RAM draws a solid background only.

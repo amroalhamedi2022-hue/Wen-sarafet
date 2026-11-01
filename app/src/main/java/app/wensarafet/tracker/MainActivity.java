@@ -425,7 +425,7 @@ public final class MainActivity extends Activity {
         transactionsTab = showTransactions;
         currentTab = showTransactions ? TAB_TRANSACTIONS : TAB_HOME;
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Ui.BACKGROUND);
+        root.setBackground(Ui.glassScreenBackground(this));
         root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
         LinearLayout shell = Ui.column(this);
@@ -1701,7 +1701,7 @@ public final class MainActivity extends Activity {
 
     private void showSettings() {
         addScreenVisible = false; subScreenVisible = true;
-        LinearLayout page = Ui.column(this); page.setBackgroundColor(Ui.BACKGROUND);
+        LinearLayout page = Ui.column(this); page.setBackground(Ui.glassScreenBackground(this));
         page.addView(pageHeader("الإعدادات", () -> showMain(false)), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78)));
         ScrollView scroll = new ScrollView(this);
         LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 30));
@@ -2062,10 +2062,9 @@ public final class MainActivity extends Activity {
     private void showDebtsScreen(String direction) {
         addScreenVisible = false; subScreenVisible = false; currentTab = TAB_DEBTS;
         FrameLayout primaryRoot=new FrameLayout(this);
-        primaryRoot.setBackgroundColor(Ui.BACKGROUND);
+        primaryRoot.setBackground(Ui.glassScreenBackground(this));
         primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         LinearLayout page=Ui.column(this);
-        page.setBackgroundColor(Ui.BACKGROUND);
         primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View debtTopBar=mainTopBar();
         page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
@@ -2405,10 +2404,9 @@ public final class MainActivity extends Activity {
     private void showAnalyticsScreen() {
         addScreenVisible = false; subScreenVisible = false; currentTab = TAB_ANALYTICS;
         FrameLayout primaryRoot=new FrameLayout(this);
-        primaryRoot.setBackgroundColor(Ui.BACKGROUND);
+        primaryRoot.setBackground(Ui.glassScreenBackground(this));
         primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         LinearLayout page=Ui.column(this);
-        page.setBackgroundColor(Ui.BACKGROUND);
         primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View analyticsTopBar=mainTopBar();
         page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112)));

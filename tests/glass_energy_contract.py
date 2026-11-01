@@ -58,6 +58,13 @@ for name in ["زجاج سائل أزرق", "فقاعات أكوا", "أورور�
     assert name in ui
 
 # Optical parity contract: cached radial bloom and double glass rim, zero redraw loop.
+backdrop = (root / "glass-engine/src/main/java/app/wensarafet/glass/WenGlassBackdropDrawable.java").read_text(encoding="utf-8")
+assert "new RadialGradient" in backdrop
+assert "onBoundsChange" in backdrop
+assert "if (lowPower)" in backdrop
+assert "new " not in backdrop.split("@Override public void draw(Canvas canvas)",1)[1].split("@Override public void setAlpha",1)[0]
+assert "glassScreenBackground(this)" in main
+assert main.count("setBackground(Ui.glassScreenBackground(this))") == 4
 assert "new RadialGradient" in engine
 assert "new LinearGradient" in engine
 assert "innerBorder.set(surface)" in engine

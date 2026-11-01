@@ -113,6 +113,13 @@ public final class Ui {
     }
 
 
+    /** Passive depth behind primary screens; never rendered per transaction row. */
+    public static android.graphics.drawable.Drawable glassScreenBackground(Context context) {
+        if (!isLiquidTheme(context)) return new android.graphics.drawable.ColorDrawable(BACKGROUND);
+        return new app.wensarafet.glass.WenGlassBackdropDrawable(context,
+                BACKGROUND, SKY, BRAND, DARK);
+    }
+
     /** Liquid designs are opt-in; existing non-Liquid themes are byte-for-byte visual fallbacks. */
     public static boolean isLiquidTheme(Context context) {
         int index = themeIndex(context);
