@@ -584,6 +584,49 @@ public final class MainActivity extends Activity {
         return nav;
     }
 
+    /** Keep primary-page navigation and header scroll behavior consistent. */
+    private void bindPrimaryNavigationScroll(ScrollView scroll,View topBar,View nav) {
+        final int[] upwardTravel={0};
+        final boolean[] hidden={false};
+        final View background=topBar.findViewWithTag("main_header_background");
+        scroll.setOnScrollChangeListener((v,x,y,oldX,oldY)->{
+            int delta=y-oldY;
+            if(background!=null) {
+                float fade=Math.min(1f,y/(float)Ui.dp(this,72));
+                background.setAlpha(1f-fade*.84f);
+                background.setElevation(fade>.02f?0f:Ui.dp(this,7));
+            }
+            if(delta<0)upwardTravel[0]+=-delta;
+            else if(delta>0)upwardTravel[0]=0;
+            boolean hide=y>Ui.dp(this,48) && delta>Ui.dp(this,1);
+            boolean show=y<=Ui.dp(this,10) ||
+                    (delta<0 && upwardTravel[0]>=Ui.dp(this,18) && v.canScrollVertically(1));
+            if(hide&&!hidden[0]) {
+                hidden[0]=true;
+                nav.animate().cancel();
+                if(!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                    nav.setTranslationY(Ui.dp(this,76));
+                    nav.setAlpha(0f);
+                    nav.setVisibility(View.INVISIBLE);
+                } else {
+                    nav.animate().translationY(Ui.dp(this,76)).alpha(0f).setDuration(220)
+                        .withEndAction(()->{if(hidden[0])nav.setVisibility(View.INVISIBLE);}).start();
+                }
+            } else if(show&&hidden[0]) {
+                hidden[0]=false;
+                upwardTravel[0]=0;
+                nav.animate().cancel();
+                nav.setVisibility(View.VISIBLE);
+                if(!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                    nav.setAlpha(1f);
+                    nav.setTranslationY(0f);
+                } else {
+                    nav.animate().translationY(0f).alpha(1f).setDuration(220).start();
+                }
+            }
+        });
+    }
+
     private TextView navButton(String label, boolean selected) {
         TextView view = Ui.text(this, label, 11.5f, selected ? Ui.BRAND : Ui.MUTED, selected);
         view.setGravity(Gravity.CENTER);
@@ -2000,9 +2043,11 @@ public final class MainActivity extends Activity {
     private void showDebtsScreen(String direction) {
         addScreenVisible = false; subScreenVisible = false; currentTab = TAB_DEBTS;
         LinearLayout page = Ui.column(this); page.setBackgroundColor(Ui.BACKGROUND);
-        page.addView(pageHeader("دفتر الديون", () -> showMain(false)), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78)));
+        View debtTopBar=mainTopBar();
+        page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
         ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this);
         content.setPadding(Ui.dp(this, 16), Ui.dp(this, 10), Ui.dp(this, 16), Ui.dp(this, 34));
+        content.addView(sectionTitle("دفتر الديون","أرصدة الديون وحركاتها"));
 
         LinearLayout actions = Ui.row(this);
         actions.setPadding(Ui.dp(this,4),Ui.dp(this,8),Ui.dp(this,4),Ui.dp(this,14));
@@ -2040,7 +2085,9 @@ public final class MainActivity extends Activity {
         content.addView(sectionTitle("المسددة والمغلقة", closed.isEmpty() ? "لا يوجد سجل بعد" : closedPeople.size() + " أشخاص"));
         for (List<Models.DebtSummary> personDebts : closedPeople.values()) content.addView(debtPersonCard(personDebts, true));
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-        page.addView(bottomNavigation(TAB_DEBTS), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72)));
+        View debtNav=bottomNavigation(TAB_DEBTS);
+        page.addView(debtNav,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72)));
+        bindPrimaryNavigationScroll(scroll,debtTopBar,debtNav);
         setContentView(page); Ui.animateScreen(page); content.post(() -> Ui.animateChildren(content));
     }
 
@@ -2294,8 +2341,10 @@ public final class MainActivity extends Activity {
     private void showAnalyticsScreen() {
         addScreenVisible = false; subScreenVisible = false; currentTab = TAB_ANALYTICS;
         LinearLayout page = Ui.column(this); page.setBackgroundColor(Ui.BACKGROUND);
-        page.addView(pageHeader("تحليل المصروفات", () -> showMain(false)), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78)));
+        View analyticsTopBar=mainTopBar();
+        page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112)));
         ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 34));
+        content.addView(sectionTitle("تحليل المصروفات","تقاريرك حسب العملة"));
         content.addView(Ui.text(this, "اختر عملة التحليل", 14, Ui.TEXT, true));
         LinearLayout currencyRow = Ui.row(this);
         for (String code : Arrays.asList("ILS", "USD", "JOD")) {
@@ -2387,7 +2436,9 @@ public final class MainActivity extends Activity {
             content.addView(categoryAnalysisRow(empty,max,monthStart.getTimeInMillis(),now));
         }
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-        page.addView(bottomNavigation(TAB_ANALYTICS), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72)));
+        View analyticsNav=bottomNavigation(TAB_ANALYTICS);
+        page.addView(analyticsNav,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72)));
+        bindPrimaryNavigationScroll(scroll,analyticsTopBar,analyticsNav);
         setContentView(page); Ui.animateScreen(page);
     }
 
