@@ -37,4 +37,16 @@ assert "startActivityForResult(choice,CONTACT_PICK_REQUEST)" in java
 assert "<queries>" in manifest
 assert "vnd.android.cursor.dir/phone_v2" in manifest
 assert "vnd.android.cursor.item/phone_v2" in manifest
+# Debug contact testing must install alongside the original app without provider conflicts.
+debug_manifest_path=root/"app/src/debug/AndroidManifest.xml"
+debug_manifest=ET.parse(debug_manifest_path)
+debug_provider=[p for p in debug_manifest.iter("provider")
+                if p.attrib.get(ns+"name")==".NotificationSoundProvider"]
+assert len(debug_provider)==1
+assert debug_provider[0].attrib.get(ns+"authorities")=="app.wensarafet.tracker.recovered.debug.notification-sounds"
+main_provider=[p for p in ET.fromstring(manifest).iter("provider")
+               if p.attrib.get(ns+"name")==".NotificationSoundProvider"]
+assert len(main_provider)==1
+assert main_provider[0].attrib.get(ns+"authorities")!=debug_provider[0].attrib.get(ns+"authorities")
+assert 'tools:replace="android:authorities"' in debug_manifest_path.read_text(encoding="utf-8")
 print("WidgetContactPickerContract PASS: contact URI picker, permission-safe, small widget button, normalizer")

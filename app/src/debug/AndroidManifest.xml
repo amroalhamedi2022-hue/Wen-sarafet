@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds use a separate package and must not collide with the installed production sound provider. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application
+        android:label="وين صرفت - اختبار"
+        tools:replace="android:label">
+        <provider
+            android:name=".NotificationSoundProvider"
+            android:authorities="app.wensarafet.tracker.recovered.debug.notification-sounds"
+            tools:replace="android:authorities" />
+    </application>
+</manifest>
