@@ -61,3 +61,10 @@ Appended at theme preference IDs 18–21 (never overwrite indices 0–17):
 Existing preference IDs, financial state, and dark-system rules are preserved.
 The image-generation mood boards remain aspirational: these are lightweight,
 static palettes until visual screenshot matching is complete.
+
+## Floating navigation and battery fast path — phase 5
+The tab bar receives 10dp lateral and 8dp bottom spacing only for Liquid themes;
+its click handlers and existing 72dp height are retained. The floating action
+button uses the same static lens palette, without modifying its add-transaction action.
+No layout change is made to older themes. Power-save/low-RAM path now draws only
+a rounded rectangle and outline, entirely avoiding canvas clip/save overhead.

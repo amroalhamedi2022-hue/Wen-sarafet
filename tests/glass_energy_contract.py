@@ -14,7 +14,8 @@ assert not (root / "app/src/main/java/app/wensarafet/glass/WenGlassDrawable.java
 assert "tracker." not in engine, "Engine must remain independent of finance app"
 assert "power.isPowerSaveMode()" in engine
 assert "activity.isLowRamDevice()" in engine
-assert "if (!lowPower)" in engine
+assert "if (lowPower)" in engine
+assert "canvas.drawRoundRect(surface, radiusPx, radiusPx, fill);" in engine
 assert "onBoundsChange" in engine and "new LinearGradient" in engine
 draw = engine.split("@Override public void draw(Canvas canvas)", 1)[1].split("private void applyAlpha", 1)[0]
 assert "new " not in draw, "Do not allocate objects in a drawable's hot path"
@@ -31,6 +32,9 @@ assert "chartCard.setBackground(Ui.glassSoftBackground(this, 22));" in main
 assert "card.setBackground(Ui.glassAccentBackground(this, 20));" in main
 
 assert "glassNavigationBackground(this, 26)" in main
+assert main.count("if (Ui.isLiquidTheme(this))") >= 4, "Liquid-only floating navigation and FAB required"
+assert "debtNavParams.setMargins" in main
+assert "analyticsNavParams.setMargins" in main
 assert "glassSelectedNavigationBackground(this, 18)" in main
 assert "glassActionBackground(this, 16, primary)" in main
 for block in [

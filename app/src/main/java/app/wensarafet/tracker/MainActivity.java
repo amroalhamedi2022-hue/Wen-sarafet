@@ -440,13 +440,16 @@ public final class MainActivity extends Activity {
         shell.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         View bottomNav = bottomNavigation(currentTab);
         FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72), Gravity.BOTTOM);
+        // Floating glass navigation is visual-only; the underlying tabs stay unchanged.
+        if (Ui.isLiquidTheme(this)) navParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));
         root.addView(bottomNav, navParams);
 
         int fabPercent = Ui.homeIconScalePercent(this, "fab");
         int fabSize = Math.max(Ui.dp(this, 46), Math.min(Ui.dp(this, 82), Ui.homeIconDp(this, "fab", 58)));
         TextView fab = Ui.text(this, "+", 32f * fabPercent / 100f, Color.WHITE, false);
         fab.setGravity(Gravity.CENTER);
-        fab.setBackground(Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this));
+        fab.setBackground(Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
+                : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this));
         fab.setElevation(Ui.dp(this, 8));
         fab.setOnClickListener(v -> showAddTransaction());
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));
@@ -2107,8 +2110,10 @@ public final class MainActivity extends Activity {
         for (List<Models.DebtSummary> personDebts : closedPeople.values()) content.addView(debtPersonCard(personDebts, true));
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         View debtNav=bottomNavigation(TAB_DEBTS);
-        primaryRoot.addView(debtNav,new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM));
+        FrameLayout.LayoutParams debtNavParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM);
+        if (Ui.isLiquidTheme(this)) debtNavParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));
+        primaryRoot.addView(debtNav,debtNavParams);
         bindPrimaryNavigationScroll(scroll,debtTopBar,debtNav);
         setContentView(primaryRoot); Ui.animateScreen(primaryRoot); content.post(() -> Ui.animateChildren(content));
     }
@@ -2501,8 +2506,10 @@ public final class MainActivity extends Activity {
         }
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         View analyticsNav=bottomNavigation(TAB_ANALYTICS);
-        primaryRoot.addView(analyticsNav,new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM));
+        FrameLayout.LayoutParams analyticsNavParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM);
+        if (Ui.isLiquidTheme(this)) analyticsNavParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));
+        primaryRoot.addView(analyticsNav,analyticsNavParams);
         bindPrimaryNavigationScroll(scroll,analyticsTopBar,analyticsNav);
         setContentView(primaryRoot); Ui.animateScreen(primaryRoot);
     }

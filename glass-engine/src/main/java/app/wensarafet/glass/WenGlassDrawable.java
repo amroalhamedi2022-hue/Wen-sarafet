@@ -104,15 +104,18 @@ public final class WenGlassDrawable extends Drawable {
 
     @Override public void draw(Canvas canvas) {
         if (surface.isEmpty()) return;
-        int saved = canvas.save();
-        canvas.clipPath(clipping);
-        canvas.drawRoundRect(surface, radiusPx, radiusPx, fill);
-        // Battery saver and low-RAM devices bypass the two decorative layers.
-        if (!lowPower) {
+        // Battery-saver devices take the fastest path: no clip/save/offscreen effects.
+        // Both paints are static; drawing does not request another frame.
+        if (lowPower) {
+            canvas.drawRoundRect(surface, radiusPx, radiusPx, fill);
+        } else {
+            int saved = canvas.save();
+            canvas.clipPath(clipping);
+            canvas.drawRoundRect(surface, radiusPx, radiusPx, fill);
             canvas.drawPath(upperGlint, glint);
             canvas.drawPath(lowerWave, wave);
+            canvas.restoreToCount(saved);
         }
-        canvas.restoreToCount(saved);
         canvas.drawRoundRect(border,
                 Math.max(0, radiusPx - outline.getStrokeWidth() / 2f),
                 Math.max(0, radiusPx - outline.getStrokeWidth() / 2f), outline);
