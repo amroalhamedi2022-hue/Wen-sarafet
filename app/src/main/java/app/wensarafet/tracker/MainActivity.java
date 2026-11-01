@@ -1670,14 +1670,29 @@ public final class MainActivity extends Activity {
     }
 
     private View pageHeader(String titleValue, Runnable backAction) {
-        LinearLayout top = Ui.row(this);
-        top.setPadding(Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 18), Ui.dp(this, 10));
-        top.setBackground(Ui.layeredBackground(this, 0));
-        TextView back = Ui.text(this, "‹", 34, Color.WHITE, false);
-        back.setGravity(Gravity.CENTER); back.setOnClickListener(v -> backAction.run());
-        top.addView(back, new LinearLayout.LayoutParams(Ui.dp(this, 48), Ui.dp(this, 54)));
-        top.addView(Ui.text(this, titleValue, 22, Color.WHITE, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 54), 1));
-        return top;
+        LinearLayout wrapper=Ui.column(this);
+        wrapper.setPadding(Ui.dp(this,14),Ui.dp(this,5),
+                Ui.dp(this,14),Ui.dp(this,5));
+        LinearLayout bar=Ui.row(this);
+        bar.setPadding(Ui.dp(this,14),0,Ui.dp(this,14),0);
+        bar.setBackground(Ui.layeredBackground(this,20));
+        bar.setElevation(Ui.dp(this,6));
+        TextView back=Ui.text(this,"‹",32,Color.WHITE,false);
+        back.setGravity(Gravity.CENTER);
+        back.setContentDescription("رجوع");
+        back.setBackground(Ui.rounded(Color.argb(40,255,255,255),12,this));
+        back.setOnClickListener(v->backAction.run());
+        bar.addView(back,new LinearLayout.LayoutParams(Ui.dp(this,46),Ui.dp(this,46)));
+        TextView title=Ui.text(this,titleValue,22,Color.WHITE,true);
+        title.setSingleLine(true);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        title.setAutoSizeTextTypeUniformWithConfiguration(16,22,1,
+                android.util.TypedValue.COMPLEX_UNIT_SP);
+        LinearLayout.LayoutParams titleParams=new LinearLayout.LayoutParams(0,-2,1);
+        titleParams.setMargins(Ui.dp(this,12),0,0,0);
+        bar.addView(title,titleParams);
+        wrapper.addView(bar,new LinearLayout.LayoutParams(-1,Ui.dp(this,68)));
+        return wrapper;
     }
 
     private void showSettings() {
@@ -2956,38 +2971,59 @@ public final class MainActivity extends Activity {
         long cap=CategoryMonthlyBudgetStore.get(this,category.categoryId,currency);
         long spent=category.amountMinor;
         LinearLayout card=Ui.column(this);
-        card.setPadding(Ui.dp(this,16),Ui.dp(this,14),Ui.dp(this,16),Ui.dp(this,14));
-        card.setBackground(Ui.layeredSoftBackground(this,18));
+        card.setPadding(Ui.dp(this,18),Ui.dp(this,16),Ui.dp(this,18),Ui.dp(this,18));
+        card.setBackground(Ui.rounded(Ui.SURFACE,18,this));
         LinearLayout header=Ui.row(this);
-        header.addView(Ui.text(this,"حد "+category.name+" الشهري",16,Ui.TEXT,true),
-                new LinearLayout.LayoutParams(0,Ui.dp(this,42),1));
-        Button edit=miniButton(cap>0?"تعديل":"تحديد حد");
-        header.addView(edit,new LinearLayout.LayoutParams(Ui.dp(this,92),Ui.dp(this,42)));
+        header.addView(Ui.text(this,"ميزانية "+category.name+" الشهرية",16,Ui.TEXT,true),
+                new LinearLayout.LayoutParams(0,-2,1));
+        Button edit=actionButton(cap>0?"تعديل الحد":"تحديد حد",false);
+        edit.setTextSize(13);
+        LinearLayout.LayoutParams editParams=new LinearLayout.LayoutParams(
+                Ui.dp(this,104),Ui.dp(this,44));
+        editParams.setMargins(Ui.dp(this,12),0,0,0);
+        header.addView(edit,editParams);
         edit.setOnClickListener(v->showCategoryMonthlyBudgetDialog(
                 category,currency,startInclusive,endExclusive));
         card.addView(header);
         if(cap<=0) {
-            card.addView(Ui.text(this,"يمكنك تحديد ميزانية شهرية لهذا التصنيف دون تغيير الأرصدة أو العمليات.",
-                    13,Ui.MUTED,false));
+            TextView hint=Ui.text(this,
+                    "لم تُحدّد سقفًا شهريًا بعد. يمكن إضافته دون تغيير أي عملية أو رصيد.",
+                    13,Ui.MUTED,false);
+            LinearLayout.LayoutParams hintParams=new LinearLayout.LayoutParams(-1,-2);
+            hintParams.topMargin=Ui.dp(this,12);
+            card.addView(hint,hintParams);
         } else {
             boolean exceeded=spent>cap;
             long difference=exceeded?spent-cap:cap-spent;
-            card.addView(Ui.text(this,exceeded?"تجاوزت الحد بـ "+Money.format(difference,currency):
+            TextView status=Ui.text(this,exceeded?
+                    "تجاوزت الحد بـ "+Money.format(difference,currency):
                     "المتبقي من الحد "+Money.format(difference,currency),
-                    15,exceeded?Ui.EXPENSE:Ui.INCOME,true));
-            card.addView(Ui.text(this,"صرفت "+Money.format(spent,currency)+
-                    " من "+Money.format(cap,currency),12,Ui.MUTED,false));
+                    15,exceeded?Ui.EXPENSE:Ui.INCOME,true);
+            LinearLayout.LayoutParams statusParams=new LinearLayout.LayoutParams(-1,-2);
+            statusParams.topMargin=Ui.dp(this,12);
+            card.addView(status,statusParams);
+            TextView summary=Ui.text(this,
+                    "إجمالي مصروف الشهر: "+Money.format(spent,currency)+
+                            "  /  الحد: "+Money.format(cap,currency),
+                    13,Ui.MUTED,false);
+            LinearLayout.LayoutParams summaryParams=new LinearLayout.LayoutParams(-1,-2);
+            summaryParams.setMargins(0,Ui.dp(this,7),0,Ui.dp(this,10));
+            card.addView(summary,summaryParams);
             FrameLayout track=new FrameLayout(this);
             track.setBackground(Ui.rounded(Ui.BRAND_SOFT,6,this));
             View fill=new View(this);
             fill.setBackground(Ui.rounded(exceeded?Ui.EXPENSE:Ui.BRAND,6,this));
             double ratio=Math.min(1.0,(double)spent/cap);
-            track.addView(fill,new FrameLayout.LayoutParams(
-                    Math.max(Ui.dp(this,4),(int)(Ui.dp(this,280)*ratio)),Ui.dp(this,8)));
+            track.addView(fill,new FrameLayout.LayoutParams(0,Ui.dp(this,8)));
+            track.post(()->{
+                FrameLayout.LayoutParams progress=new FrameLayout.LayoutParams(
+                        Math.max(0,(int)(track.getWidth()*ratio)),Ui.dp(this,8));
+                fill.setLayoutParams(progress);
+            });
             card.addView(track,new LinearLayout.LayoutParams(-1,Ui.dp(this,8)));
         }
         LinearLayout.LayoutParams layout=new LinearLayout.LayoutParams(-1,-2);
-        layout.setMargins(Ui.dp(this,16),Ui.dp(this,4),Ui.dp(this,16),Ui.dp(this,14));
+        layout.setMargins(Ui.dp(this,16),Ui.dp(this,5),Ui.dp(this,16),Ui.dp(this,14));
         card.setLayoutParams(layout);
         return card;
     }
