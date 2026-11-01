@@ -13,7 +13,8 @@ assert len(entry)==1
 assert entry[0].attrib.get(android+"authorities")=="app.wensarafet.tracker.notification-sounds"
 assert entry[0].attrib.get(android+"exported")=="true"
 assert entry[0].attrib.get(android+"grantUriPermissions")=="true"
-assert 'if(!"r".equals(mode) || !isOurSound(uri))' in provider
+assert 'if(!"r".equals(mode) || !isOurSound(getContext(),uri))' in provider
+assert 'authority(Context c)' in provider
 assert 'ParcelFileDescriptor.MODE_READ_ONLY' in provider
 # Crashed tone creation must not leave a permanently broken channel.
 assert 'if(finalFile.exists() && !finalFile.delete())' in provider
@@ -34,7 +35,7 @@ assert "useDistinctiveSounds(Context context)" in prefs
 assert "NotificationSoundProvider.ensureSound(context,type)" in prefs
 assert 'edit.putString(type+"_sound_uri"' in prefs
 assert "if (sound) {" in prefs
-assert "if(NotificationSoundProvider.isOurSound(selected))" in prefs
+assert "if(NotificationSoundProvider.isOurSound(context,selected))" in prefs
 assert "channel.setSound(null, null)" in prefs
 assert 'actionButton("🎵 تفعيل 5 أصوات هادئة ومميزة"' in ui
 assert "NotificationPreferences.useDistinctiveSounds(this)" in ui
