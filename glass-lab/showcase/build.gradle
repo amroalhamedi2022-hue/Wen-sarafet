@@ -1,0 +1,23 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'app.wensarafet.glasslab'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'app.wensarafet.glasslab'
+        minSdk 33
+        targetSdk 35
+        versionCode 1
+        versionName '0.1-lab'
+    }
+    buildTypes {
+        debug { }
+        release { minifyEnabled false }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+dependencies {
+    implementation project(':engine')
+}
