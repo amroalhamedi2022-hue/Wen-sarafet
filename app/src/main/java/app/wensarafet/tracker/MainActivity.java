@@ -143,6 +143,13 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onCreate(Bundle savedInstanceState) {
+        if (SandboxMode.isSandbox(this)) {
+            // Start the isolated finance trial on the approved blue Liquid theme.
+            // Respect any later palette choice saved by the sandbox tester.
+            android.content.SharedPreferences appearance =
+                    getSharedPreferences("appearance", MODE_PRIVATE);
+            if (!appearance.contains("theme")) appearance.edit().putInt("theme", 18).apply();
+        }
         Ui.applyTheme(this);
         if (Ui.DARK) setTheme(android.R.style.Theme_Material_NoActionBar);
         super.onCreate(savedInstanceState);
