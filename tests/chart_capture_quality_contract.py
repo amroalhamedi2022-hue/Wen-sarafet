@@ -9,6 +9,11 @@ drawing = chart.split("void onDraw(Canvas canvas)", 1)[1]
 capture_matching = capture.split("boolean hasMatchingCapture(", 1)[1].split(
     "public int getPendingCaptureCount()", 1)[0]
 assert "new RectF(" not in drawing
+assert "LAYER_TYPE_SOFTWARE" not in chart
+assert "setShadowLayer" not in chart
+assert "onSizeChanged(" in chart and "new LinearGradient" in chart
+assert "canvas.drawPath(areaPath, areaPaint);" in drawing
+assert "canvas.drawPath(linePath, whiteRimPaint);" in drawing
 assert "canvas.drawRoundRect(center - barWidth / 2" in drawing
 assert "i < labels.length && labels[i] != null" in drawing
 assert capture_matching.count(".toLowerCase(Locale.ROOT)") == 2

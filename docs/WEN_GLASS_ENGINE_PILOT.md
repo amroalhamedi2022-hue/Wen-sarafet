@@ -83,3 +83,10 @@ Primary home, analytics, debts, and settings screens receive a shared gradient b
 with two cached radial accent glows behind the UI. The root draws once per invalidation,
 never on a timer and never per row. Non-Liquid themes keep the old flat background.
 Power saver/low-RAM draws a solid background only.
+
+## Chart visual and energy pass
+The expense chart uses a cached blue-cyan area glow, a crisp cobalt line and thin
+white rim to match the approved dashboard direction. The previous software rendering
+layer and Canvas shadow blur have been removed. Geometry/gradient are regenerated
+only on view size changes; source values, chronology, currency switching and click
+behavior remain untouched. Device screenshot and frame profiling still required.
