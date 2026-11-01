@@ -210,3 +210,6 @@ compile "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/CategoryCheckpoin
   "$PROJECT_DIR/tests/CategoryCheckpointRulesTest.java"
 java -cp "$OUT_DIR" app.wensarafet.tracker.CategoryCheckpointRulesTest
 python3 "$PROJECT_DIR/tests/category_checkpoint_contract.py"
+
+# UI-only polish regression: analytics/debt navigation, spacing and collapsed months.
+python3 "$PROJECT_DIR/tests/ui_polish_185_contract.py"
