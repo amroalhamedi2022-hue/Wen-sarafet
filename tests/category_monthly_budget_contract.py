@@ -17,9 +17,13 @@ assert "available.excludeFromExpense" in analytics
 assert "filteredCategories" not in analytics
 assert "categoryAnalysisRow(empty,max" in analytics
 assert "categoryMonthlyBudgetCard(category,currency,startInclusive,endExclusive)" in detail
-assert 'sectionTitle("تحليل آخر 6 أشهر"' in detail
+assert "categoryMonthlyHistoryCard(category,currency,startInclusive)" in detail
+assert '"تحليل آخر 6 أشهر"' in detail
+assert "months.setVisibility(View.GONE)" in detail
+assert "if(expanded && months.getChildCount()==0)" in detail
+assert "cursor.add(Calendar.MONTH,-5)" in detail
 assert "db.getCategoryExpenseTotals(currency,first,last)" in detail
-assert "db.getExpenseTransactionsByCategory(currency, category.categoryId" in detail
+assert "db.getExpenseTransactionsByCategory(currency," in detail
 for fragment in ("CategoryMonthlyBudgetStore.get(this,category.categoryId,currency)",
                  "CategoryMonthlyBudgetStore.save(this,category.categoryId,currency,value)",
                  "Money.parseMinor(input.getText().toString())",
