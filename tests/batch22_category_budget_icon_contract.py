@@ -70,11 +70,13 @@ original = [
     "مشمشي", "وردي هادئ", "لافندر", "جليدي",
     "غابة قاتمة", "فحمي", "لؤلؤي", "نحاسي",
 ]
-assert theme_names == original + ["Liquid Aurora", "Liquid Fusion"], theme_names
+assert theme_names[:18] == original + ["Liquid Aurora", "Liquid Fusion"], theme_names
+# New themes append after old IDs: previously saved appearance preferences stay stable.
+assert theme_names[18:] == ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"], theme_names
 for name, per_row in (("THEMES", 12), ("THEME_LAYERS", 4)):
     palette = ui.split("int[][] " + name + " = {", 1)[1].split("};", 1)[0]
     rows = re.findall(r"\{([^{}]+)\}", palette)
-    assert len(rows) == 18, (name, len(rows))
+    assert len(rows) == len(theme_names) == 22, (name, len(rows))
     assert all(len(row.split(",")) == per_row for row in rows), name
 assert '.putInt("theme", index)' in ui
-print("Batch22Contract: categorization SQLite, budget API guard, custom icons, compact layouts and 18 stable theme IDs passed")
+print("Batch22Contract: categorization SQLite, budget API guard, custom icons, compact layouts and 18 preserved IDs plus four new glass themes passed")

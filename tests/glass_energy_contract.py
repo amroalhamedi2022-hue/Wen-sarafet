@@ -47,4 +47,8 @@ for helper in ["glassListBackground", "glassNavigationBackground",
     assert " " + helper + "(" in ui
 assert "new GradientDrawable(GradientDrawable.Orientation.TL_BR" in ui
 assert "if (!isLiquidTheme(context))" in ui
+assert "return index >= 16 && index < THEMES.length;" in ui
+assert "DARK = theme == 20 ||" in ui
+for name in ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"]:
+    assert name in ui
 print("PASS: component-wide Liquid glass surfaces are passive; other themes retain fallbacks")

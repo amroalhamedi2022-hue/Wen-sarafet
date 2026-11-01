@@ -33,7 +33,8 @@ public final class Ui {
             "رملي دافئ", "برغندي", "قرمزي", "كهرماني",
             "مشمشي", "وردي هادئ", "لافندر", "جليدي",
             "غابة قاتمة", "فحمي", "لؤلؤي", "نحاسي",
-            "Liquid Aurora", "Liquid Fusion"
+            "Liquid Aurora", "Liquid Fusion",
+            "زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"
     };
 
     // brand, dark, soft, background, surface, text, muted, expense, income, accent1, accent2, accent3
@@ -55,7 +56,11 @@ public final class Ui {
             {0xFF687083,0xFF414858,0xFFECEEF3,0xFFFAFAFC,0xFFFFFFFF,0xFF222632,0xFF7B8291,0xFFC34054,0xFF4C826B,0xFF687083,0xFF929AAA,0xFFC5CAD4},
             {0xFFB65F3C,0xFF71351F,0xFFF5E0D6,0xFFFCF7F4,0xFFFFFFFF,0xFF39231B,0xFF876F65,0xFFC3433F,0xFF5A8064,0xFFB65F3C,0xFFD18463,0xFFEAB49B},
             {0xFF6857D5,0xFF312D89,0xFFEAE6FD,0xFFF7F8FF,0xFFFFFFFF,0xFF1A2443,0xFF69738F,0xFFC23A62,0xFF148E8C,0xFF6857D5,0xFF2DAFC9,0xFFFFAB8B},
-            {0xFF456AD9,0xFF252D82,0xFFE7EBFF,0xFFF7F9FF,0xFFFFFFFF,0xFF1F2550,0xFF687495,0xFFC34465,0xFF2F9A91,0xFF456AD9,0xFF9A5DE1,0xFFF5A26D}
+            {0xFF456AD9,0xFF252D82,0xFFE7EBFF,0xFFF7F9FF,0xFFFFFFFF,0xFF1F2550,0xFF687495,0xFFC34465,0xFF2F9A91,0xFF456AD9,0xFF9A5DE1,0xFFF5A26D},
+            {0xFF2965E5,0xFF1B3690,0xFFDDEBFF,0xFFF5F9FF,0xFFFFFFFF,0xFF152A4C,0xFF667A99,0xFFC74664,0xFF0C9280,0xFF2965E5,0xFF6D8CF0,0xFF9DDBFF},
+            {0xFF07A7BA,0xFF00677B,0xFFDFF9F8,0xFFF4FEFD,0xFFFFFFFF,0xFF17383C,0xFF628D90,0xFFC54862,0xFF078C73,0xFF2294BD,0xFF54D8D9,0xFFC5FFF3},
+            {0xFF7F73FF,0xFF31255D,0xFF252746,0xFF101429,0xFF171B30,0xFFF6F7FF,0xFFACB4D1,0xFFFF758A,0xFF64D5AF,0xFFA58AFF,0xFFD58BFF,0xFF7CCBFF},
+            {0xFF7888CD,0xFF414B80,0xFFF0F0FD,0xFFFAFBFF,0xFFFFFFFF,0xFF252943,0xFF7B8198,0xFFC25570,0xFF348B83,0xFF9794D6,0xFFBCABD5,0xFFDFE9FF}
     };
 
     private static final int[][] THEME_LAYERS = {
@@ -76,7 +81,11 @@ public final class Ui {
             {0xFF414858,0xFF687083,0xFF929AAA,0xFFD4D8E0},
             {0xFF71351F,0xFF9A4B2E,0xFFD18463,0xFFEAB49B},
             {0xFF242D66,0xFF6359BB,0xFF2DAFC9,0xFFFFAB8B},
-            {0xFF1E2559,0xFF456AD9,0xFF9A5DE1,0xFFF5A26D}
+            {0xFF1E2559,0xFF456AD9,0xFF9A5DE1,0xFFF5A26D},
+            {0xFF1A3C9B,0xFF3269E9,0xFF6CC4F9,0xFFC4E9FF},
+            {0xFF005969,0xFF08A5BA,0xFF68E6DE,0xFFC7FEED},
+            {0xFF080F33,0xFF353281,0xFF6552C8,0xFFAB73EF},
+            {0xFF6A719F,0xFFACB7D8,0xFFE0DFFD,0xFFF8F9FF}
     };
 
 
@@ -107,7 +116,7 @@ public final class Ui {
     /** Liquid designs are opt-in; existing non-Liquid themes are byte-for-byte visual fallbacks. */
     public static boolean isLiquidTheme(Context context) {
         int index = themeIndex(context);
-        return index == 16 || index == 17;
+        return index >= 16 && index < THEMES.length;
     }
 
     /**
@@ -153,7 +162,9 @@ public final class Ui {
     public static void applyTheme(Context context) {
         int theme = context.getSharedPreferences("appearance", Context.MODE_PRIVATE).getInt("theme", 0);
         if (theme < 0 || theme >= THEMES.length) theme = 0;
-        DARK = (context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+        // Midnight Aurora is intentionally dark even when the device uses light mode.
+        // The Activity already derives system-bar contrast and native dialog theme from DARK.
+        DARK = theme == 20 || (context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
                 == Configuration.UI_MODE_NIGHT_YES;
         int[] p = THEMES[theme];
         if (DARK) {

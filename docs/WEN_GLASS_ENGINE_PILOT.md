@@ -51,3 +51,13 @@ The engine's API uses only Android SDK classes (Context, Drawable, Canvas), no t
 runtime dependencies, databases, preferences, or finance-app code.
 No extra background services, receivers, threads, permissions, or work schedulers.
 This module should be independently versioned before it is reused by other applications.
+
+## Four newly selectable visual themes — phase 4
+Appended at theme preference IDs 18–21 (never overwrite indices 0–17):
+18. زجاج سائل أزرق — sapphire, cobalt, ice-blue.
+19. فقاعات أكوا — turquoise, seafoam, aqua.
+20. أورورا ليلية — midnight violet; dark style also when the device uses light mode.
+21. لؤلؤي متجمد — pearl white, frost-blue, lavender.
+Existing preference IDs, financial state, and dark-system rules are preserved.
+The image-generation mood boards remain aspirational: these are lightweight,
+static palettes until visual screenshot matching is complete.

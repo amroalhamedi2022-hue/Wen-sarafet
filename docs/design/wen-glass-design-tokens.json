@@ -1,0 +1,84 @@
+{
+  "$description": "Wen Glass visual design tokens v0.1; colors match Ui.java new profiles, preserve as reusable cross-app design reference.",
+  "themes": {
+    "liquidBlue": {
+      "$type": "color",
+      "brand": {
+        "$value": "#2965E5"
+      },
+      "background": {
+        "$value": "#F5F9FF"
+      },
+      "surface": {
+        "$value": "#FFFFFF"
+      },
+      "accent": {
+        "$value": "#9DDBFF"
+      }
+    },
+    "aquaBubble": {
+      "$type": "color",
+      "brand": {
+        "$value": "#07A7BA"
+      },
+      "background": {
+        "$value": "#F4FEFD"
+      },
+      "surface": {
+        "$value": "#FFFFFF"
+      },
+      "accent": {
+        "$value": "#C5FFF3"
+      }
+    },
+    "midnightAurora": {
+      "$type": "color",
+      "brand": {
+        "$value": "#7F73FF"
+      },
+      "background": {
+        "$value": "#101429"
+      },
+      "surface": {
+        "$value": "#171B30"
+      },
+      "accent": {
+        "$value": "#7CCBFF"
+      }
+    },
+    "pearlFrost": {
+      "$type": "color",
+      "brand": {
+        "$value": "#7888CD"
+      },
+      "background": {
+        "$value": "#FAFBFF"
+      },
+      "surface": {
+        "$value": "#FFFFFF"
+      },
+      "accent": {
+        "$value": "#DFE9FF"
+      }
+    }
+  },
+  "radius": {
+    "card": {
+      "$type": "dimension",
+      "$value": "22px"
+    },
+    "button": {
+      "$type": "dimension",
+      "$value": "16px"
+    },
+    "navigation": {
+      "$type": "dimension",
+      "$value": "26px"
+    }
+  },
+  "rendering": {
+    "listSurface": "native Gradle GradientDrawable, no continuous GPU refraction",
+    "foreground": "cached Android Canvas shader",
+    "idle": "no timers, periodic invalidation, or animations"
+  }
+}
