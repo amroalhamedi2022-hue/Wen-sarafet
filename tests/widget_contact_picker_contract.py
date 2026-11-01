@@ -17,7 +17,10 @@ assert "android.permission.WRITE_CONTACTS" not in manifest
 assert "Intent.ACTION_PICK" in java
 assert "ContactsContract.CommonDataKinds.Phone.CONTENT_URI" in java
 assert "FLAG_GRANT_READ_URI_PERMISSION" in java
-assert "PalestinianMobileNumber.normalize(c.getString(0))" in java
+assert "PalestinianMobileNumber.normalize(c.getString(numberIndex))" in java
+assert "ContactsContract.CommonDataKinds.Phone.NUMBER" in java
+assert "ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME" in java
+assert "if(numberIndex<0)" in java
 assert "pendingContactPhone.setText(mobile.substring(2))" in java
 assert 'PalestinianMobileNumber.normalize("05"+tail)' in java
 assert "new Intent(context,QuickActionActivity.class)" in widget
