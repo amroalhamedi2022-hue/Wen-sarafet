@@ -2645,47 +2645,137 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); p.setMargins(0, Ui.dp(this, 4), 0, Ui.dp(this, 4)); card.setLayoutParams(p); return card;
     }
 
-    private void showCategoryExpenseScreen(Models.CategoryTotal category, String currency, long startInclusive, long endExclusive) {
-        addScreenVisible = false; subScreenVisible = true;
-        LinearLayout page = Ui.column(this); page.setBackgroundColor(Ui.BACKGROUND);
-        page.addView(pageHeader(category.emoji + " " + category.name, this::showAnalyticsScreen),
-                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78)));
-        ScrollView scroll = new ScrollView(this);
-        LinearLayout content = Ui.column(this); content.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 34));
+    private void showCategoryExpenseScreen(Models.CategoryTotal category, String currency,
+                                           long startInclusive, long endExclusive) {
+        addScreenVisible=false;subScreenVisible=true;
+        LinearLayout page=Ui.column(this);
+        page.setBackgroundColor(Ui.BACKGROUND);
+        page.addView(pageHeader(category.emoji+" "+category.name,this::showAnalyticsScreen),
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,78)));
+        ScrollView scroll=new ScrollView(this);
+        scroll.setFillViewport(true);
+        LinearLayout centered=Ui.column(this);
+        centered.setGravity(Gravity.CENTER_HORIZONTAL);
+        LinearLayout content=Ui.column(this);
+        content.setPadding(0,Ui.dp(this,12),0,Ui.dp(this,40));
         List<Long> activeCheckpoints=CategoryCheckpointStore.get(this,category.categoryId,currency);
         long visibleTotal=activeCheckpoints.isEmpty()?category.amountMinor:
                 categoryCheckpointExpenseTotal(category.categoryId,currency,
                         activeCheckpoints.get(activeCheckpoints.size()-1),System.currentTimeMillis()+1L);
-        content.addView(Ui.text(this,activeCheckpoints.isEmpty()?
+
+        LinearLayout summary=Ui.column(this);
+        summary.setPadding(Ui.dp(this,20),Ui.dp(this,18),Ui.dp(this,20),Ui.dp(this,18));
+        summary.setBackground(Ui.rounded(Ui.SURFACE,20,this));
+        summary.addView(Ui.text(this,activeCheckpoints.isEmpty()?
                 "مصروف هذا الشهر":"مصروف منذ آخر نقطة بداية",
-                13,Ui.MUTED,true));
-        TextView totalView = Ui.text(this, Money.format(visibleTotal, currency), 25, Ui.EXPENSE, true);
-        totalView.setGravity(Gravity.CENTER); totalView.setBackground(Ui.layeredSoftBackground(this, 20));
-        LinearLayout.LayoutParams totalParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78));
-        totalParams.setMargins(Ui.dp(this, 16), Ui.dp(this, 4), Ui.dp(this, 16), Ui.dp(this, 10)); content.addView(totalView, totalParams);
+                14,Ui.MUTED,true));
+        TextView amount=Ui.text(this,Money.format(visibleTotal,currency),27,Ui.TEXT,true);
+        amount.setTextDirection(View.TEXT_DIRECTION_LTR);
+        amount.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams amountParams=new LinearLayout.LayoutParams(-1,-2);
+        amountParams.topMargin=Ui.dp(this,8);
+        summary.addView(amount,amountParams);
+        if(!activeCheckpoints.isEmpty()) {
+            TextView fullMonth=Ui.text(this,
+                    "إجمالي هذا الشهر للميزانية: "+Money.format(category.amountMinor,currency),
+                    13,Ui.MUTED,false);
+            LinearLayout.LayoutParams labelParams=new LinearLayout.LayoutParams(-1,-2);
+            labelParams.topMargin=Ui.dp(this,8);
+            summary.addView(fullMonth,labelParams);
+        }
+        LinearLayout.LayoutParams summaryParams=new LinearLayout.LayoutParams(-1,-2);
+        summaryParams.setMargins(Ui.dp(this,16),Ui.dp(this,6),
+                Ui.dp(this,16),Ui.dp(this,12));
+        content.addView(summary,summaryParams);
+
         content.addView(categoryCheckpointCard(category,currency,startInclusive,endExclusive));
         content.addView(categoryMonthlyBudgetCard(category,currency,startInclusive,endExclusive));
-        content.addView(sectionTitle("تحليل آخر 6 أشهر","هذا التصنيف فقط"));
-        Calendar monthCursor=midnight(Calendar.getInstance());
-        monthCursor.setTimeInMillis(startInclusive);
-        monthCursor.set(Calendar.DAY_OF_MONTH,1);
-        monthCursor.add(Calendar.MONTH,-5);
-        for(int m=0;m<6;m++) {
-            long first=monthCursor.getTimeInMillis();
-            String monthName=new SimpleDateFormat("MMMM yyyy",new Locale("ar")).format(monthCursor.getTime());
-            monthCursor.add(Calendar.MONTH,1);
-            long last=monthCursor.getTimeInMillis();
-            long monthly=0;
-            for(Models.CategoryTotal row:db.getCategoryExpenseTotals(currency,first,last))
-                if(row.categoryId==category.categoryId){monthly=row.amountMinor;break;}
-            content.addView(detailLine(monthName,Money.format(monthly,currency)));
-        }
-        List<Models.Transaction> transactions = db.getExpenseTransactionsByCategory(currency, category.categoryId, startInclusive, endExclusive);
-        content.addView(sectionTitle("عمليات هذا الشهر", transactions.size() + " عمليات"));
-        if (transactions.isEmpty()) content.addView(messageCard("لا توجد عمليات", "لم نجد عمليات لهذا التصنيف"));
-        else for (Models.Transaction tx : transactions) content.addView(transactionCard(tx));
-        scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-        setContentView(page); Ui.animateScreen(page); content.post(() -> Ui.animateChildren(content));
+        content.addView(categoryMonthlyHistoryCard(category,currency,startInclusive));
+
+        List<Models.Transaction> transactions=db.getExpenseTransactionsByCategory(currency,
+                category.categoryId,startInclusive,endExclusive);
+        content.addView(sectionTitle("عمليات هذا الشهر",transactions.size()+" عمليات"));
+        if(transactions.isEmpty())
+            content.addView(messageCard("لا توجد عمليات","لم نجد عمليات لهذا التصنيف هذا الشهر"));
+        else for(Models.Transaction tx:transactions)content.addView(transactionCard(tx));
+
+        int availableDp=Math.max(240,getResources().getConfiguration().screenWidthDp);
+        int contentDp=Math.min(760,availableDp);
+        centered.addView(content,new LinearLayout.LayoutParams(
+                Ui.dp(this,contentDp),ViewGroup.LayoutParams.WRAP_CONTENT));
+        scroll.addView(centered);
+        page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        setContentView(page);
+        Ui.animateScreen(page);
+        content.post(()->Ui.animateChildren(content));
+    }
+
+    /** History is collapsed by default: SQL reports run only if the owner opens it. */
+    private View categoryMonthlyHistoryCard(Models.CategoryTotal category,String currency,
+                                            long monthStart) {
+        LinearLayout card=Ui.column(this);
+        card.setPadding(Ui.dp(this,16),Ui.dp(this,12),Ui.dp(this,16),Ui.dp(this,14));
+        card.setBackground(Ui.rounded(Ui.SURFACE,18,this));
+        LinearLayout header=Ui.row(this);
+        header.setPadding(0,Ui.dp(this,5),0,Ui.dp(this,5));
+        LinearLayout names=Ui.column(this);
+        names.addView(Ui.text(this,"تحليل آخر 6 أشهر",16,Ui.TEXT,true));
+        names.addView(Ui.text(this,"الشهور السابقة محفوظة بكل مصاريفها، حتى قبل نقطة البداية",
+                12,Ui.MUTED,false));
+        header.addView(names,new LinearLayout.LayoutParams(0,-2,1));
+        TextView toggle=Ui.text(this,"عرض  ▾",13,Ui.BRAND,true);
+        toggle.setGravity(Gravity.CENTER);
+        toggle.setBackground(Ui.rounded(Ui.BRAND_SOFT,12,this));
+        LinearLayout.LayoutParams toggleParams=new LinearLayout.LayoutParams(
+                Ui.dp(this,90),Ui.dp(this,44));
+        toggleParams.setMargins(Ui.dp(this,12),0,0,0);
+        header.addView(toggle,toggleParams);
+        card.addView(header);
+        LinearLayout months=Ui.column(this);
+        months.setVisibility(View.GONE);
+        LinearLayout.LayoutParams monthsParams=new LinearLayout.LayoutParams(-1,-2);
+        monthsParams.topMargin=Ui.dp(this,12);
+        card.addView(months,monthsParams);
+
+        header.setContentDescription("إظهار أو إخفاء تحليل الأشهر السابقة");
+        header.setOnClickListener(v->{
+            boolean expanded=months.getVisibility()!=View.VISIBLE;
+            if(expanded && months.getChildCount()==0) {
+                Calendar cursor=midnight(Calendar.getInstance());
+                cursor.setTimeInMillis(monthStart);
+                cursor.set(Calendar.DAY_OF_MONTH,1);
+                for(int i=0;i<6;i++) {
+                    long first=cursor.getTimeInMillis();
+                    String label=new SimpleDateFormat("MMMM yyyy",new Locale("ar"))
+                            .format(cursor.getTime());
+                    cursor.add(Calendar.MONTH,1);
+                    long last=cursor.getTimeInMillis();
+                    long total=0L;
+                    for(Models.CategoryTotal row:db.getCategoryExpenseTotals(currency,first,last))
+                        if(row.categoryId==category.categoryId){total=row.amountMinor;break;}
+                    LinearLayout month=Ui.row(this);
+                    month.setPadding(Ui.dp(this,12),Ui.dp(this,10),Ui.dp(this,12),Ui.dp(this,10));
+                    month.setBackground(Ui.rounded(Ui.BACKGROUND,12,this));
+                    month.addView(Ui.text(this,label,14,Ui.TEXT,false),
+                            new LinearLayout.LayoutParams(0,Ui.dp(this,34),1));
+                    TextView value=Ui.text(this,Money.format(total,currency),14,Ui.TEXT,true);
+                    value.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);
+                    value.setTextDirection(View.TEXT_DIRECTION_LTR);
+                    month.addView(value,new LinearLayout.LayoutParams(-2,Ui.dp(this,34)));
+                    LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);
+                    p.setMargins(0,Ui.dp(this,4),0,Ui.dp(this,4));
+                    months.addView(month,p);
+                }
+            }
+            months.setVisibility(expanded?View.VISIBLE:View.GONE);
+            toggle.setText(expanded?"إخفاء  ▴":"عرض  ▾");
+        });
+        Ui.pressAnimation(header);
+        LinearLayout.LayoutParams layout=new LinearLayout.LayoutParams(-1,-2);
+        layout.setMargins(Ui.dp(this,16),Ui.dp(this,5),
+                Ui.dp(this,16),Ui.dp(this,16));
+        card.setLayoutParams(layout);
+        return card;
     }
 
     /**
