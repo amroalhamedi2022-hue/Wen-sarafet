@@ -18,6 +18,17 @@ import java.io.IOException;
 public final class NotificationSoundProvider extends ContentProvider {
     public static final String AUTHORITY="app.wensarafet.tracker.notification-sounds";
     private static final String DIR="notification_tones";
+    private static String authority(Context c) {
+        return SandboxMode.isSandbox(c) ? c.getPackageName()+".notification-sounds" : AUTHORITY;
+    }
+    public static Uri uri(Context c,String type) {
+        if (!valid(type)) throw new IllegalArgumentException("نوع إشعار غير صالح");
+        return Uri.parse("content://"+authority(c)+"/"+type);
+    }
+    public static boolean isOurSound(Context c,Uri uri) {
+        return uri!=null && "content".equals(uri.getScheme())
+            && authority(c).equals(uri.getAuthority()) && valid(uri.getLastPathSegment());
+    }
     public static Uri uri(String type) {
         if(!valid(type))throw new IllegalArgumentException("نوع إشعار غير صالح");
         return Uri.parse("content://"+AUTHORITY+"/"+type);
@@ -61,11 +72,11 @@ public final class NotificationSoundProvider extends ContentProvider {
     }
     @Override public boolean onCreate() { return true; }
     @Override public String getType(Uri uri) {
-        return isOurSound(uri)?"audio/wav":null;
+        return isOurSound(getContext(),uri)?"audio/wav":null;
     }
     @Override public ParcelFileDescriptor openFile(Uri uri,String mode)
             throws FileNotFoundException {
-        if(!"r".equals(mode) || !isOurSound(uri))
+        if(!"r".equals(mode) || !isOurSound(getContext(),uri))
             throw new FileNotFoundException("Only original read-only notification tones are available");
         try {
             return ParcelFileDescriptor.open(ensureSound(getContext(),uri.getLastPathSegment()),

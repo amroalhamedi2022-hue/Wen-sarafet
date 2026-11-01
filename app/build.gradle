@@ -33,6 +33,13 @@ android {
             if (signingConfigs.findByName("release")) signingConfig signingConfigs.release
         }
         debug { applicationIdSuffix ".recovered.debug" }
+        sandbox {
+            initWith debug
+            applicationIdSuffix ".sandbox"
+            versionNameSuffix "-sandbox"
+            matchingFallbacks = ["debug"]
+            debuggable true
+        }
     }
 
     compileOptions {

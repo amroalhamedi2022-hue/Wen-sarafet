@@ -10,7 +10,7 @@ import java.util.Locale;
 
 public final class SmsCaptureReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context, Intent intent) {
-        if (!LicenseManager.isActivated(context)) return;
+        if (!SandboxMode.canRun(context)) return;
         SmsMessage[] messages = Telephony.Sms.Intents.getMessagesFromIntent(intent);
         if (messages == null || messages.length == 0) return;
         String sender = messages[0].getDisplayOriginatingAddress();

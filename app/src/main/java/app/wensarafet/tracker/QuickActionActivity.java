@@ -26,7 +26,7 @@ public final class QuickActionActivity extends Activity {
         Ui.applyTheme(this);
         if (Ui.DARK) setTheme(android.R.style.Theme_Material_NoActionBar);
         super.onCreate(savedInstanceState);
-        if (!LicenseManager.isActivated(this)) {
+        if (!SandboxMode.canRun(this)) {
             startActivity(new Intent(this, MainActivity.class)); finish(); return;
         }
         String action = getIntent().getStringExtra("action");

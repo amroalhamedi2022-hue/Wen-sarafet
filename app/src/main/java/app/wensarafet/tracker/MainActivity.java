@@ -188,9 +188,9 @@ public final class MainActivity extends Activity {
             String securityLabel = null;
             String failure = null;
             try {
-                trusted = AppIntegrity.isTrusted(this);
+                trusted = SandboxMode.isSandbox(this) || AppIntegrity.isTrusted(this);
                 if (trusted) {
-                    activated = LicenseManager.isActivated(this);
+                    activated = SandboxMode.canRun(this);
                     if (!activated) {
                         securityLabel = LicenseManager.identitySecurityLabel(this);
                         request = LicenseManager.requestCode(this);
@@ -242,16 +242,16 @@ public final class MainActivity extends Activity {
         db = new FinanceDbHelper(this);
         db.getAccounts();
         chartLineMode = getSharedPreferences("appearance", MODE_PRIVATE).getBoolean("chart_line", true);
-        authenticated = !AppLockManager.enabled(this);
+        authenticated = !(!SandboxMode.isSandbox(this) && AppLockManager.enabled(this));
         if (authenticated) openInitialScreen(); else showLockScreen();
     }
 
     @Override protected void onStart() {
         super.onStart();
         if (startupCheckRunning || !startupResolved || activationScreenVisible) return;
-        if (!LicenseManager.isActivated(this)) { showActivationScreen(); return; }
+        if (!SandboxMode.canRun(this)) { showActivationScreen(); return; }
         if (!hasStarted) { hasStarted = true; return; }
-        if (AppLockManager.enabled(this) && backgroundAt > 0 && System.currentTimeMillis() - backgroundAt > 30_000L) {
+        if ((!SandboxMode.isSandbox(this) && AppLockManager.enabled(this)) && backgroundAt > 0 && System.currentTimeMillis() - backgroundAt > 30_000L) {
             authenticated = false; showLockScreen();
         }
     }
@@ -266,9 +266,9 @@ public final class MainActivity extends Activity {
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent); setIntent(intent);
         if (startupCheckRunning || !startupResolved) return;
-        if (!LicenseManager.isActivated(this)) { showActivationScreen(); return; }
+        if (!SandboxMode.canRun(this)) { showActivationScreen(); return; }
         if (db == null) { initializeApp(); return; }
-        if (AppLockManager.enabled(this) && backgroundAt > 0 && System.currentTimeMillis() - backgroundAt > 30_000L) authenticated = false;
+        if ((!SandboxMode.isSandbox(this) && AppLockManager.enabled(this)) && backgroundAt > 0 && System.currentTimeMillis() - backgroundAt > 30_000L) authenticated = false;
         if (authenticated) openInitialScreen(); else showLockScreen();
     }
 
@@ -393,7 +393,7 @@ public final class MainActivity extends Activity {
                 BackupFileManager.restore(this, input, secret);
                 db = new FinanceDbHelper(this); db.getAccounts(); ReminderScheduler.scheduleDaily(this);
                 dialog.dismiss(); Toast.makeText(this, "تمت استعادة النسخة بنجاح", Toast.LENGTH_LONG).show();
-                if (LicenseManager.isActivated(this)) recreate(); else showActivationScreen();
+                if (SandboxMode.canRun(this)) recreate(); else showActivationScreen();
             } catch (Exception error) {
                 db = new FinanceDbHelper(this); db.getAccounts();
                 Toast.makeText(this, "فشلت الاستعادة: تأكد من الملف وكلمة السر", Toast.LENGTH_LONG).show();
@@ -402,7 +402,7 @@ public final class MainActivity extends Activity {
     }
 
     @Override public void onBackPressed() {
-        if (AppLockManager.enabled(this) && !authenticated) {
+        if ((!SandboxMode.isSandbox(this) && AppLockManager.enabled(this)) && !authenticated) {
             moveTaskToBack(true);
             return;
         }
@@ -414,7 +414,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showMain(boolean showTransactions) {
-        if (AppLockManager.enabled(this) && !authenticated) { showLockScreen(); return; }
+        if ((!SandboxMode.isSandbox(this) && AppLockManager.enabled(this)) && !authenticated) { showLockScreen(); return; }
         // Recheck after saving, editing, recategorizing or deleting expenses and on
         // reopening the dashboard. A monthly alert is still emitted only once.
         if (BudgetAlertManager.enabled(this,"ILS") || BudgetAlertManager.enabled(this,"USD") ||
@@ -432,6 +432,13 @@ public final class MainActivity extends Activity {
         root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         View topBar = mainTopBar();
         shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
+        if (SandboxMode.isSandbox(this)) {
+            TextView trial = Ui.text(this, "🧪 نسخة اختبار مستقلة — بلا تفعيل أو قفل دخول", 12, Ui.TEXT, true);
+            trial.setGravity(Gravity.CENTER);
+            trial.setBackground(Ui.rounded(Ui.BRAND_SOFT, 12, this));
+            shell.addView(trial, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 34)));
+        }
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -1735,10 +1742,10 @@ public final class MainActivity extends Activity {
         journal.setOnClickListener(v->showAuditHistory());content.addView(journal,fieldParams());
         Button manageCategories=actionButton("🏷️ إدارة التصنيفات والرموز",false);
         manageCategories.setOnClickListener(v->showCategoryManagement());content.addView(manageCategories,fieldParams());
-        content.addView(sectionTitle("حماية التطبيق", AppLockManager.enabled(this) ? "مفعّلة" : "اختيارية"));
+        content.addView(sectionTitle("حماية التطبيق", (!SandboxMode.isSandbox(this) && AppLockManager.enabled(this)) ? "مفعّلة" : "اختيارية"));
         LinearLayout lockCard = Ui.row(this); lockCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12)); lockCard.setBackground(Ui.glassListBackground(this, 20)); lockCard.setElevation(Ui.dp(this, 3));
         LinearLayout lockText = Ui.column(this); lockText.addView(Ui.text(this, "رمز دخول وبصمة", 15, Ui.TEXT, true)); lockText.addView(Ui.text(this, "احمِ الأرصدة والعمليات عند فتح التطبيق", 11, Ui.MUTED, false)); lockCard.addView(lockText, new LinearLayout.LayoutParams(0, Ui.dp(this, 52), 1));
-        Button lockSetup = actionButton(AppLockManager.enabled(this) ? "تعديل" : "تفعيل", false); lockSetup.setOnClickListener(v -> showAppLockDialog()); lockCard.addView(lockSetup, new LinearLayout.LayoutParams(Ui.dp(this, 92), Ui.dp(this, 48))); content.addView(lockCard);
+        Button lockSetup = actionButton((!SandboxMode.isSandbox(this) && AppLockManager.enabled(this)) ? "تعديل" : "تفعيل", false); lockSetup.setOnClickListener(v -> showAppLockDialog()); lockCard.addView(lockSetup, new LinearLayout.LayoutParams(Ui.dp(this, 92), Ui.dp(this, 48))); content.addView(lockCard);
 
         content.addView(sectionTitle("تذكير المصاريف", "اختياري"));
         LinearLayout reminderCard = Ui.column(this); reminderCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
@@ -1961,7 +1968,7 @@ public final class MainActivity extends Activity {
     private String notificationSoundLabel(String type) {
         String stored = NotificationPreferences.soundUri(this, type);
         if (stored.isEmpty()) return "اختيار صوت — الافتراضي";
-        if(NotificationSoundProvider.isOurSound(Uri.parse(stored)))
+        if(NotificationSoundProvider.isOurSound(this,Uri.parse(stored)))
             return "🔊 الصوت المميز — "+type;
         try {
             Ringtone ringtone = RingtoneManager.getRingtone(this, Uri.parse(stored));
@@ -1993,7 +2000,11 @@ public final class MainActivity extends Activity {
     }
 
     private void showAppLockDialog() {
-        boolean active = AppLockManager.enabled(this);
+        if (SandboxMode.isSandbox(this)) {
+            Toast.makeText(this, "نسخة التجربة بلا قفل دخول", Toast.LENGTH_LONG).show();
+            return;
+        }
+        boolean active = (!SandboxMode.isSandbox(this) && AppLockManager.enabled(this));
         LinearLayout form = Ui.column(this); form.setPadding(Ui.dp(this, 20), 0, Ui.dp(this, 20), 0);
         CheckBox enabled = new CheckBox(this); enabled.setText("طلب رمز عند فتح التطبيق"); enabled.setTextColor(Ui.TEXT); enabled.setChecked(active); form.addView(enabled, fieldParams());
         EditText current = pinField("الرمز الحالي"); current.setVisibility(active ? View.VISIBLE : View.GONE); form.addView(current, fieldParams());
