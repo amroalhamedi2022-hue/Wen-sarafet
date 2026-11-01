@@ -2744,6 +2744,7 @@ public final class MainActivity extends Activity {
                 Calendar cursor=midnight(Calendar.getInstance());
                 cursor.setTimeInMillis(monthStart);
                 cursor.set(Calendar.DAY_OF_MONTH,1);
+                cursor.add(Calendar.MONTH,-5);
                 for(int i=0;i<6;i++) {
                     long first=cursor.getTimeInMillis();
                     String label=new SimpleDateFormat("MMMM yyyy",new Locale("ar"))
@@ -2786,28 +2787,45 @@ public final class MainActivity extends Activity {
                                         long monthStart,long monthEnd) {
         List<Long> checkpoints=CategoryCheckpointStore.get(this,category.categoryId,currency);
         long nowExclusive=System.currentTimeMillis()+1L;
-        long activeStart=checkpoints.isEmpty()?0L:checkpoints.get(checkpoints.size()-1);
         LinearLayout card=Ui.column(this);
-        card.setPadding(Ui.dp(this,16),Ui.dp(this,14),Ui.dp(this,16),Ui.dp(this,14));
-        card.setBackground(Ui.layeredSoftBackground(this,18));
-        card.addView(Ui.text(this,"📍 نقطة بداية تحليل التصنيف",16,Ui.TEXT,true));
-        card.addView(Ui.text(this,
-                "ابدأ عدّادًا جديدًا لهذا التصنيف دون حذف أو تعديل أي عملية. الميزانية الشهرية تحسب كل المصروفات كما هي، قبل النقطة وبعدها.",
-                12,Ui.MUTED,false));
+        card.setPadding(Ui.dp(this,18),Ui.dp(this,16),Ui.dp(this,18),Ui.dp(this,18));
+        card.setBackground(Ui.rounded(Ui.SURFACE,18,this));
+
+        LinearLayout header=Ui.row(this);
+        TextView title=Ui.text(this,"نقطة بداية جديدة",17,Ui.TEXT,true);
+        header.addView(title,new LinearLayout.LayoutParams(0,-2,1));
+        TextView pin=Ui.text(this,"📍",22,Ui.TEXT,false);
+        pin.setGravity(Gravity.CENTER);
+        header.addView(pin,new LinearLayout.LayoutParams(Ui.dp(this,38),Ui.dp(this,38)));
+        card.addView(header);
+        TextView description=Ui.text(this,
+                "افصل المصروف القديم عن العداد الجديد، مع بقاء جميع العمليات ضمن الميزانية الشهرية.",
+                13,Ui.MUTED,false);
+        LinearLayout.LayoutParams descriptionParams=new LinearLayout.LayoutParams(-1,-2);
+        descriptionParams.topMargin=Ui.dp(this,8);
+        card.addView(description,descriptionParams);
+
         if(!checkpoints.isEmpty()) {
-            long activeTotal=categoryCheckpointExpenseTotal(category.categoryId,currency,
-                    activeStart,nowExclusive);
+            long activeStart=checkpoints.get(checkpoints.size()-1);
             String since=new SimpleDateFormat("dd/MM/yyyy  HH:mm",new Locale("ar"))
                     .format(new Date(activeStart));
-            card.addView(Ui.text(this,"منذ آخر نقطة بداية: "+since,12,Ui.MUTED,false));
-            card.addView(Ui.text(this,Money.format(activeTotal,currency),23,Ui.INCOME,true));
-        } else {
-            card.addView(Ui.text(this,
-                    "لم تُنشأ نقطة بداية بعد. مصروف الشهر ظاهر أعلى الصفحة، وكل العمليات القديمة محفوظة.",
-                    13,Ui.TEXT,false));
+            TextView current=Ui.text(this,"التحليل الحالي يبدأ من "+since,
+                    13,Ui.BRAND,true);
+            current.setPadding(Ui.dp(this,12),Ui.dp(this,10),
+                    Ui.dp(this,12),Ui.dp(this,10));
+            current.setBackground(Ui.rounded(Ui.BRAND_SOFT,12,this));
+            LinearLayout.LayoutParams statusParams=new LinearLayout.LayoutParams(-1,-2);
+            statusParams.topMargin=Ui.dp(this,12);
+            card.addView(current,statusParams);
         }
         LinearLayout actions=Ui.row(this);
-        Button create=miniButton(checkpoints.isEmpty()?"＋ بدء تحليل جديد":"＋ نقطة بداية جديدة");
+        boolean compact=getResources().getConfiguration().screenWidthDp<420;
+        actions.setOrientation(compact?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams actionsParams=new LinearLayout.LayoutParams(-1,-2);
+        actionsParams.topMargin=Ui.dp(this,14);
+        Button create=actionButton(checkpoints.isEmpty()?
+                "＋ بدء تحليل جديد":"＋ نقطة بداية جديدة",true);
+        create.setTextSize(14);
         create.setOnClickListener(v->new AlertDialog.Builder(this)
                 .setTitle("تجديد تحليل "+category.name+"؟")
                 .setMessage("سيبدأ عداد التحليل الجديد من الصفر الآن. ستبقى كل العمليات القديمة في الأرشيف، ولن يتغير أي رصيد أو دين أو استهلاك الميزانية الشهرية.")
@@ -2821,9 +2839,13 @@ public final class MainActivity extends Activity {
                         Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
                     }
                 }).show());
-        actions.addView(create,new LinearLayout.LayoutParams(0,Ui.dp(this,46),1));
+        LinearLayout.LayoutParams createParams=new LinearLayout.LayoutParams(
+                compact?-1:0,Ui.dp(this,50),compact?0:1);
+        createParams.setMargins(0,0,compact?0:Ui.dp(this,6),compact?Ui.dp(this,10):0);
+        actions.addView(create,createParams);
         if(!checkpoints.isEmpty()) {
-            Button undo=miniButton("↶ إلغاء آخر نقطة");
+            Button undo=actionButton("↶ إلغاء آخر نقطة",false);
+            undo.setTextSize(14);
             undo.setOnClickListener(v->new AlertDialog.Builder(this)
                     .setTitle("إلغاء آخر نقطة بداية؟")
                     .setMessage("ستُدمج الفترة الحالية مع الفترة السابقة في التحليل فقط. لن تتغير أي عملية مالية أو ميزانية.")
@@ -2836,11 +2858,19 @@ public final class MainActivity extends Activity {
                             Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
                         }
                     }).show());
-            actions.addView(undo,new LinearLayout.LayoutParams(0,Ui.dp(this,46),1));
+            LinearLayout.LayoutParams undoParams=new LinearLayout.LayoutParams(
+                    compact?-1:0,Ui.dp(this,50),compact?0:1);
+            undoParams.setMargins(compact?0:Ui.dp(this,6),0,0,0);
+            actions.addView(undo,undoParams);
         }
-        card.addView(actions,fieldParams());
+        card.addView(actions,actionsParams);
+
         if(!checkpoints.isEmpty()) {
-            card.addView(Ui.text(this,"الفترات القديمة — حتى تاريخ",14,Ui.TEXT,true));
+            TextView archived=Ui.text(this,
+                    "الفترات القديمة — حتى تاريخ",15,Ui.TEXT,true);
+            LinearLayout.LayoutParams titleParams=new LinearLayout.LayoutParams(-1,-2);
+            titleParams.setMargins(0,Ui.dp(this,20),0,Ui.dp(this,7));
+            card.addView(archived,titleParams);
             SimpleDateFormat date=new SimpleDateFormat("dd/MM/yyyy  HH:mm",new Locale("ar"));
             for(int i=checkpoints.size()-1;i>=0;i--) {
                 final long from=CategoryCheckpointRules.periodStart(checkpoints,i);
@@ -2848,14 +2878,24 @@ public final class MainActivity extends Activity {
                 final String caption="حتى "+date.format(new Date(until));
                 long oldTotal=categoryCheckpointExpenseTotal(category.categoryId,currency,from,until);
                 LinearLayout period=Ui.column(this);
-                period.setPadding(Ui.dp(this,10),Ui.dp(this,9),Ui.dp(this,10),Ui.dp(this,9));
-                period.setBackground(Ui.rounded(Ui.SURFACE,12,this));
-                period.addView(Ui.text(this,caption+"   •   "+Money.format(oldTotal,currency),
-                        13,Ui.TEXT,true));
-                period.addView(Ui.text(this,
+                period.setPadding(Ui.dp(this,14),Ui.dp(this,12),
+                        Ui.dp(this,14),Ui.dp(this,12));
+                period.setBackground(Ui.rounded(Ui.BACKGROUND,14,this));
+                LinearLayout heading=Ui.row(this);
+                TextView dateText=Ui.text(this,caption,14,Ui.TEXT,true);
+                heading.addView(dateText,new LinearLayout.LayoutParams(0,-2,1));
+                TextView amount=Ui.text(this,Money.format(oldTotal,currency),15,Ui.BRAND,true);
+                amount.setTextDirection(View.TEXT_DIRECTION_LTR);
+                amount.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);
+                heading.addView(amount,new LinearLayout.LayoutParams(-2,-2));
+                period.addView(heading);
+                TextView range=Ui.text(this,
                         (from==0L?"من أول عملية":"من "+date.format(new Date(from)))+
-                                "  •  اضغط لاستعراض العمليات القديمة",
-                        11,Ui.MUTED,false));
+                                "  •  اضغط لعرض العمليات",
+                        12,Ui.MUTED,false);
+                LinearLayout.LayoutParams rangeParams=new LinearLayout.LayoutParams(-1,-2);
+                rangeParams.topMargin=Ui.dp(this,7);
+                period.addView(range,rangeParams);
                 period.setOnClickListener(v->showCategoryCheckpointPeriod(category,currency,
                         from,until,caption,monthStart,monthEnd));
                 Ui.pressAnimation(period);
@@ -2865,7 +2905,8 @@ public final class MainActivity extends Activity {
             }
         }
         LinearLayout.LayoutParams layout=new LinearLayout.LayoutParams(-1,-2);
-        layout.setMargins(Ui.dp(this,16),Ui.dp(this,4),Ui.dp(this,16),Ui.dp(this,14));
+        layout.setMargins(Ui.dp(this,16),Ui.dp(this,5),
+                Ui.dp(this,16),Ui.dp(this,14));
         card.setLayoutParams(layout);
         return card;
     }
