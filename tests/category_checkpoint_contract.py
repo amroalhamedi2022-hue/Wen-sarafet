@@ -24,9 +24,11 @@ assert '"منذ نقطة البداية داخل هذا الشهر • إجما�
 assert "content.addView(categoryMonthlyBudgetCard(category,currency,startInclusive,endExclusive))" in screen
 assert screen.index("categoryCheckpointCard(category,currency,startInclusive,endExclusive)") < screen.index(
     "categoryMonthlyBudgetCard(category,currency,startInclusive,endExclusive)")
-assert 'sectionTitle("تحليل آخر 6 أشهر"' in screen
+assert '"تحليل آخر 6 أشهر"' in screen
+assert "categoryMonthlyHistoryCard(category,currency,startInclusive)" in screen
+assert "months.setVisibility(View.GONE)" in screen
 assert 'db.getCategoryExpenseTotals(currency,first,last)' in screen
-assert 'db.getExpenseTransactionsByCategory(currency, category.categoryId' in screen
+assert "db.getExpenseTransactionsByCategory(currency," in screen
 for text in [
     "CategoryCheckpointStore.get(this,category.categoryId,currency)",
     "CategoryCheckpointStore.create(this,category.categoryId,currency)",
