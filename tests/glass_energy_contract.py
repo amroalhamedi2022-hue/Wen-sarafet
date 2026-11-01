@@ -56,4 +56,13 @@ assert "return index >= 16 && index < THEMES.length;" in ui
 assert "DARK = theme == 20 ||" in ui
 for name in ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"]:
     assert name in ui
+
+# Optical parity contract: cached radial bloom and double glass rim, zero redraw loop.
+assert "new RadialGradient" in engine
+assert "new LinearGradient" in engine
+assert "innerBorder.set(surface)" in engine
+assert "showLens = strong && w > h * 3.1f && !lowPower;" in engine
+assert "canvas.drawCircle(lensX, lensY, lensRadius, bubble);" in engine
+assert "canvas.drawRect(surface, ambient);" in engine
+assert "if (!lowPower && strong)" in engine
 print("PASS: component-wide Liquid glass surfaces are passive; other themes retain fallbacks")

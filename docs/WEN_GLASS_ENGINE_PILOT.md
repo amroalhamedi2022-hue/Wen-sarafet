@@ -68,3 +68,12 @@ its click handlers and existing 72dp height are retained. The floating action
 button uses the same static lens palette, without modifying its add-transaction action.
 No layout change is made to older themes. Power-save/low-RAM path now draws only
 a rounded rectangle and outline, entirely avoiding canvas clip/save overhead.
+
+## Optical parity pass — cached passive rendering
+- The hero glass renderer now has a cached three-stop fill, radial ambient accent bloom,
+  upper refracted-looking highlight, lower wave, gradient rim and a subtle inner rim.
+- A static, non-animated lens highlight is added only to wide high-contrast hero cards,
+  away from RTL text. Scrolling rows still use simple native GradientDrawable.
+- Canvas work has zero new object allocations within draw(), no timer or live sampling.
+- This is an approximation of the approved concept's optical properties; it is NOT
+  actual content refraction. Real screenshot parity and power measurement remain open.
