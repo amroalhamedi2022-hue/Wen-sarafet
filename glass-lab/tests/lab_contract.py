@@ -24,6 +24,10 @@ for forbidden in ["postDelayed", "while (true)", "Choreographer", "TimerTask",
                   "Handler", "requestAnimationFrame", "setRepeatCount", "Thread.sleep"]:
     assert forbidden not in engine + screen, forbidden
 assert "GlassPalette.at(themeIndex)" in screen
+assert "GlassSurfaces.navigation(this, theme, 27, eco)" in screen
+assert "GlassSurfaces.headerButton(this, theme)" in screen
+assert "currentPage = 4; render();" in screen
+assert "GlassSurfaces.selectedTab(this, theme, 19)" in screen
 assert "GlassSurfaces.opticalHero(this, theme, 28, eco, optics)" in screen
 assert "WenOpticalDrawable" in engine
 assert "new RuntimeShader(AGSL)" in engine

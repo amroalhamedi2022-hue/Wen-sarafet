@@ -140,7 +140,7 @@ public final class MainActivity extends Activity {
         scroll.setClipToPadding(false);
         scroll.setVerticalScrollBarEnabled(false);
         LinearLayout body = column(this);
-        body.setPadding(d(14), d(16), d(14), d(108));
+        body.setPadding(d(14), d(12), d(14), d(108));
         scroll.addView(body);
         root.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
 
@@ -149,18 +149,25 @@ public final class MainActivity extends Activity {
         if (currentPage == 0) showDashboard(body);
         else if (currentPage == 1) showOperations(body);
         else if (currentPage == 2) showAnalytics(body);
-        else showDebts(body);
+        else if (currentPage == 3) showDebts(body);
+        else showSettings(body);
 
         LinearLayout navigation = row(this);
         navigation.setGravity(Gravity.CENTER_VERTICAL);
         navigation.setPadding(d(6), d(7), d(6), d(7));
-        navigation.setBackground(GlassSurfaces.frosted(this, theme, 27, eco));
+        navigation.setBackground(GlassSurfaces.navigation(this, theme, 27, eco));
         navigation.setElevation(d(8));
-        String[] titles = {"الرئيسية", "العمليات", "التحليل", "الديون"};
+        String[] titles = {"⌂  الرئيسية", "▤  العمليات", "◴  التحليل", "◈  الديون"};
         for (int i = 0; i < titles.length; i++) {
             final int tab = i;
-            TextView item = pill(titles[i], currentPage == i, false);
-            item.setTextSize(11f);
+            TextView item = text(titles[i], 11.5f,
+                    currentPage == i ? theme.deep : theme.muted, currentPage == i);
+            item.setGravity(Gravity.CENTER);
+            item.setPadding(d(3), d(8), d(3), d(8));
+            if (currentPage == i) {
+                item.setBackground(GlassSurfaces.selectedTab(this, theme, 19));
+            }
+            tap(item);
             item.setOnClickListener(v -> { currentPage = tab; render(); });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, 1);
             lp.setMargins(d(2), 0, d(2), 0);
@@ -168,63 +175,83 @@ public final class MainActivity extends Activity {
         }
         FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
                 -1, d(68), Gravity.BOTTOM);
-        navParams.setMargins(d(12), 0, d(12), d(8));
+        navParams.setMargins(d(12), 0, d(12), d(11));
         root.addView(navigation, navParams);
 
         setContentView(root);
     }
 
     private void buildHeader(LinearLayout body) {
-        LinearLayout hero = glassCard(true, 28, 19);
-        // GPU lens mode is opted into for this single hero only, never long lists.
-        hero.setBackground(GlassSurfaces.opticalHero(this, theme, 28, eco, optics));
-        TextView micro = text("WEN GLASS  /  DESIGN LAB", 10, 0xFFDCEDFF, true);
-        micro.setLetterSpacing(.10f);
-        hero.addView(micro);
-        TextView title = text("مختبر الزجاج السائل", 25, Color.WHITE, true);
-        LinearLayout.LayoutParams titleP = new LinearLayout.LayoutParams(-1, -2);
-        titleP.topMargin = d(8);
-        hero.addView(title, titleP);
-        hero.addView(text("معاينة مستقلة • بدون حماية أو بيانات أو اتصال", 12,
-                0xFFF0F6FF, false));
-        TextView stamp = text("تأثير بصري ساكن • لا عمل في الخلفية", 11,
-                0xFFDBF2FF, false);
-        LinearLayout.LayoutParams stampP = new LinearLayout.LayoutParams(-1, -2);
-        stampP.topMargin = d(17);
-        hero.addView(stamp, stampP);
-        body.addView(hero, new LinearLayout.LayoutParams(-1, d(142)));
+        // Recreate the approved blue concept: compact deep-blue banner,
+        // white RTL title and two circular translucent controls.
+        LinearLayout hero = row(this);
+        hero.setGravity(Gravity.CENTER_VERTICAL);
+        hero.setPadding(d(17), d(13), d(15), d(13));
+        hero.setBackground(GlassSurfaces.opticalHero(this, theme, 26, eco, optics));
+
+        LinearLayout writing = column(this);
+        TextView title = text("وين صرفت؟", 25, Color.WHITE, true);
+        writing.addView(title);
+        TextView subtitle = text("أموالك واضحة، وخصوصيتك محفوظة", 11,
+                0xFFEAF3FF, false);
+        writing.addView(subtitle);
+        hero.addView(writing, new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView settings = text("⚙", 22, Color.WHITE, false);
+        settings.setGravity(Gravity.CENTER);
+        settings.setBackground(GlassSurfaces.headerButton(this, theme));
+        settings.setContentDescription("معاينة تصميم الإعدادات");
+        settings.setOnClickListener(v -> { currentPage = 4; render(); });
+        tap(settings);
+        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(d(43), d(43));
+        actionParams.setMargins(d(4), 0, d(4), 0);
+        hero.addView(settings, actionParams);
+
+        TextView gridIcon = text("▦", 22, Color.WHITE, false);
+        gridIcon.setGravity(Gravity.CENTER);
+        gridIcon.setBackground(GlassSurfaces.headerButton(this, theme));
+        gridIcon.setContentDescription("العودة إلى معاينة الرئيسية");
+        gridIcon.setOnClickListener(v -> { currentPage = 0; render(); });
+        tap(gridIcon);
+        hero.addView(gridIcon, new LinearLayout.LayoutParams(d(43), d(43)));
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, d(104));
+        lp.bottomMargin = d(10);
+        body.addView(hero, lp);
     }
 
     private void buildSelectors(LinearLayout body) {
-        section(body, "الثيمات", "4 تصاميم مستقلة");
-        HorizontalScrollView scroll = new HorizontalScrollView(this);
-        scroll.setHorizontalScrollBarEnabled(false);
-        LinearLayout items = row(this);
+        // The lab controls are deliberately compact: original app content remains
+        // visually comparable while quality and palette can be switched instantly.
+        HorizontalScrollView themeScroll = new HorizontalScrollView(this);
+        themeScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout options = row(this);
         String[] names = {"أزرق سائل", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي"};
         for (int i = 0; i < names.length; i++) {
-            final int index = i;
-            TextView button = pill(names[i], i == themeIndex, false);
-            button.setOnClickListener(v -> { themeIndex = index; render(); });
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(d(118), d(50));
-            lp.setMargins(d(3), 0, d(3), 0);
-            items.addView(button, lp);
+            final int option = i;
+            TextView chip = pill(names[i], i == themeIndex, false);
+            chip.setOnClickListener(v -> { themeIndex = option; render(); });
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(d(116), d(43));
+            p.setMargins(d(3), d(3), d(3), d(3));
+            options.addView(chip, p);
         }
-        scroll.addView(items);
-        body.addView(scroll);
+        themeScroll.addView(options);
+        body.addView(themeScroll);
 
-        LinearLayout controls = row(this);
-        controls.setGravity(Gravity.CENTER_VERTICAL);
-        TextView ecoSwitch = pill(eco ? "🔋 موفر البطارية: مفعل" : "💎 جودة الزجاج: مفعل", false, false);
-        ecoSwitch.setOnClickListener(v -> { eco = !eco; render(); });
-        controls.addView(ecoSwitch, new LinearLayout.LayoutParams(0, d(50), 1));
-        TextView opticsSwitch = pill(optics ? "✨ عدسة GPU: مفعّلة" : "✨ عدسة GPU: مطفأة", false, false);
-        opticsSwitch.setOnClickListener(v -> { optics = !optics; render(); });
-        LinearLayout.LayoutParams opticalParams = new LinearLayout.LayoutParams(0, d(50), 1);
-        opticalParams.setMargins(d(5), 0, d(5), 0);
-        controls.addView(opticsSwitch, opticalParams);
-        LinearLayout.LayoutParams outer = new LinearLayout.LayoutParams(-1, d(54));
-        outer.topMargin = d(7);
-        body.addView(controls, outer);
+        LinearLayout performance = row(this);
+        performance.setGravity(Gravity.CENTER_VERTICAL);
+        TextView ecoToggle = pill(eco ? "🔋 اقتصادي" : "💎 زجاج", false, false);
+        ecoToggle.setContentDescription("التبديل بين جودة الزجاج وتوفير الطاقة");
+        ecoToggle.setOnClickListener(v -> { eco = !eco; render(); });
+        performance.addView(ecoToggle, new LinearLayout.LayoutParams(0, d(42), 1));
+        TextView opticalToggle = pill(optics ? "✨ عدسة GPU تعمل" : "✨ عدسة GPU مطفأة", false, false);
+        opticalToggle.setOnClickListener(v -> { optics = !optics; render(); });
+        LinearLayout.LayoutParams op = new LinearLayout.LayoutParams(0, d(42), 1);
+        op.setMargins(d(5), 0, d(5), 0);
+        performance.addView(opticalToggle, op);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, d(48));
+        rowParams.bottomMargin = d(7);
+        body.addView(performance, rowParams);
     }
 
     private void showDashboard(LinearLayout body) {

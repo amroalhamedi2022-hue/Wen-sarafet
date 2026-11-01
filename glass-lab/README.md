@@ -28,3 +28,10 @@ static gradient; this is not real-time refraction of content beneath the card.
 No screen readback, no timers, no shader animation, and automatic fallback in battery
 saver, low-RAM or unsupported environments. Default is OFF. This experiment remains
 strictly separate from the financial app until measured on physical devices.
+
+## Reference-alignment pass
+The 1122x1402 concept image contains six device mockups. The lab now prioritizes
+screen *content fidelity* over a marketing-style banner: compact RTL header,
+paired icon buttons, airy light glass tab bar, small theme/energy controls, and
+separate chart frost recipes. Since the concept includes decorative mockup frames,
+its overall pixel diff is NOT an Android target. We match the inner screen only.

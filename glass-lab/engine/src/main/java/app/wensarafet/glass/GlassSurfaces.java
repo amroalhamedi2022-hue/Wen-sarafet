@@ -46,6 +46,24 @@ public final class GlassSurfaces {
         int end = p.dark ? blend(p.surface, p.accent, .08f) : blend(p.surface, p.soft, .21f);
         return gradient(c, start, end, radius, true);
     }
+    /** Almost-white polished bar with subtle cobalt focus rather than solid blue tabs. */
+    public static Drawable navigation(Context c, GlassPalette p, int radius, boolean eco) {
+        return eco ? row(c, p, radius) : frosted(c, p, radius, false);
+    }
+    public static Drawable selectedTab(Context c, GlassPalette p, int radius) {
+        return gradient(c, blend(p.soft, p.brand, p.dark ? .15f : .10f),
+                blend(p.soft, p.accent, p.dark ? .12f : .08f), radius, true);
+    }
+    public static Drawable headerButton(Context c, GlassPalette p) {
+        return gradient(c, blend(p.brand, Color.WHITE, .22f),
+                blend(p.deep, Color.WHITE, .19f), 25, true);
+    }
+    public static Drawable chart(Context c, GlassPalette p, int radius, boolean eco) {
+        if (eco) return gradient(c, p.soft, p.surface, radius, true);
+        int first = blend(p.soft, p.accent, p.dark ? .12f : .36f);
+        int second = blend(p.soft, p.surface, p.dark ? .15f : .40f);
+        return new WenGlassDrawable(c, dp(c, radius), first, second, p.accent, false);
+    }
     public static Drawable gradient(Context c, int first, int second, int radius, boolean border) {
         GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 new int[]{first, second});
