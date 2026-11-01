@@ -98,3 +98,8 @@ frosted balance #9CC3FC, chart #B8D3FC, list row #E8F1FE.
 This is design calibration, not a device screenshot comparison or verified Delta-E metric.
 The Balance and Chart containers now use separate frosted recipes rather than
 one generic surface; rows remain lighter and cheaper to render.
+
+## Tactile UI parity
+Liquid themes have a short touch-only 90ms compress and 230ms spring-like release.
+The original 16 themes keep their existing touch animation. No recurring ticker,
+no new vibration, and Android's disabled-animation setting is respected.
