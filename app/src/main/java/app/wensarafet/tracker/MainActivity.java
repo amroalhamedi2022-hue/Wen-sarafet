@@ -565,7 +565,7 @@ public final class MainActivity extends Activity {
     private LinearLayout bottomNavigation(int selectedTab) {
         LinearLayout nav = Ui.row(this);
         nav.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 8));
-        nav.setBackgroundColor(Ui.SURFACE);
+        nav.setBackground(Ui.glassNavigationBackground(this, 26));
         nav.setElevation(Ui.dp(this, 12));
 
         TextView home = navButton("🏠\nالرئيسية", selectedTab == TAB_HOME);
@@ -628,12 +628,13 @@ public final class MainActivity extends Activity {
     }
 
     private TextView navButton(String label, boolean selected) {
-        TextView view = Ui.text(this, label, 11.5f, selected ? Ui.BRAND : Ui.MUTED, selected);
+        TextView view = Ui.text(this, label, 11.5f,
+                selected ? (Ui.isLiquidTheme(this) && !Ui.DARK ? Ui.BRAND_DARK : Ui.BRAND) : Ui.MUTED, selected);
         view.setGravity(Gravity.CENTER);
         view.setLineSpacing(Ui.dp(this,2),1f);
         view.setPadding(Ui.dp(this,4),Ui.dp(this,3),Ui.dp(this,4),Ui.dp(this,3));
         view.setMaxLines(2);
-        if (selected) view.setBackground(Ui.rounded(Ui.BRAND_SOFT, 18, this));
+        if (selected) view.setBackground(Ui.glassSelectedNavigationBackground(this, 18));
         return view;
     }
 
@@ -977,7 +978,7 @@ public final class MainActivity extends Activity {
     private View accountCard(Models.Account account) {
         LinearLayout card = Ui.row(this);
         card.setPadding(Ui.dp(this, 15), Ui.dp(this, 13), Ui.dp(this, 15), Ui.dp(this, 13));
-        card.setBackground(Ui.rounded(Ui.SURFACE, 18, this));
+        card.setBackground(Ui.glassListBackground(this, 18));
         card.setElevation(Ui.dp(this, 1));
 
         View icon = accountIcon(account);
@@ -1065,7 +1066,7 @@ public final class MainActivity extends Activity {
     private View transactionCard(Models.Transaction tx) {
         LinearLayout card = Ui.row(this);
         card.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
-        card.setBackground(Ui.rounded(Ui.SURFACE, 18, this));
+        card.setBackground(Ui.glassListBackground(this, 18));
 
         int amountColor = tx.specialKind != null ? Ui.VIOLET : FinanceRules.EXPENSE.equals(tx.type) ? Ui.EXPENSE :
                 FinanceRules.INCOME.equals(tx.type) ? Ui.INCOME : Ui.BRAND;
@@ -1656,7 +1657,7 @@ public final class MainActivity extends Activity {
         LinearLayout card = Ui.column(this);
         card.setGravity(Gravity.CENTER);
         card.setPadding(Ui.dp(this, 20), Ui.dp(this, 24), Ui.dp(this, 20), Ui.dp(this, 24));
-        card.setBackground(Ui.rounded(Ui.SURFACE, 20, this));
+        card.setBackground(Ui.glassListBackground(this, 20));
         TextView title = Ui.text(this, titleValue, 17, Ui.TEXT, true);
         title.setGravity(Gravity.CENTER);
         TextView subtitle = Ui.text(this, subtitleValue, 13, Ui.MUTED, false);
@@ -1675,7 +1676,7 @@ public final class MainActivity extends Activity {
                 Ui.dp(this,14),Ui.dp(this,5));
         LinearLayout bar=Ui.row(this);
         bar.setPadding(Ui.dp(this,14),0,Ui.dp(this,14),0);
-        bar.setBackground(Ui.layeredBackground(this,20));
+        bar.setBackground(Ui.glassHeaderBackground(this,20));
         bar.setElevation(Ui.dp(this,6));
         TextView back=Ui.text(this,"‹",32,Color.WHITE,false);
         back.setGravity(Gravity.CENTER);
@@ -1718,7 +1719,7 @@ public final class MainActivity extends Activity {
 
         content.addView(sectionTitle("تخصيص الواجهة", "مكان واحد ومنظّم لإعدادات الصفحة الرئيسية"));
         LinearLayout layoutCard = Ui.row(this); layoutCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
-        layoutCard.setBackground(Ui.rounded(Ui.SURFACE, 20, this)); layoutCard.setElevation(Ui.dp(this, 3));
+        layoutCard.setBackground(Ui.glassListBackground(this, 20)); layoutCard.setElevation(Ui.dp(this, 3));
         LinearLayout layoutText = Ui.column(this);
         layoutText.addView(Ui.text(this, "تخطيط الصفحة الرئيسية", 15, Ui.TEXT, true));
         layoutText.addView(Ui.text(this, "الحجم والموقع أسفل الشاشة", 11, Ui.MUTED, false));
@@ -1732,13 +1733,13 @@ public final class MainActivity extends Activity {
         Button manageCategories=actionButton("🏷️ إدارة التصنيفات والرموز",false);
         manageCategories.setOnClickListener(v->showCategoryManagement());content.addView(manageCategories,fieldParams());
         content.addView(sectionTitle("حماية التطبيق", AppLockManager.enabled(this) ? "مفعّلة" : "اختيارية"));
-        LinearLayout lockCard = Ui.row(this); lockCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12)); lockCard.setBackground(Ui.rounded(Ui.SURFACE, 20, this)); lockCard.setElevation(Ui.dp(this, 3));
+        LinearLayout lockCard = Ui.row(this); lockCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12)); lockCard.setBackground(Ui.glassListBackground(this, 20)); lockCard.setElevation(Ui.dp(this, 3));
         LinearLayout lockText = Ui.column(this); lockText.addView(Ui.text(this, "رمز دخول وبصمة", 15, Ui.TEXT, true)); lockText.addView(Ui.text(this, "احمِ الأرصدة والعمليات عند فتح التطبيق", 11, Ui.MUTED, false)); lockCard.addView(lockText, new LinearLayout.LayoutParams(0, Ui.dp(this, 52), 1));
         Button lockSetup = actionButton(AppLockManager.enabled(this) ? "تعديل" : "تفعيل", false); lockSetup.setOnClickListener(v -> showAppLockDialog()); lockCard.addView(lockSetup, new LinearLayout.LayoutParams(Ui.dp(this, 92), Ui.dp(this, 48))); content.addView(lockCard);
 
         content.addView(sectionTitle("تذكير المصاريف", "اختياري"));
         LinearLayout reminderCard = Ui.column(this); reminderCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
-        reminderCard.setBackground(Ui.rounded(Ui.SURFACE, 20, this)); reminderCard.setElevation(Ui.dp(this, 3));
+        reminderCard.setBackground(Ui.glassListBackground(this, 20)); reminderCard.setElevation(Ui.dp(this, 3));
         android.content.SharedPreferences reminderPrefs = ReminderScheduler.prefs(this);
         CheckBox enabled = new CheckBox(this); enabled.setText("تذكيري يوميًا لتثبيت مصاريف اليوم"); enabled.setTextColor(Ui.TEXT); enabled.setChecked(reminderPrefs.getBoolean("enabled", false));
         reminderCard.addView(enabled, fieldParams());
@@ -2125,7 +2126,7 @@ public final class MainActivity extends Activity {
     private View debtPersonCard(List<Models.DebtSummary> debts, boolean closed) {
         Models.DebtSummary first = debts.get(0);
         LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this,18),Ui.dp(this,16),Ui.dp(this,18),Ui.dp(this,16));
-        card.setBackground(Ui.rounded(Ui.SURFACE,18,this)); card.setElevation(Ui.dp(this,2));
+        card.setBackground(Ui.glassListBackground(this,18)); card.setElevation(Ui.dp(this,2));
         LinearLayout head=Ui.row(this); head.addView(Ui.text(this,"▤  "+first.personName+(closed?" ✓":""),17,closed?Ui.INCOME:Ui.TEXT,true),new LinearLayout.LayoutParams(0,Ui.dp(this,40),1));
         TextView arrow=Ui.text(this,"›",28,Ui.VIOLET,true);arrow.setGravity(Gravity.CENTER);head.addView(arrow,new LinearLayout.LayoutParams(Ui.dp(this,36),Ui.dp(this,40)));card.addView(head);
         long last=0; int openCount=0;
@@ -2473,7 +2474,7 @@ public final class MainActivity extends Activity {
                     + Money.format(finished.savedMinor,dashboardCurrency),14,Ui.INCOME,true));
         }
 
-        LinearLayout chartCard = Ui.column(this); chartCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 10)); chartCard.setBackground(Ui.rounded(Ui.SURFACE, 22, this)); chartCard.setElevation(Ui.dp(this, 3));
+        LinearLayout chartCard = Ui.column(this); chartCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 10)); chartCard.setBackground(Ui.glassSoftBackground(this, 22)); chartCard.setElevation(Ui.dp(this, 3));
         LinearLayout chartHead = Ui.row(this); chartHead.addView(Ui.text(this, "آخر 7 أيام", 16, Ui.TEXT, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 42), 1));
         TextView toggle = Ui.text(this, chartLineMode ? "▥ أعمدة" : "⌁ خط بياني", 12, Ui.VIOLET, true); toggle.setGravity(Gravity.CENTER); toggle.setBackground(Ui.rounded(Ui.BRAND_SOFT, 14, this));
         toggle.setOnClickListener(v -> { chartLineMode = !chartLineMode; getSharedPreferences("appearance", MODE_PRIVATE).edit().putBoolean("chart_line", chartLineMode).apply(); showAnalyticsScreen(); }); chartHead.addView(toggle, new LinearLayout.LayoutParams(Ui.dp(this, 105), Ui.dp(this, 36))); chartCard.addView(chartHead);
@@ -2682,7 +2683,7 @@ public final class MainActivity extends Activity {
     }
 
     private View categoryAnalysisRow(Models.CategoryTotal item, long max, long startInclusive, long endExclusive) {
-        LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this, 12), Ui.dp(this, 9), Ui.dp(this, 12), Ui.dp(this, 9)); card.setBackground(Ui.rounded(Ui.SURFACE, 16, this));
+        LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this, 12), Ui.dp(this, 9), Ui.dp(this, 12), Ui.dp(this, 9)); card.setBackground(Ui.glassListBackground(this, 16));
         LinearLayout text = Ui.row(this); text.addView(Ui.text(this, item.emoji + " " + item.name, 14, Ui.TEXT, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 32), 1));
         List<Long> markers=CategoryCheckpointStore.get(this,item.categoryId,dashboardCurrency);
         long displayedAmount=item.amountMinor;
@@ -3840,7 +3841,7 @@ public final class MainActivity extends Activity {
         button.setTextSize(15);
         button.setAllCaps(false);
         button.setTextColor(primary ? Color.WHITE : Ui.BRAND);
-        button.setBackground(Ui.rounded(primary ? Ui.BRAND : Ui.BRAND_SOFT, 16, this));
+        button.setBackground(Ui.glassActionBackground(this, 16, primary));
         Ui.pressAnimation(button);
         return button;
     }

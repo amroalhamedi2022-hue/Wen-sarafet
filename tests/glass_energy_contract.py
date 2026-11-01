@@ -26,4 +26,22 @@ assert "background.setBackground(Ui.glassHeaderBackground(this, 24));" in main
 assert "card.setBackground(Ui.glassSoftBackground(this, 22));" in main
 assert "chartCard.setBackground(Ui.glassSoftBackground(this, 22));" in main
 assert "card.setBackground(Ui.glassAccentBackground(this, 20));" in main
-print("PASS: reusable visual engine has no tickers/allocations in draw; power-aware pilot is Liquid-only")
+
+assert "glassNavigationBackground(this, 26)" in main
+assert "glassSelectedNavigationBackground(this, 18)" in main
+assert "glassActionBackground(this, 16, primary)" in main
+for block in [
+    "card.setBackground(Ui.glassListBackground(this, 18));",
+    "card.setBackground(Ui.glassListBackground(this,18));",
+    "chartCard.setBackground(Ui.glassSoftBackground(this, 22));",
+    "layoutCard.setBackground(Ui.glassListBackground(this, 20));",
+    "lockCard.setBackground(Ui.glassListBackground(this, 20));",
+    "reminderCard.setBackground(Ui.glassListBackground(this, 20));",
+]:
+    assert block in main, f"Missing glass component: {block}"
+for helper in ["glassListBackground", "glassNavigationBackground",
+               "glassSelectedNavigationBackground", "glassActionBackground"]:
+    assert " " + helper + "(" in ui
+assert "new GradientDrawable(GradientDrawable.Orientation.TL_BR" in ui
+assert "if (!isLiquidTheme(context))" in ui
+print("PASS: component-wide Liquid glass surfaces are passive; other themes retain fallbacks")

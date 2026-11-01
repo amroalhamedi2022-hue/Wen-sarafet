@@ -103,6 +103,51 @@ public final class Ui {
                 mix(BRAND_DARK, BRAND, .18f), mix(BRAND, VIOLET, .28f), SKY, true);
     }
 
+
+    /** Liquid designs are opt-in; existing non-Liquid themes are byte-for-byte visual fallbacks. */
+    public static boolean isLiquidTheme(Context context) {
+        int index = themeIndex(context);
+        return index == 16 || index == 17;
+    }
+
+    /**
+     * Reusable inexpensive list surface.  It deliberately uses Android's native
+     * GradientDrawable rather than blur/refraction or per-row animated shader:
+     * dozens of transactions can scroll without multiple GPU offscreen passes.
+     */
+    public static android.graphics.drawable.Drawable glassListBackground(Context context, int radiusDp) {
+        if (!isLiquidTheme(context)) return rounded(SURFACE, radiusDp, context);
+        int first = mix(SURFACE, BRAND_SOFT, DARK ? .10f : .36f);
+        int second = mix(SURFACE, SKY, DARK ? .07f : .11f);
+        GradientDrawable plate = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{first, second});
+        plate.setCornerRadius(dp(context, radiusDp));
+        plate.setStroke(Math.max(1, dp(context, 1)),
+                DARK ? Color.argb(62, 232, 235, 255) : Color.argb(176, 255, 255, 255));
+        return plate;
+    }
+
+    public static android.graphics.drawable.Drawable glassNavigationBackground(Context context, int radiusDp) {
+        if (!isLiquidTheme(context)) return new android.graphics.drawable.ColorDrawable(SURFACE);
+        // Always passive: scroll may translate/fade the bar, but never drives a glass clock.
+        int first = DARK ? mix(SURFACE, BRAND, .16f) : mix(SURFACE, BRAND_SOFT, .60f);
+        int second = DARK ? mix(SURFACE, SKY, .12f) : mix(SURFACE, SKY, .18f);
+        return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
+                first, second, SKY, false);
+    }
+
+    public static android.graphics.drawable.Drawable glassSelectedNavigationBackground(Context context, int radiusDp) {
+        if (!isLiquidTheme(context)) return rounded(BRAND_SOFT, radiusDp, context);
+        return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
+                BRAND_SOFT, mix(BRAND_SOFT, SKY, DARK ? .12f : .20f), BRAND, false);
+    }
+
+    public static android.graphics.drawable.Drawable glassActionBackground(Context context, int radiusDp, boolean primary) {
+        if (!isLiquidTheme(context)) return rounded(primary ? BRAND : BRAND_SOFT, radiusDp, context);
+        if (!primary) return glassSelectedNavigationBackground(context, radiusDp);
+        return glassAccentBackground(context, radiusDp);
+    }
+
     private Ui() {}
 
     public static void applyTheme(Context context) {

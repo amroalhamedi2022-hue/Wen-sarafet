@@ -30,3 +30,15 @@ Host apps pass radius and palette: the engine does not own finance logic or sett
 5. Keep this Draft PR unmerged until a signed in-place upgrade has been verified.
    CI debug APK has a different package suffix and must NOT replace the installed app.
 6. Production upgrade requires the original signing key and verified payload; never expose key.
+
+## UI coverage — phase 2
+- The shared navigation bar now uses a frosted static panel in Liquid themes; selected tab uses a
+  color-matched static lens surface. Existing tab click/scroll/hide behavior remains untouched.
+- Account rows, transaction rows, debt person cards, category rows, chart panels, and key
+  settings panels now use the same palette. Buttons reuse the engine's accent surfaces.
+- **Performance partition**: scroll-heavy list rows use a native GradientDrawable instead of
+  an offscreen blur, animated shader, or per-item refraction; strong glass is for foreground
+  navigation and summary cards only.
+- Standard 16 themes still use the same rounded-color drawables as before.
+- Remaining visual work: design-reference parity, device-tuned typography, icon placement,
+  safe-area adjustment, true on-interaction optical refraction if real-device benchmarks allow.
