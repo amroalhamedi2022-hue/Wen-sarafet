@@ -298,11 +298,18 @@ public final class MainActivity extends Activity {
             }
             screenHost.addView(next, match);
             activeScreen = next;
+            boolean introIconsOnly = startupIconAnimationPending
+                    && next.findViewWithTag("wen_intro_nav_0") != null;
             animateGlassTopBar(next);
             animateStartupIcons(next);
-            // A disabled system animator scale must never leave the first screen
-            // transparent. In that mode, show the view without a transition.
-            if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
+            // On a direct home launch the icons are the ONLY animated content.
+            // The old first-screen branch still faded/slid the whole page.
+            if (introIconsOnly || !android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                next.setAlpha(1f);
+                next.setTranslationX(0f);
+                next.setTranslationY(0f);
+                return;
+            }
             next.setAlpha(0f);
             next.setTranslationX(Ui.dp(this, 14));
             next.animate().alpha(1f).translationX(0f).setDuration(260)
