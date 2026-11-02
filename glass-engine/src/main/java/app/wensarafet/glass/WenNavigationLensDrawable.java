@@ -103,8 +103,8 @@ public final class WenNavigationLensDrawable extends Drawable {
         if (surface.isEmpty()) return;
         float centerX = surface.centerX(), centerY = surface.centerY();
         float halfWidth = surface.width()*.5f*(1f-morph)
-                + surface.height()*.57f*morph;
-        float halfHeight = surface.height()*.5f*(1f+.16f*morph);
+                + surface.height()*.70f*morph;
+        float halfHeight = surface.height()*.5f*(1f+.12f*morph);
         fluid.set(centerX-halfWidth, centerY-halfHeight,
                 centerX+halfWidth, centerY+halfHeight);
         float r = Math.max(radius, fluid.height()*.50f);
