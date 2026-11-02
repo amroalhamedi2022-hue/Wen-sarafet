@@ -51,4 +51,7 @@ android {
 dependencies {
     // Android-only visual module: no repository access or finance logic.
     implementation project(":glass-engine")
+    // Experiment ONLY: proven Android Views optical library; never ship in production.
+    // MIT: https://github.com/QWEA0/Liquid-Glass-Android/blob/v2.0.11/LICENSE
+    sandboxImplementation "com.github.QWEA0:liquidglass:v2.0.11"
 }
