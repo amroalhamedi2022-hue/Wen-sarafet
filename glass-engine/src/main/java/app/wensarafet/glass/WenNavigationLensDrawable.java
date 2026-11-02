@@ -28,13 +28,12 @@ public final class WenNavigationLensDrawable extends Drawable {
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint outerRim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint innerRim = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint topLight = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF surface = new RectF();
     private final RectF edge = new RectF();
     private final RectF inner = new RectF();
-    private final RectF upper = new RectF();
     private final RectF fluid = new RectF();
     private final Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint opticalCore = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float morph;
     private float radius;
     private int alpha = 255;
@@ -50,12 +49,10 @@ public final class WenNavigationLensDrawable extends Drawable {
         outerRim.setStrokeWidth(Math.max(1f, density * 1.3f));
         innerRim.setStyle(Paint.Style.STROKE);
         innerRim.setStrokeWidth(Math.max(.7f, density * .8f));
-        topLight.setStyle(Paint.Style.STROKE);
-        topLight.setStrokeWidth(Math.max(1f, density * 1.4f));
-        topLight.setStrokeCap(Paint.Cap.ROUND);
         halo.setStyle(Paint.Style.STROKE);
         halo.setStrokeWidth(Math.max(2f, density * 3f));
-        halo.setColor(opacity(Color.WHITE, dark ? 120 : 220));
+        halo.setColor(opacity(Color.WHITE, dark ? 150 : 225));
+        opticalCore.setColor(opacity(Color.WHITE, dark ? 55 : 120));
     }
 
     private static int opacity(int color, int a) {
@@ -72,8 +69,6 @@ public final class WenNavigationLensDrawable extends Drawable {
         edge.inset(outerRim.getStrokeWidth()*.5f, outerRim.getStrokeWidth()*.5f);
         inner.set(surface);
         inner.inset(density * 2.1f, density * 2.1f);
-        upper.set(inner);
-        upper.inset(density * 4f, density * 2.1f);
 
         fill.setShader(new LinearGradient(surface.left, surface.top,
                 surface.right, surface.bottom,
@@ -87,7 +82,6 @@ public final class WenNavigationLensDrawable extends Drawable {
                         opacity(Color.WHITE, dark ? 125 : 205)},
                 null, Shader.TileMode.CLAMP));
         innerRim.setColor(opacity(Color.WHITE, dark ? 78 : 176));
-        topLight.setColor(opacity(Color.WHITE, dark ? 100 : 190));
         applyAlpha();
     }
 
@@ -115,28 +109,31 @@ public final class WenNavigationLensDrawable extends Drawable {
                 centerX+halfWidth, centerY+halfHeight);
         float r = Math.max(radius, fluid.height()*.50f);
         if (morph > .005f) {
-            halo.setAlpha(Math.round(alpha*morph*(dark ? .45f : .70f)));
+            halo.setAlpha(Math.round(alpha*morph*(dark ? .65f : .88f)));
             canvas.drawRoundRect(fluid, r, r, halo);
         }
         canvas.drawRoundRect(fluid, r, r, fill);
+        if (morph > .005f) {
+            // Soft core makes the held bubble visibly refractive. No straight
+            // top rule: that was the unwanted line over the Home tab.
+            float inset = density*(5f+2f*(1f-morph));
+            inner.set(fluid);
+            inner.inset(inset, inset);
+            opticalCore.setAlpha(Math.round(alpha*morph*(dark ? .23f : .44f)));
+            canvas.drawOval(inner, opticalCore);
+        }
         edge.set(fluid);
         edge.inset(outerRim.getStrokeWidth()*.5f, outerRim.getStrokeWidth()*.5f);
         canvas.drawRoundRect(edge, r, r, outerRim);
         inner.set(fluid);
         inner.inset(density*2.1f, density*2.1f);
         canvas.drawRoundRect(inner, r, r, innerRim);
-        upper.set(inner);
-        upper.inset(density*4f, density*2.1f);
-        if (upper.width()>0f) {
-            canvas.drawLine(upper.left, upper.top, upper.right, upper.top, topLight);
-        }
     }
 
     private void applyAlpha() {
         fill.setAlpha(alpha);
         outerRim.setAlpha(alpha);
         innerRim.setAlpha(alpha);
-        topLight.setAlpha(alpha);
     }
 
     @Override public void setAlpha(int a) {
@@ -149,7 +146,6 @@ public final class WenNavigationLensDrawable extends Drawable {
         fill.setColorFilter(filter);
         outerRim.setColorFilter(filter);
         innerRim.setColorFilter(filter);
-        topLight.setColorFilter(filter);
         invalidateSelf();
     }
 
