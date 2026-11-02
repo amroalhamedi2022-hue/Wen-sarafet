@@ -841,7 +841,11 @@ public final class MainActivity extends Activity {
             moveTaskToBack(true);
             return;
         }
-        if (addScreenVisible || subScreenVisible || currentTab != TAB_HOME) {
+        if (addScreenVisible) {
+            returnFromAddWithReverse(false);
+            return;
+        }
+        if (subScreenVisible || currentTab != TAB_HOME) {
             showMain(false);
             return;
         }
