@@ -887,8 +887,8 @@ public final class MainActivity extends Activity {
         }
         if (liquid) {
             // One optical pill behind all four labels, never four independent pills.
-            FrameLayout track = new FrameLayout(this);
-            track.setClipChildren(false);
+            app.wensarafet.glass.WenNavigationTrack track =
+                    new app.wensarafet.glass.WenNavigationTrack(this, Ui.DARK);
             View lens = new View(this);
             lens.setBackground(Ui.glassSlidingNavigationLens(this));
             // Keep lens below tab text: elevated lens would obscure the active label.
@@ -898,13 +898,9 @@ public final class MainActivity extends Activity {
             track.addView(lens, lensParams);
             track.addView(tabs, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            // The translucent magnifying glass sits ABOVE text, samples the
-            // tab strip just once per press, and never intercepts touch events.
-            app.wensarafet.glass.WenOpticalNavigationOverlay opticalOverlay =
-                    new app.wensarafet.glass.WenOpticalNavigationOverlay(this, Ui.DARK);
-            opticalOverlay.setTag("wen_optic_overlay");
-            track.addView(opticalOverlay, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            // WenNavigationTrack paints magnification after the tab children
+            // in one hardware canvas pass; no overlay child can disappear
+            // behind a separate Surface or hardware-composition layer.
             for (int i = 0; i < items.length; i++) {
                 app.wensarafet.glass.GlassMotion.bindNavigationTab(
                         items[i], track, lens, items, selectedTab, i, Ui.SKY,
