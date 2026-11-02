@@ -61,6 +61,8 @@ public final class MainActivity extends Activity {
     // Visual-only previous tab; no persistence and no financial state dependency.
     private int lastGlassNavigationTab = -1;
     private boolean pendingGlassNavigationSwitch;
+    // One finite icon-only entrance on first actual primary screen per Activity launch.
+    private boolean startupIconAnimationPending = true;
     private int currentTab;
     private static final int TAB_HOME = 0;
     private static final int TAB_TRANSACTIONS = 1;
@@ -194,9 +196,38 @@ public final class MainActivity extends Activity {
         return super.dispatchTouchEvent(e);
     }
 
+    /** Icons only at app launch; never replay on normal tab swipes or navigation. */
+    private void animateStartupIcons(View page) {
+        if (!startupIconAnimationPending || !SandboxMode.isSandbox(this)
+                || !Ui.isLiquidTheme(this)
+                || !android.animation.ValueAnimator.areAnimatorsEnabled()) return;
+        if (page.findViewWithTag("wen_intro_nav_0") == null) return;
+        startupIconAnimationPending = false;
+        final String[] ids = {
+                "wen_intro_header_accounts", "wen_intro_header_settings",
+                "wen_intro_nav_0", "wen_intro_nav_1",
+                "wen_intro_nav_2", "wen_intro_nav_3", "wen_intro_fab"
+        };
+        for (int i = 0; i < ids.length; i++) {
+            View icon = page.findViewWithTag(ids[i]);
+            if (icon == null) continue;
+            icon.animate().cancel();
+            icon.setAlpha(0f);
+            icon.setScaleX(.80f);
+            icon.setScaleY(.80f);
+            icon.setTranslationY(Ui.dp(this, 8));
+            icon.animate().alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
+                    .setStartDelay(i * 48L).setDuration(350)
+                    .setInterpolator(new android.view.animation.PathInterpolator(
+                            .22f,.85f,.20f,1f)).withLayer().start();
+        }
+    }
+
     private void animateGlassTopBar(View page) {
         if(!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this)
                 || !android.animation.ValueAnimator.areAnimatorsEnabled())return;
+        // At startup the requested entrance is only for icons, not the full header.
+        if (startupIconAnimationPending && page.findViewWithTag("wen_intro_nav_0") != null) return;
         // Primary sliding already moves the whole page. Animating its top bar
         // separately makes a second moving layer and exaggerates frame drops.
         if (pendingPrimarySlide != 0) return;
@@ -250,6 +281,7 @@ public final class MainActivity extends Activity {
             screenHost.addView(next, match);
             activeScreen = next;
             animateGlassTopBar(next);
+            animateStartupIcons(next);
             // A disabled system animator scale must never leave the first screen
             // transparent. In that mode, show the view without a transition.
             if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
@@ -269,6 +301,7 @@ public final class MainActivity extends Activity {
         screenHost.addView(next, match);
         activeScreen = next;
         animateGlassTopBar(next);
+        animateStartupIcons(next);
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
             pendingPrimarySlide = 0;
             next.setAlpha(1f);
@@ -660,6 +693,7 @@ public final class MainActivity extends Activity {
         fab.setBackground(Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
                 : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this));
         fab.setElevation(Ui.dp(this, 8));
+        fab.setTag("wen_intro_fab");
         fab.setOnClickListener(v -> showAddTransaction());
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));
         fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18), Ui.dp(this, 88));
@@ -754,11 +788,13 @@ public final class MainActivity extends Activity {
         TextView addAccount = Ui.text(this, "▦", headerIconText, Color.WHITE, true);
         addAccount.setGravity(Gravity.CENTER);
         addAccount.setContentDescription("إدارة الحسابات");
+        addAccount.setTag("wen_intro_header_accounts");
         addAccount.setBackground(Ui.rounded(Color.argb(42, 255, 255, 255), 20, this));
         addAccount.setOnClickListener(v -> showAccountManagement());
         TextView settings = Ui.text(this, "⚙", headerIconText, Color.WHITE, true);
         settings.setGravity(Gravity.CENTER);
         settings.setContentDescription("الإعدادات");
+        settings.setTag("wen_intro_header_settings");
         settings.setBackground(Ui.rounded(Color.argb(42, 255, 255, 255), 20, this));
         settings.setOnClickListener(v -> showSettings());
         LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(headerIconSize, headerIconSize);
@@ -802,7 +838,9 @@ public final class MainActivity extends Activity {
 
         TextView[] items = new TextView[]{home, tx, debts, analytics};
         LinearLayout tabs = liquid ? Ui.row(this) : nav;
-        for (TextView item : items) {
+        for (int i = 0; i < items.length; i++) {
+            TextView item = items[i];
+            item.setTag("wen_intro_nav_" + i);
             LinearLayout.LayoutParams navParams = new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
             navParams.setMargins(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
@@ -820,6 +858,13 @@ public final class MainActivity extends Activity {
                     0, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.TOP | Gravity.LEFT);
             track.addView(lens, lensParams);
             track.addView(tabs, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            // The translucent magnifying glass sits ABOVE text, samples the
+            // tab strip just once per press, and never intercepts touch events.
+            app.wensarafet.glass.WenOpticalNavigationOverlay opticalOverlay =
+                    new app.wensarafet.glass.WenOpticalNavigationOverlay(this, Ui.DARK);
+            opticalOverlay.setTag("wen_optic_overlay");
+            track.addView(opticalOverlay, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             for (int i = 0; i < items.length; i++) {
                 app.wensarafet.glass.GlassMotion.bindNavigationTab(
