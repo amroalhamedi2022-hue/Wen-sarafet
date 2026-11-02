@@ -57,18 +57,24 @@ public final class WenOpticalNavigationOverlay extends View {
 
     /** Tab-only content snapshot, not any financial screen or personal data. */
     public void begin(View tabStrip, float pointerX) {
-        discard();
+        // Keep a small tab-only buffer between presses. Recycle only when
+        // detached, not while RenderThread may still reference its texture.
+        captured = false;
+        opacity = 0f;
         if (tabStrip == null || tabStrip.getWidth() <= 0 || tabStrip.getHeight() <= 0) return;
         try {
-            source = Bitmap.createBitmap(tabStrip.getWidth(), tabStrip.getHeight(),
-                    Bitmap.Config.ARGB_8888);
+            if (source == null || source.getWidth() != tabStrip.getWidth()
+                    || source.getHeight() != tabStrip.getHeight()) {
+                source = Bitmap.createBitmap(tabStrip.getWidth(), tabStrip.getHeight(),
+                        Bitmap.Config.ARGB_8888);
+            } else source.eraseColor(Color.TRANSPARENT);
             Canvas capture = new Canvas(source);
             tabStrip.draw(capture);
             sample = new BitmapShader(source, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
             magnified.setShader(sample);
             captured = true;
-            centreX = pointerX;
-            setVisibility(VISIBLE);
+            move(pointerX);
+            if (getVisibility() != VISIBLE) setVisibility(VISIBLE);
             invalidate();
         } catch (RuntimeException | OutOfMemoryError error) {
             discard(); // Fallback is the existing glass pill, never a crash.
@@ -86,10 +92,13 @@ public final class WenOpticalNavigationOverlay extends View {
     public void progress(float next) {
         if (!captured) return;
         opacity = Math.max(0f, Math.min(1f, next));
-        if (opacity <= .005f) {
-            discard();
-            return;
-        }
+        // CRITICAL: ValueAnimator always emits its initial value (normally 0).
+        // Discarding the bitmap on that first tick permanently killed the
+        // optical lens before the user saw any magnification.
+        // A zero alpha hides the overlay; the captured bitmap is retained
+        // until the next begin() or detach() instead.
+        final int desired = opacity <= .005f ? INVISIBLE : VISIBLE;
+        if (getVisibility() != desired) setVisibility(desired);
         invalidate();
     }
 
@@ -98,11 +107,11 @@ public final class WenOpticalNavigationOverlay extends View {
         opacity = 0f;
         sample = null;
         magnified.setShader(null);
-        if (source != null) {
-            source.recycle();
-            source = null;
-        }
-        setVisibility(INVISIBLE);
+        // No immediate Bitmap.recycle(): hardware canvas drawing can still
+        // be in flight on RenderThread after the view becomes invisible.
+        source = null;
+        if (getVisibility() != INVISIBLE) setVisibility(INVISIBLE);
+        invalidate();
     }
 
     @Override protected void onDetachedFromWindow() {
@@ -122,7 +131,8 @@ public final class WenOpticalNavigationOverlay extends View {
         // surface, then resample their original pixels at 1.3x into the lens.
         body.setAlpha((int)(245f * opacity));
         canvas.drawRoundRect(droplet, ry, ry, body);
-        float zoom = 1f + .34f * opacity;
+        // Optical magnification, not a slight icon-scale animation.
+        float zoom = 1f + .76f * opacity;
         sampleMatrix.reset();
         sampleMatrix.setScale(zoom, zoom, centreX, cy);
         sample.setLocalMatrix(sampleMatrix);
