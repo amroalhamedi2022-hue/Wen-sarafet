@@ -38,9 +38,10 @@ final class WenLiquidRuntimeOptics {
             "  float edge = smoothstep(0.76, 1.0, radial);\n" +
             "  float band = (1.0 - smoothstep(0.02, 0.17, abs(local.y - curve))) * edge;\n" +
             "  float light = band * 0.10 * amount;\n" +
-            "  refracted = mix(refracted, spectrum * 0.76 + half3(0.24), half(light));\n" +
             "  half a = max(max(red.a, blue.a), max(middle.a, half(light * 0.75)));\n" +
-            "  return half4(refracted, a);\n" +
+            "  half3 luminous = (spectrum * 0.76 + half3(0.24)) * a;\n" +
+            "  refracted = mix(refracted, luminous, half(light));\n" +
+            "  return half4(min(refracted, half3(a)), a);\n" +
             "}\n";
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private RuntimeShader shader;
