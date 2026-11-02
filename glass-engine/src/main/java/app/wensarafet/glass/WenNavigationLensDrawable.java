@@ -33,6 +33,9 @@ public final class WenNavigationLensDrawable extends Drawable {
     private final RectF edge = new RectF();
     private final RectF inner = new RectF();
     private final RectF upper = new RectF();
+    private final RectF fluid = new RectF();
+    private final Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private float morph;
     private float radius;
     private int alpha = 255;
 
@@ -50,6 +53,9 @@ public final class WenNavigationLensDrawable extends Drawable {
         topLight.setStyle(Paint.Style.STROKE);
         topLight.setStrokeWidth(Math.max(1f, density * 1.4f));
         topLight.setStrokeCap(Paint.Cap.ROUND);
+        halo.setStyle(Paint.Style.STROKE);
+        halo.setStrokeWidth(Math.max(2f, density * 3f));
+        halo.setColor(opacity(Color.WHITE, dark ? 120 : 220));
     }
 
     private static int opacity(int color, int a) {
@@ -85,13 +91,42 @@ public final class WenNavigationLensDrawable extends Drawable {
         applyAlpha();
     }
 
+    /**
+     * Converts the resting tab pill into a compact, deeper optical droplet
+     * on contact. No extra View, blur pass, idle clock, or draw-time allocation.
+     * Values are supplied by the finite touch animator in GlassMotion.
+     */
+    public void setMorph(float fraction) {
+        float next = Math.max(0f, Math.min(1f, fraction));
+        if (Math.abs(next - morph) < .003f) return;
+        morph = next;
+        invalidateSelf();
+    }
+
+    public float getMorph() { return morph; }
+
     @Override public void draw(Canvas canvas) {
         if (surface.isEmpty()) return;
-        canvas.drawRoundRect(surface, radius, radius, fill);
-        canvas.drawRoundRect(edge, Math.max(0f, radius - density), 
-                Math.max(0f, radius - density), outerRim);
-        canvas.drawRoundRect(inner, Math.max(0f, radius - density * 2.1f),
-                Math.max(0f, radius - density * 2.1f), innerRim);
+        float centerX = surface.centerX(), centerY = surface.centerY();
+        float halfWidth = surface.width()*.5f*(1f-morph)
+                + surface.height()*.57f*morph;
+        float halfHeight = surface.height()*.5f*(1f+.16f*morph);
+        fluid.set(centerX-halfWidth, centerY-halfHeight,
+                centerX+halfWidth, centerY+halfHeight);
+        float r = Math.max(radius, fluid.height()*.50f);
+        if (morph > .005f) {
+            halo.setAlpha(Math.round(alpha*morph*(dark ? .45f : .70f)));
+            canvas.drawRoundRect(fluid, r, r, halo);
+        }
+        canvas.drawRoundRect(fluid, r, r, fill);
+        edge.set(fluid);
+        edge.inset(outerRim.getStrokeWidth()*.5f, outerRim.getStrokeWidth()*.5f);
+        canvas.drawRoundRect(edge, r, r, outerRim);
+        inner.set(fluid);
+        inner.inset(density*2.1f, density*2.1f);
+        canvas.drawRoundRect(inner, r, r, innerRim);
+        upper.set(inner);
+        upper.inset(density*4f, density*2.1f);
         if (upper.width()>0f) {
             canvas.drawLine(upper.left, upper.top, upper.right, upper.top, topLight);
         }
