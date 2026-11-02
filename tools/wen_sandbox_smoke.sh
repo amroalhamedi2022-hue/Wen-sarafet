@@ -140,8 +140,10 @@ adb pull /sdcard/wen-fab-add-form.png "$OUT/fab-add-transaction.png" >/dev/null
 # Verify completion after the 360 ms circular-close animation settles.
 adb shell input keyevent 4
 sleep 2
-adb shell uiautomator dump /sdcard/wen-after-reverse.xml >/dev/null || true
-adb pull /sdcard/wen-after-reverse.xml "$OUT/wen-after-reverse.xml" >/dev/null || true
+# Use the existing Pixel Launcher ANR recovery for this checkpoint too.
+# On slow emulators the system launcher modal may reappear after Back even
+# though the finance form opened and closed correctly.
+nav_dump "$OUT/wen-after-reverse.xml"
 python3 - "$OUT/wen-after-reverse.xml" <<'PY'
 import sys,xml.etree.ElementTree as ET
 nodes=list(ET.parse(sys.argv[1]).getroot().iter("node"))
@@ -207,6 +209,14 @@ if ! python3 tools/check_nav_lens_pixels.py \
   python3 tools/check_nav_lens_pixels.py \
    "$OUT/nav-before-hold.png" "$OUT/nav-during-hold-second.png" "$TX" "$TY"
 fi
+# The SANDBOX advanced renderer must be real, not a silent static-pill fallback.
+adb logcat -d -v time -s WenGlassProbe:I > "$OUT/advanced-glass-probe.log"
+if ! grep -q 'MIT_VIEW_GLASS_ATTACHED' "$OUT/advanced-glass-probe.log" ||
+   ! grep -q 'MIT_VIEW_GLASS_BACKDROP_BOUND' "$OUT/advanced-glass-probe.log"; then
+  echo "FAIL: sandbox native View glass did not attach to actual backdrop"
+  exit 1
+fi
+echo "PASS: sandbox native View glass renderer and backdrop source active"
 # Navigate back using accessibility semantics, no hard-coded device coordinates.
 nav_dump "$OUT/wen-nav-after.xml"
 HOME_POINT="$(python3 - "$OUT/wen-nav-after.xml" <<'PY'
