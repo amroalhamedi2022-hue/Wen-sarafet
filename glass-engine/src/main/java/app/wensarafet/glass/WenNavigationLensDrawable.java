@@ -35,6 +35,10 @@ public final class WenNavigationLensDrawable extends Drawable {
     private final RectF fluid = new RectF();
     private final Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint opticalCore = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint specularCrown = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint lowerShadow = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF crownBounds = new RectF();
+    private final RectF shadowBounds = new RectF();
     private float morph;
     private float radius;
     private int alpha = 255;
@@ -56,6 +60,11 @@ public final class WenNavigationLensDrawable extends Drawable {
         halo.setStrokeWidth(Math.max(2f, density * 3f));
         halo.setColor(opacity(Color.WHITE, dark ? 150 : 225));
         opticalCore.setColor(opacity(Color.WHITE, dark ? 55 : 120));
+        specularCrown.setStyle(Paint.Style.STROKE);
+        specularCrown.setStrokeWidth(density * 2.3f);
+        lowerShadow.setStyle(Paint.Style.STROKE);
+        lowerShadow.setStrokeWidth(density * 1.8f);
+        lowerShadow.setColor(opacity(dark ? Color.BLACK : accent, dark ? 96 : 59));
     }
 
     private static int opacity(int color, int a) {
@@ -75,8 +84,10 @@ public final class WenNavigationLensDrawable extends Drawable {
 
         fill.setShader(new LinearGradient(surface.left, surface.top,
                 surface.right, surface.bottom,
-                new int[]{top, opacity(accent, dark ? 70 : 110), bottom},
-                new float[]{0f, .58f, 1f}, Shader.TileMode.CLAMP));
+                new int[]{opacity(top, dark ? 176 : 154),
+                        opacity(Color.WHITE, dark ? 32 : 110),
+                        opacity(bottom, dark ? 162 : 144)},
+                new float[]{0f, .46f, 1f}, Shader.TileMode.CLAMP));
         // The primary light band is an edge, not a large opaque rectangle.
         outerRim.setShader(new LinearGradient(surface.left, surface.top,
                 surface.right, surface.bottom,
@@ -85,6 +96,10 @@ public final class WenNavigationLensDrawable extends Drawable {
                         opacity(Color.WHITE, dark ? 125 : 205)},
                 null, Shader.TileMode.CLAMP));
         innerRim.setColor(opacity(Color.WHITE, dark ? 78 : 176));
+        specularCrown.setShader(new LinearGradient(surface.left, surface.top,
+                surface.right, surface.bottom,
+                new int[]{0xEFFFFFFF, 0x79D2FCFF, 0x0AFFFFFF,
+                        0x8AE4EDFF, 0xD7FFFFFF}, null, Shader.TileMode.CLAMP));
         chromaticRim.setShader(new LinearGradient(surface.left, surface.top,
                 surface.right, surface.bottom,
                 new int[]{0xFF98EBFF, 0xFFACC0FF, 0xFFE7B8F5,
@@ -116,11 +131,21 @@ public final class WenNavigationLensDrawable extends Drawable {
         fluid.set(surface);
         float r = radius;
         canvas.drawRoundRect(fluid, r, r, fill);
+        // The crowned top reflection and bottom shadow give the resting pill
+        // measurable optical depth, without waiting for a finger gesture.
+        crownBounds.set(fluid);
+        crownBounds.inset(density * 1.7f, density * 1.7f);
+        specularCrown.setAlpha((int) (alpha * (.72f + .28f * morph)));
+        canvas.drawRoundRect(crownBounds, r, r, specularCrown);
+        shadowBounds.set(fluid);
+        shadowBounds.inset(density * 3.6f, density * 3.6f);
+        lowerShadow.setAlpha((int) (alpha * (.42f + .22f * morph)));
+        canvas.drawRoundRect(shadowBounds, r, r, lowerShadow);
         edge.set(fluid);
         edge.inset(outerRim.getStrokeWidth()*.5f, outerRim.getStrokeWidth()*.5f);
         canvas.drawRoundRect(edge, r, r, outerRim);
         // Subtle rainbow refraction at rest, richer on hold, SAME pill shape.
-        chromaticRim.setAlpha((int)(alpha * (.28f + .57f * morph)));
+        chromaticRim.setAlpha((int)(alpha * (.52f + .40f * morph)));
         canvas.drawRoundRect(edge, r, r, chromaticRim);
         inner.set(fluid);
         inner.inset(density*2.1f, density*2.1f);
