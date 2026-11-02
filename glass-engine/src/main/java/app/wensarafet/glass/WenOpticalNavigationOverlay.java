@@ -116,7 +116,43 @@ public final class WenOpticalNavigationOverlay extends View {
         if (hostTrack != null) hostTrack.invalidateOptic();
     }
 
-    /** Tab-only content snapshot, not any financial screen or personal data. */
+    /**
+     * Read a tiny, temporary snapshot of the actual content BEHIND the
+     * navigation track, instead of refracting only the navigation glyphs.
+     * Snapshot stays in process memory and never goes to disk or logs.
+     */
+    private boolean captureUnderlyingContent(Canvas into, View tabStrip) {
+        if (hostTrack == null || !(hostTrack.getParent() instanceof View)) return false;
+        View navigationBar = (View) hostTrack.getParent();
+        if (!(navigationBar.getParent() instanceof View)) return false;
+        View contentRoot = (View) navigationBar.getParent();
+        if (contentRoot.getWidth() <= 0 || contentRoot.getHeight() <= 0) return false;
+        // This local region is bounded to the bottom control strip, NOT a
+        // screenshot of the entire application, and is captured only on DOWN.
+        final int[] rootXY = new int[2];
+        final int[] stripXY = new int[2];
+        contentRoot.getLocationOnScreen(rootXY);
+        tabStrip.getLocationOnScreen(stripXY);
+        final int previous = navigationBar.getVisibility();
+        final int save = into.save();
+        try {
+            // Hide our own nav bar before drawing its parent. This removes
+            // recursive glass feedback and yields the actual underneath pixels.
+            navigationBar.setVisibility(View.INVISIBLE);
+            into.translate(rootXY[0] - stripXY[0], rootXY[1] - stripXY[1]);
+            contentRoot.draw(into);
+            android.util.Log.i("WenGlassProbe", "UNDERLAY_CAPTURE_OK");
+            return true;
+        } catch (RuntimeException | OutOfMemoryError err) {
+            android.util.Log.w("WenGlassProbe", "UNDERLAY_CAPTURE_FALLBACK", err);
+            return false;
+        } finally {
+            into.restoreToCount(save);
+            navigationBar.setVisibility(previous);
+        }
+    }
+
+    /** Captures at most one small in-memory glass-texture per finger gesture. */
     public void begin(View tabStrip, float pointerX) {
         // Keep a small tab-only buffer between presses. Recycle only when
         // detached, not while RenderThread may still reference its texture.
@@ -131,7 +167,11 @@ public final class WenOpticalNavigationOverlay extends View {
                         Bitmap.Config.ARGB_8888);
             } else source.eraseColor(Color.TRANSPARENT);
             Canvas capture = new Canvas(source);
-            tabStrip.draw(capture);
+            boolean hasBackdrop = captureUnderlyingContent(capture, tabStrip);
+            if (!hasBackdrop) {
+                // A real fallback for unusual view parents, never a blank lens.
+                tabStrip.draw(capture);
+            }
             sample = new BitmapShader(source, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
             magnified.setShader(sample);
             edgeSample = new BitmapShader(source, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
@@ -223,20 +263,16 @@ public final class WenOpticalNavigationOverlay extends View {
         float pointerOffset = Math.max(-droplet.width() * .5f,
                 Math.min(droplet.width() * .5f, centreX - cx));
         float prismShift = pointerOffset * .058f * strength;
-        // A modest local sample scale (~5.5%) keeps the glyph refracted,
-        // without the 20%+ double-zoom artefact from the earlier prototype.
-        // Updating the child shader's matrix also refreshes the hardware input
-        // texture for compositors which reuse an unchanged transparent node.
+        // Native coordinates: AGSL alone bends the underlying content.
+        // Do not pre-zoom a second copy of navigation text on the GPU path.
         sampleMatrix.reset();
-        sampleMatrix.setScale(1f + .055f * strength,
-                1f + .055f * strength, cx, cy);
         sample.setLocalMatrix(sampleMatrix);
 
         canvas.save();
         canvas.clipRect(droplet);
         // Frost the underlying unwarped glyph first: the refracted text
         // should REPLACE it perceptually, not appear as a duplicate above it.
-        body.setAlpha((int) (138f * strength));
+        body.setAlpha((int) (31f * strength));
         canvas.drawRoundRect(droplet, radius, radius, body);
         // A single true pixel-warped image pass is preferred over two painted
         // glyph copies. Old Canvas optics remain a safe software/AGSL fallback.
