@@ -32,6 +32,7 @@ public final class WenOpticalNavigationOverlay extends View {
     private BitmapShader sample;
     private float centreX, opacity;
     private boolean captured;
+    private boolean reportedDraw;
     private final boolean dark;
 
     public WenOpticalNavigationOverlay(Context context, boolean darkTheme) {
@@ -60,6 +61,7 @@ public final class WenOpticalNavigationOverlay extends View {
         // Keep a small tab-only buffer between presses. Recycle only when
         // detached, not while RenderThread may still reference its texture.
         captured = false;
+        reportedDraw = false;
         opacity = 0f;
         if (tabStrip == null || tabStrip.getWidth() <= 0 || tabStrip.getHeight() <= 0) return;
         try {
@@ -73,10 +75,14 @@ public final class WenOpticalNavigationOverlay extends View {
             sample = new BitmapShader(source, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
             magnified.setShader(sample);
             captured = true;
+            android.util.Log.i("WenGlassProbe", "SNAPSHOT width=" + source.getWidth()
+                    + " height=" + source.getHeight()
+                    + " overlayWidth=" + getWidth());
             move(pointerX);
             if (getVisibility() != VISIBLE) setVisibility(VISIBLE);
             invalidate();
         } catch (RuntimeException | OutOfMemoryError error) {
+            android.util.Log.e("WenGlassProbe", "SNAPSHOT_ERROR", error);
             discard(); // Fallback is the existing glass pill, never a crash.
         }
     }
@@ -122,6 +128,11 @@ public final class WenOpticalNavigationOverlay extends View {
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         if (!captured || sample == null || opacity <= .005f) return;
+        if (!reportedDraw && opacity >= .6f) {
+            reportedDraw = true;
+            android.util.Log.i("WenGlassProbe", "DRAW_ACTIVE magnification=" + (1f + .76f * opacity)
+                    + " width=" + getWidth());
+        }
         final float cy = getHeight() * .5f;
         final float rx = getHeight() * (.42f + .15f * opacity);
         final float ry = getHeight() * (.40f + .11f * opacity);
