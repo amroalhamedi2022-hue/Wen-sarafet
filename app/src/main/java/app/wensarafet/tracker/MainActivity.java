@@ -399,6 +399,46 @@ public final class MainActivity extends Activity {
             }
             return;
         }
+        // Only when opening Add Transaction from the glass FAB: reveal the
+        // destination FROM the bubble rather than a generic full-screen fade.
+        if (pendingFabReveal && SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)) {
+            pendingFabReveal=false;
+            pendingPrimarySlide=0;
+            pendingGlassNavigationSwitch=false;
+            final View oldPage=previous;
+            final int originX=fabRevealX, originY=fabRevealY;
+            final float startRadius=Math.max(1f,fabRevealRadius);
+            next.setAlpha(1f);
+            next.setVisibility(View.INVISIBLE);
+            next.post(() -> {
+                if (next.getParent()!=screenHost) return;
+                int cx=Math.max(0,Math.min(next.getWidth(),originX));
+                int cy=Math.max(0,Math.min(next.getHeight(),originY));
+                float maxX=Math.max(cx,next.getWidth()-cx);
+                float maxY=Math.max(cy,next.getHeight()-cy);
+                float endRadius=(float)Math.hypot(maxX,maxY);
+                if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                    next.setVisibility(View.VISIBLE);
+                    if(oldPage!=null && oldPage.getParent()==screenHost)
+                        screenHost.removeView(oldPage);
+                    return;
+                }
+                android.animation.Animator reveal=android.view.ViewAnimationUtils.createCircularReveal(
+                        next,cx,cy,startRadius,endRadius);
+                reveal.setDuration(360);
+                reveal.setInterpolator(new android.view.animation.PathInterpolator(.18f,.72f,.20f,1f));
+                reveal.addListener(new android.animation.AnimatorListenerAdapter() {
+                    @Override public void onAnimationEnd(android.animation.Animator animation) {
+                        if(generation==screenTransitionGeneration
+                                && oldPage!=null && oldPage.getParent()==screenHost)
+                            screenHost.removeView(oldPage);
+                    }
+                });
+                next.setVisibility(View.VISIBLE);
+                reveal.start();
+            });
+            return;
+        }
         // No dual full-screen compositing on glass sandbox: it used to draw
         // two complete financial pages simultaneously on every tab change.
         // This affects VIEW presentation only, not DB reads or finance callbacks.
