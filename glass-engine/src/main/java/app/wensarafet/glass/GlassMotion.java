@@ -94,6 +94,7 @@ public final class GlassMotion {
             this.hovered=originIndex;
             optic = track instanceof WenNavigationTrack
                     ? ((WenNavigationTrack) track).getOptic() : null;
+            if (optic != null) optic.bindPhysicalPill(lens);
         }
 
         private int nearest(float fingerX) {
@@ -174,8 +175,8 @@ public final class GlassMotion {
                     tracking=true; cancelled=false; hovered=originIndex;
                     downX=event.getX(); downY=event.getY();
                     lens.animate().cancel();
-                    // The old pill becomes a tangible, rounded optical lens
-                    // under the finger, rather than a barely enlarged highlight.
+                    // Only the existing selected-tab pill receives optics on hold.
+                    // Never draw a second circle or enlarge the whole pill.
                     if (optic != null) {
                         optic.begin((View) view.getParent(),
                                 view.getLeft() + event.getX());
@@ -187,7 +188,7 @@ public final class GlassMotion {
                         // Press creates a compact rounded bubble; hold leaves it
                         // inflated until release, with no repeating animator.
                         lens.animate().translationX(fingerLensX(view.getLeft()+event.getX()))
-                                .scaleX(1.06f).scaleY(1.09f).setDuration(160)
+                                .scaleX(1f).scaleY(1f).setDuration(160)
                                 .setInterpolator(COMPRESS).start();
                     } else if (lens.getWidth()>0) {
                         lens.setTranslationX(fingerLensX(view.getLeft()+event.getX()));
@@ -216,7 +217,7 @@ public final class GlassMotion {
                         lens.animate().cancel();
                         lens.setTranslationX(destination);
                         if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
-                            lens.setScaleX(1.06f); lens.setScaleY(1.09f);
+                            lens.setScaleX(1f); lens.setScaleY(1f);
                         }
                     }
                     return true;
