@@ -17,6 +17,21 @@ public final class WenNavigationTrack extends FrameLayout {
     private final WenOpticalNavigationOverlay optic;
     private final Drawable opticalForeground;
     private boolean externalGlassActive;
+    /** Gesture-only contract. The glass-engine has NO dependency on sandbox SDK. */
+    public interface GlassGestureBridge {
+        void morph(float fraction);
+        void follow(float pointerX);
+        void reset();
+    }
+    private GlassGestureBridge externalGlassBridge;
+
+    public void setGlassGestureBridge(GlassGestureBridge bridge) {
+        externalGlassBridge = bridge;
+    }
+
+    public GlassGestureBridge getGlassGestureBridge() {
+        return externalGlassActive ? externalGlassBridge : null;
+    }
 
     public WenNavigationTrack(Context context, boolean dark) {
         super(context);
