@@ -130,7 +130,7 @@ assert "optic.progress(progress);" in engine
 optical = (p/"glass-engine/src/main/java/app/wensarafet/glass/WenOpticalNavigationOverlay.java").read_text(encoding="utf-8")
 assert "new BitmapShader(source, Shader.TileMode.CLAMP" in optical
 assert "tabStrip.draw(capture);" in optical
-assert "sampleMatrix.setScale(zoom, zoom, centreX, cy);" in optical
+assert "sampleMatrix.setScale(zoom, zoom, cx, cy);" in optical
 assert "canvas.drawRoundRect(droplet, radius, radius, magnified);" in optical
 assert "setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);" in optical
 assert "setVisibility(INVISIBLE);" in optical
