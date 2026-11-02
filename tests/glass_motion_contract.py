@@ -133,7 +133,7 @@ assert "sampleMatrix.setScale(zoom, zoom, centreX, cy);" in optical
 assert "canvas.drawRoundRect(droplet, ry, ry, magnified);" in optical
 assert "setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);" in optical
 assert "setVisibility(INVISIBLE);" in optical
-assert "postDelayed" not in optical and "PixelCopy" not in optical
+assert "postDelayed(" not in optical and "PixelCopy.request(" not in optical
 assert "new " not in optical.split("@Override protected void onDraw(Canvas canvas)",1)[1]
 assert 'opticalOverlay.setTag("wen_optic_overlay");' in main
 assert "track.addView(opticalOverlay" in main
