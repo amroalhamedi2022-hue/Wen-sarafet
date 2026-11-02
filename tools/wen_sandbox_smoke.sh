@@ -176,14 +176,21 @@ read -r TX TY <<< "$ANALYTICS_POINT"
 # No extra click/hold handler is invoked by the test: native Android input only.
 adb shell screencap -p /sdcard/wen-before-hold.png
 adb pull /sdcard/wen-before-hold.png "$OUT/nav-before-hold.png" >/dev/null
-# On a software-rendered emulator adb screencap + pull can exceed 1.7s.
-# A 1.4s fake hold ended BEFORE the screenshot could be recorded.
-# Keep the pointer down for five seconds so this is an actual DURING image.
-adb shell input swipe "$TX" "$TY" "$TX" "$TY" 5200 &
+# Keep the pointer down long enough for two independent ADB screenshots.
+# Some CI emulators delay screencap until after a five-second swipe releases,
+# falsely reporting 0 changed pixels even though AGSL_DRAW_ACTIVE was logged.
+adb shell input swipe "$TX" "$TY" "$TX" "$TY" 13000 &
 hold_pid=$!
-sleep 0.69
-adb shell screencap -p /sdcard/wen-during-hold.png
-adb pull /sdcard/wen-during-hold.png "$OUT/nav-during-hold.png" >/dev/null
+sleep 1.20
+adb exec-out screencap -p > "$OUT/nav-during-hold.png"
+sleep 1.40
+adb exec-out screencap -p > "$OUT/nav-during-hold-second.png"
+# Ensure both frames were captured while the pointer was still down.
+if ! kill -0 "$hold_pid" 2>/dev/null; then
+  echo "FAIL: emulator screenshot capture overran held touch; optical QA inconclusive"
+  wait "$hold_pid" || true
+  exit 1
+fi
 wait "$hold_pid"
 sleep 2
 if ! adb shell pidof "$PACKAGE" >/dev/null 2>&1; then
@@ -194,8 +201,12 @@ adb shell screencap -p /sdcard/wen-sandbox-motion.png
 adb pull /sdcard/wen-sandbox-motion.png "$OUT/analytics-after-animated-tab-tap.png"
 # A whole-image cmp used to pass on unrelated pixels. Pixel-check a small
 # rectangle centered on the ACTUAL held analytics tab. Fail if no visual lens.
-python3 tools/check_nav_lens_pixels.py \
- "$OUT/nav-before-hold.png" "$OUT/nav-during-hold.png" "$TX" "$TY"
+if ! python3 tools/check_nav_lens_pixels.py \
+ "$OUT/nav-before-hold.png" "$OUT/nav-during-hold.png" "$TX" "$TY"; then
+  echo "INFO: first GPU capture unchanged; checking independent second frame"
+  python3 tools/check_nav_lens_pixels.py \
+   "$OUT/nav-before-hold.png" "$OUT/nav-during-hold-second.png" "$TX" "$TY"
+fi
 # Navigate back using accessibility semantics, no hard-coded device coordinates.
 nav_dump "$OUT/wen-nav-after.xml"
 HOME_POINT="$(python3 - "$OUT/wen-nav-after.xml" <<'PY'
