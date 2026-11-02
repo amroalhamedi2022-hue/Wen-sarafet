@@ -32,6 +32,7 @@ for label in ["الرئيسية", "العمليات", "الديون", "التح�
 assert "FrameLayout track = new FrameLayout(this);" in main
 assert "lastGlassNavigationTab = selectedTab;" in main
 assert "GlassMotion.slideLens(" in main
+assert "lens.setElevation(" not in main, "Glass lens must not cover its selected icon/text"
 assert "tabs[previousIndex].getLeft()" in engine and "selected.getLeft()" in engine
 assert "previousIndex != selectedIndex" in engine
 assert "if (selected && !Ui.isLiquidTheme(this))" in main
