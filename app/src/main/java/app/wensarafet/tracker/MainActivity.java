@@ -686,8 +686,13 @@ public final class MainActivity extends Activity {
             }
             nav.addView(track, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            // During Hold+Drag (or a direct touch), the previous lens is
+            // already under the released finger. Do not restart the new screen's
+            // lens at the old selected tab: that caused a visible snap-back.
+            // Accessibility/programmatic tab clicks still get the normal slide.
+            int lensStart = pendingGlassNavigationSwitch ? selectedTab : lastGlassNavigationTab;
             app.wensarafet.glass.GlassMotion.slideLens(
-                    track, lens, items, lastGlassNavigationTab, selectedTab);
+                    track, lens, items, lensStart, selectedTab);
             lastGlassNavigationTab = selectedTab;
         }
         return nav;
