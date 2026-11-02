@@ -82,6 +82,9 @@ public final class MainActivity extends Activity {
     private FrameLayout screenHost;
     private View activeScreen;
     private int screenTransitionGeneration;
+    // Sandbox-only in-place palette refresh; never affects production financial screens.
+    private boolean pendingPaletteSwitch;
+    private int pendingThemeScrollX = -1;
     private static final int CREATE_BACKUP = 7301;
     private static final int OPEN_BACKUP = 7302;
     private static final int PICK_NOTIFICATION_SOUND = 7303;
@@ -158,7 +161,9 @@ public final class MainActivity extends Activity {
         // No dual full-screen compositing on glass sandbox: it used to draw
         // two complete financial pages simultaneously on every tab change.
         // This affects VIEW presentation only, not DB reads or finance callbacks.
-        boolean fastLiquid = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
+        boolean paletteSwitch = pendingPaletteSwitch;
+        pendingPaletteSwitch = false;
+        boolean fastLiquid = SandboxMode.isSandbox(this) && (Ui.isLiquidTheme(this) || paletteSwitch);
         boolean fromNavGesture = pendingGlassNavigationSwitch;
         pendingGlassNavigationSwitch = false;
         if (fastLiquid) {
@@ -167,7 +172,7 @@ public final class MainActivity extends Activity {
                 screenHost.removeView(previous);
             }
             next.setTranslationX(0f);
-            if (fromNavGesture) {
+            if (fromNavGesture || paletteSwitch) {
                 // Show the new bottom bar immediately; its lens now slides on
                 // top of visible content instead of being hidden by alpha=0.
                 next.setAlpha(1f);
@@ -1823,10 +1828,37 @@ public final class MainActivity extends Activity {
             LinearLayout card = Ui.column(this); card.setGravity(Gravity.CENTER);
             card.setBackground(new AuroraDrawable(Ui.themePreviewColors(i), Ui.dp(this, 20)));
             TextView name = Ui.text(this, (i == currentTheme ? "✓ " : "") + Ui.THEME_NAMES[i], 14, Color.WHITE, true); name.setGravity(Gravity.CENTER);
-            card.addView(name); card.setOnClickListener(v -> { Ui.saveTheme(this, index); recreate(); }); Ui.pressAnimation(card);
+            card.addView(name); card.setOnClickListener(v -> {
+                if (index == Ui.themeIndex(this)) return;
+                boolean previousDark = Ui.DARK;
+                Ui.saveTheme(this, index);
+                // Only the isolated preview can switch palettes in place. The original
+                // application retains its previous recreate() and lifecycle behavior.
+                if (!SandboxMode.isSandbox(this) || previousDark != Ui.DARK) {
+                    recreate();
+                    return;
+                }
+                // Keep the existing Activity and DB instance; no startup splash, empty
+                // window, or lost horizontal carousel position after a colour change.
+                pendingThemeScrollX = themeScroll.getScrollX();
+                pendingPaletteSwitch = true;
+                lastGlassNavigationTab = -1;
+                if (screenHost != null) screenHost.setBackgroundColor(Ui.BACKGROUND);
+                getWindow().setStatusBarColor(Ui.BRAND_DARK);
+                getWindow().setNavigationBarColor(Ui.SURFACE);
+                int lightBars = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                        | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                getWindow().getDecorView().setSystemUiVisibility(Ui.DARK ? 0 : lightBars);
+                showSettings();
+            }); Ui.pressAnimation(card);
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(Ui.dp(this, 132), Ui.dp(this, 82)); p.setMargins(Ui.dp(this, 5), 0, Ui.dp(this, 5), 0); themeRow.addView(card, p);
         }
         themeScroll.addView(themeRow); content.addView(themeScroll);
+        if (SandboxMode.isSandbox(this) && pendingThemeScrollX >= 0) {
+            final int restoreX = pendingThemeScrollX;
+            pendingThemeScrollX = -1;
+            themeScroll.post(() -> themeScroll.scrollTo(restoreX, 0));
+        }
 
         content.addView(sectionTitle("تخصيص الواجهة", "مكان واحد ومنظّم لإعدادات الصفحة الرئيسية"));
         LinearLayout layoutCard = Ui.row(this); layoutCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
