@@ -42,6 +42,15 @@ android {
         }
     }
 
+    // CI emulator only: QWEA0 publishes ARM native acceleration, but the
+    // Android automated-test-device runs x86_64. Run AGSL GPU optics without
+    // optional JNI in CI; never remove ARM native libraries from phone APKs.
+    if (project.hasProperty("wenEmulatorNoNative")) {
+        packagingOptions {
+            jniLibs { excludes += ["**/*.so"] }
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
