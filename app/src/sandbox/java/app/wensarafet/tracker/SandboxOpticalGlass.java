@@ -40,9 +40,42 @@ public final class SandboxOpticalGlass {
             glass.setGlassTint(Color.WHITE, 0.06f);
             glass.setEdgeHighlightBorderWidth(1.2f);
             glass.setEdgeHighlightOpacity(70f);
+            lens.setClipChildren(false);
+            lens.setClipToPadding(false);
             lens.addView(glass, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT));
+
+            // The real tab touch owner is in GlassMotion. Subscribe the optical
+            // material to its SAME finite morph animator, without adding a
+            // competing click listener or an idle redraw timer.
+            track.setGlassGestureBridge(new WenNavigationTrack.GlassGestureBridge() {
+                private boolean reported;
+                @Override public void morph(float fraction) {
+                    float t = Math.max(0f, Math.min(1f, fraction));
+                    glass.setDisplacementScale(38f + 20f * t);
+                    glass.setRefractionHeight(17f + 22f * t);
+                    glass.setAberrationIntensity(.8f + 1.2f * t);
+                    glass.setGlassTint(Color.WHITE, .06f + .08f * t);
+                    glass.setScaleX(1f + .036f * t);
+                    glass.setScaleY(1f + .036f * t);
+                    glass.invalidate();
+                    if (t >= .8f && !reported) {
+                        reported = true;
+                        android.util.Log.i("WenGlassProbe",
+                                "MIT_VIEW_GLASS_PRESS_ACTIVE");
+                    }
+                    if (t <= .01f) reported = false;
+                }
+                @Override public void follow(float pointerX) {
+                    // The existing lens parent follows finger X; material
+                    // re-samples the new background in that new location.
+                    glass.invalidate();
+                }
+                @Override public void reset() {
+                    morph(0f);
+                }
+            });
 
             // BackdropSource can be an ancestor in this library. It excludes
             // the glass branch while recording, so it does not capture itself.
