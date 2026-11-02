@@ -5,6 +5,7 @@ COMPONENT="$PACKAGE/app.wensarafet.tracker.MainActivity"
 APK=app/build/outputs/apk/sandbox/app-sandbox.apk
 OUT=app/sandbox-smoke-results
 mkdir -p "$OUT"
+trap 'adb logcat -d -v time -s WenGlassProbe:I > "$OUT/wen-glass-probe.log" 2>/dev/null || true' EXIT
 adb wait-for-device
 adb install -r "$APK"
 adb shell wm dismiss-keyguard || true
