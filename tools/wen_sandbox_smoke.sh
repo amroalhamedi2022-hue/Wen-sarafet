@@ -8,6 +8,12 @@ mkdir -p "$OUT"
 trap 'adb logcat -d -v time -s WenGlassProbe:I > "$OUT/wen-glass-probe.log" 2>/dev/null || true' EXIT
 adb wait-for-device
 adb install -r "$APK"
+# Pixel Launcher is not under test; its ANR repeatedly blocked screenshots
+# on GitHub runners, despite the finance app continuing to function.
+# The test starts the app by its explicit component, so the Home launcher is
+# unnecessary. Disabling it affects ONLY this disposable emulator instance.
+adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
+adb shell am force-stop com.google.android.apps.nexuslauncher || true
 adb shell wm dismiss-keyguard || true
 adb logcat -c || true
 capture() {
@@ -134,8 +140,9 @@ if [ "$form_opened" -ne 1 ]; then
  exit 1
 fi
 echo "PASS: glass FAB tap opens Add Transaction form"
-adb shell screencap -p /sdcard/wen-fab-add-form.png
-adb pull /sdcard/wen-fab-add-form.png "$OUT/fab-add-transaction.png" >/dev/null
+if ! adb exec-out screencap -p > "$OUT/fab-add-transaction.png"; then
+  echo "WARN: optional FAB screenshot unavailable; testing return and lens behavior"
+fi
 # Reverse Add Transaction (Android Back) must reach the same Home page.
 # Verify completion after the 360 ms circular-close animation settles.
 adb shell input keyevent 4
@@ -152,8 +159,9 @@ if "تبويب الرئيسية" not in desc or "إضافة عملية" not in d
     raise SystemExit("FAIL: system Back did not reverse Add Transaction to primary Home")
 print("PASS: reverse Add Transaction return preserves Home and accessible FAB")
 PY
-adb shell screencap -p /sdcard/wen-after-reverse.png
-adb pull /sdcard/wen-after-reverse.png "$OUT/fab-after-reverse.png" >/dev/null
+if ! adb exec-out screencap -p > "$OUT/fab-after-reverse.png"; then
+  echo "WARN: optional Back screenshot unavailable; continuing held-lens proof"
+fi
 # Re-enter home for existing Hold+Drag verification.
 adb shell am force-stop "$PACKAGE"
 adb shell am start -W -n "$COMPONENT"
