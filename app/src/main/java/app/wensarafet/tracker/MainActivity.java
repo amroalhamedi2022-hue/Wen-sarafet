@@ -216,31 +216,87 @@ public final class MainActivity extends Activity {
         return super.dispatchTouchEvent(e);
     }
 
-    /** Icons only at app launch; never replay on normal tab swipes or navigation. */
+    /** Start the one-shot icon-only entrance after first layout/draw, never during startup DB work. */
     private void animateStartupIcons(View page) {
         if (!startupIconAnimationPending || !SandboxMode.isSandbox(this)
-                || !Ui.isLiquidTheme(this)
-                || !android.animation.ValueAnimator.areAnimatorsEnabled()) return;
+                || !Ui.isLiquidTheme(this)) return;
         if (page.findViewWithTag("wen_intro_nav_0") == null) return;
         startupIconAnimationPending = false;
+        if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
         final String[] ids = {
                 "wen_intro_header_accounts", "wen_intro_header_settings",
                 "wen_intro_nav_0", "wen_intro_nav_1",
                 "wen_intro_nav_2", "wen_intro_nav_3", "wen_intro_fab"
         };
-        for (int i = 0; i < ids.length; i++) {
-            View icon = page.findViewWithTag(ids[i]);
+        final java.util.ArrayList<View> icons = new java.util.ArrayList<>();
+        for (String id : ids) {
+            View icon = page.findViewWithTag(id);
             if (icon == null) continue;
             icon.animate().cancel();
             icon.setAlpha(0f);
-            icon.setScaleX(.80f);
-            icon.setScaleY(.80f);
-            icon.setTranslationY(Ui.dp(this, 8));
-            icon.animate().alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
-                    .setStartDelay(i * 48L).setDuration(350)
-                    .setInterpolator(new android.view.animation.PathInterpolator(
-                            .22f,.85f,.20f,1f)).withLayer().start();
+            icon.setScaleX(.76f); icon.setScaleY(.76f);
+            icon.setTranslationY(Ui.dp(this, 11));
+            icons.add(icon);
         }
+        page.getViewTreeObserver().addOnPreDrawListener(
+                new android.view.ViewTreeObserver.OnPreDrawListener() {
+            private boolean fired;
+            @Override public boolean onPreDraw() {
+                if (fired) return true;
+                fired = true;
+                if (page.getViewTreeObserver().isAlive())
+                    page.getViewTreeObserver().removeOnPreDrawListener(this);
+                page.postOnAnimation(() -> {
+                    if (!page.isAttachedToWindow()) return;
+                    for (int i=0; i<icons.size(); i++) {
+                        View icon=icons.get(i);
+                        icon.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                                .translationY(0f).setStartDelay(i*65L)
+                                .setDuration(430L)
+                                .setInterpolator(new android.view.animation.OvershootInterpolator(.65f))
+                                .withLayer().start();
+                    }
+                });
+                return true;
+            }
+        });
+    }
+
+    /** The FAB owns press and hold visuals but keeps the original click callback. */
+    private void bindGlassFab(TextView fab) {
+        if (!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this)) {
+            Ui.pressAnimation(fab);
+            return;
+        }
+        final app.wensarafet.glass.WenFabBubbleDrawable bubble =
+                new app.wensarafet.glass.WenFabBubbleDrawable(this, Ui.SKY, Ui.DARK);
+        fab.setBackground(bubble);
+        fab.setContentDescription("إضافة عملية");
+        fab.setOnTouchListener((v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    bubble.setPress(1f);
+                    v.animate().cancel();
+                    if (android.animation.ValueAnimator.areAnimatorsEnabled())
+                        v.animate().scaleX(.94f).scaleY(.94f)
+                                .setDuration(140).start();
+                    return false;
+                case MotionEvent.ACTION_MOVE:
+                    boolean outside=event.getX() < 0 || event.getY() < 0
+                            || event.getX() > v.getWidth() || event.getY() > v.getHeight();
+                    if (outside) bubble.setPress(0f);
+                    return false;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    bubble.setPress(0f);
+                    if (android.animation.ValueAnimator.areAnimatorsEnabled())
+                        v.animate().scaleX(1f).scaleY(1f).setDuration(260)
+                                .setInterpolator(new android.view.animation.OvershootInterpolator(.7f)).start();
+                    else { v.setScaleX(1f); v.setScaleY(1f); }
+                    return false;
+                default: return false;
+            }
+        });
     }
 
     private void animateGlassTopBar(View page) {
