@@ -248,6 +248,7 @@ public final class MainActivity extends Activity {
                     page.getViewTreeObserver().removeOnPreDrawListener(this);
                 page.postOnAnimation(() -> {
                     if (!page.isAttachedToWindow()) return;
+                    android.util.Log.i("WenGlassProbe","ICON_ENTRANCE_STARTED count="+icons.size());
                     for (int i=0; i<icons.size(); i++) {
                         View icon=icons.get(i);
                         icon.animate().alpha(1f).scaleX(1f).scaleY(1f)
