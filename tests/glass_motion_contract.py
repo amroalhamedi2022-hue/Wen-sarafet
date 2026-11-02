@@ -78,7 +78,15 @@ assert "morphTo(0f, 190);" in engine, "Release/cancel must restore the resting p
 assert "lens.setTranslationX(tabs[hovered].getLeft());" in engine, "Pin at destination before click"
 assert "lens.setTranslationX(destination)" in engine, "Dragged lens follows fingertip"
 assert "WenNavigationLensDrawable glass = opticalLens();" in engine
-assert "ValueAnimator.ofFloat(glass.getMorph(), destination)" in engine
+assert "glass != null ? glass.getMorph() : materialProgress" in engine, "External glass shares finite morph animator"
+assert "materialBridge.morph(progress);" in engine and "materialBridge.follow(x);" in engine
+assert "materialBridge.reset();" in engine
+track=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenNavigationTrack.java").read_text(encoding="utf-8")
+assert "GlassGestureBridge" in track and "getGlassGestureBridge()" in track
+sandbox=(p/"app/src/sandbox/java/app/wensarafet/tracker/SandboxOpticalGlass.java").read_text(encoding="utf-8")
+assert "MIT_VIEW_GLASS_PRESS_ACTIVE" in sandbox and "glass.setRefractionHeight(17f + 22f * t)" in sandbox
+assert "track.setGlassGestureBridge" in sandbox
+assert "import app.wensarafet.glass.WenNavigationTrack;" in sandbox
 assert "glass.setMorph(1f);" in engine
 assert "glass.setMorph(0f);" in engine
 assert "private final RectF fluid = new RectF();" in lensSource
