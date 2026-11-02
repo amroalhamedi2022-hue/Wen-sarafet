@@ -6,6 +6,8 @@ import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
+import android.graphics.LinearGradient;
+import android.graphics.PixelFormat;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -26,6 +28,10 @@ public final class WenOpticalNavigationOverlay extends View {
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint innerRim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint spectrum = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint caustic = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint specular = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF highlightBounds = new RectF();
     private final Matrix sampleMatrix = new Matrix();
     private final RectF droplet = new RectF();
     private WenNavigationTrack hostTrack;
@@ -45,9 +51,16 @@ public final class WenOpticalNavigationOverlay extends View {
         setFocusable(false);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         setWillNotDraw(false);
-        // This view is an off-hierarchy painting helper; WenNavigationTrack
-        // invokes its onDraw() in the track's actual child-composition pass.
-        body.setColor(dark ? Color.rgb(59, 57, 96) : Color.rgb(212, 220, 252));
+        // An attached, non-touchable View is composited above the tab glyphs
+        // and always receives invalidate() from the UI renderer.
+        // Almost transparent coating: never cover the real underlying tab glyph.
+        body.setColor(dark ? 0x19312F66 : 0x1EEAF6FF);
+        spectrum.setStyle(Paint.Style.STROKE);
+        spectrum.setStrokeWidth(density * 1.85f);
+        caustic.setStyle(Paint.Style.STROKE);
+        caustic.setStrokeWidth(density * 3.1f);
+        caustic.setColor(dark ? 0xA0ADDFFF : 0x9EFFFFFF);
+        specular.setColor(0xDFFFFFFF);
         rim.setColor(dark ? 0xD8F2F3FF : 0xEEFFFFFF);
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(density * 1.6f);
@@ -58,6 +71,18 @@ public final class WenOpticalNavigationOverlay extends View {
         glow.setStyle(Paint.Style.STROKE);
         glow.setStrokeWidth(density * 3f);
         setVisibility(INVISIBLE);
+    }
+
+    @Override protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        // One prismatic, position-stable highlight shader per resize, never per frame.
+        spectrum.setShader(new LinearGradient(0f, 0f, Math.max(1, w), 0f,
+                new int[]{0x99AEF2FF, 0xFF8BA2FF, 0xFFDCC8FF,
+                          0xFFFFECAD, 0xFF91EAF4, 0xFF9A9FFC},
+                new float[]{0f, .19f, .39f, .58f, .78f, 1f},
+                Shader.TileMode.CLAMP));
+        specular.setShader(new LinearGradient(0f, 0f, 0f, Math.max(1, h),
+                0xC6FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
     }
 
     void setHostTrack(WenNavigationTrack track) { hostTrack = track; }
@@ -171,7 +196,30 @@ public final class WenOpticalNavigationOverlay extends View {
         sampleMatrix.reset();
         sampleMatrix.setScale(zoom, zoom, cx, cy);
         sample.setLocalMatrix(sampleMatrix);
-        magnified.setAlpha((int)(205f * opacity));
+        // Base coating / true optical refraction: the original tab pixels are
+        // sampled inside the EXISTING moving selected pill. No second Siri orb.
+        body.setAlpha((int)(30f * opacity));
+        canvas.drawRoundRect(droplet, radius, radius, body);
+        magnified.setAlpha((int)(220f * opacity));
         canvas.drawRoundRect(droplet, radius, radius, magnified);
+        // Chromatic fringe + white caustic edge respond to the same hold value.
+        // Drawing into the existing pill bounds prevents a detached square halo.
+        caustic.setAlpha((int)(105f * opacity));
+        canvas.drawRoundRect(droplet, radius, radius, caustic);
+        spectrum.setAlpha((int)(235f * opacity));
+        canvas.drawRoundRect(droplet, radius, radius, spectrum);
+        rim.setAlpha((int)(155f * opacity));
+        canvas.drawRoundRect(droplet, radius, radius, rim);
+        innerRim.setAlpha((int)(100f * opacity));
+        highlightBounds.set(droplet);
+        highlightBounds.inset(density * 2.4f, density * 2.4f);
+        canvas.drawRoundRect(highlightBounds, radius, radius, innerRim);
+        // A tiny upper specular glint, not a black iris or fake Siri component.
+        highlightBounds.set(droplet.left + density * 7f,
+                droplet.top + density * 2f,
+                droplet.right - density * 7f,
+                droplet.top + droplet.height() * .33f);
+        specular.setAlpha((int)(84f * opacity));
+        canvas.drawOval(highlightBounds, specular);
     }
 }
