@@ -41,8 +41,9 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
-          # Automated headless Android image avoids unrelated Pixel Launcher ANR modal.
-          target: aosp_atd
+          # Google APIs image provides a real graphical framebuffer for screencap.
+          # AOSP ATD returned all-black PNGs despite functional app interactions.
+          target: google_apis
           arch: x86_64
           profile: pixel_6
           disable-animations: false
