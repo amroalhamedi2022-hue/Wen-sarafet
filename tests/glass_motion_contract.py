@@ -59,7 +59,7 @@ assert "GlassMotion.slideLens(" in main
 lensSource = (p/"glass-engine/src/main/java/app/wensarafet/glass/WenNavigationLensDrawable.java").read_text(encoding="utf-8")
 assert "GlassMotion.bindNavigationTab(" in main
 assert "glassSlidingNavigationLens(this)" in main
-assert "new WenNavigationLensDrawable(" in ui
+assert "new app.wensarafet.glass.WenNavigationLensDrawable(" in ui
 assert "new LinearGradient" in lensSource
 assert "new " not in lensSource.split("@Override public void draw(Canvas canvas)",1)[1].split(
         "private void applyAlpha()",1)[0]
