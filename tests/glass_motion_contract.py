@@ -140,8 +140,14 @@ assert "opacity <= .005f ? INVISIBLE : VISIBLE" in progress
 assert "source.recycle()" not in optical, "Do not recycle GPU-shared texture during a drawing frame"
 assert "postDelayed(" not in optical and "PixelCopy.request(" not in optical
 assert "new " not in optical.split("@Override protected void onDraw(Canvas canvas)",1)[1]
-assert 'opticalOverlay.setTag("wen_optic_overlay");' in main
-assert "track.addView(opticalOverlay" in main
+assert "new app.wensarafet.glass.WenNavigationTrack(this, Ui.DARK)" in main
+assert "track.addView(opticalOverlay" not in main
+trackSource = (p/"glass-engine/src/main/java/app/wensarafet/glass/WenNavigationTrack.java").read_text(encoding="utf-8")
+assert "super.dispatchDraw(canvas);" in trackSource
+assert "optic.renderOnto(canvas);" in trackSource
+assert "optic = track instanceof WenNavigationTrack" in engine
+assert "hostTrack.invalidate();" in optical
+assert "setLayerType(View.LAYER_TYPE_SOFTWARE" not in optical
 assert "startupIconAnimationPending = true" in main
 assert "private void animateStartupIcons(View page)" in main
 assert "startupIconAnimationPending = false;" in main
