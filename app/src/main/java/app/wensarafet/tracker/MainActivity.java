@@ -135,7 +135,7 @@ public final class MainActivity extends Activity {
                 primarySwipeActive=false;
                 primarySwipeStartX=e.getX(); primarySwipeStartY=e.getY();
                 primarySwipeEligible=SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
-                        && screenHost!=null && hasStarted && !subScreenVisible
+                        && screenHost!=null && startupResolved && db!=null && !subScreenVisible
                         && !addScreenVisible && !lockScreenVisible && !activationScreenVisible
                         && currentTab>=TAB_HOME && currentTab<=TAB_ANALYTICS
                         && primarySwipeStartY>Ui.dp(this,128)
