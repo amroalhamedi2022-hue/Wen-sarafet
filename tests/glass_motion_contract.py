@@ -39,7 +39,10 @@ assert "MotionEvent.ACTION_CANCEL" in engine
 assert "lens.animate().translationX(view.getLeft())" in engine
 assert "lens.setTranslationX(destination)" in engine
 assert "boolean fromNavGesture = pendingGlassNavigationSwitch;" in main
-assert "if (fromNavGesture)" in main
+assert "if (fromNavGesture || paletteSwitch)" in main
+assert "boolean paletteSwitch = pendingPaletteSwitch;" in main
+assert "pendingPaletteSwitch = false;" in main
+assert "lastGlassNavigationTab = -1;" in main
 assert "next.setAlpha(1f);" in main
 assert "screenHost.removeView(previous);" in main
 assert "setDuration(115)" in main
