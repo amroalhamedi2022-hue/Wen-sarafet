@@ -1,5 +1,26 @@
 # وين صرفت — الخطة الرئيسية لمحرك حركات Liquid Glass
 
+## ✅ بناء تجريبي مُختبَر — المحرك الخارجي وإيماءات العدسة (2 نوفمبر 2026)
+
+**الفرع:** `design/wen-full-unlocked-sandbox-20261101`، PR #28 Draft. آخر commit برمجي/اختبارات: `abd2e6c886be37414fd3d0d64aae452b717b3409`. لم يحدث دمج في `main`. هذه النسخة **Sandbox فقط**، وليست تحديثًا للتطبيق المالي المثبت.
+
+### ما تغيّر
+- رُبطت مكتبة `QWEA0/Liquid-Glass-Android v2.0.11` (MIT) بواجهة Android Views التجريبية عبر `SandboxOpticalGlass`، مع الاحتفاظ بعمليات الضغط والسحب الأصلية عبر `WenNavigationTrack.GlassGestureBridge` و`GlassMotion`. لا تمس SQLite، قاعدة البيانات، الأرصدة، Safe Zone، أو الحماية.
+- التغير البصري أثناء Hold صار حقيقيًا: `MIT_VIEW_GLASS_ATTACHED`, `MIT_VIEW_GLASS_BACKDROP_BOUND`, `MIT_VIEW_GLASS_PRESS_ACTIVE` كلها ظهرت في سجلات المحاكي. تغير `1555/21648` بكسل حول العدسة أثناء الـHold. السحب إلى التحليل نجح بدون تغيير وظائف الوجهات.
+- استُخدم `google_apis` x86_64 مع إلغاء ملفات native ARM **في APK المحاكي فقط**. ملف Sandbox المنشور يحتفظ `arm64-v8a` و`armeabi-v7a`. تم تعطيل Pixel Launcher داخل المحاكي لتفادي ANR خارج التطبيق، واستُبعدت لقطات AOSP ATD السوداء من دليل القبول.
+- ملف رخصة MIT محفوظ في `docs/licenses/QWEA0_LiquidGlass_MIT.txt`، والمكتبة تضاف فقط إلى `sandboxImplementation`. مسار التجربة لا يُدمج قبل فصل أي تجاوز تجريبي للحماية.
+- **نتائج CI جميعها ناجحة على نفس commit:** build Sandbox `41517102305`، smoke emulator screenshots `41517102456`، source/finance `41517102276`، Android compile `41517102436`، unsigned production candidate `41517102263`.
+- ملف APK مُختبر: `app.wensarafet.tracker.sandbox`، إصدار `1.8.6-sandbox`، Artifact ID `13175602096`، SHA256 `3f9a30d389d34d4154a5014e1f9078eda376fb895aaa04b8501d85ea9c01b0b9`. حجم 13,065,589 بايت، الأرشيف سليم، يتضمن أربع dex ومكتبات ARM. قابل للتثبيت على جهاز ARM حسب بنية الملف، لكن **لم يُختبر بعد على جهاز المستخدم**.
+- صور الفحص `41517102456` محفوظة في GitHub Actions Artifact `13175942014`، منها `nav-before-hold.png` و`nav-during-hold.png`. نتيجة التغير مثبتة، لكنها **ليست دليلًا على تطابق بصري كامل** مع مرجع المستخدم `1000071367.mp4`.
+
+### المتبقي للاعتماد
+- اختبار على Xiaomi Pad 5 ثم الهاتف: أداء، ثبات، ضغط/سحب، الفرق البصري مقابل مرجع Apple الفعلي، TalkBack و60/120Hz.
+- تحسين عناصر الخامة/الحركة وفق الصور **دون** تكرار تعديلات gradients العشوائية؛ لا تُعلن `pixel-perfect` أو `identical iOS 27` دون مقارنة بصرية مقنعة يوافق عليها المستخدم.
+- الإنتاج: المحافظة على `main` دون تغيير واعتماد نسخة Sandbox المستقلة فقط حتى يثبت الاختبار على الأجهزة.
+
+---
+
+
 
 ## 🔴 مراجعة الفجوة البصرية — 2 نوفمبر 2026 (الحالة الحقيقية، لا ادعاء تطابق)
 
