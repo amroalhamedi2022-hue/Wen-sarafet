@@ -26,7 +26,15 @@ for forbidden in ["while (true)", "postDelayed", "TimerTask", "Thread.sleep",
                   "INTERNET", "android.permission"]:
     assert forbidden not in engine
 assert "GlassMotion.bindPress(view, SKY)" in ui
-assert "if (liquid) Ui.pressAnimation(item);" in main
+assert "GlassMotion.bindNavigationTab(" in main
+assert "bindNavigationTab(View tab, FrameLayout track, View lens" in engine
+assert "scaleX(1.09f).scaleY(1.12f)" in engine
+assert "MotionEvent.ACTION_CANCEL" in engine
+assert "lens.animate().translationX(view.getLeft())" in engine
+assert "fastLiquid ? 150 : 280" in main
+assert "fastLiquid ? 115 : 180" in main
+assert "liquid ? 4 : 10" in ui
+assert "liquid ? 170 : 300" in ui
 for label in ["الرئيسية", "العمليات", "الديون", "التحليل"]:
     assert 'setContentDescription("تبويب ' + label + '")' in main
 assert "FrameLayout track = new FrameLayout(this);" in main

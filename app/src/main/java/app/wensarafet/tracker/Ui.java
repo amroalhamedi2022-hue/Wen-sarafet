@@ -366,11 +366,19 @@ public final class Ui {
 
     public static void animateChildren(ViewGroup group) {
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
-        int count = Math.min(group.getChildCount(), 10);
+        boolean liquid = isLiquidTheme(group.getContext());
+        // Prevent 10 staggered 300ms animations from making screen changes
+        // appear slow. All content remains present; only 4 lead elements move.
+        int count = Math.min(group.getChildCount(), liquid ? 4 : 10);
         for (int i = 0; i < count; i++) {
-            View child = group.getChildAt(i); child.setAlpha(0f); child.setTranslationY(dp(group.getContext(), 10));
-            child.animate().alpha(1f).translationY(0).setStartDelay(45L + i * 28L).setDuration(300)
-                    .setInterpolator(new PathInterpolator(0.2f, 0.75f, 0.25f, 1f)).start();
+            View child = group.getChildAt(i);
+            child.animate().cancel();
+            child.setAlpha(0f);
+            child.setTranslationY(dp(group.getContext(), liquid ? 6 : 10));
+            child.animate().alpha(1f).translationY(0)
+                    .setStartDelay(liquid ? 12L + i * 14L : 45L + i * 28L)
+                    .setDuration(liquid ? 170 : 300)
+                    .setInterpolator(new PathInterpolator(.2f, .75f, .25f, 1f)).start();
         }
     }
 

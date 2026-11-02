@@ -49,6 +49,58 @@ public final class GlassMotion {
         });
     }
 
+    /**
+     * A finger can preview the target tab BEFORE the target screen is built.
+     * On hold the lens gently expands and the tab receives the normal bubble
+     * glow.  We never intercept click/long-click dispatch.
+     */
+    public static void bindNavigationTab(View tab, FrameLayout track, View lens,
+                                         View[] tabs, int currentIndex, int targetIndex,
+                                         int accent) {
+        final PressState state = new PressState(tab, accent);
+        tab.setOnTouchListener((view, event) -> {
+            state.onTouch(event);
+            if (!ValueAnimator.areAnimatorsEnabled() || lowPower(view.getContext())) {
+                return false;
+            }
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    if (track.getWidth() > 0 && lens.getWidth() > 0) {
+                        lens.animate().cancel();
+                        // Preview the clicked tab while the finger is still down.
+                        lens.animate().translationX(view.getLeft())
+                                .scaleX(1.09f).scaleY(1.12f)
+                                .setDuration(185).setInterpolator(NAV_SPRING).start();
+                    }
+                    break;
+                case MotionEvent.ACTION_UP:
+                    lens.animate().cancel();
+                    lens.animate().scaleX(1f).scaleY(1f).setDuration(210)
+                            .setInterpolator(RELEASE).start();
+                    break;
+                case MotionEvent.ACTION_CANCEL:
+                    lens.animate().cancel();
+                    float homeX = currentIndex >= 0 && currentIndex < tabs.length
+                            ? tabs[currentIndex].getLeft() : lens.getTranslationX();
+                    lens.animate().translationX(homeX).scaleX(1f).scaleY(1f)
+                            .setDuration(210).setInterpolator(NAV_SPRING).start();
+                    break;
+                default:
+                    break;
+            }
+            return false;
+        });
+        tab.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override public void onViewAttachedToWindow(View v) {}
+            @Override public void onViewDetachedFromWindow(View v) {
+                state.reset();
+                lens.animate().cancel();
+                lens.setScaleX(1f);
+                lens.setScaleY(1f);
+            }
+        });
+    }
+
     private static final class PressState {
         private final View view;
         private final int accent;
@@ -181,7 +233,10 @@ public final class GlassMotion {
                 return;
             }
             lens.setTranslationX(tabs[previousIndex].getLeft());
-            lens.animate().translationX(targetX).setDuration(340)
+            // Incoming full-screen content was previously alpha-zero for 280ms,
+            // hiding most of the 340ms slide. Animate with the screen's short
+            // transition so the movement is visible after the first rendered frame.
+            lens.animate().translationX(targetX).setStartDelay(35).setDuration(305)
                     .setInterpolator(NAV_SPRING).start();
         });
     }

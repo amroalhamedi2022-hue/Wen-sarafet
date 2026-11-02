@@ -154,13 +154,16 @@ public final class MainActivity extends Activity {
             }
             return;
         }
+        // The screen is built synchronously as before; only its visual reveal is
+        // shorter for sandbox Liquid themes. No navigation/database callbacks wait.
+        boolean fastLiquid = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
         next.setAlpha(0f);
-        next.setTranslationX(Ui.dp(this, 18));
-        next.animate().alpha(1f).translationX(0f).setDuration(280)
+        next.setTranslationX(Ui.dp(this, fastLiquid ? 8 : 18));
+        next.animate().alpha(1f).translationX(0f).setDuration(fastLiquid ? 150 : 280)
                 .setInterpolator(new android.view.animation.PathInterpolator(.2f, .8f, .2f, 1f)).start();
         if (previous != null) {
             previous.animate().cancel();
-            previous.animate().alpha(0f).translationX(-Ui.dp(this, 10)).setDuration(180)
+            previous.animate().alpha(0f).translationX(-Ui.dp(this, fastLiquid ? 5 : 10)).setDuration(fastLiquid ? 115 : 180)
                     .setInterpolator(new android.view.animation.PathInterpolator(.4f, 0f, 1f, 1f))
                     .withEndAction(() -> {
                         if (generation == screenTransitionGeneration && previous.getParent() == screenHost)
@@ -634,7 +637,6 @@ public final class MainActivity extends Activity {
                     0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
             navParams.setMargins(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
             tabs.addView(item, navParams);
-            if (liquid) Ui.pressAnimation(item);
         }
         if (liquid) {
             // One optical pill behind all four labels, never four independent pills.
@@ -649,6 +651,10 @@ public final class MainActivity extends Activity {
             track.addView(lens, lensParams);
             track.addView(tabs, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            for (int i = 0; i < items.length; i++) {
+                app.wensarafet.glass.GlassMotion.bindNavigationTab(
+                        items[i], track, lens, items, selectedTab, i, Ui.SKY);
+            }
             nav.addView(track, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             app.wensarafet.glass.GlassMotion.slideLens(
@@ -706,6 +712,10 @@ public final class MainActivity extends Activity {
                 selected ? (Ui.isLiquidTheme(this) && !Ui.DARK ? Ui.BRAND_DARK : Ui.BRAND) : Ui.MUTED, selected);
         view.setGravity(Gravity.CENTER);
         view.setLineSpacing(Ui.dp(this,2),1f);
+        if (Ui.isLiquidTheme(this)) {
+            view.setTextColor(selected
+                    ? (Ui.DARK ? Color.WHITE : Ui.BRAND_DARK) : Ui.MUTED);
+        }
         view.setPadding(Ui.dp(this,4),Ui.dp(this,3),Ui.dp(this,4),Ui.dp(this,3));
         view.setMaxLines(2);
         if (selected && !Ui.isLiquidTheme(this)) {
