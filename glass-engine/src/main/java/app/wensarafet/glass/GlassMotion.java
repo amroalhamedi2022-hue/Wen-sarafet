@@ -83,7 +83,7 @@ public final class GlassMotion {
         private float downX, downY;
         private int hovered;
         private ValueAnimator morphAnimator;
-        private int zoomedTab = -1;
+        private final WenOpticalNavigationOverlay optic;
 
         NavigationGesture(View origin, FrameLayout track, View lens, View[] tabs,
                           int selected, int originIndex, Runnable beforeNavigate) {
@@ -92,6 +92,9 @@ public final class GlassMotion {
             this.beforeNavigate=beforeNavigate;
             this.slop=ViewConfiguration.get(origin.getContext()).getScaledTouchSlop();
             this.hovered=originIndex;
+            View overlay = track.findViewWithTag("wen_optic_overlay");
+            optic = overlay instanceof WenOpticalNavigationOverlay
+                    ? (WenOpticalNavigationOverlay) overlay : null;
         }
 
         private int nearest(float fingerX) {
@@ -120,32 +123,6 @@ public final class GlassMotion {
             return Math.max(min, Math.min(max, fingerX-lens.getWidth()*.5f));
         }
 
-        /** The selected text/emoji enlarges under the droplet, so this is
-         * visibly a lens rather than just a coloured button background. */
-        private void focusLensTab(int index) {
-            if (zoomedTab == index) return;
-            if (zoomedTab >= 0 && zoomedTab < tabs.length) {
-                View previous = tabs[zoomedTab];
-                previous.animate().cancel();
-                if (ValueAnimator.areAnimatorsEnabled()) {
-                    previous.animate().scaleX(1f).scaleY(1f).setDuration(105).start();
-                } else {
-                    previous.setScaleX(1f); previous.setScaleY(1f);
-                }
-            }
-            zoomedTab = index;
-            if (index >= 0 && index < tabs.length) {
-                View focused = tabs[index];
-                focused.animate().cancel();
-                if (ValueAnimator.areAnimatorsEnabled() && !lowPower(origin.getContext())) {
-                    focused.animate().scaleX(1.11f).scaleY(1.11f)
-                            .setDuration(155).setInterpolator(COMPRESS).start();
-                } else {
-                    focused.setScaleX(1.045f); focused.setScaleY(1.045f);
-                }
-            }
-        }
-
         private WenNavigationLensDrawable opticalLens() {
             return lens.getBackground() instanceof WenNavigationLensDrawable
                     ? (WenNavigationLensDrawable) lens.getBackground() : null;
@@ -161,17 +138,21 @@ public final class GlassMotion {
             if (glass == null) return;
             if (!ValueAnimator.areAnimatorsEnabled() || lowPower(origin.getContext())) {
                 glass.setMorph(destination);
+                if (optic != null) optic.progress(destination);
                 return;
             }
             morphAnimator = ValueAnimator.ofFloat(glass.getMorph(), destination);
             morphAnimator.setDuration(duration);
             morphAnimator.setInterpolator(COMPRESS);
-            morphAnimator.addUpdateListener(a -> glass.setMorph((Float)a.getAnimatedValue()));
+            morphAnimator.addUpdateListener(a -> {
+                float progress = (Float) a.getAnimatedValue();
+                glass.setMorph(progress);
+                if (optic != null) optic.progress(progress);
+            });
             morphAnimator.start();
         }
 
         private void returnToSelected() {
-            focusLensTab(-1);
             morphTo(0f, 190);
             if (lens.getWidth()<=0) return;
             float target=selected>=0 && selected<tabs.length
@@ -193,8 +174,12 @@ public final class GlassMotion {
                     lens.animate().cancel();
                     // The old pill becomes a tangible, rounded optical lens
                     // under the finger, rather than a barely enlarged highlight.
-                    morphTo(1f, 210);
-                    focusLensTab(originIndex);
+                    if (optic != null) {
+                        optic.begin((View) view.getParent(),
+                                view.getLeft() + event.getX());
+                        optic.progress(.02f);
+                    }
+                    morphTo(1f, 190);
                     if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
                         // Press creates a compact rounded bubble; hold leaves it
                         // inflated until release, with no repeating animator.
@@ -219,7 +204,7 @@ public final class GlassMotion {
                     }
                     cancelled=false;
                     hovered=nearest(x);
-                    focusLensTab(hovered);
+                    if (optic != null) optic.move(x);
                     float move=Math.abs(event.getX()-downX);
                     if (move>slop && lens.getWidth()>0) {
                         // Direct translation tracks the fingertip; the animation
@@ -235,7 +220,6 @@ public final class GlassMotion {
                 case MotionEvent.ACTION_UP:
                     if(!tracking) return true;
                     tracking=false;
-                    focusLensTab(-1);
                     if (!insideVertical(origin.getTop()+event.getY()) || cancelled) {
                         returnToSelected();
                         return true;
@@ -258,7 +242,6 @@ public final class GlassMotion {
                 case MotionEvent.ACTION_CANCEL:
                 case MotionEvent.ACTION_POINTER_DOWN:
                     tracking=false; cancelled=true;
-                    focusLensTab(-1);
                     returnToSelected();
                     return true;
                 default:
@@ -268,11 +251,7 @@ public final class GlassMotion {
 
         void detach() {
             tracking=false;
-            if (zoomedTab >= 0 && zoomedTab < tabs.length) {
-                tabs[zoomedTab].animate().cancel();
-                tabs[zoomedTab].setScaleX(1f); tabs[zoomedTab].setScaleY(1f);
-                zoomedTab = -1;
-            }
+            if (optic != null) optic.discard();
             if (morphAnimator != null) {
                 morphAnimator.cancel();
                 morphAnimator = null;
