@@ -28,6 +28,37 @@ capture() {
 capture home
 capture analytics --ez open_analytics true
 capture transactions --ez open_transactions true
+# Android emulator's Pixel Launcher can show a system ANR overlay even when
+# the finance app underneath runs normally. Dismiss "Wait" and retry UI dump.
+# Never treat Launcher ANR as a finance-app crash.
+nav_dump() {
+ local out_xml="$1"
+ for attempt in 1 2 3 4; do
+   adb shell uiautomator dump /sdcard/wen-nav-motion.xml >/dev/null || true
+   adb pull /sdcard/wen-nav-motion.xml "$out_xml" >/dev/null || true
+   if grep -q 'content-desc="تبويب التحليل"' "$out_xml"; then return 0; fi
+   if grep -q "Pixel Launcher" "$out_xml"; then
+     WAIT_POINT="$(python3 - "$out_xml" <<'PY'
+import re,sys,xml.etree.ElementTree as ET
+nodes=[n for n in ET.parse(sys.argv[1]).getroot().iter("node")
+       if n.attrib.get("text")=="Wait"]
+if len(nodes)!=1: raise SystemExit("System launcher ANR without Wait control")
+m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",nodes[0].attrib.get("bounds",""))
+if not m: raise SystemExit("Unable to locate system Wait control")
+a,b,c,d=map(int,m.groups())
+print((a+c)//2,(b+d)//2)
+PY
+)"
+     read -r WX WY <<< "$WAIT_POINT"
+     adb shell input tap "$WX" "$WY"
+     sleep 3
+   else
+     sleep 2
+   fi
+ done
+ echo "FAIL: accessibility tab missing after launcher-recovery retries"
+ return 1
+}
 # Opt-in animated navigation test. No private account amounts in screenshots.
 # The selected tab is found by accessibility description, not fixed device pixels.
 adb shell settings put global window_animation_scale 1.0
@@ -36,8 +67,7 @@ adb shell settings put global animator_duration_scale 1.0
 adb shell am force-stop "$PACKAGE" || true
 adb shell am start -W -n "$COMPONENT"
 sleep 3
-adb shell uiautomator dump /sdcard/wen-nav-motion.xml >/dev/null
-adb pull /sdcard/wen-nav-motion.xml "$OUT/wen-nav-motion.xml" >/dev/null
+nav_dump "$OUT/wen-nav-motion.xml"
 ANALYTICS_POINT="$(python3 - "$OUT/wen-nav-motion.xml" <<'PY'
 import re, sys, xml.etree.ElementTree as ET
 root=ET.parse(sys.argv[1]).getroot()
@@ -75,8 +105,7 @@ if cmp -s "$OUT/nav-before-hold.png" "$OUT/nav-during-hold.png"; then
  exit 1
 fi
 # Navigate back using accessibility semantics, no hard-coded device coordinates.
-adb shell uiautomator dump /sdcard/wen-nav-after.xml >/dev/null
-adb pull /sdcard/wen-nav-after.xml "$OUT/wen-nav-after.xml" >/dev/null
+nav_dump "$OUT/wen-nav-after.xml"
 HOME_POINT="$(python3 - "$OUT/wen-nav-after.xml" <<'PY'
 import re, sys, xml.etree.ElementTree as ET
 nodes=[x for x in ET.parse(sys.argv[1]).getroot().iter("node")
