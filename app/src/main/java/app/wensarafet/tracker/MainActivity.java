@@ -2770,12 +2770,46 @@ public final class MainActivity extends Activity {
     }
 
     private View comparisonCard(String title, long current, long previous) {
-        LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this, 12), Ui.dp(this, 12), Ui.dp(this, 12), Ui.dp(this, 10));
-        card.setBackground(Ui.layeredBackground(this, 20)); card.setElevation(Ui.dp(this, 4));
-        card.addView(Ui.text(this, title, 12, Color.WHITE, false)); card.addView(Ui.text(this, Money.format(current, dashboardCurrency), 17, Color.WHITE, true));
-        String change; if (previous < 0) change = "اضغط لعرض التفاصيل"; else if (previous == 0) change = current == 0 ? "لا تغيير" : "لا توجد مقارنة سابقة"; else { double percent = (current - previous) * 100.0 / previous; change = (percent >= 0 ? "↑ " : "↓ ") + String.format(Locale.ROOT, "%.1f%%", Math.abs(percent)) + " عن السابق"; }
-        card.addView(Ui.text(this, change, 11, Color.rgb(232, 239, 255), false));
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, Ui.dp(this, 116), 1); p.setMargins(Ui.dp(this, 3), Ui.dp(this, 6), Ui.dp(this, 3), Ui.dp(this, 6)); card.setLayoutParams(p); return card;
+        // More legible analytics on the isolated glass trial only: the previous
+        // pale-on-pale card text became cramped in two-column phone layouts.
+        // No expense calculation, data access, or production style is changed.
+        boolean trialGlass = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
+        LinearLayout card = Ui.column(this);
+        card.setPadding(Ui.dp(this, trialGlass ? 15 : 12),
+                Ui.dp(this, trialGlass ? 15 : 12),
+                Ui.dp(this, trialGlass ? 15 : 12), Ui.dp(this, trialGlass ? 12 : 10));
+        card.setBackground(trialGlass ? Ui.glassBalanceBackground(this, 20)
+                : Ui.layeredBackground(this, 20));
+        card.setElevation(Ui.dp(this, trialGlass ? 3 : 4));
+        card.addView(Ui.text(this, title, trialGlass ? 13.5f : 12f,
+                trialGlass ? Ui.TEXT : Color.WHITE, true));
+        TextView amountText = Ui.text(this, Money.format(current, dashboardCurrency),
+                trialGlass ? 18f : 17f, trialGlass ? Ui.TEXT : Color.WHITE, true);
+        if (trialGlass) {
+            // Keep the complete amount on one line for narrow phones.
+            amountText.setSingleLine(true);
+            amountText.setAutoSizeTextTypeUniformWithConfiguration(13, 18, 1,
+                    android.util.TypedValue.COMPLEX_UNIT_SP);
+        }
+        card.addView(amountText);
+        String change;
+        if (previous < 0) change = "اضغط لعرض التفاصيل";
+        else if (previous == 0) change = current == 0 ? "لا تغيير" : "لا توجد مقارنة سابقة";
+        else {
+            double percent = (current - previous) * 100.0 / previous;
+            change = (percent >= 0 ? "↑ " : "↓ ") +
+                    String.format(Locale.ROOT, "%.1f%%", Math.abs(percent)) + " عن السابق";
+        }
+        TextView description = Ui.text(this, change, trialGlass ? 12f : 11f,
+                trialGlass ? Ui.MUTED : Color.rgb(232, 239, 255), false);
+        if (trialGlass) description.setMaxLines(2);
+        card.addView(description);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
+                0, Ui.dp(this, trialGlass ? 136 : 116), 1);
+        p.setMargins(Ui.dp(this, trialGlass ? 5 : 3), Ui.dp(this, 6),
+                Ui.dp(this, trialGlass ? 5 : 3), Ui.dp(this, 6));
+        card.setLayoutParams(p);
+        return card;
     }
 
     /** C7: income and received remittances are separate analytical flows,
