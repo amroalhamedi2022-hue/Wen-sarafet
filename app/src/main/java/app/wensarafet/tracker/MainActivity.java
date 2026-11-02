@@ -713,7 +713,11 @@ public final class MainActivity extends Activity {
         setContentView(root);
         Ui.pressAnimation(fab);
         Ui.animateScreen(root);
-        content.post(() -> Ui.animateChildren(content));
+        // The primary Liquid screen already slides. Staggering financial cards
+        // on top of it previously caused multiple simultaneous alpha/translation
+        // animators during repeated swipes.
+        if (!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this))
+            content.post(() -> Ui.animateChildren(content));
     }
 
     private View mainTopBar() {
@@ -2408,7 +2412,9 @@ public final class MainActivity extends Activity {
         if (Ui.isLiquidTheme(this)) debtNavParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));
         primaryRoot.addView(debtNav,debtNavParams);
         bindPrimaryNavigationScroll(scroll,debtTopBar,debtNav);
-        setContentView(primaryRoot); Ui.animateScreen(primaryRoot); content.post(() -> Ui.animateChildren(content));
+        setContentView(primaryRoot); Ui.animateScreen(primaryRoot);
+        if (!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this))
+            content.post(() -> Ui.animateChildren(content));
     }
 
     private LinkedHashMap<Long,List<Models.DebtSummary>> groupDebtsByPerson(List<Models.DebtSummary> debts) {
@@ -2989,7 +2995,8 @@ public final class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         setContentView(page);
         Ui.animateScreen(page);
-        content.post(() -> Ui.animateChildren(content));
+        if (!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this))
+            content.post(() -> Ui.animateChildren(content));
     }
 
     private void showExpensePeriodScreen(String title, String currency, long startInclusive, long endExclusive) {
