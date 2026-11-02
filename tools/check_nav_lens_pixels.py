@@ -72,6 +72,8 @@ if __name__ == "__main__":
     a,b = crop(before,*area),crop(during,*area)
     if len(a)!=len(b):
         raise SystemExit("FAIL: screenshot dimensions differ")
+    if not any(a) and not any(b):
+        raise SystemExit("FAIL: EMULATOR_BLACK_FRAME: screenshot backend returned all-black images")
     changed=sum(any(abs(a[i+j]-b[i+j])>16 for j in range(3))
                 for i in range(0,len(a),3))
     print(f"Held-tab lens pixel difference: {changed}/{len(a)//3}")
