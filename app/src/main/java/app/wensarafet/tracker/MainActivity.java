@@ -281,6 +281,23 @@ public final class MainActivity extends Activity {
         final app.wensarafet.glass.WenFabBubbleDrawable bubble =
                 new app.wensarafet.glass.WenFabBubbleDrawable(this, Ui.SKY, Ui.DARK);
         fab.setBackground(bubble);
+        // The old 8dp View shadow used Android's rectangular fallback outline,
+        // so the circular FAB appeared to sit inside a faint square in recordings.
+        // Keep its actual hit target and OnClick unchanged; only mask/elevation.
+        fab.setForeground(null);
+        fab.setStateListAnimator(null);
+        fab.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override public void getOutline(View view, android.graphics.Outline outline) {
+                int side = Math.min(view.getWidth(), view.getHeight());
+                if (side > 0) {
+                    int left = (view.getWidth() - side) / 2;
+                    int top = (view.getHeight() - side) / 2;
+                    outline.setOval(left, top, left + side, top + side);
+                } else outline.setOval(0, 0, 1, 1);
+            }
+        });
+        fab.setClipToOutline(true);
+        fab.setElevation(Ui.dp(this, 6));
         fab.setContentDescription("إضافة عملية");
         final android.animation.ValueAnimator[] morph = {null};
         fab.setOnTouchListener((v, event) -> {
@@ -1101,6 +1118,9 @@ public final class MainActivity extends Activity {
             track.addView(lens, lensParams);
             track.addView(tabs, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            // Hardware-composited passive optical layer must be ABOVE the glyphs.
+            // It never takes click/hold ownership away from any real tab.
+            track.getOptic().bringToFront();
             // WenNavigationTrack paints magnification after the tab children
             // in one hardware canvas pass; no overlay child can disappear
             // behind a separate Surface or hardware-composition layer.
