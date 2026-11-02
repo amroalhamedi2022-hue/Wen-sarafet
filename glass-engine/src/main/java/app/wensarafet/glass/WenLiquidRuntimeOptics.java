@@ -23,9 +23,9 @@ final class WenLiquidRuntimeOptics {
             "  float2 local = (p - centre) / max(extent * 0.5, float2(1.0));\n" +
             "  float radial = min(length(local), 1.3);\n" +
             "  float peripheral = smoothstep(0.20, 1.0, radial);\n" +
-            "  float2 bent = p - local * extent * (0.035 * amount + 0.075 * amount * peripheral);\n" +
+            "  float2 bent = p - local * extent * (0.012 * amount + 0.032 * amount * peripheral);\n" +
             "  bent.x += (pointer - centre.x) * 0.018 * amount;\n" +
-            "  float splitting = 2.35 * amount * peripheral;\n" +
+            "  float splitting = 0.82 * amount * peripheral;\n" +
             "  half4 middle = image.eval(bent);\n" +
             "  half4 red = image.eval(bent + float2(splitting, 0.0));\n" +
             "  half4 blue = image.eval(bent - float2(splitting, 0.0));\n" +
@@ -35,8 +35,9 @@ final class WenLiquidRuntimeOptics {
             "      smoothstep(0.18, 0.47, x) * (1.0 - smoothstep(0.64, 0.86, x)),\n" +
             "      smoothstep(0.48, 0.81, x));\n" +
             "  float curve = -0.02 + 0.10 * local.x * local.x;\n" +
-            "  float band = 1.0 - smoothstep(0.02, 0.15, abs(local.y - curve));\n" +
-            "  float light = band * 0.24 * amount;\n" +
+            "  float edge = smoothstep(0.76, 1.0, radial);\n" +
+            "  float band = (1.0 - smoothstep(0.02, 0.17, abs(local.y - curve))) * edge;\n" +
+            "  float light = band * 0.10 * amount;\n" +
             "  refracted = mix(refracted, spectrum * 0.76 + half3(0.24), half(light));\n" +
             "  half a = max(max(red.a, blue.a), max(middle.a, half(light * 0.75)));\n" +
             "  return half4(refracted, a);\n" +
