@@ -617,6 +617,11 @@ public final class MainActivity extends Activity {
         TextView tx = navButton("📋\nالعمليات", selectedTab == TAB_TRANSACTIONS);
         TextView debts = navButton("🤝\nالديون", selectedTab == TAB_DEBTS);
         TextView analytics = navButton("📊\nالتحليل", selectedTab == TAB_ANALYTICS);
+        // Explicit accessibility names also allow deterministic QA without coordinates.
+        home.setContentDescription("تبويب الرئيسية");
+        tx.setContentDescription("تبويب العمليات");
+        debts.setContentDescription("تبويب الديون");
+        analytics.setContentDescription("تبويب التحليل");
         home.setOnClickListener(v -> showMain(false));
         tx.setOnClickListener(v -> showMain(true));
         debts.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_RECEIVABLE));

@@ -131,3 +131,5 @@
 - **التحقق:** فحص Source Contract جديد: `tests/glass_motion_contract.py`. يلزم انتظار Android CI وتجربة اللمس والتمرير وPower Profiler على الجهاز قبل إعلان قبول هذه المراحل.
 
 - تحديث عقد `tests/glass_energy_contract.py` للتحقق من المحرك المستقل بدل اسم الـInterpolator القديم، وإدراج `tests/glass_motion_contract.py` داخل الاختبارات الرئيسية في `scripts/test_core.sh`.
+
+- إعداد أوصاف Accessibility صريحة لجميع تبويبات الشريط، وإضافة Smoke Test على محاكي Android يحوّل مدة الأنيميشن من 0 إلى 1، يبحث عن تبويب التحليل عبر UI Automator ويضغطه ثم يلتقط لقطة ويتحقق من بقاء التطبيق شغالًا. لا نعتمد على إحداثيات ثابتة أو محاكاة معاملات مالية.

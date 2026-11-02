@@ -27,6 +27,8 @@ for forbidden in ["while (true)", "postDelayed", "TimerTask", "Thread.sleep",
     assert forbidden not in engine
 assert "GlassMotion.bindPress(view, SKY)" in ui
 assert "if (liquid) Ui.pressAnimation(item);" in main
+for label in ["الرئيسية", "العمليات", "الديون", "التحليل"]:
+    assert 'setContentDescription("تبويب ' + label + '")' in main
 assert "FrameLayout track = new FrameLayout(this);" in main
 assert "lastGlassNavigationTab = selectedTab;" in main
 assert "GlassMotion.slideLens(" in main
