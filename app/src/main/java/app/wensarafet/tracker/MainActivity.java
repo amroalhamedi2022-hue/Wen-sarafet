@@ -807,7 +807,7 @@ public final class MainActivity extends Activity {
         if (!overlayGlassHeader)
             shell.addView(topBar, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
-        if (SandboxMode.isSandbox(this)) {
+        if (SandboxMode.isSandbox(this) && !overlayGlassHeader) {
             TextView trial = Ui.text(this, "🧪 نسخة اختبار مستقلة — بلا تفعيل أو قفل دخول", 12, Ui.TEXT, true);
             trial.setGravity(Gravity.CENTER);
             trial.setBackground(Ui.rounded(Ui.BRAND_SOFT, 12, this));
@@ -822,6 +822,11 @@ public final class MainActivity extends Activity {
             content.setPadding(content.getPaddingLeft(),
                     content.getPaddingTop()+Ui.dp(this, 112),
                     content.getPaddingRight(),content.getPaddingBottom());
+            TextView trial=Ui.text(this, "🧪 نسخة اختبار مستقلة — بلا تفعيل أو قفل دخول", 12, Ui.TEXT, true);
+            trial.setGravity(Gravity.CENTER);
+            trial.setBackground(Ui.rounded(Ui.BRAND_SOFT, 12, this));
+            content.addView(trial,0,new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,34)));
         }
         scroll.addView(content, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         shell.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
