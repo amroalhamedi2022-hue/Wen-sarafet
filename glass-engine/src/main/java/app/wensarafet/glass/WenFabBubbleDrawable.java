@@ -24,6 +24,9 @@ public final class WenFabBubbleDrawable extends Drawable {
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint rainbow = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint opticalDepth = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint caustic = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF reflection = new RectF();
     private final RectF circle = new RectF();
     private final RectF glint = new RectF();
     private float press;
@@ -45,6 +48,8 @@ public final class WenFabBubbleDrawable extends Drawable {
         highlight.setColor(0xA5FFFFFF);
         rainbow.setStyle(Paint.Style.STROKE);
         rainbow.setStrokeWidth(density * 1.65f);
+        caustic.setStyle(Paint.Style.STROKE);
+        caustic.setStrokeWidth(density * 2.6f);
     }
 
     @Override protected void onBoundsChange(Rect bounds) {
@@ -52,9 +57,29 @@ public final class WenFabBubbleDrawable extends Drawable {
         float side=Math.min(bounds.width(),bounds.height());
         circle.set(bounds.centerX()-side*.475f,bounds.centerY()-side*.475f,
                 bounds.centerX()+side*.475f,bounds.centerY()+side*.475f);
-        fill.setShader(new LinearGradient(circle.left,circle.top,circle.right,circle.bottom,
-                new int[]{dark?0xD9908EEC:0xF38B9DEB, accent, dark?0xE13C488D:0xEF4759AE},
-                new float[]{0f,.45f,1f},Shader.TileMode.CLAMP));
+        // Neutral, light-transmitting body. The old nearly opaque blue gradient
+        // looked like a plastic action button instead of a curved glass lens.
+        fill.setShader(new LinearGradient(circle.left, circle.top,
+                circle.right, circle.bottom,
+                new int[]{dark ? 0xC65E638E : 0xD9FFFFFF,
+                          dark ? 0x865D76B9 : 0x8BD5EFFF,
+                          dark ? 0xBA33427E : 0xB0A4BCEB},
+                new float[]{0f, .51f, 1f}, Shader.TileMode.CLAMP));
+        opticalDepth.setShader(new RadialGradient(
+                circle.centerX() - circle.width() * .22f,
+                circle.centerY() - circle.height() * .28f,
+                Math.max(1f, circle.width() * .77f),
+                new int[]{0xA2FFFFFF, 0x2BFFFFFF,
+                        dark ? 0x42233169 : 0x3C5276A9},
+                new float[]{0f, .43f, 1f}, Shader.TileMode.CLAMP));
+        highlight.setShader(new LinearGradient(circle.left,circle.top,
+                circle.left,circle.bottom,
+                new int[]{0xDFFFFFFF, 0x46FFFFFF, 0x00FFFFFF},
+                new float[]{0f, .38f, 1f}, Shader.TileMode.CLAMP));
+        caustic.setShader(new LinearGradient(circle.left, circle.top,
+                circle.right, circle.bottom,
+                new int[]{0xF3FFFFFF, 0x85B4FCFF, 0xA2FFFFFF,
+                        0x96F0D7FF, 0xE8FFFFFF}, null, Shader.TileMode.CLAMP));
         rainbow.setShader(new LinearGradient(circle.left, circle.top,
                 circle.right, circle.bottom,
                 new int[]{0xFF8CEBFF, 0xFFD8CBFF, 0xFFFFF0BD, 0xFFB0F6FA, 0xFFACB4FF},
@@ -79,13 +104,20 @@ public final class WenFabBubbleDrawable extends Drawable {
         c.drawCircle(mx,my,radius+ density*(1.8f+press*2.8f),halo);
         fill.setAlpha((int)(alpha*(1f-.08f*press)));
         c.drawCircle(mx,my,radius,fill);
+        opticalDepth.setAlpha((int)(alpha*(.84f+.16f*press)));
+        c.drawCircle(mx,my,radius, opticalDepth);
         glint.set(mx-radius*.68f,my-radius*.76f,mx+radius*.58f,my-radius*.04f);
         highlight.setAlpha((int)(alpha*(.66f+.15f*press)));
         c.drawOval(glint,highlight);
+        reflection.set(mx-radius*.85f, my-radius*.85f,
+                mx+radius*.85f, my+radius*.85f);
+        caustic.setAlpha((int)(alpha*(.70f+.30f*press)));
+        c.drawOval(reflection,caustic);
         rim.setAlpha((int)(alpha*(.88f+.12f*press)));
         c.drawCircle(mx,my,radius-density*.6f,rim);
         rainbow.setAlpha((int)(alpha*(.72f+.28f*press)));
         c.drawCircle(mx,my,radius-density*2.1f,rainbow);
+        inner.setAlpha((int)(alpha*(.65f+.28f*press)));
         c.drawCircle(mx,my,radius-density*4f,inner);
         c.restore();
     }
