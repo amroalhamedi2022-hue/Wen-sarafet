@@ -38,6 +38,11 @@ public final class WenNavigationTrack extends FrameLayout {
         // MainActivity brings this passive layer above its tab labels.
         addView(optic, new FrameLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        // Own the final composite on THIS real parent display list. On several
+        // devices a transparent child draw is cached even after invalidation.
+        // The child still supplies size/capture/lifecycle, but only the track
+        // paints its refraction over the actual tab glyphs.
+        optic.setAlpha(0f);
     }
 
     public WenOpticalNavigationOverlay getOptic() { return optic; }
@@ -45,6 +50,13 @@ public final class WenNavigationTrack extends FrameLayout {
     void invalidateOptic() {
         optic.invalidate();
         opticalForeground.invalidateSelf();
+        invalidate();
+    }
+
+    @Override protected void dispatchDraw(Canvas canvas) {
+        super.dispatchDraw(canvas);
+        // Guaranteed post-children optical composite, same coordinates as pill.
+        optic.renderOnto(canvas);
     }
 
     @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
