@@ -23,6 +23,7 @@ public final class WenFabBubbleDrawable extends Drawable {
     private final Paint highlight = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint rainbow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF circle = new RectF();
     private final RectF glint = new RectF();
     private float press;
@@ -42,6 +43,8 @@ public final class WenFabBubbleDrawable extends Drawable {
         inner.setStrokeWidth(density*.95f);
         inner.setColor(dark?0x88FFFFFF:0xB5FFFFFF);
         highlight.setColor(0xA5FFFFFF);
+        rainbow.setStyle(Paint.Style.STROKE);
+        rainbow.setStrokeWidth(density * 1.65f);
     }
 
     @Override protected void onBoundsChange(Rect bounds) {
@@ -52,6 +55,10 @@ public final class WenFabBubbleDrawable extends Drawable {
         fill.setShader(new LinearGradient(circle.left,circle.top,circle.right,circle.bottom,
                 new int[]{dark?0xD9908EEC:0xF38B9DEB, accent, dark?0xE13C488D:0xEF4759AE},
                 new float[]{0f,.45f,1f},Shader.TileMode.CLAMP));
+        rainbow.setShader(new LinearGradient(circle.left, circle.top,
+                circle.right, circle.bottom,
+                new int[]{0xFF8CEBFF, 0xFFD8CBFF, 0xFFFFF0BD, 0xFFB0F6FA, 0xFFACB4FF},
+                null, Shader.TileMode.CLAMP));
     }
 
     public float getPress() { return press; }
@@ -77,6 +84,8 @@ public final class WenFabBubbleDrawable extends Drawable {
         c.drawOval(glint,highlight);
         rim.setAlpha((int)(alpha*(.88f+.12f*press)));
         c.drawCircle(mx,my,radius-density*.6f,rim);
+        rainbow.setAlpha((int)(alpha*(.72f+.28f*press)));
+        c.drawCircle(mx,my,radius-density*2.1f,rainbow);
         c.drawCircle(mx,my,radius-density*4f,inner);
         c.restore();
     }
