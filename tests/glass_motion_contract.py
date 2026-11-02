@@ -52,7 +52,7 @@ assert "liquid ? 2 : 10" in ui
 assert "liquid ? 125 : 300" in ui
 for label in ["الرئيسية", "العمليات", "الديون", "التحليل"]:
     assert 'setContentDescription("تبويب ' + label + '")' in main
-assert "FrameLayout track = new FrameLayout(this);" in main
+assert "new app.wensarafet.glass.WenNavigationTrack(this, Ui.DARK)" in main, "Navigation must use the optical track"
 assert "view.setSelected(selected);" in main
 assert "tabs[hovered].performClick();" in engine
 assert "tracking=true; cancelled=false;" in engine
@@ -134,7 +134,11 @@ assert "sampleMatrix.setScale(zoom, zoom, cx, cy);" in optical
 assert "canvas.drawRoundRect(droplet, radius, radius, magnified);" in optical
 assert "setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);" in optical
 assert "setVisibility(INVISIBLE);" in optical
-assert "float zoom = 1f + .26f * opacity;" in optical, "Subtle optical magnification, not second bubble"
+assert "float zoom = 1f + .20f * strength;" in optical, "Centre refraction must sample captured pixels"
+assert "float bend = 1f + .42f * strength;" in optical, "Peripheral refraction must be stronger than the centre"
+assert "edgeSample.setLocalMatrix(edgeMatrix);" in optical, "Optical rim must use a second refraction matrix"
+assert "canvas.drawRoundRect(highlightBounds, radius, radius, refractedEdge);" in optical
+assert "refractedEdge.setShader(edgeSample);" in optical
 assert "physicalPill.getX()" in optical and "physicalPill.getWidth()" in optical
 assert "canvas.drawRoundRect(droplet, radius, radius, magnified);" in optical
 assert "canvas.drawRoundRect(droplet, ry, ry, body);" not in optical
@@ -145,6 +149,8 @@ assert "opacity <= .005f ? INVISIBLE : VISIBLE" in progress
 assert "source.recycle()" not in optical, "Do not recycle GPU-shared texture during a drawing frame"
 assert "postDelayed(" not in optical and "PixelCopy.request(" not in optical
 assert "new " not in optical.split("@Override protected void onDraw(Canvas canvas)",1)[1]
+assert "canvas.save();" in optical and "canvas.restore();" in optical
+assert "centreX - cx" in optical, "Refraction must respond to pointer position"
 assert "new app.wensarafet.glass.WenNavigationTrack(this, Ui.DARK)" in main
 assert "track.addView(opticalOverlay" not in main
 trackSource = (p/"glass-engine/src/main/java/app/wensarafet/glass/WenNavigationTrack.java").read_text(encoding="utf-8")
@@ -167,6 +173,11 @@ assert "bubble.setPress((Float)anim.getAnimatedValue())" in main
 assert "bubble.setPress(0f);" in main
 assert "bindGlassFab(fab);" in main
 fab=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java").read_text(encoding="utf-8")
+assert "opticalDepth.setShader(new RadialGradient(" in fab
+assert "c.drawCircle(mx,my,radius, opticalDepth);" in fab
+surface=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenGlassDrawable.java").read_text(encoding="utf-8")
+assert "showLens = false;" in surface, "No decorative Siri-shaped orb on cards"
+assert "prismRim.setShader(new LinearGradient" in surface
 assert "public void setPress(float fraction)" in fab
 assert "c.drawCircle(mx,my,radius,fill);" in fab
 assert "android.view.ViewAnimationUtils.createCircularReveal(" in main
