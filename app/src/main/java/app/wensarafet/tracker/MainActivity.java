@@ -803,7 +803,10 @@ public final class MainActivity extends Activity {
         LinearLayout shell = Ui.column(this);
         root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         View topBar = mainTopBar();
-        shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
+        final boolean overlayGlassHeader=SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
+        if (!overlayGlassHeader)
+            shell.addView(topBar, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
         if (SandboxMode.isSandbox(this)) {
             TextView trial = Ui.text(this, "🧪 نسخة اختبار مستقلة — بلا تفعيل أو قفل دخول", 12, Ui.TEXT, true);
             trial.setGravity(Gravity.CENTER);
@@ -815,8 +818,16 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();
+        if (overlayGlassHeader) {
+            content.setPadding(content.getPaddingLeft(),
+                    content.getPaddingTop()+Ui.dp(this, 112),
+                    content.getPaddingRight(),content.getPaddingBottom());
+        }
         scroll.addView(content, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         shell.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        if (overlayGlassHeader)
+            root.addView(topBar, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112),Gravity.TOP));
         View bottomNav = bottomNavigation(currentTab);
         FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72), Gravity.BOTTOM);
         // Floating glass navigation is visual-only; the underlying tabs stay unchanged.
@@ -2567,9 +2578,11 @@ public final class MainActivity extends Activity {
         LinearLayout page=Ui.column(this);
         primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View debtTopBar=mainTopBar();
-        page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
+        boolean debtGlassOverlay=SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
+        if (!debtGlassOverlay)
+            page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
         ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this);
-        content.setPadding(Ui.dp(this, 16), Ui.dp(this, 10), Ui.dp(this, 16), Ui.dp(this, 110));
+        content.setPadding(Ui.dp(this, 16), Ui.dp(this, debtGlassOverlay?122:10), Ui.dp(this, 16), Ui.dp(this, 110));
         content.addView(sectionTitle("دفتر الديون","أرصدة الديون وحركاتها"));
 
         LinearLayout actions = Ui.row(this);
@@ -2608,6 +2621,9 @@ public final class MainActivity extends Activity {
         content.addView(sectionTitle("المسددة والمغلقة", closed.isEmpty() ? "لا يوجد سجل بعد" : closedPeople.size() + " أشخاص"));
         for (List<Models.DebtSummary> personDebts : closedPeople.values()) content.addView(debtPersonCard(personDebts, true));
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        if (debtGlassOverlay)
+            primaryRoot.addView(debtTopBar, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112),Gravity.TOP));
         View debtNav=bottomNavigation(TAB_DEBTS);
         FrameLayout.LayoutParams debtNavParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM);
@@ -2911,8 +2927,12 @@ public final class MainActivity extends Activity {
         LinearLayout page=Ui.column(this);
         primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View analyticsTopBar=mainTopBar();
-        page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112)));
-        ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 110));
+        boolean analyticsGlassOverlay=SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
+        if (!analyticsGlassOverlay)
+            page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112)));
+        ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this);
+        content.setPadding(Ui.dp(this, 16), Ui.dp(this, analyticsGlassOverlay?124:12),
+                Ui.dp(this, 16), Ui.dp(this, 110));
         content.addView(sectionTitle("تحليل المصروفات","تقاريرك حسب العملة"));
         content.addView(Ui.text(this, "اختر عملة التحليل", 14, Ui.TEXT, true));
         LinearLayout currencyRow = Ui.row(this);
@@ -3005,6 +3025,9 @@ public final class MainActivity extends Activity {
             content.addView(categoryAnalysisRow(empty,max,monthStart.getTimeInMillis(),now));
         }
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        if (analyticsGlassOverlay)
+            primaryRoot.addView(analyticsTopBar,new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112),Gravity.TOP));
         View analyticsNav=bottomNavigation(TAB_ANALYTICS);
         FrameLayout.LayoutParams analyticsNavParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM);
