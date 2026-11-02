@@ -178,7 +178,7 @@ assert 'headerTitle="الرئيسية"' in main
 assert "Ui.isLiquidTheme(this) ? .82f : .84f" in main
 assert "physicalPill.getHeight()" in optical
 assert "returnFromAddWithReverse(false);" in main
-assert "returnFromAddWithReverse(transactionsTab);" in main
+assert "back.setOnClickListener(v -> returnFromAddWithReverse(transactionsTab));" in main
 assert "final boolean reverseFab = pendingFabReverse" in main
 assert "screenHost.addView(next, 0, match);" in main
 assert "createCircularReveal(" in main
