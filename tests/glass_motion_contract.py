@@ -142,6 +142,11 @@ assert "private void animateStartupIcons(View page)" in main
 assert "startupIconAnimationPending = false;" in main
 assert "setStartDelay(i * 48L).setDuration(350)" in main
 assert "animateStartupIcons(next);" in main
+assert 'final boolean iconOnlyLaunch = startupIconAnimationPending' in main
+assert "if (iconOnlyLaunch) {" in main
+assert "screenHost.postOnAnimation(() -> {" in main
+assert "navigationFrameSequence" in main
+
 
 assert "startupResolved && db!=null" in main, "Swipe should work on first launch"
 assert "int target=currentTab+(dx>0f?1:-1);" in main, "RTL physical right must navigate forward"
