@@ -133,6 +133,11 @@ assert "sampleMatrix.setScale(zoom, zoom, centreX, cy);" in optical
 assert "canvas.drawRoundRect(droplet, ry, ry, magnified);" in optical
 assert "setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);" in optical
 assert "setVisibility(INVISIBLE);" in optical
+assert "float zoom = 1f + .76f * opacity;" in optical, "Minimum 1.76x real optical magnification"
+progress = optical.split("public void progress(float next)",1)[1].split("public void discard()",1)[0]
+assert "discard();" not in progress, "Initial animator tick at zero must never destroy the captured bitmap"
+assert "opacity <= .005f ? INVISIBLE : VISIBLE" in progress
+assert "source.recycle()" not in optical, "Do not recycle GPU-shared texture during a drawing frame"
 assert "postDelayed(" not in optical and "PixelCopy.request(" not in optical
 assert "new " not in optical.split("@Override protected void onDraw(Canvas canvas)",1)[1]
 assert 'opticalOverlay.setTag("wen_optic_overlay");' in main
