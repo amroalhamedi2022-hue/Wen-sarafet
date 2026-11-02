@@ -136,6 +136,22 @@ fi
 echo "PASS: glass FAB tap opens Add Transaction form"
 adb shell screencap -p /sdcard/wen-fab-add-form.png
 adb pull /sdcard/wen-fab-add-form.png "$OUT/fab-add-transaction.png" >/dev/null
+# Reverse Add Transaction (Android Back) must reach the same Home page.
+# Verify completion after the 360 ms circular-close animation settles.
+adb shell input keyevent 4
+sleep 2
+adb shell uiautomator dump /sdcard/wen-after-reverse.xml >/dev/null || true
+adb pull /sdcard/wen-after-reverse.xml "$OUT/wen-after-reverse.xml" >/dev/null || true
+python3 - "$OUT/wen-after-reverse.xml" <<'PY'
+import sys,xml.etree.ElementTree as ET
+nodes=list(ET.parse(sys.argv[1]).getroot().iter("node"))
+desc=[n.get("content-desc") for n in nodes]
+if "تبويب الرئيسية" not in desc or "إضافة عملية" not in desc:
+    raise SystemExit("FAIL: system Back did not reverse Add Transaction to primary Home")
+print("PASS: reverse Add Transaction return preserves Home and accessible FAB")
+PY
+adb shell screencap -p /sdcard/wen-after-reverse.png
+adb pull /sdcard/wen-after-reverse.png "$OUT/fab-after-reverse.png" >/dev/null
 # Re-enter home for existing Hold+Drag verification.
 adb shell am force-stop "$PACKAGE"
 adb shell am start -W -n "$COMPONENT"
