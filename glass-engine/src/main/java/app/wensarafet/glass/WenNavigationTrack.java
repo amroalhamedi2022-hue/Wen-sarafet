@@ -2,42 +2,47 @@ package app.wensarafet.glass;
 
 import android.content.Context;
 import android.graphics.Canvas;
-import android.view.View;
+import android.graphics.ColorFilter;
+import android.graphics.PixelFormat;
+import android.graphics.drawable.Drawable;
 import android.widget.FrameLayout;
 
 /**
- * Renders the optical refraction in the SAME canvas pass as the four tab
- * labels, after all children. A separate View overlay could draw while its
- * layer was omitted from the final Surface on some accelerated renderers.
+ * Single optical foreground on the native nav-strip drawing surface.
+ * FrameLayout draws its foreground AFTER its children, and owns its
+ * Drawable.Callback. This avoids unreliable detached View rendering or
+ * a custom dispatchDraw pass on some Android compositors.
  */
 public final class WenNavigationTrack extends FrameLayout {
     private final WenOpticalNavigationOverlay optic;
+    private final Drawable opticalForeground = new Drawable() {
+        @Override public void draw(Canvas canvas) { optic.renderOnto(canvas); }
+        @Override public void setAlpha(int alpha) {}
+        @Override public void setColorFilter(ColorFilter filter) {}
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    };
 
     public WenNavigationTrack(Context context, boolean dark) {
         super(context);
-        setWillNotDraw(false);
         setClipChildren(false);
         setClipToPadding(false);
-        // Rasterize only the ~72dp high tab strip as a single composited
-        // surface. Android 15 SwiftShader has dropped separate optical passes
-        // despite dispatchDraw running: this forces one final visible layer.
-        setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         optic = new WenOpticalNavigationOverlay(context, dark);
         optic.setHostTrack(this);
+        // This foreground is drawn over the four tab labels by Framework,
+        // rather than competing with their z-order or cached display lists.
+        setForeground(opticalForeground);
+        setForegroundGravity(android.view.Gravity.FILL);
     }
 
     public WenOpticalNavigationOverlay getOptic() { return optic; }
 
+    void invalidateOptic() {
+        opticalForeground.invalidateSelf();
+    }
+
     @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
         super.onSizeChanged(width, height, oldWidth, oldHeight);
         optic.layout(0, 0, width, height);
-    }
-
-    @Override protected void dispatchDraw(Canvas canvas) {
-        super.dispatchDraw(canvas);
-        // Canvas is precisely the same backbuffer that contains the tabs.
-        // Never depend on a child overlay's separate hardware Z-layer.
-        optic.renderOnto(canvas);
     }
 
     @Override protected void onDetachedFromWindow() {
