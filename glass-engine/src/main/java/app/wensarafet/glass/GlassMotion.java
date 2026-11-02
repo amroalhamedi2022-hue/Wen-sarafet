@@ -82,6 +82,7 @@ public final class GlassMotion {
         private boolean cancelled;
         private float downX, downY;
         private int hovered;
+        private ValueAnimator morphAnimator;
 
         NavigationGesture(View origin, FrameLayout track, View lens, View[] tabs,
                           int selected, int originIndex, Runnable beforeNavigate) {
@@ -107,7 +108,32 @@ public final class GlassMotion {
             return y >= -slop*2f && y <= track.getHeight()+slop*2f;
         }
 
+        private WenNavigationLensDrawable opticalLens() {
+            return lens.getBackground() instanceof WenNavigationLensDrawable
+                    ? (WenNavigationLensDrawable) lens.getBackground() : null;
+        }
+
+        /** A one-shot fluid transition; detached/cancelled gestures own no clock. */
+        private void morphTo(float destination, long duration) {
+            if (morphAnimator != null) {
+                morphAnimator.cancel();
+                morphAnimator = null;
+            }
+            WenNavigationLensDrawable glass = opticalLens();
+            if (glass == null) return;
+            if (!ValueAnimator.areAnimatorsEnabled() || lowPower(origin.getContext())) {
+                glass.setMorph(destination);
+                return;
+            }
+            morphAnimator = ValueAnimator.ofFloat(glass.getMorph(), destination);
+            morphAnimator.setDuration(duration);
+            morphAnimator.setInterpolator(COMPRESS);
+            morphAnimator.addUpdateListener(a -> glass.setMorph((Float)a.getAnimatedValue()));
+            morphAnimator.start();
+        }
+
         private void returnToSelected() {
+            morphTo(0f, 190);
             if (lens.getWidth()<=0) return;
             float target=selected>=0 && selected<tabs.length
                     ? tabs[selected].getLeft() : origin.getLeft();
@@ -126,6 +152,9 @@ public final class GlassMotion {
                     tracking=true; cancelled=false; hovered=originIndex;
                     downX=event.getX(); downY=event.getY();
                     lens.animate().cancel();
+                    // The old pill becomes a tangible, rounded optical lens
+                    // under the finger, rather than a barely enlarged highlight.
+                    morphTo(1f, 210);
                     if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
                         // Press creates a compact rounded bubble; hold leaves it
                         // inflated until release, with no repeating animator.
@@ -150,8 +179,7 @@ public final class GlassMotion {
                     cancelled=false;
                     hovered=nearest(x);
                     float move=Math.abs(event.getX()-downX);
-                    if (move>slop && lens.getWidth()>0
-                            && ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
+                    if (move>slop && lens.getWidth()>0) {
                         // Direct translation tracks the fingertip; the animation
                         // clock is not restarted for every ACTION_MOVE.
                         float min=Float.MAX_VALUE, max=-Float.MAX_VALUE;
@@ -162,7 +190,9 @@ public final class GlassMotion {
                         float destination=Math.max(min,Math.min(max,x-lens.getWidth()*.5f));
                         lens.animate().cancel();
                         lens.setTranslationX(destination);
-                        lens.setScaleX(1.06f); lens.setScaleY(1.09f);
+                        if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
+                            lens.setScaleX(1.06f); lens.setScaleY(1.09f);
+                        }
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
@@ -179,6 +209,11 @@ public final class GlassMotion {
                     if (hovered == selected) {
                         returnToSelected();
                     } else {
+                        // Pin to the actual destination BEFORE the old View is
+                        // removed. The next page will materialise at this same tab.
+                        // Never animate back to the previous selected position.
+                        lens.animate().cancel();
+                        lens.setTranslationX(tabs[hovered].getLeft());
                         // Invoke exactly one of the pre-existing View.OnClick
                         // callbacks. Never bypass its functional validation.
                         beforeNavigate.run();
@@ -199,6 +234,12 @@ public final class GlassMotion {
 
         void detach() {
             tracking=false;
+            if (morphAnimator != null) {
+                morphAnimator.cancel();
+                morphAnimator = null;
+            }
+            WenNavigationLensDrawable glass = opticalLens();
+            if (glass != null) glass.setMorph(0f);
             origin.animate().cancel();
             origin.setScaleX(1f); origin.setScaleY(1f);
             lens.animate().cancel();
@@ -311,6 +352,29 @@ public final class GlassMotion {
             view.setScaleX(1f);
             view.setScaleY(1f);
         }
+    }
+
+    /**
+     * Visual continuity after the destination screen replaces the old tab strip.
+     * The replacement starts as the same rounded lens and settles in-place into
+     * the selected pill; there is no intermediate trip to the former tab.
+     */
+    public static void finishNavigationLensHandoff(FrameLayout track, View lens) {
+        if (!(lens.getBackground() instanceof WenNavigationLensDrawable)) return;
+        WenNavigationLensDrawable glass = (WenNavigationLensDrawable) lens.getBackground();
+        if (!ValueAnimator.areAnimatorsEnabled() || lowPower(track.getContext())) {
+            glass.setMorph(0f);
+            return;
+        }
+        glass.setMorph(1f);
+        track.post(() -> {
+            if (!lens.isAttachedToWindow()) return;
+            ValueAnimator settle = ValueAnimator.ofFloat(1f, 0f);
+            settle.setDuration(205);
+            settle.setInterpolator(COMPRESS);
+            settle.addUpdateListener(a -> glass.setMorph((Float)a.getAnimatedValue()));
+            settle.start();
+        });
     }
 
     /** A single shared lens follows actual RTL/LTR tab coordinates, no fixed x. */
