@@ -88,7 +88,16 @@ public final class MainActivity extends Activity {
     private int screenTransitionGeneration;
     private int pendingPrimarySlide;
     private boolean pendingFabReveal;
+    private boolean pendingFabReverse;
     private int fabRevealX, fabRevealY, fabRevealRadius;
+
+    private void returnFromAddWithReverse(boolean showTransactions) {
+        // Apply financial changes exactly where they already occur. Only the
+        // post-save/back navigation gets an opposite-direction visual reveal.
+        pendingFabReverse = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
+                && addScreenVisible && screenHost != null && activeScreen != null;
+        showMain(showTransactions);
+    }
     private boolean primarySwipeEligible, primarySwipeActive;
     private float primarySwipeStartX, primarySwipeStartY;
     // Sandbox-only in-place palette refresh; never affects production financial screens.
@@ -391,11 +400,15 @@ public final class MainActivity extends Activity {
         if (activeScreen == next) return;
         final int generation = ++screenTransitionGeneration;
         final View previous = activeScreen;
+        final boolean reverseFab = pendingFabReverse
+                && SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
+        pendingFabReverse = false;
         for (int i = screenHost.getChildCount() - 1; i >= 0; i--) {
             View child = screenHost.getChildAt(i);
             if (child != previous) screenHost.removeViewAt(i);
         }
-        screenHost.addView(next, match);
+        if (reverseFab) screenHost.addView(next, 0, match);
+        else screenHost.addView(next, match);
         activeScreen = next;
         // The FIRST primary screen must animate icons only; never fade/slide
         // all financial cards on launch just to decorate the entrance.
@@ -411,6 +424,42 @@ public final class MainActivity extends Activity {
                 previous.animate().cancel();
                 screenHost.removeView(previous);
             }
+            return;
+        }
+        if (reverseFab && previous != null) {
+            // Draw the refreshed home/transactions screen *behind* the add
+            // form. Shrink the SAME circular reveal back into the origin FAB;
+            // do not fade the page, touch accounting or bypass Save/Back.
+            pendingPrimarySlide=0;
+            pendingGlassNavigationSwitch=false;
+            next.setAlpha(1f);
+            next.setTranslationX(0f);
+            next.setTranslationY(0f);
+            final View outgoing=previous;
+            outgoing.post(() -> {
+                if (outgoing.getParent()!=screenHost) return;
+                int cx=Math.max(0,Math.min(outgoing.getWidth(),fabRevealX));
+                int cy=Math.max(0,Math.min(outgoing.getHeight(),fabRevealY));
+                float dx=Math.max(cx,outgoing.getWidth()-cx);
+                float dy=Math.max(cy,outgoing.getHeight()-cy);
+                float startRadius=(float)Math.hypot(dx,dy);
+                if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                    if (outgoing.getParent()==screenHost) screenHost.removeView(outgoing);
+                    return;
+                }
+                android.animation.Animator reverse=android.view.ViewAnimationUtils.createCircularReveal(
+                        outgoing,cx,cy,startRadius,Math.max(1f,fabRevealRadius));
+                reverse.setDuration(360);
+                reverse.setInterpolator(new android.view.animation.PathInterpolator(.18f,.72f,.20f,1f));
+                reverse.addListener(new android.animation.AnimatorListenerAdapter() {
+                    @Override public void onAnimationEnd(android.animation.Animator anim) {
+                        if (generation==screenTransitionGeneration
+                                && outgoing.getParent()==screenHost)
+                            screenHost.removeView(outgoing);
+                    }
+                });
+                reverse.start();
+            });
             return;
         }
         // Only when opening Add Transaction from the glass FAB: reveal the
@@ -3844,7 +3893,7 @@ public final class MainActivity extends Activity {
                 ? Ui.glassHeaderBackground(this, 24) : Ui.layeredBackground(this, 0));
         TextView back = Ui.text(this, "‹", 34, Color.WHITE, false);
         back.setGravity(Gravity.CENTER);
-        back.setOnClickListener(v -> showMain(transactionsTab));
+        back.setOnClickListener(v -> returnFromAddWithReverse(transactionsTab));
         top.addView(back, new LinearLayout.LayoutParams(Ui.dp(this, 48), Ui.dp(this, 52)));
         top.addView(Ui.text(this, "إضافة عملية", 22, Color.WHITE, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 52), 1));
         page.addView(top, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72)));
@@ -4095,7 +4144,7 @@ public final class MainActivity extends Activity {
                 db.addTransaction(selectedType[0], amountMinor, transactionCurrency, source.id,
                         destinationId, categoryId, note.getText().toString(), splits, affectsBalance.isChecked());
                 Toast.makeText(this, "تم حفظ العملية", Toast.LENGTH_SHORT).show();
-                showMain(false);
+                returnFromAddWithReverse(false);
             } catch (Exception error) {
                 Toast.makeText(this, error.getMessage() == null ? "تعذر حفظ العملية" : error.getMessage(), Toast.LENGTH_LONG).show();
             }
