@@ -38,6 +38,7 @@ public final class WenOpticalNavigationOverlay extends View {
     private final RectF highlightBounds = new RectF();
     private final Matrix sampleMatrix = new Matrix();
     private final Matrix edgeMatrix = new Matrix();
+    private final Matrix spectrumMatrix = new Matrix();
     private final RectF droplet = new RectF();
     private WenNavigationTrack hostTrack;
     private View physicalPill;
@@ -249,6 +250,13 @@ public final class WenOpticalNavigationOverlay extends View {
         canvas.drawRoundRect(highlightBounds, radius, radius, shadowLine);
         caustic.setAlpha((int) (185f * strength));
         canvas.drawRoundRect(droplet, radius, radius, caustic);
+        // Keep the rainbow physically attached to the moving lens; the
+        // underlying shader is created only at resize, never per touch frame.
+        spectrumMatrix.reset();
+        spectrumMatrix.setScale(droplet.width() / Math.max(1f, getWidth()), 1f);
+        spectrumMatrix.postTranslate(droplet.left, 0f);
+        if (spectrum.getShader() != null)
+            spectrum.getShader().setLocalMatrix(spectrumMatrix);
         spectrum.setAlpha((int) (252f * strength));
         canvas.drawRoundRect(droplet, radius, radius, spectrum);
         rim.setAlpha((int) (224f * strength));
