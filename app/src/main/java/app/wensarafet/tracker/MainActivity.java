@@ -693,6 +693,11 @@ public final class MainActivity extends Activity {
             int lensStart = pendingGlassNavigationSwitch ? selectedTab : lastGlassNavigationTab;
             app.wensarafet.glass.GlassMotion.slideLens(
                     track, lens, items, lensStart, selectedTab);
+            if (pendingGlassNavigationSwitch) {
+                // The newly built strip inherits the finger's optical droplet,
+                // then settles at the target without jumping back first.
+                app.wensarafet.glass.GlassMotion.finishNavigationLensHandoff(track, lens);
+            }
             lastGlassNavigationTab = selectedTab;
         }
         return nav;
