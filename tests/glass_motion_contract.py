@@ -99,8 +99,26 @@ assert "lens.setElevation(" not in main, "Glass lens must not cover its selected
 assert "tabs[previousIndex].getLeft()" in engine and "selected.getLeft()" in engine
 assert "previousIndex != selectedIndex" in engine
 assert "if (selected && !Ui.isLiquidTheme(this))" in main
-assert "home.setOnClickListener(v -> showMain(false));" in main
-assert "tx.setOnClickListener(v -> showMain(true));" in main
-assert "debts.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_RECEIVABLE));" in main
-assert "analytics.setOnClickListener(v -> showAnalyticsScreen());" in main
-print("PASS: event-only, RTL-aware liquid nav + tap/hold feedback; original tab actions preserved")
+# The original click destinations are preserved through the shared tab router.
+assert "home.setOnClickListener(v -> navigatePrimaryTab(TAB_HOME));" in main
+assert "tx.setOnClickListener(v -> navigatePrimaryTab(TAB_TRANSACTIONS));" in main
+assert "debts.setOnClickListener(v -> navigatePrimaryTab(TAB_DEBTS));" in main
+assert "analytics.setOnClickListener(v -> navigatePrimaryTab(TAB_ANALYTICS));" in main
+for target in ["showMain(false);","showMain(true);",
+        "showDebtsScreen(FinanceRules.DEBT_RECEIVABLE);","showAnalyticsScreen();"]:
+    assert target in main.split("private void navigatePrimaryTab(int target)",1)[1].split(
+            "private boolean touchingHorizontalScroller",1)[0]
+assert "private boolean touchingHorizontalScroller(View root, float x, float y)" in main
+assert "!touchingHorizontalScroller(screenHost,e.getRawX(),e.getRawY())" in main
+assert "MotionEvent.ACTION_CANCEL" in main
+assert "primarySwipeActive=true;" in main
+assert "Math.abs(dx)>Math.abs(dy)*1.65f" in main
+assert "navigatePrimaryTab(target);" in main
+assert "slideDirection*Ui.dp(this,64)" in main
+assert 'wrapper.setTag("wen_top_chrome");' in main
+assert "animateGlassTopBar(next);" in main
+assert "Ui.pressAnimation(back);" in main
+assert "canvas.drawLine(" not in lensSource, "The old straight highlight must not return"
+assert "canvas.drawOval(inner, opticalCore);" in lensSource
+assert "android.animation.ValueAnimator.areAnimatorsEnabled()" in main
+print("PASS: RTL-safe horizontal primary swipes, continuous lens, moving top chrome; original destinations retained")
