@@ -112,13 +112,15 @@ public final class MainActivity extends Activity {
 
     // Horizontal carousels own their gestures; only primary page content can swipe.
     private boolean touchingHorizontalScroller(View root, float x, float y) {
-        if (root.getVisibility() != View.VISIBLE) return false;
-        if (root instanceof HorizontalScrollView) {
-            int[] p = new int[2];
-            root.getLocationOnScreen(p);
-            if (x >= p[0] && x <= p[0]+root.getWidth()
-                    && y >= p[1] && y <= p[1]+root.getHeight()) return true;
-        }
+        if (root.getVisibility() != View.VISIBLE || root.getWidth() <= 0
+                || root.getHeight() <= 0) return false;
+        // Prune off-screen siblings before traversing the view hierarchy:
+        // large transaction histories must not be scanned on every touch.
+        int[] p = new int[2];
+        root.getLocationOnScreen(p);
+        if (x < p[0] || x > p[0]+root.getWidth()
+                || y < p[1] || y > p[1]+root.getHeight()) return false;
+        if (root instanceof HorizontalScrollView) return true;
         if (root instanceof ViewGroup) {
             ViewGroup group=(ViewGroup) root;
             for(int i=group.getChildCount()-1;i>=0;i--)
