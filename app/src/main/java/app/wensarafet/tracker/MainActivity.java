@@ -22,6 +22,8 @@ import android.text.InputType;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.ViewConfiguration;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -82,6 +84,9 @@ public final class MainActivity extends Activity {
     private FrameLayout screenHost;
     private View activeScreen;
     private int screenTransitionGeneration;
+    private int pendingPrimarySlide;
+    private boolean primarySwipeEligible, primarySwipeActive;
+    private float primarySwipeStartX, primarySwipeStartY;
     // Sandbox-only in-place palette refresh; never affects production financial screens.
     private boolean pendingPaletteSwitch;
     private int pendingThemeScrollX = -1;
@@ -89,6 +94,114 @@ public final class MainActivity extends Activity {
     private static final int OPEN_BACKUP = 7302;
     private static final int PICK_NOTIFICATION_SOUND = 7303;
     private static final int OPEN_DRIVE_FOLDER = 7304;
+
+    // Swipe-only view control: never bypass the original financial click callbacks.
+    private void navigatePrimaryTab(int target) {
+        if (target < TAB_HOME || target > TAB_ANALYTICS) return;
+        pendingPrimarySlide = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
+                && !subScreenVisible && !addScreenVisible && target != currentTab
+                ? (target > currentTab ? -1 : 1) : 0;
+        switch(target) {
+            case TAB_HOME: showMain(false); break;
+            case TAB_TRANSACTIONS: showMain(true); break;
+            case TAB_DEBTS: showDebtsScreen(FinanceRules.DEBT_RECEIVABLE); break;
+            case TAB_ANALYTICS: showAnalyticsScreen(); break;
+            default: break;
+        }
+    }
+
+    // Horizontal carousels own their gestures; only primary page content can swipe.
+    private boolean touchingHorizontalScroller(View root, float x, float y) {
+        if (root.getVisibility() != View.VISIBLE) return false;
+        if (root instanceof HorizontalScrollView) {
+            int[] p = new int[2];
+            root.getLocationOnScreen(p);
+            if (x >= p[0] && x <= p[0]+root.getWidth()
+                    && y >= p[1] && y <= p[1]+root.getHeight()) return true;
+        }
+        if (root instanceof ViewGroup) {
+            ViewGroup group=(ViewGroup) root;
+            for(int i=group.getChildCount()-1;i>=0;i--)
+                if(touchingHorizontalScroller(group.getChildAt(i),x,y))return true;
+        }
+        return false;
+    }
+
+    @Override public boolean dispatchTouchEvent(MotionEvent e) {
+        switch(e.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                primarySwipeActive=false;
+                primarySwipeStartX=e.getX(); primarySwipeStartY=e.getY();
+                primarySwipeEligible=SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
+                        && screenHost!=null && hasStarted && !subScreenVisible
+                        && !addScreenVisible && !lockScreenVisible && !activationScreenVisible
+                        && currentTab>=TAB_HOME && currentTab<=TAB_ANALYTICS
+                        && primarySwipeStartY>Ui.dp(this,128)
+                        && primarySwipeStartY<screenHost.getHeight()-Ui.dp(this,100)
+                        && !touchingHorizontalScroller(screenHost,e.getRawX(),e.getRawY());
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if(primarySwipeEligible || primarySwipeActive) {
+                    float dx=e.getX()-primarySwipeStartX;
+                    float dy=e.getY()-primarySwipeStartY;
+                    if(!primarySwipeActive && Math.abs(dy)>Ui.dp(this,22)
+                            && Math.abs(dy)>Math.abs(dx)) {
+                        primarySwipeEligible=false;
+                    } else if(!primarySwipeActive
+                            && Math.abs(dx)>Math.max(Ui.dp(this,48),
+                                    ViewConfiguration.get(this).getScaledTouchSlop()*3f)
+                            && Math.abs(dx)>Math.abs(dy)*1.65f) {
+                        int target=currentTab+(dx<0f?1:-1);
+                        if(target>=TAB_HOME && target<=TAB_ANALYTICS) {
+                            MotionEvent cancel=MotionEvent.obtain(e);
+                            cancel.setAction(MotionEvent.ACTION_CANCEL);
+                            super.dispatchTouchEvent(cancel); cancel.recycle();
+                            primarySwipeActive=true;
+                        } else primarySwipeEligible=false;
+                    }
+                    if(primarySwipeActive) {
+                        if(activeScreen!=null) {
+                            activeScreen.animate().cancel();
+                            float limit=Ui.dp(this,84);
+                            activeScreen.setTranslationX(Math.max(-limit,Math.min(limit,dx*.26f)));
+                        }
+                        return true;
+                    }
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+                if(primarySwipeActive) {
+                    float dx=e.getX()-primarySwipeStartX;
+                    int target=currentTab+(dx<0f?1:-1);
+                    primarySwipeActive=false; primarySwipeEligible=false;
+                    if(Math.abs(dx)>=Ui.dp(this,70)
+                            && target>=TAB_HOME && target<=TAB_ANALYTICS)
+                        navigatePrimaryTab(target);
+                    else if(activeScreen!=null)
+                        activeScreen.animate().translationX(0f).setDuration(160).start();
+                    return true;
+                }
+                primarySwipeEligible=false; break;
+            case MotionEvent.ACTION_CANCEL:
+            case MotionEvent.ACTION_POINTER_DOWN:
+                if(primarySwipeActive && activeScreen!=null)
+                    activeScreen.animate().translationX(0f).setDuration(160).start();
+                primarySwipeEligible=false;primarySwipeActive=false;break;
+            default: break;
+        }
+        return super.dispatchTouchEvent(e);
+    }
+
+    private void animateGlassTopBar(View page) {
+        if(!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this)
+                || !android.animation.ValueAnimator.areAnimatorsEnabled())return;
+        View bar=page.findViewWithTag("wen_top_chrome");
+        if(bar==null)return;
+        bar.animate().cancel();
+        bar.setAlpha(.86f);bar.setTranslationY(-Ui.dp(this,10));
+        bar.animate().alpha(1f).translationY(0f).setDuration(240)
+                .setInterpolator(new android.view.animation.PathInterpolator(.2f,.8f,.2f,1f)).start();
+    }
 
     /**
      * Keeps one stable Activity content host and transitions screens inside it.
@@ -131,6 +244,7 @@ public final class MainActivity extends Activity {
             }
             screenHost.addView(next, match);
             activeScreen = next;
+            animateGlassTopBar(next);
             // A disabled system animator scale must never leave the first screen
             // transparent. In that mode, show the view without a transition.
             if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
@@ -149,7 +263,9 @@ public final class MainActivity extends Activity {
         }
         screenHost.addView(next, match);
         activeScreen = next;
+        animateGlassTopBar(next);
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            pendingPrimarySlide = 0;
             next.setAlpha(1f);
             next.setTranslationX(0f);
             if (previous != null && previous.getParent() == screenHost) {
@@ -164,9 +280,25 @@ public final class MainActivity extends Activity {
         boolean paletteSwitch = pendingPaletteSwitch;
         pendingPaletteSwitch = false;
         boolean fastLiquid = SandboxMode.isSandbox(this) && (Ui.isLiquidTheme(this) || paletteSwitch);
+        int slideDirection = fastLiquid && !paletteSwitch ? pendingPrimarySlide : 0;
+        pendingPrimarySlide = 0;
         boolean fromNavGesture = pendingGlassNavigationSwitch;
         pendingGlassNavigationSwitch = false;
         if (fastLiquid) {
+            if(slideDirection != 0 && previous != null) {
+                previous.animate().cancel();
+                next.setAlpha(1f);
+                next.setTranslationX(slideDirection*Ui.dp(this,64));
+                next.animate().translationX(0f).setDuration(230)
+                        .setInterpolator(new android.view.animation.PathInterpolator(.2f,.8f,.2f,1f)).start();
+                previous.animate().translationX(-slideDirection*Ui.dp(this,32))
+                        .alpha(.82f).setDuration(185)
+                        .withEndAction(() -> {
+                            if(generation==screenTransitionGeneration && previous.getParent()==screenHost)
+                                screenHost.removeView(previous);
+                        }).start();
+                return;
+            }
             if (previous != null && previous.getParent() == screenHost) {
                 previous.animate().cancel();
                 screenHost.removeView(previous);
@@ -534,7 +666,7 @@ public final class MainActivity extends Activity {
             int delta = scrollY - oldScrollY;
             if (topBarBackground != null) {
                 float progress = Math.min(1f, scrollY / (float) Ui.dp(this, 72));
-                topBarBackground.setAlpha(1f - progress * .84f);
+                topBarBackground.setAlpha(1f - progress * (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) ? .54f : .84f));
                 topBarBackground.setElevation(progress > .02f ? 0f : Ui.dp(this, 7));
             }
             if (delta < 0) upwardTravel[0] += -delta; else if (delta > 0) upwardTravel[0] = 0;
@@ -581,6 +713,7 @@ public final class MainActivity extends Activity {
 
     private View mainTopBar() {
         LinearLayout wrapper = Ui.column(this);
+        wrapper.setTag("wen_top_chrome");
         wrapper.setPadding(Ui.dp(this, 14), Ui.dp(this, 10), Ui.dp(this, 14), Ui.dp(this, 10));
         FrameLayout layers = new FrameLayout(this);
         View background = new View(this);
@@ -653,10 +786,10 @@ public final class MainActivity extends Activity {
         tx.setContentDescription("تبويب العمليات");
         debts.setContentDescription("تبويب الديون");
         analytics.setContentDescription("تبويب التحليل");
-        home.setOnClickListener(v -> showMain(false));
-        tx.setOnClickListener(v -> showMain(true));
-        debts.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_RECEIVABLE));
-        analytics.setOnClickListener(v -> showAnalyticsScreen());
+        home.setOnClickListener(v -> navigatePrimaryTab(TAB_HOME));
+        tx.setOnClickListener(v -> navigatePrimaryTab(TAB_TRANSACTIONS));
+        debts.setOnClickListener(v -> navigatePrimaryTab(TAB_DEBTS));
+        analytics.setOnClickListener(v -> navigatePrimaryTab(TAB_ANALYTICS));
 
         TextView[] items = new TextView[]{home, tx, debts, analytics};
         LinearLayout tabs = liquid ? Ui.row(this) : nav;
@@ -712,7 +845,7 @@ public final class MainActivity extends Activity {
             int delta=y-oldY;
             if(background!=null) {
                 float fade=Math.min(1f,y/(float)Ui.dp(this,72));
-                background.setAlpha(1f-fade*.84f);
+                background.setAlpha(1f-fade*(SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) ? .54f : .84f));
                 background.setElevation(fade>.02f?0f:Ui.dp(this,7));
             }
             if(delta<0)upwardTravel[0]+=-delta;
@@ -1798,6 +1931,7 @@ public final class MainActivity extends Activity {
 
     private View pageHeader(String titleValue, Runnable backAction) {
         LinearLayout wrapper=Ui.column(this);
+        wrapper.setTag("wen_top_chrome");
         wrapper.setPadding(Ui.dp(this,14),Ui.dp(this,5),
                 Ui.dp(this,14),Ui.dp(this,5));
         LinearLayout bar=Ui.row(this);
@@ -1809,6 +1943,7 @@ public final class MainActivity extends Activity {
         back.setContentDescription("رجوع");
         back.setBackground(Ui.rounded(Color.argb(40,255,255,255),12,this));
         back.setOnClickListener(v->backAction.run());
+        Ui.pressAnimation(back);
         bar.addView(back,new LinearLayout.LayoutParams(Ui.dp(this,46),Ui.dp(this,46)));
         TextView title=Ui.text(this,titleValue,22,Color.WHITE,true);
         title.setSingleLine(true);
