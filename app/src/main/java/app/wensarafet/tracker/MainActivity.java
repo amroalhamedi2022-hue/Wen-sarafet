@@ -97,9 +97,27 @@ public final class MainActivity extends Activity {
     private static final int PICK_NOTIFICATION_SOUND = 7303;
     private static final int OPEN_DRIVE_FOLDER = 7304;
 
-    // Swipe-only view control: never bypass the original financial click callbacks.
+    // Tab callbacks keep the exact existing financial routes. In the isolated
+    // Liquid sandbox, let the finger-up / glass paint complete its current
+    // frame before constructing the (sometimes expensive) next screen.
+    private int navigationFrameSequence;
     private void navigatePrimaryTab(int target) {
         if (target < TAB_HOME || target > TAB_ANALYTICS) return;
+        if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
+                && screenHost != null && target != currentTab) {
+            final int sequence = ++navigationFrameSequence;
+            final View previous = activeScreen;
+            final int sourceTab = currentTab;
+            screenHost.postOnAnimation(() -> {
+                // Never reopen a stale destination after another screen change.
+                if (sequence == navigationFrameSequence && previous == activeScreen
+                        && currentTab == sourceTab && !subScreenVisible
+                        && !addScreenVisible) performPrimaryTabNavigation(target);
+            });
+        } else performPrimaryTabNavigation(target);
+    }
+
+    private void performPrimaryTabNavigation(int target) {
         pendingPrimarySlide = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
                 && !subScreenVisible && !addScreenVisible && target != currentTab
                 ? (target > currentTab ? 1 : -1) : 0;
