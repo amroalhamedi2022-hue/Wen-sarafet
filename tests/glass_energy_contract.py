@@ -73,8 +73,11 @@ assert main.count("setBackground(Ui.glassScreenBackground(this))") == 4
 assert "new RadialGradient" in engine
 assert "new LinearGradient" in engine
 assert "innerBorder.set(surface)" in engine
-assert "showLens = strong && w > h * 3.1f && !lowPower;" in engine
-assert "canvas.drawCircle(lensX, lensY, lensRadius, bubble);" in engine
+assert "showLens = false;" in engine, "No unrelated ornament orb may appear on glass cards"
+assert "prismRim.setShader(new LinearGradient" in engine
+assert "crown.setShader(new LinearGradient" in engine
+assert "final int bodyAlpha = strong ? 202 : 221;" in engine, "Glass surfaces must transmit background"
+assert "canvas.drawCircle(lensX, lensY, lensRadius, bubble);" in engine, "Legacy conditional fallback stays safe"
 assert "canvas.drawRect(surface, ambient);" in engine
 assert "if (!lowPower && strong)" in engine
 # Liquid press behavior now lives in the reusable engine; legacy themes are untouched.
