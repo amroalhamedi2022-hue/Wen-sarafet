@@ -169,6 +169,9 @@ public final class GlassMotion {
         @Override public boolean onTouch(View view, MotionEvent event) {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
+                    android.util.Log.i("WenGlassProbe", "DOWN tab=" + originIndex
+                            + " lensWidth=" + lens.getWidth()
+                            + " optic=" + (optic != null));
                     tracking=true; cancelled=false; hovered=originIndex;
                     downX=event.getX(); downY=event.getY();
                     lens.animate().cancel();
@@ -180,6 +183,7 @@ public final class GlassMotion {
                         optic.progress(.02f);
                     }
                     morphTo(1f, 190);
+                    android.util.Log.i("WenGlassProbe", "DOWN_MORPH completed");
                     if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
                         // Press creates a compact rounded bubble; hold leaves it
                         // inflated until release, with no repeating animator.
@@ -218,6 +222,8 @@ public final class GlassMotion {
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
+                    android.util.Log.i("WenGlassProbe", "UP tab=" + originIndex
+                            + " tracking=" + tracking);
                     if(!tracking) return true;
                     tracking=false;
                     if (!insideVertical(origin.getTop()+event.getY()) || cancelled) {
