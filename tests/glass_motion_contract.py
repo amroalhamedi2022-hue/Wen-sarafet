@@ -59,6 +59,8 @@ assert "new NavigationGesture(" in engine
 assert "boolean fromNavGesture = pendingGlassNavigationSwitch;" in main
 assert "lastGlassNavigationTab = selectedTab;" in main
 assert "GlassMotion.slideLens(" in main
+assert "int lensStart = pendingGlassNavigationSwitch ? selectedTab : lastGlassNavigationTab;" in main
+assert "track, lens, items, lensStart, selectedTab" in main
 lensSource = (p/"glass-engine/src/main/java/app/wensarafet/glass/WenNavigationLensDrawable.java").read_text(encoding="utf-8")
 assert "GlassMotion.bindNavigationTab(" in main
 assert "glassSlidingNavigationLens(this)" in main
