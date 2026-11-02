@@ -143,10 +143,11 @@ assert "new " not in optical.split("@Override protected void onDraw(Canvas canva
 assert "new app.wensarafet.glass.WenNavigationTrack(this, Ui.DARK)" in main
 assert "track.addView(opticalOverlay" not in main
 trackSource = (p/"glass-engine/src/main/java/app/wensarafet/glass/WenNavigationTrack.java").read_text(encoding="utf-8")
-assert "super.dispatchDraw(canvas);" in trackSource
+assert "setForeground(opticalForeground);" in trackSource, "Native foreground must own lens draw"
+assert "opticalForeground.invalidateSelf();" in trackSource, "Changes must invalidate actual foreground"
 assert "optic.renderOnto(canvas);" in trackSource
 assert "optic = track instanceof WenNavigationTrack" in engine
-assert "hostTrack.invalidate();" in optical
+assert "hostTrack.invalidateOptic();" in optical
 assert "setLayerType(View.LAYER_TYPE_SOFTWARE" not in optical
 assert "startupIconAnimationPending = true" in main
 assert "private void animateStartupIcons(View page)" in main
