@@ -216,7 +216,11 @@ if ! grep -q 'MIT_VIEW_GLASS_ATTACHED' "$OUT/advanced-glass-probe.log" ||
   echo "FAIL: sandbox native View glass did not attach to actual backdrop"
   exit 1
 fi
-echo "PASS: sandbox native View glass renderer and backdrop source active"
+if ! grep -q 'MIT_VIEW_GLASS_PRESS_ACTIVE' "$OUT/advanced-glass-probe.log"; then
+  echo "FAIL: native Liquid Glass pressed refraction never became active"
+  exit 1
+fi
+echo "PASS: sandbox native View glass renderer, backdrop and gesture-active refraction"
 # Navigate back using accessibility semantics, no hard-coded device coordinates.
 nav_dump "$OUT/wen-nav-after.xml"
 HOME_POINT="$(python3 - "$OUT/wen-nav-after.xml" <<'PY'
