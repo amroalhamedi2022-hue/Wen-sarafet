@@ -87,6 +87,8 @@ public final class MainActivity extends Activity {
     private View activeScreen;
     private int screenTransitionGeneration;
     private int pendingPrimarySlide;
+    private boolean pendingFabReveal;
+    private int fabRevealX, fabRevealY, fabRevealRadius;
     private boolean primarySwipeEligible, primarySwipeActive;
     private float primarySwipeStartX, primarySwipeStartY;
     // Sandbox-only in-place palette refresh; never affects production financial screens.
@@ -733,7 +735,18 @@ public final class MainActivity extends Activity {
                 : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this));
         fab.setElevation(Ui.dp(this, 8));
         fab.setTag("wen_intro_fab");
-        fab.setOnClickListener(v -> showAddTransaction());
+        fab.setOnClickListener(v -> {
+            if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) && screenHost != null) {
+                int[] pos=new int[2], host=new int[2];
+                v.getLocationOnScreen(pos);
+                screenHost.getLocationOnScreen(host);
+                fabRevealX=pos[0]-host[0]+v.getWidth()/2;
+                fabRevealY=pos[1]-host[1]+v.getHeight()/2;
+                fabRevealRadius=Math.max(1,v.getWidth()/2);
+                pendingFabReveal=true;
+            }
+            showAddTransaction();
+        });
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));
         fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18), Ui.dp(this, 88));
         root.addView(fab, fabParams);
@@ -744,7 +757,7 @@ public final class MainActivity extends Activity {
             int delta = scrollY - oldScrollY;
             if (topBarBackground != null) {
                 float progress = Math.min(1f, scrollY / (float) Ui.dp(this, 72));
-                topBarBackground.setAlpha(1f - progress * (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) ? .54f : .84f));
+                topBarBackground.setAlpha(1f - progress * (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) ? .82f : .84f));
                 topBarBackground.setElevation(progress > .02f ? 0f : Ui.dp(this, 7));
             }
             if (delta < 0) upwardTravel[0] += -delta; else if (delta > 0) upwardTravel[0] = 0;
@@ -784,7 +797,7 @@ public final class MainActivity extends Activity {
             }
         });
         setContentView(root);
-        Ui.pressAnimation(fab);
+        bindGlassFab(fab);
         Ui.animateScreen(root);
         // The primary Liquid screen already slides. Staggering financial cards
         // on top of it previously caused multiple simultaneous alpha/translation
@@ -808,8 +821,16 @@ public final class MainActivity extends Activity {
         bar.setElevation(Ui.dp(this, 8));
 
         LinearLayout titles = Ui.column(this);
-        TextView title = Ui.text(this, "وين صرفت؟", 25, Color.WHITE, true);
-        TextView subtitle = Ui.text(this, "أموالك واضحة، وخصوصيتك محفوظة", 11, Color.rgb(225, 239, 235), false);
+        String headerTitle;
+        String headerSubtitle;
+        switch (currentTab) {
+            case TAB_TRANSACTIONS: headerTitle="كل العمليات"; headerSubtitle="سجل المصروفات والدخل والتحويلات"; break;
+            case TAB_DEBTS: headerTitle="الديون"; headerSubtitle="الأرصدة المستحقة وسجل السداد"; break;
+            case TAB_ANALYTICS: headerTitle="التحليلات"; headerSubtitle="تقارير الإنفاق والميزانيات"; break;
+            default: headerTitle="الرئيسية"; headerSubtitle="ملخص الحسابات والمصروفات"; break;
+        }
+        TextView title = Ui.text(this, headerTitle, 25, Color.WHITE, true);
+        TextView subtitle = Ui.text(this, headerSubtitle, 11, Color.rgb(225, 239, 235), false);
         // Keep labels and controls inside the fixed header on compact RTL screens.
         title.setSingleLine(true);
         subtitle.setSingleLine(true);
@@ -934,7 +955,7 @@ public final class MainActivity extends Activity {
             int delta=y-oldY;
             if(background!=null) {
                 float fade=Math.min(1f,y/(float)Ui.dp(this,72));
-                background.setAlpha(1f-fade*(SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) ? .54f : .84f));
+                background.setAlpha(1f-fade*(SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) ? .82f : .84f));
                 background.setElevation(fade>.02f?0f:Ui.dp(this,7));
             }
             if(delta<0)upwardTravel[0]+=-delta;
@@ -3673,10 +3694,13 @@ public final class MainActivity extends Activity {
         final List<SplitRowRef> splitRows = new ArrayList<>();
 
         LinearLayout page = Ui.column(this);
-        page.setBackgroundColor(Ui.BACKGROUND);
+        page.setBackground(SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
+                ? Ui.glassScreenBackground(this)
+                : new android.graphics.drawable.ColorDrawable(Ui.BACKGROUND));
         LinearLayout top = Ui.row(this);
         top.setPadding(Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 18), Ui.dp(this, 8));
-        top.setBackground(Ui.layeredBackground(this, 0));
+        top.setBackground(SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
+                ? Ui.glassHeaderBackground(this, 24) : Ui.layeredBackground(this, 0));
         TextView back = Ui.text(this, "‹", 34, Color.WHITE, false);
         back.setGravity(Gravity.CENTER);
         back.setOnClickListener(v -> showMain(transactionsTab));
