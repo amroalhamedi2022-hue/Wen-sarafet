@@ -66,7 +66,7 @@ public final class WenOpticalNavigationOverlay extends View {
     }
 
     private void requestPaint() {
-        if (hostTrack != null) hostTrack.invalidate();
+        if (hostTrack != null) hostTrack.invalidateOptic();
     }
 
     /** Tab-only content snapshot, not any financial screen or personal data. */
