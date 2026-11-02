@@ -264,7 +264,7 @@ public final class WenOpticalNavigationOverlay extends View {
         highlightBounds.set(droplet);
         highlightBounds.inset(density * 1.0f, density * 1.0f);
         canvas.drawRoundRect(highlightBounds, radius, radius, shadowLine);
-        caustic.setAlpha((int) (185f * strength));
+        caustic.setAlpha((int) (158f * strength));
         canvas.drawRoundRect(droplet, radius, radius, caustic);
         // Keep the rainbow physically attached to the moving lens; the
         // underlying shader is created only at resize, never per touch frame.
@@ -273,15 +273,15 @@ public final class WenOpticalNavigationOverlay extends View {
         spectrumMatrix.postTranslate(droplet.left, 0f);
         if (spectrum.getShader() != null)
             spectrum.getShader().setLocalMatrix(spectrumMatrix);
-        spectrum.setAlpha((int) (252f * strength));
+        spectrum.setAlpha((int) (188f * strength));
         canvas.drawRoundRect(droplet, radius, radius, spectrum);
-        rim.setAlpha((int) (224f * strength));
+        rim.setAlpha((int) (188f * strength));
         canvas.drawRoundRect(droplet, radius, radius, rim);
-        reflectedLight.setAlpha((int) (242f * strength));
+        reflectedLight.setAlpha((int) (206f * strength));
         highlightBounds.set(droplet);
         highlightBounds.inset(density * 2.5f, density * 2.5f);
         canvas.drawRoundRect(highlightBounds, radius, radius, reflectedLight);
-        innerRim.setAlpha((int) (136f * strength));
+        innerRim.setAlpha((int) (88f * strength));
         highlightBounds.inset(density * 1.4f, density * 1.4f);
         canvas.drawRoundRect(highlightBounds, radius, radius, innerRim);
 
@@ -289,7 +289,7 @@ public final class WenOpticalNavigationOverlay extends View {
                 droplet.top + density * 1.5f,
                 droplet.right - density * 9f,
                 droplet.top + droplet.height() * .28f);
-        specular.setAlpha((int) (150f * strength));
+        specular.setAlpha((int) (122f * strength));
         canvas.drawOval(highlightBounds, specular);
     }
 }
