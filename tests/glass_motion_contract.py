@@ -157,7 +157,9 @@ assert "animateStartupIcons(next);" in main
 assert "page.getViewTreeObserver().addOnPreDrawListener(" in main
 assert "page.postOnAnimation(() -> {" in main
 assert "private void bindGlassFab(TextView fab)" in main
-assert "bubble.setPress(1f);" in main and "bubble.setPress(0f);" in main
+assert "ValueAnimator.ofFloat(bubble.getPress(),target)" in main
+assert "bubble.setPress((Float)anim.getAnimatedValue())" in main
+assert "bubble.setPress(0f);" in main
 assert "bindGlassFab(fab);" in main
 fab=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java").read_text(encoding="utf-8")
 assert "public void setPress(float fraction)" in fab
