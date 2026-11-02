@@ -375,22 +375,15 @@ public final class Ui {
     }
 
     public static void pressAnimation(View view) {
+        if (isLiquidTheme(view.getContext())) {
+            app.wensarafet.glass.GlassMotion.bindPress(view, SKY);
+            return;
+        }
         view.setOnTouchListener((v, event) -> {
             if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return false;
             if (isLiquidTheme(v.getContext())) {
-                // Liquid-bubble feedback is interaction-only. No idle clock or looping frame callback.
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    v.animate().cancel();
-                    v.animate().scaleX(.955f).scaleY(.955f).setDuration(90)
-                            .setInterpolator(new PathInterpolator(.2f, .8f, .2f, 1f)).start();
-                } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                    v.animate().cancel();
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(230)
-                            .setInterpolator(new android.view.animation.OvershootInterpolator(1.35f)).start();
-                } else if (event.getAction() == MotionEvent.ACTION_CANCEL) {
-                    v.animate().cancel();
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(90).start();
-                }
+                // Liquid gestures are owned by the reusable Motion Engine below.
+                return false;
             } else {
                 // Preserve exact existing touch behavior for the 16 original themes.
                 if (event.getAction() == MotionEvent.ACTION_DOWN)

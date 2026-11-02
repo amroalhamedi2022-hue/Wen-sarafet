@@ -56,6 +56,8 @@ import java.util.TimeZone;
 public final class MainActivity extends Activity {
     private FinanceDbHelper db;
     private boolean transactionsTab;
+    // Visual-only previous tab; no persistence and no financial state dependency.
+    private int lastGlassNavigationTab = -1;
     private int currentTab;
     private static final int TAB_HOME = 0;
     private static final int TAB_TRANSACTIONS = 1;
@@ -609,6 +611,7 @@ public final class MainActivity extends Activity {
         nav.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 8));
         nav.setBackground(Ui.glassNavigationBackground(this, 26));
         nav.setElevation(Ui.dp(this, 12));
+        final boolean liquid = Ui.isLiquidTheme(this);
 
         TextView home = navButton("🏠\nالرئيسية", selectedTab == TAB_HOME);
         TextView tx = navButton("📋\nالعمليات", selectedTab == TAB_TRANSACTIONS);
@@ -618,10 +621,33 @@ public final class MainActivity extends Activity {
         tx.setOnClickListener(v -> showMain(true));
         debts.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_RECEIVABLE));
         analytics.setOnClickListener(v -> showAnalyticsScreen());
-        for(TextView item:new TextView[]{home,tx,debts,analytics}) {
-            LinearLayout.LayoutParams navParams=new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1);
-            navParams.setMargins(Ui.dp(this,4),0,Ui.dp(this,4),0);
-            nav.addView(item,navParams);
+
+        TextView[] items = new TextView[]{home, tx, debts, analytics};
+        LinearLayout tabs = liquid ? Ui.row(this) : nav;
+        for (TextView item : items) {
+            LinearLayout.LayoutParams navParams = new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+            navParams.setMargins(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
+            tabs.addView(item, navParams);
+            if (liquid) Ui.pressAnimation(item);
+        }
+        if (liquid) {
+            // One optical pill behind all four labels, never four independent pills.
+            FrameLayout track = new FrameLayout(this);
+            track.setClipChildren(false);
+            View lens = new View(this);
+            lens.setBackground(Ui.glassSelectedNavigationBackground(this, 18));
+            lens.setElevation(Ui.dp(this, 2));
+            FrameLayout.LayoutParams lensParams = new FrameLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.TOP | Gravity.LEFT);
+            track.addView(lens, lensParams);
+            track.addView(tabs, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            nav.addView(track, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            app.wensarafet.glass.GlassMotion.slideLens(
+                    track, lens, items, lastGlassNavigationTab, selectedTab);
+            lastGlassNavigationTab = selectedTab;
         }
         return nav;
     }
@@ -676,7 +702,9 @@ public final class MainActivity extends Activity {
         view.setLineSpacing(Ui.dp(this,2),1f);
         view.setPadding(Ui.dp(this,4),Ui.dp(this,3),Ui.dp(this,4),Ui.dp(this,3));
         view.setMaxLines(2);
-        if (selected) view.setBackground(Ui.glassSelectedNavigationBackground(this, 18));
+        if (selected && !Ui.isLiquidTheme(this)) {
+            view.setBackground(Ui.glassSelectedNavigationBackground(this, 18));
+        }
         return view;
     }
 
