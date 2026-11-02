@@ -18,6 +18,10 @@ public final class WenNavigationTrack extends FrameLayout {
         setWillNotDraw(false);
         setClipChildren(false);
         setClipToPadding(false);
+        // Rasterize only the ~72dp high tab strip as a single composited
+        // surface. Android 15 SwiftShader has dropped separate optical passes
+        // despite dispatchDraw running: this forces one final visible layer.
+        setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         optic = new WenOpticalNavigationOverlay(context, dark);
         optic.setHostTrack(this);
     }
