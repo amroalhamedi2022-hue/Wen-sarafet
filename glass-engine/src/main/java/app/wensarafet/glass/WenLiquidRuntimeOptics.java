@@ -14,35 +14,50 @@ import android.graphics.RuntimeShader;
  */
 final class WenLiquidRuntimeOptics {
     private static final String SOURCE =
-            "uniform shader image;\n" +
-            "uniform float2 centre;\n" +
-            "uniform float2 extent;\n" +
-            "uniform float amount;\n" +
-            "uniform float pointer;\n" +
-            "half4 main(float2 p) {\n" +
-            "  float2 local = (p - centre) / max(extent * 0.5, float2(1.0));\n" +
-            "  float radial = min(length(local), 1.3);\n" +
-            "  float peripheral = smoothstep(0.20, 1.0, radial);\n" +
-            "  float2 bent = p - local * extent * (0.012 * amount + 0.032 * amount * peripheral);\n" +
-            "  bent.x += (pointer - centre.x) * 0.018 * amount;\n" +
-            "  float splitting = 0.82 * amount * peripheral;\n" +
-            "  half4 middle = image.eval(bent);\n" +
-            "  half4 red = image.eval(bent + float2(splitting, 0.0));\n" +
-            "  half4 blue = image.eval(bent - float2(splitting, 0.0));\n" +
-            "  half3 refracted = half3(red.r, middle.g, blue.b);\n" +
-            "  float x = clamp(local.x * 0.5 + 0.5, 0.0, 1.0);\n" +
-            "  half3 spectrum = half3(1.0 - smoothstep(0.24, 0.58, x),\n" +
-            "      smoothstep(0.18, 0.47, x) * (1.0 - smoothstep(0.64, 0.86, x)),\n" +
-            "      smoothstep(0.48, 0.81, x));\n" +
-            "  float curve = -0.02 + 0.10 * local.x * local.x;\n" +
-            "  float edge = smoothstep(0.76, 1.0, radial);\n" +
-            "  float band = (1.0 - smoothstep(0.02, 0.17, abs(local.y - curve))) * edge;\n" +
-            "  float light = band * 0.10 * amount;\n" +
-            "  half a = max(max(red.a, blue.a), max(middle.a, half(light * 0.75)));\n" +
-            "  half3 luminous = (spectrum * 0.76 + half3(0.24)) * a;\n" +
-            "  refracted = mix(refracted, luminous, half(light));\n" +
-            "  return half4(min(refracted, half3(a)), a);\n" +
-            "}\n";
+            "uniform shader image;\\n" +
+            "uniform float2 centre;\\n" +
+            "uniform float2 extent;\\n" +
+            "uniform float amount;\\n" +
+            "uniform float pointer;\\n" +
+            "half4 main(float2 p) {\\n" +
+            "  float2 d = p - centre;\\n" +
+            "  float hw = max(extent.x * 0.5, 1.0);\\n" +
+            "  float hr = max(extent.y * 0.5, 1.0);\\n" +
+            "  float straight = max(hw - hr, 0.0);\\n" +
+            "  float2 shell = float2(d.x - clamp(d.x, -straight, straight), d.y);\\n" +
+            "  float shellLength = length(shell);\\n" +
+            "  float depth = clamp((hr - shellLength) / hr, 0.0, 1.0);\\n" +
+            "  float opticalEdge = 1.0 - smoothstep(0.02, 0.43, depth);\\n" +
+            "  float2 normal = shell / max(shellLength, 0.01);\\n" +
+            "  float bendPx = amount * (1.4 + 5.8 * opticalEdge);\\n" +
+            "  float2 refractedCoordinate = p - normal * bendPx;\\n" +
+            "  float split = 0.48 * amount * opticalEdge;\\n" +
+            "  half4 middle = image.eval(refractedCoordinate);\\n" +
+            "  half4 red = image.eval(refractedCoordinate + normal * split);\\n" +
+            "  half4 blue = image.eval(refractedCoordinate - normal * split);\\n" +
+            "  half a = max(max(red.a, middle.a), blue.a);\\n" +
+            "  half3 refracted = half3(red.r, middle.g, blue.b);\\n" +
+            "  float nx = d.x / hw;\\n" +
+            "  float ny = d.y / hr;\\n" +
+            "  float drift = (pointer - centre.x) / hw;\\n" +
+            "  float arch = -0.12 + 0.07 * sin(nx * 2.7 + drift * 0.45) + 0.06 * nx * nx;\\n" +
+            "  float beam = exp(-72.0 * pow(ny - arch, 2.0));\\n" +
+            "  beam *= 1.0 - smoothstep(0.76, 0.97, abs(nx));\\n" +
+            "  float u = clamp(0.5 + 0.5 * nx + 0.10 * drift, 0.0, 1.0);\\n" +
+            "  half3 ice = half3(0.25, 0.78, 1.0);\\n" +
+            "  half3 rose = half3(0.98, 0.37, 0.72);\\n" +
+            "  half3 gold = half3(1.0, 0.88, 0.45);\\n" +
+            "  half3 violet = half3(0.46, 0.52, 1.0);\\n" +
+            "  half3 leftSpectrum = mix(ice, rose, half(smoothstep(0.1, 0.48, u)));\\n" +
+            "  half3 rightSpectrum = mix(gold, violet, half(smoothstep(0.52, 0.96, u)));\\n" +
+            "  half3 spectrum = mix(leftSpectrum, rightSpectrum, half(smoothstep(0.44, 0.64, u)));\\n" +
+            "  float upperGlint = exp(-48.0 * pow(ny + 0.82, 2.0));\\n" +
+            "  float glint = upperGlint * (1.0 - smoothstep(0.65, 0.98, abs(nx)));\\n" +
+            "  float light = amount * (0.28 * beam + 0.075 * glint + 0.045 * opticalEdge);\\n" +
+            "  a = max(a, half(light * 0.6));\\n" +
+            "  refracted = mix(refracted, spectrum * a, half(clamp(light, 0.0, 0.36)));\\n" +
+            "  return half4(min(refracted, half3(a)), a);\\n" +
+            "}\\n";
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private RuntimeShader shader;
     private boolean enabled;
@@ -70,7 +85,7 @@ final class WenLiquidRuntimeOptics {
             shader.setFloatUniform("extent", lens.width(), lens.height());
             shader.setFloatUniform("amount", strength);
             shader.setFloatUniform("pointer", pointerX);
-            paint.setAlpha(Math.round(255f * strength));
+            paint.setAlpha(Math.round(200f * strength));
             float radius = lens.height() * .49f;
             canvas.drawRoundRect(lens, radius, radius, paint);
             if (!reportedHardware && strength >= 0.6f) {
