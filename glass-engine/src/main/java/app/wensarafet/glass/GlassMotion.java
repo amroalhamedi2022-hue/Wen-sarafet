@@ -84,6 +84,8 @@ public final class GlassMotion {
         private int hovered;
         private ValueAnimator morphAnimator;
         private final WenOpticalNavigationOverlay optic;
+        private final WenNavigationTrack.GlassGestureBridge materialBridge;
+        private float materialProgress;
 
         NavigationGesture(View origin, FrameLayout track, View lens, View[] tabs,
                           int selected, int originIndex, Runnable beforeNavigate) {
@@ -94,6 +96,8 @@ public final class GlassMotion {
             this.hovered=originIndex;
             optic = track instanceof WenNavigationTrack
                     ? ((WenNavigationTrack) track).getOptic() : null;
+            materialBridge = track instanceof WenNavigationTrack
+                    ? ((WenNavigationTrack) track).getGlassGestureBridge() : null;
             if (optic != null) optic.bindPhysicalPill(lens);
         }
 
@@ -135,19 +139,28 @@ public final class GlassMotion {
                 morphAnimator = null;
             }
             WenNavigationLensDrawable glass = opticalLens();
-            if (glass == null) return;
+            if (glass == null && materialBridge == null) return;
             if (!ValueAnimator.areAnimatorsEnabled() || lowPower(origin.getContext())) {
-                glass.setMorph(destination);
+                if (glass != null) glass.setMorph(destination);
                 if (optic != null) optic.progress(destination);
+                if (materialBridge != null) {
+                    materialProgress = destination;
+                    materialBridge.morph(destination);
+                }
                 return;
             }
-            morphAnimator = ValueAnimator.ofFloat(glass.getMorph(), destination);
+            morphAnimator = ValueAnimator.ofFloat(
+                    glass != null ? glass.getMorph() : materialProgress, destination);
             morphAnimator.setDuration(duration);
             morphAnimator.setInterpolator(COMPRESS);
             morphAnimator.addUpdateListener(a -> {
                 float progress = (Float) a.getAnimatedValue();
-                glass.setMorph(progress);
+                if (glass != null) glass.setMorph(progress);
                 if (optic != null) optic.progress(progress);
+                if (materialBridge != null) {
+                    materialProgress = progress;
+                    materialBridge.morph(progress);
+                }
             });
             morphAnimator.start();
         }
@@ -209,6 +222,7 @@ public final class GlassMotion {
                     cancelled=false;
                     hovered=nearest(x);
                     if (optic != null) optic.move(x);
+                    if (materialBridge != null) materialBridge.follow(x);
                     float move=Math.abs(event.getX()-downX);
                     if (move>slop && lens.getWidth()>0) {
                         // Direct translation tracks the fingertip; the animation
@@ -258,6 +272,7 @@ public final class GlassMotion {
         void detach() {
             tracking=false;
             if (optic != null) optic.discard();
+            if (materialBridge != null) materialBridge.reset();
             if (morphAnimator != null) {
                 morphAnimator.cancel();
                 morphAnimator = null;
