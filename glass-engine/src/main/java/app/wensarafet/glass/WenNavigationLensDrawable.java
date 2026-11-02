@@ -28,6 +28,7 @@ public final class WenNavigationLensDrawable extends Drawable {
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint outerRim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint innerRim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint chromaticRim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF surface = new RectF();
     private final RectF edge = new RectF();
     private final RectF inner = new RectF();
@@ -49,6 +50,8 @@ public final class WenNavigationLensDrawable extends Drawable {
         outerRim.setStrokeWidth(Math.max(1f, density * 1.3f));
         innerRim.setStyle(Paint.Style.STROKE);
         innerRim.setStrokeWidth(Math.max(.7f, density * .8f));
+        chromaticRim.setStyle(Paint.Style.STROKE);
+        chromaticRim.setStrokeWidth(Math.max(1f, density * 1.65f));
         halo.setStyle(Paint.Style.STROKE);
         halo.setStrokeWidth(Math.max(2f, density * 3f));
         halo.setColor(opacity(Color.WHITE, dark ? 150 : 225));
@@ -82,6 +85,11 @@ public final class WenNavigationLensDrawable extends Drawable {
                         opacity(Color.WHITE, dark ? 125 : 205)},
                 null, Shader.TileMode.CLAMP));
         innerRim.setColor(opacity(Color.WHITE, dark ? 78 : 176));
+        chromaticRim.setShader(new LinearGradient(surface.left, surface.top,
+                surface.right, surface.bottom,
+                new int[]{0xFF98EBFF, 0xFFACC0FF, 0xFFE7B8F5,
+                        0xFFFEEBB4, 0xFF91EBFC, 0xFFB7B1FF},
+                null, Shader.TileMode.CLAMP));
         applyAlpha();
     }
 
@@ -111,6 +119,9 @@ public final class WenNavigationLensDrawable extends Drawable {
         edge.set(fluid);
         edge.inset(outerRim.getStrokeWidth()*.5f, outerRim.getStrokeWidth()*.5f);
         canvas.drawRoundRect(edge, r, r, outerRim);
+        // Subtle rainbow refraction at rest, richer on hold, SAME pill shape.
+        chromaticRim.setAlpha((int)(alpha * (.28f + .57f * morph)));
+        canvas.drawRoundRect(edge, r, r, chromaticRim);
         inner.set(fluid);
         inner.inset(density*2.1f, density*2.1f);
         canvas.drawRoundRect(inner, r, r, innerRim);
