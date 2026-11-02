@@ -1109,18 +1109,37 @@ public final class MainActivity extends Activity {
             // One optical pill behind all four labels, never four independent pills.
             app.wensarafet.glass.WenNavigationTrack track =
                     new app.wensarafet.glass.WenNavigationTrack(this, Ui.DARK);
-            View lens = new View(this);
+            FrameLayout lens = new FrameLayout(this);
             lens.setBackground(Ui.glassSlidingNavigationLens(this));
             // Keep lens below tab text: elevated lens would obscure the active label.
             // Parent nav already has elevation, so extra lens Z is unnecessary.
             FrameLayout.LayoutParams lensParams = new FrameLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.TOP | Gravity.LEFT);
             track.addView(lens, lensParams);
+            // The optional advanced optical View exists ONLY in the sandbox
+            // source set. Production APKs never contain the third-party engine.
+            // Reflection avoids a release dependency on sandbox-only classes.
+            if (SandboxMode.isSandbox(this)) {
+                try {
+                    Class<?> provider = Class.forName(
+                            "app.wensarafet.tracker.SandboxOpticalGlass");
+                    java.lang.reflect.Method attach = provider.getMethod("attach",
+                            FrameLayout.class, app.wensarafet.glass.WenNavigationTrack.class);
+                    if (Boolean.TRUE.equals(attach.invoke(null, lens, track))) {
+                        // A single material, not two stacked lenses and rims.
+                        lens.setBackground(null);
+                        track.setExternalGlassActive(true);
+                    }
+                } catch (ReflectiveOperationException | LinkageError problem) {
+                    android.util.Log.w("WenGlassProbe",
+                            "SANDBOX_LIBRARY_UNAVAILABLE: keeping built-in optics", problem);
+                }
+            }
             track.addView(tabs, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             // Hardware-composited passive optical layer must be ABOVE the glyphs.
             // It never takes click/hold ownership away from any real tab.
-            track.getOptic().bringToFront();
+            if (track.getOptic() != null) track.getOptic().bringToFront();
             // WenNavigationTrack paints magnification after the tab children
             // in one hardware canvas pass; no overlay child can disappear
             // behind a separate Surface or hardware-composition layer.
