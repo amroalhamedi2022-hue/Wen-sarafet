@@ -48,6 +48,12 @@ assert "liquid ? 125 : 300" in ui
 for label in ["الرئيسية", "العمليات", "الديون", "التحليل"]:
     assert 'setContentDescription("تبويب ' + label + '")' in main
 assert "FrameLayout track = new FrameLayout(this);" in main
+assert "view.setSelected(selected);" in main
+assert "tabs[hovered].performClick();" in engine
+assert "tracking=true; cancelled=false;" in engine
+assert "lens.setTranslationX(destination)" in engine
+assert "new NavigationGesture(" in engine
+assert "boolean fromNavGesture = pendingGlassNavigationSwitch;" in main
 assert "lastGlassNavigationTab = selectedTab;" in main
 assert "GlassMotion.slideLens(" in main
 lensSource = (p/"glass-engine/src/main/java/app/wensarafet/glass/WenNavigationLensDrawable.java").read_text(encoding="utf-8")

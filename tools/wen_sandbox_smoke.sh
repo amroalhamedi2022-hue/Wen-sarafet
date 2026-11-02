@@ -126,6 +126,38 @@ if ! adb shell pidof "$PACKAGE" >/dev/null 2>&1; then
 fi
 adb shell screencap -p /sdcard/wen-after-home.png
 adb pull /sdcard/wen-after-home.png "$OUT/home-after-hold-return.png"
+
+# Hold and drag across RTL navigation (no fixed phone coordinates).
+nav_dump "$OUT/drag-start-home.xml"
+DRAG_POINTS="$(python3 - "$OUT/drag-start-home.xml" <<'PY'
+import re,sys,xml.etree.ElementTree as ET
+nodes=list(ET.parse(sys.argv[1]).getroot().iter("node"))
+def center(name):
+    items=[n for n in nodes if n.attrib.get("content-desc")=="تبويب "+name]
+    if len(items)!=1: raise SystemExit("Tab missing: "+name)
+    m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",items[0].attrib.get("bounds",""))
+    if not m: raise SystemExit("Invalid nav bounds")
+    a,b,c,d=map(int,m.groups())
+    return (a+c)//2,(b+d)//2
+print(*center("الرئيسية"),*center("التحليل"))
+PY
+)"
+read -r DX1 DY1 DX2 DY2 <<< "$DRAG_POINTS"
+adb shell input swipe "$DX1" "$DY1" "$DX2" "$DY2" 750
+sleep 2
+adb shell uiautomator dump /sdcard/wen-after-drag.xml >/dev/null
+adb pull /sdcard/wen-after-drag.xml "$OUT/wen-after-drag.xml" >/dev/null
+python3 - "$OUT/wen-after-drag.xml" <<'PY'
+import sys,xml.etree.ElementTree as ET
+nodes=list(ET.parse(sys.argv[1]).getroot().iter("node"))
+selected=[n for n in nodes if n.attrib.get("content-desc")=="تبويب التحليل"
+          and n.attrib.get("selected")=="true"]
+if len(selected)!=1: raise SystemExit("FAIL: hold-drag did not select analytics")
+print("PASS: native long drag selected analytics")
+PY
+adb shell screencap -p /sdcard/wen-after-drag.png
+adb pull /sdcard/wen-after-drag.png "$OUT/analytics-after-hold-drag.png"
+
 adb logcat -d -v time -s AndroidRuntime:E > "$OUT/android-runtime.log" || true
 adb shell dumpsys gfxinfo "$PACKAGE" > "$OUT/gfxinfo.txt" || true
 if grep -E "FATAL EXCEPTION|Process: $PACKAGE" "$OUT/android-runtime.log"; then

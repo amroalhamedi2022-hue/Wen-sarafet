@@ -742,6 +742,7 @@ public final class MainActivity extends Activity {
         }
         view.setPadding(Ui.dp(this,4),Ui.dp(this,3),Ui.dp(this,4),Ui.dp(this,3));
         view.setMaxLines(2);
+        view.setSelected(selected); // Accessibility exposes the current tab.
         if (selected && !Ui.isLiquidTheme(this)) {
             view.setBackground(Ui.glassSelectedNavigationBackground(this, 18));
         }
