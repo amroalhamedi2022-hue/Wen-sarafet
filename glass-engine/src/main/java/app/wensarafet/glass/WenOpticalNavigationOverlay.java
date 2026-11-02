@@ -25,6 +25,10 @@ public final class WenOpticalNavigationOverlay extends View {
     private final float density;
     private final Paint body = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint magnified = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    // Peripheral refraction is optically stronger than centre magnification.
+    private final Paint refractedEdge = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Paint reflectedLight = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint shadowLine = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint innerRim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -33,11 +37,13 @@ public final class WenOpticalNavigationOverlay extends View {
     private final Paint specular = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF highlightBounds = new RectF();
     private final Matrix sampleMatrix = new Matrix();
+    private final Matrix edgeMatrix = new Matrix();
     private final RectF droplet = new RectF();
     private WenNavigationTrack hostTrack;
     private View physicalPill;
     private Bitmap source;
     private BitmapShader sample;
+    private BitmapShader edgeSample;
     private float centreX, opacity;
     private boolean captured;
     private boolean reportedDraw;
@@ -54,7 +60,14 @@ public final class WenOpticalNavigationOverlay extends View {
         // An attached, non-touchable View is composited above the tab glyphs
         // and always receives invalidate() from the UI renderer.
         // Almost transparent coating: never cover the real underlying tab glyph.
-        body.setColor(dark ? 0x19312F66 : 0x1EEAF6FF);
+        body.setColor(dark ? 0x2F8C91B0 : 0x27FFFFFF);
+        refractedEdge.setStyle(Paint.Style.STROKE);
+        refractedEdge.setStrokeWidth(density * 6.5f);
+        reflectedLight.setStyle(Paint.Style.STROKE);
+        reflectedLight.setStrokeWidth(density * 2.4f);
+        shadowLine.setStyle(Paint.Style.STROKE);
+        shadowLine.setStrokeWidth(density * 1.1f);
+        shadowLine.setColor(dark ? 0x8C22253C : 0x5B34456C);
         spectrum.setStyle(Paint.Style.STROKE);
         spectrum.setStrokeWidth(density * 1.85f);
         caustic.setStyle(Paint.Style.STROKE);
@@ -82,7 +95,11 @@ public final class WenOpticalNavigationOverlay extends View {
                 new float[]{0f, .19f, .39f, .58f, .78f, 1f},
                 Shader.TileMode.CLAMP));
         specular.setShader(new LinearGradient(0f, 0f, 0f, Math.max(1, h),
-                0xC6FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+                0xECFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+        reflectedLight.setShader(new LinearGradient(0f, 0f,
+                Math.max(1, w), Math.max(1, h),
+                new int[]{0x22FFFFFF, 0xCCFFFFFF, 0x2CFFFFFF, 0xC4E8FCFF,
+                        0x28FFFFFF, 0xA0FFFFFF}, null, Shader.TileMode.CLAMP));
     }
 
     void setHostTrack(WenNavigationTrack track) { hostTrack = track; }
@@ -115,6 +132,8 @@ public final class WenOpticalNavigationOverlay extends View {
             tabStrip.draw(capture);
             sample = new BitmapShader(source, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
             magnified.setShader(sample);
+            edgeSample = new BitmapShader(source, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+            refractedEdge.setShader(edgeSample);
             captured = true;
             android.util.Log.i("WenGlassProbe", "SNAPSHOT width=" + source.getWidth()
                     + " height=" + source.getHeight()
@@ -154,7 +173,9 @@ public final class WenOpticalNavigationOverlay extends View {
         captured = false;
         opacity = 0f;
         sample = null;
+        edgeSample = null;
         magnified.setShader(null);
+        refractedEdge.setShader(null);
         // No immediate Bitmap.recycle(): hardware canvas drawing can still
         // be in flight on RenderThread after the view becomes invisible.
         source = null;
@@ -190,36 +211,61 @@ public final class WenOpticalNavigationOverlay extends View {
         final float cx = droplet.centerX();
         final float cy = droplet.centerY();
         final float radius = droplet.height() * .49f;
-        // Subtle optical enlargement inside the EXISTING pale-blue pill;
-        // foreground colours/gradients belong exclusively to the pill.
-        float zoom = 1f + .26f * opacity;
+        // Two-power optical sampling: the actual pixels of the captured
+        // tab strip bend more at the periphery than in the calm lens centre.
+        float strength = opacity;
+        float zoom = 1f + .20f * strength;
+        float bend = 1f + .42f * strength;
+        float pointerOffset = Math.max(-droplet.width() * .5f,
+                Math.min(droplet.width() * .5f, centreX - cx));
+        float prismShift = pointerOffset * .058f * strength;
         sampleMatrix.reset();
         sampleMatrix.setScale(zoom, zoom, cx, cy);
+        sampleMatrix.postTranslate(prismShift, -density * .50f * strength);
         sample.setLocalMatrix(sampleMatrix);
-        // Base coating / true optical refraction: the original tab pixels are
-        // sampled inside the EXISTING moving selected pill. No second Siri orb.
-        body.setAlpha((int)(30f * opacity));
+
+        canvas.save();
+        canvas.clipRect(droplet);
+        body.setAlpha((int) (42f * strength));
         canvas.drawRoundRect(droplet, radius, radius, body);
-        magnified.setAlpha((int)(220f * opacity));
+        magnified.setAlpha((int) (242f * strength));
         canvas.drawRoundRect(droplet, radius, radius, magnified);
-        // Chromatic fringe + white caustic edge respond to the same hold value.
-        // Drawing into the existing pill bounds prevents a detached square halo.
-        caustic.setAlpha((int)(105f * opacity));
-        canvas.drawRoundRect(droplet, radius, radius, caustic);
-        spectrum.setAlpha((int)(235f * opacity));
-        canvas.drawRoundRect(droplet, radius, radius, spectrum);
-        rim.setAlpha((int)(155f * opacity));
-        canvas.drawRoundRect(droplet, radius, radius, rim);
-        innerRim.setAlpha((int)(100f * opacity));
+
+        edgeMatrix.reset();
+        edgeMatrix.setScale(bend, bend, cx, cy);
+        edgeMatrix.postTranslate(-prismShift * 1.8f, density * 1.25f * strength);
+        edgeSample.setLocalMatrix(edgeMatrix);
+        refractedEdge.setAlpha((int) (224f * strength));
         highlightBounds.set(droplet);
-        highlightBounds.inset(density * 2.4f, density * 2.4f);
+        highlightBounds.inset(density * 3.8f, density * 3.8f);
+        canvas.drawRoundRect(highlightBounds, radius, radius, refractedEdge);
+        canvas.restore();
+
+        // Asymmetric caustics: bright upper glass, shadowed underside and
+        // chromatic dispersion, all INSIDE the same one-piece physical pill.
+        shadowLine.setAlpha((int) (118f * strength));
+        highlightBounds.set(droplet);
+        highlightBounds.inset(density * 1.0f, density * 1.0f);
+        canvas.drawRoundRect(highlightBounds, radius, radius, shadowLine);
+        caustic.setAlpha((int) (185f * strength));
+        canvas.drawRoundRect(droplet, radius, radius, caustic);
+        spectrum.setAlpha((int) (252f * strength));
+        canvas.drawRoundRect(droplet, radius, radius, spectrum);
+        rim.setAlpha((int) (224f * strength));
+        canvas.drawRoundRect(droplet, radius, radius, rim);
+        reflectedLight.setAlpha((int) (242f * strength));
+        highlightBounds.set(droplet);
+        highlightBounds.inset(density * 2.5f, density * 2.5f);
+        canvas.drawRoundRect(highlightBounds, radius, radius, reflectedLight);
+        innerRim.setAlpha((int) (136f * strength));
+        highlightBounds.inset(density * 1.4f, density * 1.4f);
         canvas.drawRoundRect(highlightBounds, radius, radius, innerRim);
-        // A tiny upper specular glint, not a black iris or fake Siri component.
-        highlightBounds.set(droplet.left + density * 7f,
-                droplet.top + density * 2f,
-                droplet.right - density * 7f,
-                droplet.top + droplet.height() * .33f);
-        specular.setAlpha((int)(84f * opacity));
+
+        highlightBounds.set(droplet.left + density * 9f,
+                droplet.top + density * 1.5f,
+                droplet.right - density * 9f,
+                droplet.top + droplet.height() * .28f);
+        specular.setAlpha((int) (150f * strength));
         canvas.drawOval(highlightBounds, specular);
     }
 }
