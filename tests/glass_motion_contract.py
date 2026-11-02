@@ -69,6 +69,21 @@ assert "new LinearGradient" in lensSource
 assert "new " not in lensSource.split("@Override public void draw(Canvas canvas)",1)[1].split(
         "private void applyAlpha()",1)[0]
 assert "postDelayed" not in lensSource and "ValueAnimator" not in lensSource
+assert "finishNavigationLensHandoff(track, lens)" in main
+assert "public static void finishNavigationLensHandoff(FrameLayout track, View lens)" in engine
+assert "morphTo(1f, 210);" in engine, "Hold must create a deeper optical droplet"
+assert "morphTo(0f, 190);" in engine, "Release/cancel must restore the resting pill"
+assert "lens.setTranslationX(tabs[hovered].getLeft());" in engine, "Pin at destination before click"
+assert "lens.setTranslationX(destination)" in engine, "Dragged lens follows fingertip"
+assert "WenNavigationLensDrawable glass = opticalLens();" in engine
+assert "ValueAnimator.ofFloat(glass.getMorph(), destination)" in engine
+assert "glass.setMorph(1f);" in engine
+assert "glass.setMorph(0f);" in engine
+assert "private final RectF fluid = new RectF();" in lensSource
+assert "public void setMorph(float fraction)" in lensSource
+assert "surface.height()*.57f*morph" in lensSource
+assert "canvas.drawRoundRect(fluid, r, r, halo);" in lensSource
+assert "if (morphAnimator != null)" in engine
 assert "lens.setElevation(" not in main, "Glass lens must not cover its selected icon/text"
 assert "tabs[previousIndex].getLeft()" in engine and "selected.getLeft()" in engine
 assert "previousIndex != selectedIndex" in engine
