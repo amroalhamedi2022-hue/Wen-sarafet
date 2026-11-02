@@ -1,5 +1,26 @@
 # وين صرفت — الخطة الرئيسية لمحرك حركات Liquid Glass
 
+## ✨ Liquid Glass optical reference pass — 2 November 2026
+
+**User recordings:** `1000071366.mp4` demonstrates the sandbox's square-looking FAB shadow and weak visible lens; `1000071367.mp4` compares visual references labelled “iOS 27 Beta 2/3” with highly chromatic optical highlights. Treat those labels as labels in the video, not as an independently verified Apple software release. The user wants the **optical motion and iridescent lens** but **not Siri or the black Siri orb**.
+
+**Official technical design guidance:** Apple WWDC25 “Meet Liquid Glass” (`https://developer.apple.com/videos/play/wwdc2025/219/`) describes lensing/refraction, context-adaptive highlights, light concentration, interaction-responsive material and preserving legibility; Apple's internal renderer is not open-source, so this Android rendering is an approximation rather than a verified pixel-perfect port.
+
+### Changes in sandbox-only branch PR #28
+- `WenNavigationTrack` now hosts a real, passive, non-clickable `WenOpticalNavigationOverlay` View **above** navigation glyphs, invalidated via its own View display list. A legacy foreground fallback remains inert when the View is attached. Keep all original RTL touch/hold-drag/click routes.
+- `WenOpticalNavigationOverlay` keeps the bounded tab-only single-touch snapshot and `BitmapShader` magnification, now combining an unobtrusive translucent coating with a chromatic ring, caustic edge and specular glint; no Siri object, duplicate pill, idle ticking, fullscreen capture or PixelCopy. This is a best-effort surface sample, NOT Apple’s proprietary dynamic physical refraction or true full-screen backdrop sampling.
+- `WenNavigationLensDrawable` has a restrained chromatic rim even at rest, stronger on hold on the **same** pill shape.
+- `WenFabBubbleDrawable` receives an iridescent circular ring. `MainActivity.bindGlassFab` sets a circular `ViewOutlineProvider`, oval clipping, no default rectangular foreground or state-list animator, and a circular shadow to remove the faint square surrounding the bubble, retaining Add Transaction callbacks and circular reveal.
+- Code commits: `9351f804`, `f1dd42c1`, `73bcbcb8`, `f458f660`, `439395f5`. Source tests and full-feature sandbox APK `41473410236` succeeded on `439395f5`. Direct Android compilation `41473410256` and finance source tests `41473410125` also succeeded. Emulator visual probe is `41473410194`, outcome must be checked before claiming actual lens parity.
+- Sandbox APK SHA256: `692fe70aae0512f84d3e7961f4c82ee0d44870e03cdf20f7aa1e023a968ff6b6` (size 7,004,400 bytes) built from commit `439395f5`. Separate `app.wensarafet.tracker.sandbox`; do NOT uninstall or alter production data.
+
+### Acceptance still pending
+Check (a) new exact screenshot pixels under long-hold, (b) tablet + phone visual match with user's `1000071367.mp4`, (c) FAB genuinely circular including shadow/pressed ripple, (d) held lens follows finger with no double bubbles or input failures, (e) smooth fast RTL swipes and scroll, battery and system Reduced Motion, (f) form opens and backs out correctly. Never merge sandbox bypass logic to `main` or claim 1:1 Apple reproduction.
+
+---
+
+
+
 ## 🧪 فحص ما قبل الدمج — عدسة أعرض وفقاعة الإضافة وأنيميشن الأيقونات وشريط شفاف (2 نوفمبر 2026)
 
 **النتيجة: نسخة Sandbox جديدة قابلة للتجربة، لكن الدمج إلى main لم يُعتمد بعد.**
