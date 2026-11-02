@@ -126,7 +126,14 @@ assert "focusLensTab(hovered);" in engine
 assert "focusLensTab(-1);" in engine
 assert "focused.animate().scaleX(1.11f).scaleY(1.11f)" in engine
 assert "startupResolved && db!=null" in main, "Swipe should work on first launch"
-assert "next.setTranslationX(-slideDirection*Ui.dp(this,64));" in main
-assert "previous.animate().translationX(slideDirection*Ui.dp(this,100))" in main
+assert "int target=currentTab+(dx>0f?1:-1);" in main, "RTL physical right must navigate forward"
+assert "target > currentTab ? 1 : -1" in main, "Slide direction must follow RTL swipe"
+assert "next.setTranslationX(-slideDirection * Ui.dp(this, 46));" in main
+assert "screenHost.removeView(previous);" in main
+assert "previous.animate().translationX(slideDirection" not in main, "No second heavy page during slide"
+assert "next.animate().translationX(0f).setDuration(190)" in main
+assert "if (pendingPrimarySlide != 0) return;" in main, "Header must not animate twice during sliding"
+assert "if (!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this))" in main
+
 assert "android.animation.ValueAnimator.areAnimatorsEnabled()" in main
 print("PASS: RTL-safe horizontal primary swipes, continuous lens, moving top chrome; original destinations retained")
