@@ -24,7 +24,7 @@ public final class WenNavigationTrack extends FrameLayout {
         optic = new WenOpticalNavigationOverlay(context, dark);
         optic.setHostTrack(this);
         opticalForeground = new Drawable() {
-            @Override public void draw(Canvas canvas) { optic.renderOnto(canvas); }
+            @Override public void draw(Canvas canvas) { if (optic.getParent() == null) optic.renderOnto(canvas); }
             @Override public void setAlpha(int alpha) {}
             @Override public void setColorFilter(ColorFilter filter) {}
             @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
@@ -33,17 +33,23 @@ public final class WenNavigationTrack extends FrameLayout {
         // rather than competing with their z-order or cached display lists.
         setForeground(opticalForeground);
         setForegroundGravity(android.view.Gravity.FILL);
+        // A real attached View has a hardware display list and repaints reliably
+        // on Android devices where a custom foreground callback remains cached.
+        // MainActivity brings this passive layer above its tab labels.
+        addView(optic, new FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
     }
 
     public WenOpticalNavigationOverlay getOptic() { return optic; }
 
     void invalidateOptic() {
+        optic.invalidate();
         opticalForeground.invalidateSelf();
     }
 
     @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
         super.onSizeChanged(width, height, oldWidth, oldHeight);
-        optic.layout(0, 0, width, height);
+        // Overlay is now a child laid out by FrameLayout, not an off-tree helper.
     }
 
     @Override protected void onDetachedFromWindow() {
