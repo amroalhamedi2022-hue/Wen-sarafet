@@ -102,26 +102,12 @@ public final class WenNavigationLensDrawable extends Drawable {
     @Override public void draw(Canvas canvas) {
         if (surface.isEmpty()) return;
         float centerX = surface.centerX(), centerY = surface.centerY();
-        float halfWidth = surface.width()*.5f*(1f-morph)
-                + surface.height()*.70f*morph;
-        float halfHeight = surface.height()*.5f*(1f+.12f*morph);
-        fluid.set(centerX-halfWidth, centerY-halfHeight,
-                centerX+halfWidth, centerY+halfHeight);
-        float r = Math.max(radius, fluid.height()*.50f);
-        if (morph > .005f) {
-            halo.setAlpha(Math.round(alpha*morph*(dark ? .65f : .88f)));
-            canvas.drawRoundRect(fluid, r, r, halo);
-        }
+        // Persistent selected-tab pill. Touch changes ONLY the optical pixels
+        // drawn in the same bounds by WenNavigationTrack's foreground.
+        // Never change dimensions/colour or draw a separate round halo.
+        fluid.set(surface);
+        float r = radius;
         canvas.drawRoundRect(fluid, r, r, fill);
-        if (morph > .005f) {
-            // Soft core makes the held bubble visibly refractive. No straight
-            // top rule: that was the unwanted line over the Home tab.
-            float inset = density*(5f+2f*(1f-morph));
-            inner.set(fluid);
-            inner.inset(inset, inset);
-            opticalCore.setAlpha(Math.round(alpha*morph*(dark ? .23f : .44f)));
-            canvas.drawOval(inner, opticalCore);
-        }
         edge.set(fluid);
         edge.inset(outerRim.getStrokeWidth()*.5f, outerRim.getStrokeWidth()*.5f);
         canvas.drawRoundRect(edge, r, r, outerRim);
