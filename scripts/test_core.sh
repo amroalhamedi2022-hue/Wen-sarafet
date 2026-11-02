@@ -215,3 +215,4 @@ python3 "$PROJECT_DIR/tests/category_checkpoint_contract.py"
 
 # UI-only polish regression: analytics/debt navigation, spacing and collapsed months.
 python3 "$PROJECT_DIR/tests/ui_polish_185_contract.py"
+python3 "$PROJECT_DIR/tests/glass_integration_preflight.py"

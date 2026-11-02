@@ -82,7 +82,7 @@ import re, sys, xml.etree.ElementTree as ET
 nodes=[x for x in ET.parse(sys.argv[1]).getroot().iter("node")
        if x.attrib.get("content-desc")=="تبويب الرئيسية"]
 if len(nodes)!=1: raise SystemExit("Home nav tab not accessible")
-m=re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",nodes[0].attrib.get("bounds",""))
+m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",nodes[0].attrib.get("bounds",""))
 if not m: raise SystemExit("Missing home bounds")
 a,b,c,d=map(int,m.groups())
 print((a+c)//2,(b+d)//2)
