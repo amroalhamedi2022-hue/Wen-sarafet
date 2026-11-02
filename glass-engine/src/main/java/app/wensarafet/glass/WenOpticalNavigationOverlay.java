@@ -29,6 +29,7 @@ public final class WenOpticalNavigationOverlay extends View {
     private final Matrix sampleMatrix = new Matrix();
     private final RectF droplet = new RectF();
     private WenNavigationTrack hostTrack;
+    private View physicalPill;
     private Bitmap source;
     private BitmapShader sample;
     private float centreX, opacity;
@@ -60,6 +61,8 @@ public final class WenOpticalNavigationOverlay extends View {
     }
 
     void setHostTrack(WenNavigationTrack track) { hostTrack = track; }
+    /** Same bounds as the already rendered selected-tab pill; never a second bubble. */
+    public void bindPhysicalPill(View pill) { physicalPill = pill; }
 
     void renderOnto(Canvas canvas) {
         if (captured && opacity > .005f) onDraw(canvas);
@@ -102,8 +105,9 @@ public final class WenOpticalNavigationOverlay extends View {
 
     public void move(float pointerX) {
         if (!captured) return;
-        float radius = Math.min(getHeight() * .52f, getWidth() * .145f);
-        centreX = Math.max(radius, Math.min(getWidth() - radius, pointerX));
+        // The foreground clip is anchored to the existing pill, not the finger.
+        // Drag moves the real pill: the optical treatment follows it exactly.
+        centreX = pointerX;
         requestPaint();
     }
 
@@ -146,29 +150,28 @@ public final class WenOpticalNavigationOverlay extends View {
             android.util.Log.i("WenGlassProbe", "DRAW_ACTIVE magnification=" + (1f + .76f * opacity)
                     + " width=" + getWidth());
         }
-        final float cy = getHeight() * .5f;
-        final float rx = getHeight() * (.48f + .22f * opacity);
-        final float ry = getHeight() * (.40f + .11f * opacity);
-        droplet.set(centreX - rx, cy - ry, centreX + rx, cy + ry);
-
-        // Hide the unmagnified glyphs beneath this locally opaque optical
-        // surface, then resample their original pixels at 1.3x into the lens.
-        body.setAlpha((int)(245f * opacity));
-        canvas.drawRoundRect(droplet, ry, ry, body);
-        // Optical magnification, not a slight icon-scale animation.
-        float zoom = 1f + .76f * opacity;
+        if (physicalPill == null || physicalPill.getWidth() < 1
+                || physicalPill.getHeight() < 1) return;
+        // This is ONE bubble: clip the sampled navigation text to the exact
+        // painted bounds of the selected-tab pill. No separately coloured halo,
+        // independent circle, second outline, or detached fingertip droplet.
+        final float left = physicalPill.getX();
+        final float top = physicalPill.getY();
+        final float width = physicalPill.getWidth() * physicalPill.getScaleX();
+        final float height = physicalPill.getHeight() * physicalPill.getScaleY();
+        final float inset = density * 3f;
+        droplet.set(left+inset, top+inset, left+width-inset, top+height-inset);
+        if (droplet.isEmpty()) return;
+        final float cx = droplet.centerX();
+        final float cy = droplet.centerY();
+        final float radius = droplet.height() * .49f;
+        // Subtle optical enlargement inside the EXISTING pale-blue pill;
+        // foreground colours/gradients belong exclusively to the pill.
+        float zoom = 1f + .26f * opacity;
         sampleMatrix.reset();
-        sampleMatrix.setScale(zoom, zoom, centreX, cy);
+        sampleMatrix.setScale(zoom, zoom, cx, cy);
         sample.setLocalMatrix(sampleMatrix);
-        magnified.setAlpha((int)(255f * opacity));
-        canvas.drawRoundRect(droplet, ry, ry, magnified);
-
-        glow.setAlpha((int)(105f * opacity));
-        canvas.drawRoundRect(droplet, ry, ry, glow);
-        rim.setAlpha((int)(242f * opacity));
-        canvas.drawRoundRect(droplet, ry, ry, rim);
-        droplet.inset(density * 2.5f, density * 2.5f);
-        innerRim.setAlpha((int)(162f * opacity));
-        canvas.drawRoundRect(droplet, ry - density * 2f, ry - density * 2f, innerRim);
+        magnified.setAlpha((int)(205f * opacity));
+        canvas.drawRoundRect(droplet, radius, radius, magnified);
     }
 }
