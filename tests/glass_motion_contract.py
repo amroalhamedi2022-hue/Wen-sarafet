@@ -136,7 +136,15 @@ assert "setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);" in optica
 assert "setVisibility(INVISIBLE);" in optical
 assert "float zoom = 1f + .20f * strength;" in optical, "Centre refraction must sample captured pixels"
 assert "float bend = 1f + .42f * strength;" in optical, "Peripheral refraction must be stronger than the centre"
-assert "edgeSample.setLocalMatrix(edgeMatrix);" in optical, "Optical rim must use a second refraction matrix"
+assert "edgeSample.setLocalMatrix(edgeMatrix);" in optical, "Fallback optical rim must sample real glyphs"
+assert "gpuOptics.attach(sample);" in optical
+assert "if (!gpuOptics.draw(canvas, droplet, strength, centreX))" in optical, "Hardware glass should use one refracted image"
+gpu=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenLiquidRuntimeOptics.java").read_text(encoding="utf-8")
+assert "RuntimeShader" in gpu and "shader.setInputShader(\"image\", backdrop)" in gpu
+assert "image.eval(bent)" in gpu and "image.eval(bent + float2(splitting, 0.0))" in gpu
+assert "if (!enabled || shader == null || !canvas.isHardwareAccelerated()) return false;" in gpu
+assert "new " not in gpu.split("boolean draw(Canvas canvas",1)[1].split("void clear()",1)[0]
+assert "postDelayed" not in gpu and "while (true)" not in gpu
 assert "canvas.drawRoundRect(highlightBounds, radius, radius, refractedEdge);" in optical
 assert "refractedEdge.setShader(edgeSample);" in optical
 assert "physicalPill.getX()" in optical and "physicalPill.getWidth()" in optical
