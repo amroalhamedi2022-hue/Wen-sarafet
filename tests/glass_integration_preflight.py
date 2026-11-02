@@ -16,7 +16,9 @@ for banned in ["FinanceDbHelper", "LicenseManager", "SQLiteOpenHelper", "SmsMana
     assert banned not in motion
 main=(root/"app/src/main/java/app/wensarafet/tracker/MainActivity.java").read_text(encoding="utf-8")
 assert "SandboxMode.canRun(this)" in main, "Trial remains isolated"
-assert "boolean fastLiquid = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);" in main
+assert "boolean fastLiquid = SandboxMode.isSandbox(this) && (Ui.isLiquidTheme(this) || paletteSwitch);" in main
+assert "boolean paletteSwitch = pendingPaletteSwitch;" in main
+assert "if (!SandboxMode.isSandbox(this) || previousDark != Ui.DARK)" in main, "Non-sandbox/dark fallback kept"
 assert "GlassMotion.bindNavigationTab(" in main
 for callback in ["showMain(false)", "showMain(true)", "showDebtsScreen(FinanceRules.DEBT_RECEIVABLE)",
                  "showAnalyticsScreen()"]:
