@@ -172,8 +172,11 @@ public final class GlassMotion {
                     float x=origin.getLeft()+event.getX();
                     float y=origin.getTop()+event.getY();
                     if (!insideVertical(y)) {
+                        // Hold the last optical position while the pointer is
+                        // temporarily out of bounds. Returning during MOVE made
+                        // the lens jump home and then forward if it re-entered.
+                        // Only the final UP/CANCEL decides whether to snap back.
                         cancelled=true;
-                        returnToSelected();
                         return true;
                     }
                     cancelled=false;
