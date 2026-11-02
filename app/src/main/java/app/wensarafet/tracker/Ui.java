@@ -170,6 +170,15 @@ public final class Ui {
                 first, second, SKY, false);
     }
 
+    /** One quiet pearly lens for the bottom tabs; no content capture or idle redraw. */
+    public static android.graphics.drawable.Drawable glassSlidingNavigationLens(Context context) {
+        if (!isLiquidTheme(context)) return rounded(BRAND_SOFT, 18, context);
+        int upper = DARK ? mix(SURFACE, BRAND_SOFT, .28f) : mix(BRAND_SOFT, SURFACE, .45f);
+        int lower = DARK ? mix(SURFACE, SKY, .18f) : mix(BRAND_SOFT, SKY, .12f);
+        return new app.wensarafet.glass.WenNavigationLensDrawable(
+                context, upper, lower, SKY, DARK);
+    }
+
     public static android.graphics.drawable.Drawable glassSelectedNavigationBackground(Context context, int radiusDp) {
         if (!isLiquidTheme(context)) return rounded(BRAND_SOFT, radiusDp, context);
         return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),

@@ -666,7 +666,7 @@ public final class MainActivity extends Activity {
             FrameLayout track = new FrameLayout(this);
             track.setClipChildren(false);
             View lens = new View(this);
-            lens.setBackground(Ui.glassSelectedNavigationBackground(this, 18));
+            lens.setBackground(Ui.glassSlidingNavigationLens(this));
             // Keep lens below tab text: elevated lens would obscure the active label.
             // Parent nav already has elevation, so extra lens Z is unnecessary.
             FrameLayout.LayoutParams lensParams = new FrameLayout.LayoutParams(
