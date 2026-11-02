@@ -223,9 +223,10 @@ public final class WenOpticalNavigationOverlay extends View {
         float pointerOffset = Math.max(-droplet.width() * .5f,
                 Math.min(droplet.width() * .5f, centreX - cx));
         float prismShift = pointerOffset * .058f * strength;
+        // Hardware AGSL performs its OWN refraction in actual screen pixels.
+        // Pre-zooming the sampled shader caused a doubled/overstretched glyph.
+        // Keep the GPU input in its native coordinate system at all times.
         sampleMatrix.reset();
-        sampleMatrix.setScale(zoom, zoom, cx, cy);
-        sampleMatrix.postTranslate(prismShift, -density * .50f * strength);
         sample.setLocalMatrix(sampleMatrix);
 
         canvas.save();
@@ -235,6 +236,10 @@ public final class WenOpticalNavigationOverlay extends View {
         // A single true pixel-warped image pass is preferred over two painted
         // glyph copies. Old Canvas optics remain a safe software/AGSL fallback.
         if (!gpuOptics.draw(canvas, droplet, strength, centreX)) {
+            // Only the software fallback applies a uniform sample zoom.
+            sampleMatrix.setScale(zoom, zoom, cx, cy);
+            sampleMatrix.postTranslate(prismShift, -density * .50f * strength);
+            sample.setLocalMatrix(sampleMatrix);
             magnified.setAlpha((int) (242f * strength));
             canvas.drawRoundRect(droplet, radius, radius, magnified);
             edgeMatrix.reset();
