@@ -72,7 +72,7 @@ assert "new " not in lensSource.split("@Override public void draw(Canvas canvas)
 assert "postDelayed" not in lensSource and "ValueAnimator" not in lensSource
 assert "finishNavigationLensHandoff(track, lens)" in main
 assert "public static void finishNavigationLensHandoff(FrameLayout track, View lens)" in engine
-assert "morphTo(1f, 210);" in engine, "Hold must create a deeper optical droplet"
+assert "morphTo(1f, 190);" in engine, "Hold must create a deeper optical droplet"
 assert "morphTo(0f, 190);" in engine, "Release/cancel must restore the resting pill"
 assert "lens.setTranslationX(tabs[hovered].getLeft());" in engine, "Pin at destination before click"
 assert "lens.setTranslationX(destination)" in engine, "Dragged lens follows fingertip"
@@ -119,11 +119,30 @@ assert "animateGlassTopBar(next);" in main
 assert "Ui.pressAnimation(back);" in main
 assert "canvas.drawLine(" not in lensSource, "The old straight highlight must not return"
 assert "canvas.drawOval(inner, opticalCore);" in lensSource
-assert "private int zoomedTab = -1;" in engine
-assert "focusLensTab(originIndex);" in engine
-assert "focusLensTab(hovered);" in engine
-assert "focusLensTab(-1);" in engine
-assert "focused.animate().scaleX(1.11f).scaleY(1.11f)" in engine
+# The original icon-scale stand-in is no longer allowed: optical sampling
+# must visibly magnify ORIGINAL tab pixels inside the lens.
+assert "focusLensTab(" not in engine
+assert "WenOpticalNavigationOverlay optic;" in engine
+assert "optic.begin((View) view.getParent()" in engine
+assert "optic.move(x);" in engine
+assert "optic.progress(progress);" in engine
+optical = (p/"glass-engine/src/main/java/app/wensarafet/glass/WenOpticalNavigationOverlay.java").read_text(encoding="utf-8")
+assert "new BitmapShader(source, Shader.TileMode.CLAMP" in optical
+assert "tabStrip.draw(capture);" in optical
+assert "sampleMatrix.setScale(zoom, zoom, centreX, cy);" in optical
+assert "canvas.drawRoundRect(droplet, ry, ry, magnified);" in optical
+assert "setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);" in optical
+assert "setVisibility(INVISIBLE);" in optical
+assert "postDelayed" not in optical and "PixelCopy" not in optical
+assert "new " not in optical.split("@Override protected void onDraw(Canvas canvas)",1)[1]
+assert 'opticalOverlay.setTag("wen_optic_overlay");' in main
+assert "track.addView(opticalOverlay" in main
+assert "startupIconAnimationPending = true" in main
+assert "private void animateStartupIcons(View page)" in main
+assert "startupIconAnimationPending = false;" in main
+assert "setStartDelay(i * 48L).setDuration(350)" in main
+assert "animateStartupIcons(next);" in main
+
 assert "startupResolved && db!=null" in main, "Swipe should work on first launch"
 assert "int target=currentTab+(dx>0f?1:-1);" in main, "RTL physical right must navigate forward"
 assert "target > currentTab ? 1 : -1" in main, "Slide direction must follow RTL swipe"
