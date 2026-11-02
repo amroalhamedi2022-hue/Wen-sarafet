@@ -147,7 +147,7 @@ public final class WenOpticalNavigationOverlay extends View {
                     + " width=" + getWidth());
         }
         final float cy = getHeight() * .5f;
-        final float rx = getHeight() * (.42f + .15f * opacity);
+        final float rx = getHeight() * (.48f + .22f * opacity);
         final float ry = getHeight() * (.40f + .11f * opacity);
         droplet.set(centreX - rx, cy - ry, centreX + rx, cy + ry);
 
