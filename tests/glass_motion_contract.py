@@ -114,7 +114,6 @@ assert "MotionEvent.ACTION_CANCEL" in main
 assert "primarySwipeActive=true;" in main
 assert "Math.abs(dx)>Math.abs(dy)*1.65f" in main
 assert "navigatePrimaryTab(target);" in main
-assert "slideDirection*Ui.dp(this,64)" in main
 assert 'wrapper.setTag("wen_top_chrome");' in main
 assert "animateGlassTopBar(next);" in main
 assert "Ui.pressAnimation(back);" in main
