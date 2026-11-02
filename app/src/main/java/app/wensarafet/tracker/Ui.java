@@ -369,15 +369,15 @@ public final class Ui {
         boolean liquid = isLiquidTheme(group.getContext());
         // Prevent 10 staggered 300ms animations from making screen changes
         // appear slow. All content remains present; only 4 lead elements move.
-        int count = Math.min(group.getChildCount(), liquid ? 4 : 10);
+        int count = Math.min(group.getChildCount(), liquid ? 2 : 10);
         for (int i = 0; i < count; i++) {
             View child = group.getChildAt(i);
             child.animate().cancel();
             child.setAlpha(0f);
             child.setTranslationY(dp(group.getContext(), liquid ? 6 : 10));
             child.animate().alpha(1f).translationY(0)
-                    .setStartDelay(liquid ? 12L + i * 14L : 45L + i * 28L)
-                    .setDuration(liquid ? 170 : 300)
+                    .setStartDelay(liquid ? 0L + i * 10L : 45L + i * 28L)
+                    .setDuration(liquid ? 125 : 300)
                     .setInterpolator(new PathInterpolator(.2f, .75f, .25f, 1f)).start();
         }
     }

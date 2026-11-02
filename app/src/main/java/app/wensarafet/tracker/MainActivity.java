@@ -58,6 +58,7 @@ public final class MainActivity extends Activity {
     private boolean transactionsTab;
     // Visual-only previous tab; no persistence and no financial state dependency.
     private int lastGlassNavigationTab = -1;
+    private boolean pendingGlassNavigationSwitch;
     private int currentTab;
     private static final int TAB_HOME = 0;
     private static final int TAB_TRANSACTIONS = 1;
@@ -154,16 +155,38 @@ public final class MainActivity extends Activity {
             }
             return;
         }
-        // The screen is built synchronously as before; only its visual reveal is
-        // shorter for sandbox Liquid themes. No navigation/database callbacks wait.
+        // No dual full-screen compositing on glass sandbox: it used to draw
+        // two complete financial pages simultaneously on every tab change.
+        // This affects VIEW presentation only, not DB reads or finance callbacks.
         boolean fastLiquid = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
+        boolean fromNavGesture = pendingGlassNavigationSwitch;
+        pendingGlassNavigationSwitch = false;
+        if (fastLiquid) {
+            if (previous != null && previous.getParent() == screenHost) {
+                previous.animate().cancel();
+                screenHost.removeView(previous);
+            }
+            next.setTranslationX(0f);
+            if (fromNavGesture) {
+                // Show the new bottom bar immediately; its lens now slides on
+                // top of visible content instead of being hidden by alpha=0.
+                next.setAlpha(1f);
+            } else {
+                next.setAlpha(.94f);
+                next.setTranslationY(Ui.dp(this, 3));
+                next.animate().alpha(1f).translationY(0f).setDuration(115)
+                        .setInterpolator(new android.view.animation.PathInterpolator(.2f, .8f, .2f, 1f))
+                        .start();
+            }
+            return;
+        }
         next.setAlpha(0f);
-        next.setTranslationX(Ui.dp(this, fastLiquid ? 8 : 18));
-        next.animate().alpha(1f).translationX(0f).setDuration(fastLiquid ? 150 : 280)
+        next.setTranslationX(Ui.dp(this, 18));
+        next.animate().alpha(1f).translationX(0f).setDuration(280)
                 .setInterpolator(new android.view.animation.PathInterpolator(.2f, .8f, .2f, 1f)).start();
         if (previous != null) {
             previous.animate().cancel();
-            previous.animate().alpha(0f).translationX(-Ui.dp(this, fastLiquid ? 5 : 10)).setDuration(fastLiquid ? 115 : 180)
+            previous.animate().alpha(0f).translationX(-Ui.dp(this, 10)).setDuration(180)
                     .setInterpolator(new android.view.animation.PathInterpolator(.4f, 0f, 1f, 1f))
                     .withEndAction(() -> {
                         if (generation == screenTransitionGeneration && previous.getParent() == screenHost)
@@ -653,7 +676,8 @@ public final class MainActivity extends Activity {
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             for (int i = 0; i < items.length; i++) {
                 app.wensarafet.glass.GlassMotion.bindNavigationTab(
-                        items[i], track, lens, items, selectedTab, i, Ui.SKY);
+                        items[i], track, lens, items, selectedTab, i, Ui.SKY,
+                        () -> pendingGlassNavigationSwitch = true);
             }
             nav.addView(track, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));

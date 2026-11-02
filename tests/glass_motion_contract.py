@@ -8,7 +8,13 @@ main = (p/"app/src/main/java/app/wensarafet/tracker/MainActivity.java").read_tex
 assert "package app.wensarafet.glass;" in engine
 assert "wensarafet.tracker" not in engine
 assert "FinanceRules" not in engine and "FinanceDbHelper" not in engine
-assert "return false;" in engine.split("boolean onTouch(MotionEvent e)", 1)[1]
+assert "return true;" in engine.split("class NavigationGesture", 1)[1]
+assert "tabs[hovered].performClick();" in engine
+assert "beforeNavigate.run();" in engine
+assert "MotionEvent.ACTION_MOVE" in engine
+assert "nearest(float fingerX)" in engine
+assert "if (hovered == selected)" in engine
+assert "insideVertical" in engine
 for action in ["MotionEvent.ACTION_DOWN", "MotionEvent.ACTION_MOVE",
                "MotionEvent.ACTION_UP", "MotionEvent.ACTION_CANCEL"]:
     assert action in engine
@@ -28,13 +34,17 @@ for forbidden in ["while (true)", "postDelayed", "TimerTask", "Thread.sleep",
 assert "GlassMotion.bindPress(view, SKY)" in ui
 assert "GlassMotion.bindNavigationTab(" in main
 assert "bindNavigationTab(View tab, FrameLayout track, View lens" in engine
-assert "scaleX(1.09f).scaleY(1.12f)" in engine
+assert "scaleX(1.06f).scaleY(1.09f)" in engine
 assert "MotionEvent.ACTION_CANCEL" in engine
 assert "lens.animate().translationX(view.getLeft())" in engine
-assert "fastLiquid ? 150 : 280" in main
-assert "fastLiquid ? 115 : 180" in main
-assert "liquid ? 4 : 10" in ui
-assert "liquid ? 170 : 300" in ui
+assert "lens.setTranslationX(destination)" in engine
+assert "boolean fromNavGesture = pendingGlassNavigationSwitch;" in main
+assert "if (fromNavGesture)" in main
+assert "next.setAlpha(1f);" in main
+assert "screenHost.removeView(previous);" in main
+assert "setDuration(115)" in main
+assert "liquid ? 2 : 10" in ui
+assert "liquid ? 125 : 300" in ui
 for label in ["الرئيسية", "العمليات", "الديون", "التحليل"]:
     assert 'setContentDescription("تبويب ' + label + '")' in main
 assert "FrameLayout track = new FrameLayout(this);" in main

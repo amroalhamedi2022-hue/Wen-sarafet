@@ -49,56 +49,161 @@ public final class GlassMotion {
         });
     }
 
+
     /**
-     * A finger can preview the target tab BEFORE the target screen is built.
-     * On hold the lens gently expands and the tab receives the normal bubble
-     * glow.  We never intercept click/long-click dispatch.
+     * A single captured pointer glides the shared lens across RTL/LTR tab centers.
+     * Tap: release over the original tab. Hold + drag + release: switch to the
+     * hovered tab. Source tab remains touch owner while the finger moves across
+     * sibling tabs, so tapping never starts a second business/navigation action.
+     * No recurring timer, handler, or background frame callback.
      */
     public static void bindNavigationTab(View tab, FrameLayout track, View lens,
                                          View[] tabs, int currentIndex, int targetIndex,
-                                         int accent) {
-        final PressState state = new PressState(tab, accent);
-        tab.setOnTouchListener((view, event) -> {
-            state.onTouch(event);
-            if (!ValueAnimator.areAnimatorsEnabled() || lowPower(view.getContext())) {
-                return false;
-            }
-            switch (event.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    if (track.getWidth() > 0 && lens.getWidth() > 0) {
-                        lens.animate().cancel();
-                        // Preview the clicked tab while the finger is still down.
-                        lens.animate().translationX(view.getLeft())
-                                .scaleX(1.09f).scaleY(1.12f)
-                                .setDuration(185).setInterpolator(NAV_SPRING).start();
-                    }
-                    break;
-                case MotionEvent.ACTION_UP:
-                    lens.animate().cancel();
-                    lens.animate().scaleX(1f).scaleY(1f).setDuration(210)
-                            .setInterpolator(RELEASE).start();
-                    break;
-                case MotionEvent.ACTION_CANCEL:
-                    lens.animate().cancel();
-                    float homeX = currentIndex >= 0 && currentIndex < tabs.length
-                            ? tabs[currentIndex].getLeft() : lens.getTranslationX();
-                    lens.animate().translationX(homeX).scaleX(1f).scaleY(1f)
-                            .setDuration(210).setInterpolator(NAV_SPRING).start();
-                    break;
-                default:
-                    break;
-            }
-            return false;
-        });
+                                         int accent, Runnable beforeNavigate) {
+        final NavigationGesture gesture = new NavigationGesture(
+                tab, track, lens, tabs, currentIndex, targetIndex, beforeNavigate);
+        tab.setOnTouchListener(gesture);
         tab.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override public void onViewAttachedToWindow(View v) {}
-            @Override public void onViewDetachedFromWindow(View v) {
-                state.reset();
-                lens.animate().cancel();
-                lens.setScaleX(1f);
-                lens.setScaleY(1f);
-            }
+            @Override public void onViewDetachedFromWindow(View v) { gesture.detach(); }
         });
+    }
+
+    private static final class NavigationGesture implements View.OnTouchListener {
+        private final View origin;
+        private final FrameLayout track;
+        private final View lens;
+        private final View[] tabs;
+        private final int selected;
+        private final int originIndex;
+        private final Runnable beforeNavigate;
+        private final int slop;
+        private boolean tracking;
+        private boolean cancelled;
+        private float downX, downY;
+        private int hovered;
+
+        NavigationGesture(View origin, FrameLayout track, View lens, View[] tabs,
+                          int selected, int originIndex, Runnable beforeNavigate) {
+            this.origin=origin; this.track=track; this.lens=lens;
+            this.tabs=tabs; this.selected=selected; this.originIndex=originIndex;
+            this.beforeNavigate=beforeNavigate;
+            this.slop=ViewConfiguration.get(origin.getContext()).getScaledTouchSlop();
+            this.hovered=originIndex;
+        }
+
+        private int nearest(float fingerX) {
+            int nearest=0;
+            float distance=Float.MAX_VALUE;
+            for (int i=0;i<tabs.length;i++) {
+                float midpoint=tabs[i].getLeft()+tabs[i].getWidth()*.5f;
+                float gap=Math.abs(fingerX-midpoint);
+                if(gap<distance) { distance=gap; nearest=i; }
+            }
+            return nearest;
+        }
+
+        private boolean insideVertical(float y) {
+            return y >= -slop*2f && y <= track.getHeight()+slop*2f;
+        }
+
+        private void returnToSelected() {
+            if (lens.getWidth()<=0) return;
+            float target=selected>=0 && selected<tabs.length
+                    ? tabs[selected].getLeft() : origin.getLeft();
+            lens.animate().cancel();
+            if (ValueAnimator.areAnimatorsEnabled() && !lowPower(origin.getContext())) {
+                lens.animate().translationX(target).scaleX(1f).scaleY(1f)
+                        .setDuration(190).setInterpolator(COMPRESS).start();
+            } else {
+                lens.setTranslationX(target); lens.setScaleX(1f); lens.setScaleY(1f);
+            }
+        }
+
+        @Override public boolean onTouch(View view, MotionEvent event) {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    tracking=true; cancelled=false; hovered=originIndex;
+                    downX=event.getX(); downY=event.getY();
+                    lens.animate().cancel();
+                    if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
+                        // Press creates a compact rounded bubble; hold leaves it
+                        // inflated until release, with no repeating animator.
+                        lens.animate().translationX(view.getLeft())
+                                .scaleX(1.06f).scaleY(1.09f).setDuration(160)
+                                .setInterpolator(COMPRESS).start();
+                        view.animate().cancel();
+                        view.animate().scaleX(.97f).scaleY(.97f).setDuration(90).start();
+                    } else if (lens.getWidth()>0) {
+                        lens.setTranslationX(view.getLeft());
+                    }
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    if (!tracking) return true;
+                    float x=origin.getLeft()+event.getX();
+                    float y=origin.getTop()+event.getY();
+                    if (!insideVertical(y)) {
+                        cancelled=true;
+                        returnToSelected();
+                        return true;
+                    }
+                    cancelled=false;
+                    hovered=nearest(x);
+                    float move=Math.abs(event.getX()-downX);
+                    if (move>slop && lens.getWidth()>0
+                            && ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
+                        // Direct translation tracks the fingertip; the animation
+                        // clock is not restarted for every ACTION_MOVE.
+                        float min=Float.MAX_VALUE, max=-Float.MAX_VALUE;
+                        for(View item:tabs) {
+                            min=Math.min(min,item.getLeft());
+                            max=Math.max(max,item.getLeft());
+                        }
+                        float destination=Math.max(min,Math.min(max,x-lens.getWidth()*.5f));
+                        lens.animate().cancel();
+                        lens.setTranslationX(destination);
+                        lens.setScaleX(1.06f); lens.setScaleY(1.09f);
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    if(!tracking) return true;
+                    tracking=false;
+                    view.animate().cancel();
+                    view.animate().scaleX(1f).scaleY(1f).setDuration(160)
+                            .setInterpolator(RELEASE).start();
+                    if (!insideVertical(origin.getTop()+event.getY()) || cancelled) {
+                        returnToSelected();
+                        return true;
+                    }
+                    hovered=nearest(origin.getLeft()+event.getX());
+                    if (hovered == selected) {
+                        returnToSelected();
+                    } else {
+                        // Invoke exactly one of the pre-existing View.OnClick
+                        // callbacks. Never bypass its functional validation.
+                        beforeNavigate.run();
+                        tabs[hovered].performClick();
+                    }
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                case MotionEvent.ACTION_POINTER_DOWN:
+                    tracking=false; cancelled=true;
+                    view.animate().cancel();
+                    view.setScaleX(1f); view.setScaleY(1f);
+                    returnToSelected();
+                    return true;
+                default:
+                    return tracking;
+            }
+        }
+
+        void detach() {
+            tracking=false;
+            origin.animate().cancel();
+            origin.setScaleX(1f); origin.setScaleY(1f);
+            lens.animate().cancel();
+            lens.setScaleX(1f); lens.setScaleY(1f);
+        }
     }
 
     private static final class PressState {
@@ -236,7 +341,7 @@ public final class GlassMotion {
             // Incoming full-screen content was previously alpha-zero for 280ms,
             // hiding most of the 340ms slide. Animate with the screen's short
             // transition so the movement is visible after the first rendered frame.
-            lens.animate().translationX(targetX).setStartDelay(35).setDuration(305)
+            lens.animate().translationX(targetX).setDuration(225)
                     .setInterpolator(NAV_SPRING).start();
         });
     }
