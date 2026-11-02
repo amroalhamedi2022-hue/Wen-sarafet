@@ -37,7 +37,8 @@ nav_dump() {
  for attempt in 1 2 3 4; do
    adb shell uiautomator dump /sdcard/wen-nav-motion.xml >/dev/null || true
    adb pull /sdcard/wen-nav-motion.xml "$out_xml" >/dev/null || true
-   if grep -q 'content-desc="تبويب التحليل"' "$out_xml"; then return 0; fi
+   # The underlying app tabs remain in uiautomator XML EVEN WHEN a
+   # blocking Pixel Launcher ANR is on top. Recover the modal FIRST.
    if grep -q "Pixel Launcher" "$out_xml"; then
      WAIT_POINT="$(python3 - "$out_xml" <<'PY'
 import re,sys,xml.etree.ElementTree as ET
@@ -53,9 +54,10 @@ PY
      read -r WX WY <<< "$WAIT_POINT"
      adb shell input tap "$WX" "$WY"
      sleep 3
-   else
-     sleep 2
+     continue
    fi
+   if grep -q 'content-desc="تبويب التحليل"' "$out_xml"; then return 0; fi
+   sleep 2
  done
  echo "FAIL: accessibility tab missing after launcher-recovery retries"
  return 1
