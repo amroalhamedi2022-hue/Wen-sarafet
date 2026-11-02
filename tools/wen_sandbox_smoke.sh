@@ -89,18 +89,49 @@ print((a+c)//2,(b+d)//2)
 PY
 )"
 read -r FX FY <<< "$FAB_POINT"
-adb shell input tap "$FX" "$FY"
-sleep 3
-adb shell uiautomator dump /sdcard/wen-add-transaction.xml >/dev/null
-adb pull /sdcard/wen-add-transaction.xml "$OUT/wen-add-transaction.xml" >/dev/null
-python3 - "$OUT/wen-add-transaction.xml" <<'PY'
-import sys,xml.etree.ElementTree as ET
-nodes=list(ET.parse(sys.argv[1]).getroot().iter("node"))
-texts=[n.get("text","") for n in nodes]
-if "إضافة عملية" not in texts or "نوع العملية" not in texts:
-    raise SystemExit("FAIL: bubble FAB tap did not open Add Transaction form")
-print("PASS: glass FAB tap opens Add Transaction form")
+# System Pixel Launcher sometimes presents an ANR over the sandbox in this
+# low-CPU emulated environment. A modal can consume an otherwise valid FAB tap.
+# Recover *that system modal* then retry the same accessible button; do not
+# pretend the finance app opened if the form is absent.
+form_opened=0
+for attempt in 1 2 3 4; do
+  adb shell input tap "$FX" "$FY"
+  sleep 2
+  for read_attempt in 1 2 3; do
+    adb shell uiautomator dump /sdcard/wen-add-transaction.xml >/dev/null || true
+    adb pull /sdcard/wen-add-transaction.xml "$OUT/wen-add-transaction.xml" >/dev/null || true
+    if grep -q 'text="نوع العملية"' "$OUT/wen-add-transaction.xml" &&
+       grep -q 'text="إضافة عملية"' "$OUT/wen-add-transaction.xml"; then
+      form_opened=1
+      break
+    fi
+    if grep -q 'Pixel Launcher' "$OUT/wen-add-transaction.xml"; then
+      WAIT_POINT="$(python3 - "$OUT/wen-add-transaction.xml" <<'PY'
+import re,sys,xml.etree.ElementTree as ET
+nodes=[n for n in ET.parse(sys.argv[1]).getroot().iter("node")
+       if n.get("text")=="Wait"]
+if len(nodes)!=1: raise SystemExit("Launcher ANR without Wait button")
+m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",nodes[0].get("bounds",""))
+if not m: raise SystemExit("Cannot locate system Wait")
+a,b,c,d=map(int,m.groups())
+print((a+c)//2,(b+d)//2)
 PY
+)"
+      read -r WX WY <<< "$WAIT_POINT"
+      echo "INFO: dismissed unrelated Pixel Launcher ANR, retrying visual check"
+      adb shell input tap "$WX" "$WY"
+      sleep 2
+    else
+      sleep 1
+    fi
+  done
+  if [ "$form_opened" -eq 1 ]; then break; fi
+done
+if [ "$form_opened" -ne 1 ]; then
+ echo "FAIL: bubble FAB tap did not open Add Transaction form after launcher recovery"
+ exit 1
+fi
+echo "PASS: glass FAB tap opens Add Transaction form"
 adb shell screencap -p /sdcard/wen-fab-add-form.png
 adb pull /sdcard/wen-fab-add-form.png "$OUT/fab-add-transaction.png" >/dev/null
 # Re-enter home for existing Hold+Drag verification.
