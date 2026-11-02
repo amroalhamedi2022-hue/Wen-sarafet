@@ -92,9 +92,8 @@ public final class GlassMotion {
             this.beforeNavigate=beforeNavigate;
             this.slop=ViewConfiguration.get(origin.getContext()).getScaledTouchSlop();
             this.hovered=originIndex;
-            View overlay = track.findViewWithTag("wen_optic_overlay");
-            optic = overlay instanceof WenOpticalNavigationOverlay
-                    ? (WenOpticalNavigationOverlay) overlay : null;
+            optic = track instanceof WenNavigationTrack
+                    ? ((WenNavigationTrack) track).getOptic() : null;
         }
 
         private int nearest(float fingerX) {
