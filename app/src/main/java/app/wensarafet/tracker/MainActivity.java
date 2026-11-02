@@ -288,10 +288,10 @@ public final class MainActivity extends Activity {
             if(slideDirection != 0 && previous != null) {
                 previous.animate().cancel();
                 next.setAlpha(1f);
-                next.setTranslationX(slideDirection*Ui.dp(this,64));
+                next.setTranslationX(-slideDirection*Ui.dp(this,64));
                 next.animate().translationX(0f).setDuration(230)
                         .setInterpolator(new android.view.animation.PathInterpolator(.2f,.8f,.2f,1f)).start();
-                previous.animate().translationX(-slideDirection*Ui.dp(this,32))
+                previous.animate().translationX(slideDirection*Ui.dp(this,100))
                         .alpha(.82f).setDuration(185)
                         .withEndAction(() -> {
                             if(generation==screenTransitionGeneration && previous.getParent()==screenHost)
