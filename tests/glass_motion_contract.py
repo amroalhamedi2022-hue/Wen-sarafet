@@ -120,5 +120,13 @@ assert "animateGlassTopBar(next);" in main
 assert "Ui.pressAnimation(back);" in main
 assert "canvas.drawLine(" not in lensSource, "The old straight highlight must not return"
 assert "canvas.drawOval(inner, opticalCore);" in lensSource
+assert "private int zoomedTab = -1;" in engine
+assert "focusLensTab(originIndex);" in engine
+assert "focusLensTab(hovered);" in engine
+assert "focusLensTab(-1);" in engine
+assert "focused.animate().scaleX(1.11f).scaleY(1.11f)" in engine
+assert "startupResolved && db!=null" in main, "Swipe should work on first launch"
+assert "next.setTranslationX(-slideDirection*Ui.dp(this,64));" in main
+assert "previous.animate().translationX(slideDirection*Ui.dp(this,100))" in main
 assert "android.animation.ValueAnimator.areAnimatorsEnabled()" in main
 print("PASS: RTL-safe horizontal primary swipes, continuous lens, moving top chrome; original destinations retained")
