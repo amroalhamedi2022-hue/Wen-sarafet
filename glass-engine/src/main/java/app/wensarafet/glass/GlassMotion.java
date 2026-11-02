@@ -108,6 +108,17 @@ public final class GlassMotion {
             return y >= -slop*2f && y <= track.getHeight()+slop*2f;
         }
 
+        /** Align the droplet to the actual finger, not the centre of its icon. */
+        private float fingerLensX(float fingerX) {
+            if (lens.getWidth() <= 0) return origin.getLeft();
+            float min=Float.MAX_VALUE, max=-Float.MAX_VALUE;
+            for (View item : tabs) {
+                min=Math.min(min, item.getLeft());
+                max=Math.max(max, item.getLeft());
+            }
+            return Math.max(min, Math.min(max, fingerX-lens.getWidth()*.5f));
+        }
+
         private WenNavigationLensDrawable opticalLens() {
             return lens.getBackground() instanceof WenNavigationLensDrawable
                     ? (WenNavigationLensDrawable) lens.getBackground() : null;
@@ -158,13 +169,13 @@ public final class GlassMotion {
                     if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
                         // Press creates a compact rounded bubble; hold leaves it
                         // inflated until release, with no repeating animator.
-                        lens.animate().translationX(view.getLeft())
+                        lens.animate().translationX(fingerLensX(view.getLeft()+event.getX()))
                                 .scaleX(1.06f).scaleY(1.09f).setDuration(160)
                                 .setInterpolator(COMPRESS).start();
                         view.animate().cancel();
                         view.animate().scaleX(.97f).scaleY(.97f).setDuration(90).start();
                     } else if (lens.getWidth()>0) {
-                        lens.setTranslationX(view.getLeft());
+                        lens.setTranslationX(fingerLensX(view.getLeft()+event.getX()));
                     }
                     return true;
                 case MotionEvent.ACTION_MOVE:
@@ -185,12 +196,7 @@ public final class GlassMotion {
                     if (move>slop && lens.getWidth()>0) {
                         // Direct translation tracks the fingertip; the animation
                         // clock is not restarted for every ACTION_MOVE.
-                        float min=Float.MAX_VALUE, max=-Float.MAX_VALUE;
-                        for(View item:tabs) {
-                            min=Math.min(min,item.getLeft());
-                            max=Math.max(max,item.getLeft());
-                        }
-                        float destination=Math.max(min,Math.min(max,x-lens.getWidth()*.5f));
+                        float destination=fingerLensX(x);
                         lens.animate().cancel();
                         lens.setTranslationX(destination);
                         if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
