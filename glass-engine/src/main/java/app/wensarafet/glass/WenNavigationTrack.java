@@ -15,12 +15,7 @@ import android.widget.FrameLayout;
  */
 public final class WenNavigationTrack extends FrameLayout {
     private final WenOpticalNavigationOverlay optic;
-    private final Drawable opticalForeground = new Drawable() {
-        @Override public void draw(Canvas canvas) { optic.renderOnto(canvas); }
-        @Override public void setAlpha(int alpha) {}
-        @Override public void setColorFilter(ColorFilter filter) {}
-        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
-    };
+    private final Drawable opticalForeground;
 
     public WenNavigationTrack(Context context, boolean dark) {
         super(context);
@@ -28,6 +23,12 @@ public final class WenNavigationTrack extends FrameLayout {
         setClipToPadding(false);
         optic = new WenOpticalNavigationOverlay(context, dark);
         optic.setHostTrack(this);
+        opticalForeground = new Drawable() {
+            @Override public void draw(Canvas canvas) { optic.renderOnto(canvas); }
+            @Override public void setAlpha(int alpha) {}
+            @Override public void setColorFilter(ColorFilter filter) {}
+            @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+        };
         // This foreground is drawn over the four tab labels by Framework,
         // rather than competing with their z-order or cached display lists.
         setForeground(opticalForeground);
