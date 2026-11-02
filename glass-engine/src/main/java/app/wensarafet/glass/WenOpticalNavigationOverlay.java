@@ -38,6 +38,7 @@ public final class WenOpticalNavigationOverlay extends View {
     private final RectF highlightBounds = new RectF();
     private final Matrix sampleMatrix = new Matrix();
     private final Matrix edgeMatrix = new Matrix();
+    private final WenLiquidRuntimeOptics gpuOptics = new WenLiquidRuntimeOptics();
     private final Matrix spectrumMatrix = new Matrix();
     private final RectF droplet = new RectF();
     private WenNavigationTrack hostTrack;
@@ -135,6 +136,7 @@ public final class WenOpticalNavigationOverlay extends View {
             magnified.setShader(sample);
             edgeSample = new BitmapShader(source, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
             refractedEdge.setShader(edgeSample);
+            gpuOptics.attach(sample);
             captured = true;
             android.util.Log.i("WenGlassProbe", "SNAPSHOT width=" + source.getWidth()
                     + " height=" + source.getHeight()
@@ -177,6 +179,7 @@ public final class WenOpticalNavigationOverlay extends View {
         edgeSample = null;
         magnified.setShader(null);
         refractedEdge.setShader(null);
+        gpuOptics.clear();
         // No immediate Bitmap.recycle(): hardware canvas drawing can still
         // be in flight on RenderThread after the view becomes invisible.
         source = null;
@@ -229,17 +232,20 @@ public final class WenOpticalNavigationOverlay extends View {
         canvas.clipRect(droplet);
         body.setAlpha((int) (42f * strength));
         canvas.drawRoundRect(droplet, radius, radius, body);
-        magnified.setAlpha((int) (242f * strength));
-        canvas.drawRoundRect(droplet, radius, radius, magnified);
-
-        edgeMatrix.reset();
-        edgeMatrix.setScale(bend, bend, cx, cy);
-        edgeMatrix.postTranslate(-prismShift * 1.8f, density * 1.25f * strength);
-        edgeSample.setLocalMatrix(edgeMatrix);
-        refractedEdge.setAlpha((int) (224f * strength));
-        highlightBounds.set(droplet);
-        highlightBounds.inset(density * 3.8f, density * 3.8f);
-        canvas.drawRoundRect(highlightBounds, radius, radius, refractedEdge);
+        // A single true pixel-warped image pass is preferred over two painted
+        // glyph copies. Old Canvas optics remain a safe software/AGSL fallback.
+        if (!gpuOptics.draw(canvas, droplet, strength, centreX)) {
+            magnified.setAlpha((int) (242f * strength));
+            canvas.drawRoundRect(droplet, radius, radius, magnified);
+            edgeMatrix.reset();
+            edgeMatrix.setScale(bend, bend, cx, cy);
+            edgeMatrix.postTranslate(-prismShift * 1.8f, density * 1.25f * strength);
+            edgeSample.setLocalMatrix(edgeMatrix);
+            refractedEdge.setAlpha((int) (224f * strength));
+            highlightBounds.set(droplet);
+            highlightBounds.inset(density * 3.8f, density * 3.8f);
+            canvas.drawRoundRect(highlightBounds, radius, radius, refractedEdge);
+        }
         canvas.restore();
 
         // Asymmetric caustics: bright upper glass, shadowed underside and
