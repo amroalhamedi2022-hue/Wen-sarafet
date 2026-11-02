@@ -36,7 +36,8 @@ assert "GlassMotion.bindNavigationTab(" in main
 assert "bindNavigationTab(View tab, FrameLayout track, View lens" in engine
 assert "scaleX(1.06f).scaleY(1.09f)" in engine
 assert "MotionEvent.ACTION_CANCEL" in engine
-assert "lens.animate().translationX(view.getLeft())" in engine
+assert "lens.animate().translationX(fingerLensX(view.getLeft()+event.getX()))" in engine
+assert "private float fingerLensX(float fingerX)" in engine
 assert "lens.setTranslationX(destination)" in engine
 assert "boolean fromNavGesture = pendingGlassNavigationSwitch;" in main
 assert "if (fromNavGesture || paletteSwitch)" in main
