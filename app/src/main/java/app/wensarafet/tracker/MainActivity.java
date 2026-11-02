@@ -318,6 +318,10 @@ public final class MainActivity extends Activity {
         }
         screenHost.addView(next, match);
         activeScreen = next;
+        // The FIRST primary screen must animate icons only; never fade/slide
+        // all financial cards on launch just to decorate the entrance.
+        final boolean iconOnlyLaunch = startupIconAnimationPending
+                && next.findViewWithTag("wen_intro_nav_0") != null;
         animateGlassTopBar(next);
         animateStartupIcons(next);
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
@@ -341,6 +345,16 @@ public final class MainActivity extends Activity {
         boolean fromNavGesture = pendingGlassNavigationSwitch;
         pendingGlassNavigationSwitch = false;
         if (fastLiquid) {
+            if (iconOnlyLaunch) {
+                if (previous != null && previous.getParent() == screenHost) {
+                    previous.animate().cancel();
+                    screenHost.removeView(previous);
+                }
+                next.setAlpha(1f);
+                next.setTranslationX(0f);
+                next.setTranslationY(0f);
+                return;
+            }
             if (slideDirection != 0 && previous != null) {
                 // Heavy full-screen double drawing caused visible overlap/jank
                 // on repeated swipes. Release the previous hierarchy in the
