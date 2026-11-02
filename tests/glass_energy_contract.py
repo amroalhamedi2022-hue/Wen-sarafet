@@ -77,8 +77,11 @@ assert "showLens = strong && w > h * 3.1f && !lowPower;" in engine
 assert "canvas.drawCircle(lensX, lensY, lensRadius, bubble);" in engine
 assert "canvas.drawRect(surface, ambient);" in engine
 assert "if (!lowPower && strong)" in engine
-assert "new android.view.animation.OvershootInterpolator(1.35f)" in ui
-assert "if (isLiquidTheme(v.getContext()))" in ui
+# Liquid press behavior now lives in the reusable engine; legacy themes are untouched.
+motion = (root / "glass-engine/src/main/java/app/wensarafet/glass/GlassMotion.java").read_text(encoding="utf-8")
+assert "GlassMotion.bindPress(view, SKY)" in ui
+assert "new OvershootInterpolator(.76f)" in motion
+assert "ValueAnimator.areAnimatorsEnabled()" in motion
 assert "if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return false;" in ui
 assert "ViewPropertyAnimator" not in engine
 print("PASS: component-wide Liquid glass surfaces are passive; other themes retain fallbacks")
