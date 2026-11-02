@@ -141,11 +141,17 @@ assert "gpuOptics.attach(sample);" in optical
 assert "if (!gpuOptics.draw(canvas, droplet, strength, centreX))" in optical, "Hardware glass should use one refracted image"
 gpu=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenLiquidRuntimeOptics.java").read_text(encoding="utf-8")
 assert "RuntimeShader" in gpu and "shader.setInputShader(\"image\", backdrop)" in gpu
-assert "image.eval(bent)" in gpu and "image.eval(bent + float2(splitting, 0.0))" in gpu
-assert "half3 luminous = (spectrum * 0.76 + half3(0.24)) * a;" in gpu, "AGSL colors must be premultiplied"
+assert "image.eval(refractedCoordinate)" in gpu and "image.eval(refractedCoordinate + normal * split)" in gpu
+assert "float bendPx = amount * (1.4 + 5.8 * opticalEdge);" in gpu, "Capsule-normal edge physics"
+assert "float beam = exp(-72.0 * pow(ny - arch, 2.0));" in gpu, "Optical caustic ribbon follows geometry"
+assert "refracted = mix(refracted, spectrum * a, half(clamp(light, 0.0, 0.36)));" in gpu, "AGSL colors must be premultiplied"
 assert "return half4(min(refracted, half3(a)), a);" in gpu, "No RGB exceeds output alpha"
-assert "sampleMatrix.setScale(1f + .055f * strength" in optical, "Avoid doubled glyphs"
-assert "body.setAlpha((int) (138f * strength));" in optical, "Frost underlying unwarped pixels"
+assert "sampleMatrix.reset();" in optical, "GPU refraction must avoid pre-magnifying the sampled background"
+assert "captureUnderlyingContent(capture, tabStrip);" in optical, "Glass must sample actual underlay, not just nav glyphs"
+assert "navigationBar.setVisibility(View.INVISIBLE);" in optical, "Prevent recursive lens feedback"
+assert "navigationBar.setVisibility(previous);" in optical, "Restore the navigation bar after capture"
+assert "UNDERLAY_CAPTURE_OK" in optical
+assert "body.setAlpha((int) (31f * strength));" in optical, "Keep live underlay visible through glass"
 assert "chromaticRim.setAlpha((int)(alpha * (.29f + .42f * morph)))" in lensSource, "Quiet resting spectral rim"
 smoke=(p/"tools/wen_sandbox_smoke.sh").read_text(encoding="utf-8")
 assert 'nav-during-hold-second.png' in smoke and '13000 &' in smoke, "Use actual held frames on slow emulator"
