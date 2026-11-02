@@ -16,6 +16,7 @@ import android.widget.FrameLayout;
 public final class WenNavigationTrack extends FrameLayout {
     private final WenOpticalNavigationOverlay optic;
     private final Drawable opticalForeground;
+    private boolean externalGlassActive;
 
     public WenNavigationTrack(Context context, boolean dark) {
         super(context);
@@ -45,7 +46,16 @@ public final class WenNavigationTrack extends FrameLayout {
         optic.setAlpha(0f);
     }
 
-    public WenOpticalNavigationOverlay getOptic() { return optic; }
+    public WenOpticalNavigationOverlay getOptic() {
+        return externalGlassActive ? null : optic;
+    }
+
+    /** Sandbox-only: a separately tested native View material owns the optics. */
+    public void setExternalGlassActive(boolean active) {
+        externalGlassActive = active;
+        optic.discard();
+        invalidate();
+    }
 
     void invalidateOptic() {
         optic.invalidate();
@@ -56,7 +66,7 @@ public final class WenNavigationTrack extends FrameLayout {
     @Override protected void dispatchDraw(Canvas canvas) {
         super.dispatchDraw(canvas);
         // Guaranteed post-children optical composite, same coordinates as pill.
-        optic.renderOnto(canvas);
+        if (!externalGlassActive) optic.renderOnto(canvas);
     }
 
     @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
