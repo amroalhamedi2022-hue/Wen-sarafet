@@ -28,6 +28,7 @@ public final class WenOpticalNavigationOverlay extends View {
     private final Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix sampleMatrix = new Matrix();
     private final RectF droplet = new RectF();
+    private WenNavigationTrack hostTrack;
     private Bitmap source;
     private BitmapShader sample;
     private float centreX, opacity;
@@ -43,10 +44,8 @@ public final class WenOpticalNavigationOverlay extends View {
         setFocusable(false);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         setWillNotDraw(false);
-        // Hardware accelerated SwiftShader was recording the optical draw but
-        // not PRESENTING the layer while a finger was held. Rasterize only this
-        // tiny nav-strip lens into a local layer, not the whole activity.
-        setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        // This view is an off-hierarchy painting helper; WenNavigationTrack
+        // invokes its onDraw() in the track's actual child-composition pass.
         body.setColor(dark ? Color.rgb(59, 57, 96) : Color.rgb(212, 220, 252));
         rim.setColor(dark ? 0xD8F2F3FF : 0xEEFFFFFF);
         rim.setStyle(Paint.Style.STROKE);
@@ -58,6 +57,16 @@ public final class WenOpticalNavigationOverlay extends View {
         glow.setStyle(Paint.Style.STROKE);
         glow.setStrokeWidth(density * 3f);
         setVisibility(INVISIBLE);
+    }
+
+    void setHostTrack(WenNavigationTrack track) { hostTrack = track; }
+
+    void renderOnto(Canvas canvas) {
+        if (captured && opacity > .005f) onDraw(canvas);
+    }
+
+    private void requestPaint() {
+        if (hostTrack != null) hostTrack.invalidate();
     }
 
     /** Tab-only content snapshot, not any financial screen or personal data. */
@@ -84,7 +93,7 @@ public final class WenOpticalNavigationOverlay extends View {
                     + " overlayWidth=" + getWidth());
             move(pointerX);
             if (getVisibility() != VISIBLE) setVisibility(VISIBLE);
-            invalidate();
+            requestPaint();
         } catch (RuntimeException | OutOfMemoryError error) {
             android.util.Log.e("WenGlassProbe", "SNAPSHOT_ERROR", error);
             discard(); // Fallback is the existing glass pill, never a crash.
@@ -95,7 +104,7 @@ public final class WenOpticalNavigationOverlay extends View {
         if (!captured) return;
         float radius = Math.min(getHeight() * .52f, getWidth() * .145f);
         centreX = Math.max(radius, Math.min(getWidth() - radius, pointerX));
-        invalidate();
+        requestPaint();
     }
 
     /** Driven by the same finite press animator that morphs the rear pill. */
@@ -109,7 +118,7 @@ public final class WenOpticalNavigationOverlay extends View {
         // until the next begin() or detach() instead.
         final int desired = opacity <= .005f ? INVISIBLE : VISIBLE;
         if (getVisibility() != desired) setVisibility(desired);
-        invalidate();
+        requestPaint();
     }
 
     public void discard() {
@@ -121,7 +130,7 @@ public final class WenOpticalNavigationOverlay extends View {
         // be in flight on RenderThread after the view becomes invisible.
         source = null;
         if (getVisibility() != INVISIBLE) setVisibility(INVISIBLE);
-        invalidate();
+        requestPaint();
     }
 
     @Override protected void onDetachedFromWindow() {
