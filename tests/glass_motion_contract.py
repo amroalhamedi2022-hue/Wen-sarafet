@@ -142,6 +142,13 @@ assert "if (!gpuOptics.draw(canvas, droplet, strength, centreX))" in optical, "H
 gpu=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenLiquidRuntimeOptics.java").read_text(encoding="utf-8")
 assert "RuntimeShader" in gpu and "shader.setInputShader(\"image\", backdrop)" in gpu
 assert "image.eval(bent)" in gpu and "image.eval(bent + float2(splitting, 0.0))" in gpu
+assert "half3 luminous = (spectrum * 0.76 + half3(0.24)) * a;" in gpu, "AGSL colors must be premultiplied"
+assert "return half4(min(refracted, half3(a)), a);" in gpu, "No RGB exceeds output alpha"
+assert "sampleMatrix.setScale(1f + .055f * strength" in optical, "Avoid doubled glyphs"
+assert "body.setAlpha((int) (138f * strength));" in optical, "Frost underlying unwarped pixels"
+assert "chromaticRim.setAlpha((int)(alpha * (.29f + .42f * morph)))" in lensSource, "Quiet resting spectral rim"
+smoke=(p/"tools/wen_sandbox_smoke.sh").read_text(encoding="utf-8")
+assert 'nav-during-hold-second.png' in smoke and '13000 &' in smoke, "Use actual held frames on slow emulator"
 assert "if (!enabled || shader == null || !canvas.isHardwareAccelerated()) return false;" in gpu
 assert "new " not in gpu.split("boolean draw(Canvas canvas",1)[1].split("void clear()",1)[0]
 assert "postDelayed" not in gpu and "while (true)" not in gpu
