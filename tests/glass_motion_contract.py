@@ -84,6 +84,16 @@ assert "public void setMorph(float fraction)" in lensSource
 assert "surface.height()*.57f*morph" in lensSource
 assert "canvas.drawRoundRect(fluid, r, r, halo);" in lensSource
 assert "if (morphAnimator != null)" in engine
+move = engine.split("class NavigationGesture", 1)[1].split(
+    "case MotionEvent.ACTION_MOVE:", 1)[1].split("cancelled=false;", 1)[0]
+assert "returnToSelected();" not in move, "Do not snap home mid-Hold when leaving vertically"
+assert "Only the final UP/CANCEL decides" in engine
+comparison = main.split("private View comparisonCard(", 1)[1].split(
+    "private void showIncomePeriodScreen(", 1)[0]
+assert "SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)" in comparison
+assert "glassBalanceBackground(this, 20)" in comparison
+assert "setAutoSizeTextTypeUniformWithConfiguration(13, 18, 1" in comparison
+assert "trialGlass ? 136 : 116" in comparison
 assert "lens.setElevation(" not in main, "Glass lens must not cover its selected icon/text"
 assert "tabs[previousIndex].getLeft()" in engine and "selected.getLeft()" in engine
 assert "previousIndex != selectedIndex" in engine
