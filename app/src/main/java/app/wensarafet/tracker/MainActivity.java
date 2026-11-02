@@ -263,7 +263,7 @@ public final class MainActivity extends Activity {
         });
     }
 
-    /** The FAB owns press and hold visuals but keeps the original click callback. */
+    /** Press and long-hold animate a persistent bubble; release restores the sphere. */
     private void bindGlassFab(TextView fab) {
         if (!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this)) {
             Ui.pressAnimation(fab);
@@ -273,29 +273,42 @@ public final class MainActivity extends Activity {
                 new app.wensarafet.glass.WenFabBubbleDrawable(this, Ui.SKY, Ui.DARK);
         fab.setBackground(bubble);
         fab.setContentDescription("إضافة عملية");
+        final android.animation.ValueAnimator[] morph = {null};
         fab.setOnTouchListener((v, event) -> {
-            switch (event.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    bubble.setPress(1f);
+            int action=event.getActionMasked();
+            if (action==MotionEvent.ACTION_DOWN || action==MotionEvent.ACTION_UP
+                    || action==MotionEvent.ACTION_CANCEL || action==MotionEvent.ACTION_MOVE) {
+                boolean outside=event.getX()<0 || event.getY()<0
+                        || event.getX()>v.getWidth() || event.getY()>v.getHeight();
+                if (action==MotionEvent.ACTION_MOVE && !outside) return false;
+                float target=action==MotionEvent.ACTION_DOWN ? 1f : 0f;
+                if (morph[0]!=null) morph[0].cancel();
+                if (android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                    morph[0]=android.animation.ValueAnimator.ofFloat(bubble.getPress(),target);
+                    morph[0].setDuration(target>0f ? 210L : 270L);
+                    morph[0].setInterpolator(new android.view.animation.PathInterpolator(.22f,.8f,.2f,1f));
+                    morph[0].addUpdateListener(anim -> bubble.setPress((Float)anim.getAnimatedValue()));
+                    morph[0].start();
                     v.animate().cancel();
-                    if (android.animation.ValueAnimator.areAnimatorsEnabled())
-                        v.animate().scaleX(.94f).scaleY(.94f)
-                                .setDuration(140).start();
-                    return false;
-                case MotionEvent.ACTION_MOVE:
-                    boolean outside=event.getX() < 0 || event.getY() < 0
-                            || event.getX() > v.getWidth() || event.getY() > v.getHeight();
-                    if (outside) bubble.setPress(0f);
-                    return false;
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
-                    bubble.setPress(0f);
-                    if (android.animation.ValueAnimator.areAnimatorsEnabled())
-                        v.animate().scaleX(1f).scaleY(1f).setDuration(260)
-                                .setInterpolator(new android.view.animation.OvershootInterpolator(.7f)).start();
-                    else { v.setScaleX(1f); v.setScaleY(1f); }
-                    return false;
-                default: return false;
+                    v.animate().scaleX(target>0f?.94f:1f).scaleY(target>0f?.94f:1f)
+                            .setDuration(target>0f?145L:265L)
+                            .setInterpolator(new android.view.animation.OvershootInterpolator(.45f))
+                            .start();
+                } else {
+                    bubble.setPress(target);
+                    v.setScaleX(target>0f?.94f:1f);
+                    v.setScaleY(target>0f?.94f:1f);
+                }
+            }
+            // Returning false preserves the platform click action and accessibility.
+            return false;
+        });
+        fab.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override public void onViewAttachedToWindow(View v) {}
+            @Override public void onViewDetachedFromWindow(View v) {
+                if (morph[0]!=null) morph[0].cancel();
+                bubble.setPress(0f);
+                v.animate().cancel();
             }
         });
     }
@@ -858,7 +871,10 @@ public final class MainActivity extends Activity {
                 fabRevealRadius=Math.max(1,v.getWidth()/2);
                 pendingFabReveal=true;
             }
-            showAddTransaction();
+            // Give the tapped sphere one composited frame before the form builds.
+            if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this))
+                v.postOnAnimation(() -> { if (v.isAttachedToWindow()) showAddTransaction(); });
+            else showAddTransaction();
         });
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));
         fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18), Ui.dp(this, 88));
