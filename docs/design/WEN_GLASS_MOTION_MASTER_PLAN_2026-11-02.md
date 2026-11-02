@@ -1,5 +1,21 @@
 # وين صرفت — الخطة الرئيسية لمحرك حركات Liquid Glass
 
+## ✅ آخر تسليم بصري مُتحقَّق — 2 نوفمبر 2026 (تجربة مستقلة فقط)
+
+**الحالة الحالية:** تحديث Liquid Glass عامل على محاكي Android 35، مع عدسة AGSL GPU حية أثناء Hold+Drag، وواجهة FAB دائرية زجاجية، وبناء Sandbox APK مستقل. **هذا تقريب بصري متقدم على Android، وليس نسخًا مطابِقًا بكسلًا ببكسل لمحرك Apple المغلق**. لا تدمج Sandbox PIN/activation bypass في تطبيق الإنتاج أبدًا.
+
+- **الفرع:** `design/wen-full-unlocked-sandbox-20261101`، **PR #28 Draft**؛ آخر Commit برمجي/اختبارات اجتاز الخمسة workflows معًا: `a480b7c2465e25ba5cb77f84ca5f5ef0ddb065b1`.
+- **النطاق المعدل:** `glass-engine/WenLiquidRuntimeOptics.java`، `WenOpticalNavigationOverlay.java`، `WenNavigationLensDrawable.java`، `WenNavigationTrack.java`، `WenFabBubbleDrawable.java`، `WenGlassDrawable.java`، اختبارات الصور والثيم فقط. لم يُعدَّل SQLite أو المنطق المالي أو الحماية الأصلية أو Safe Zone.
+- **التنفيذ:** طبقة الشريط ترسم بعد الأيقونات؛ عند اللمس تُلتقط صورة صغيرة **للتبويبات فقط**؛ AGSL RuntimeShader يغيّر إحداثيات أخذ العينات حسب بُعد البكسل عن مركز العدسة ويضيف تشتت RGB صغيرًا عند الحافة، مع تصحيح premultiplied alpha، وFrost لإخفاء النص المكرر. عند غياب تسريع AGSL، يعود إلى BitmapShader/Canvas. لا توقيت دائم في الخمول، لا PixelCopy للشاشة الكاملة، ولا Siri.
+- **الانتقالات:** عدسة واحدة مرافقة للإصبع في Hold+Drag؛ زر + دائري ذو outline بيضوي دون ripple مربّع؛ حفظ onClick الأصلي وBack؛ الألوان والحواف خفّفت بعد مراجعة صورة فعليّة للمحاكي.
+- **CI المثبت على `a480b7c2`:** البناء Sandbox `41492430166` ✅؛ فحوص المصدر والمالية `41492430157` ✅؛ Android compile `41492430323` ✅؛ مرشح الإنتاج غير الموقّع `41492430529` ✅؛ اختبار المحاكي الفعلي `41492430193` ✅. ملحوظة: نجاح تجميع الإنتاج لا يعني دمج هذه التعديلات إلى `main`.
+- **نتيجة فحص العدسة:** مقارنة صور 1080×2400 خلال ضغط مستمر 13 ثانية: `18,414 / 21,648` بكسل تغيّر ضمن منطقة Hold؛ سجل `AGSL_DRAW_ACTIVE` موجود؛ اجتاز فتح إضافة عملية، الرجوع، الضغط المطوّل والسحب لاختيار التحليل، وإقلاع الرئيسية/العمليات/التحليلات بلا تفعيل.
+- **APK:** `wen-full-app-unlocked-sandbox-apk`، Artifact ID `13163878691`، GitHub Action `41492430166`، حجم APK المستخرج **7,010,936 بايت**، SHA256 `04e888ea13d355ca81e5d5233da7d0f127926e420b3b1c4c529b349c266a21fe`، الحزمة `app.wensarafet.tracker.sandbox`، الإصدار `1.8.6-sandbox`. اختُبرت صحة ZIP ووجود APK Signing Block وManifest/DEX؛ يجب اختبار تثبيت المستخدم في الجهاز أيضًا.
+- **ما بقي:** معاينة فيديو تابلت Xiaomi Pad 5 والجوال تحت Hold وDrag و120Hz؛ مقارنة مرجعية مع `1000071367.mp4`؛ قياسات P95/P99 وحرارة وبطارية؛ اختبار التنقل السريع وTalkBack والـReduced Motion على الأجهزة الحقيقية. هذا لا يساوي إطلاق Production، ولا يدّعي تطابق Apple بنسبة 100%.
+
+---
+
+
 ## ✨ Liquid Glass optical reference pass — 2 November 2026
 
 **User recordings:** `1000071366.mp4` demonstrates the sandbox's square-looking FAB shadow and weak visible lens; `1000071367.mp4` compares visual references labelled “iOS 27 Beta 2/3” with highly chromatic optical highlights. Treat those labels as labels in the video, not as an independently verified Apple software release. The user wants the **optical motion and iridescent lens** but **not Siri or the black Siri orb**.
