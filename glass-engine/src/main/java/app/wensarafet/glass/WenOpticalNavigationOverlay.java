@@ -43,6 +43,10 @@ public final class WenOpticalNavigationOverlay extends View {
         setFocusable(false);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         setWillNotDraw(false);
+        // Hardware accelerated SwiftShader was recording the optical draw but
+        // not PRESENTING the layer while a finger was held. Rasterize only this
+        // tiny nav-strip lens into a local layer, not the whole activity.
+        setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         body.setColor(dark ? Color.rgb(59, 57, 96) : Color.rgb(212, 220, 252));
         rim.setColor(dark ? 0xD8F2F3FF : 0xEEFFFFFF);
         rim.setStyle(Paint.Style.STROKE);
