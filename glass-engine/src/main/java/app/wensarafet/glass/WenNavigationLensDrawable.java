@@ -55,7 +55,7 @@ public final class WenNavigationLensDrawable extends Drawable {
         innerRim.setStyle(Paint.Style.STROKE);
         innerRim.setStrokeWidth(Math.max(.7f, density * .8f));
         chromaticRim.setStyle(Paint.Style.STROKE);
-        chromaticRim.setStrokeWidth(Math.max(1f, density * 1.65f));
+        chromaticRim.setStrokeWidth(Math.max(1f, density * 1.30f));
         halo.setStyle(Paint.Style.STROKE);
         halo.setStrokeWidth(Math.max(2f, density * 3f));
         halo.setColor(opacity(Color.WHITE, dark ? 150 : 225));
@@ -135,20 +135,22 @@ public final class WenNavigationLensDrawable extends Drawable {
         // measurable optical depth, without waiting for a finger gesture.
         crownBounds.set(fluid);
         crownBounds.inset(density * 1.7f, density * 1.7f);
-        specularCrown.setAlpha((int) (alpha * (.72f + .28f * morph)));
+        specularCrown.setAlpha((int) (alpha * (.57f + .26f * morph)));
         canvas.drawRoundRect(crownBounds, r, r, specularCrown);
         shadowBounds.set(fluid);
         shadowBounds.inset(density * 3.6f, density * 3.6f);
-        lowerShadow.setAlpha((int) (alpha * (.42f + .22f * morph)));
+        lowerShadow.setAlpha((int) (alpha * (.33f + .20f * morph)));
         canvas.drawRoundRect(shadowBounds, r, r, lowerShadow);
         edge.set(fluid);
         edge.inset(outerRim.getStrokeWidth()*.5f, outerRim.getStrokeWidth()*.5f);
+        outerRim.setAlpha((int) (alpha * (.76f + .12f * morph)));
         canvas.drawRoundRect(edge, r, r, outerRim);
         // Subtle rainbow refraction at rest, richer on hold, SAME pill shape.
-        chromaticRim.setAlpha((int)(alpha * (.52f + .40f * morph)));
+        chromaticRim.setAlpha((int)(alpha * (.29f + .42f * morph)));
         canvas.drawRoundRect(edge, r, r, chromaticRim);
         inner.set(fluid);
         inner.inset(density*2.1f, density*2.1f);
+        innerRim.setAlpha((int) (alpha * (.36f + .22f * morph)));
         canvas.drawRoundRect(inner, r, r, innerRim);
     }
 
