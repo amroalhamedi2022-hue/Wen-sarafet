@@ -87,9 +87,9 @@ read -r TX TY <<< "$ANALYTICS_POINT"
 # No extra click/hold handler is invoked by the test: native Android input only.
 adb shell screencap -p /sdcard/wen-before-hold.png
 adb pull /sdcard/wen-before-hold.png "$OUT/nav-before-hold.png" >/dev/null
-adb shell input swipe "$TX" "$TY" "$TX" "$TY" 700 &
+adb shell input swipe "$TX" "$TY" "$TX" "$TY" 1400 &
 hold_pid=$!
-sleep 0.43
+sleep 0.69
 adb shell screencap -p /sdcard/wen-during-hold.png
 adb pull /sdcard/wen-during-hold.png "$OUT/nav-during-hold.png" >/dev/null
 wait "$hold_pid"
@@ -100,10 +100,10 @@ if ! adb shell pidof "$PACKAGE" >/dev/null 2>&1; then
 fi
 adb shell screencap -p /sdcard/wen-sandbox-motion.png
 adb pull /sdcard/wen-sandbox-motion.png "$OUT/analytics-after-animated-tab-tap.png"
-if cmp -s "$OUT/nav-before-hold.png" "$OUT/nav-during-hold.png"; then
- echo "FAIL: long hold produced an identical screenshot; inspect motion layer"
- exit 1
-fi
+# A whole-image cmp used to pass on unrelated pixels. Pixel-check a small
+# rectangle centered on the ACTUAL held analytics tab. Fail if no visual lens.
+python3 tools/check_nav_lens_pixels.py \
+ "$OUT/nav-before-hold.png" "$OUT/nav-during-hold.png" "$TX" "$TY"
 # Navigate back using accessibility semantics, no hard-coded device coordinates.
 nav_dump "$OUT/wen-nav-after.xml"
 HOME_POINT="$(python3 - "$OUT/wen-nav-after.xml" <<'PY'
