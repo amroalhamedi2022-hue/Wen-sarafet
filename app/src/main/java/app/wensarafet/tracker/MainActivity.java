@@ -100,7 +100,7 @@ public final class MainActivity extends Activity {
         if (target < TAB_HOME || target > TAB_ANALYTICS) return;
         pendingPrimarySlide = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
                 && !subScreenVisible && !addScreenVisible && target != currentTab
-                ? (target > currentTab ? -1 : 1) : 0;
+                ? (target > currentTab ? 1 : -1) : 0;
         switch(target) {
             case TAB_HOME: showMain(false); break;
             case TAB_TRANSACTIONS: showMain(true); break;
@@ -153,7 +153,7 @@ public final class MainActivity extends Activity {
                             && Math.abs(dx)>Math.max(Ui.dp(this,48),
                                     ViewConfiguration.get(this).getScaledTouchSlop()*3f)
                             && Math.abs(dx)>Math.abs(dy)*1.65f) {
-                        int target=currentTab+(dx<0f?1:-1);
+                        int target=currentTab+(dx>0f?1:-1);
                         if(target>=TAB_HOME && target<=TAB_ANALYTICS) {
                             MotionEvent cancel=MotionEvent.obtain(e);
                             cancel.setAction(MotionEvent.ACTION_CANCEL);
@@ -174,7 +174,7 @@ public final class MainActivity extends Activity {
             case MotionEvent.ACTION_UP:
                 if(primarySwipeActive) {
                     float dx=e.getX()-primarySwipeStartX;
-                    int target=currentTab+(dx<0f?1:-1);
+                    int target=currentTab+(dx>0f?1:-1);
                     primarySwipeActive=false; primarySwipeEligible=false;
                     if(Math.abs(dx)>=Ui.dp(this,70)
                             && target>=TAB_HOME && target<=TAB_ANALYTICS)
@@ -197,6 +197,9 @@ public final class MainActivity extends Activity {
     private void animateGlassTopBar(View page) {
         if(!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this)
                 || !android.animation.ValueAnimator.areAnimatorsEnabled())return;
+        // Primary sliding already moves the whole page. Animating its top bar
+        // separately makes a second moving layer and exaggerates frame drops.
+        if (pendingPrimarySlide != 0) return;
         View bar=page.findViewWithTag("wen_top_chrome");
         if(bar==null)return;
         bar.animate().cancel();
@@ -287,18 +290,18 @@ public final class MainActivity extends Activity {
         boolean fromNavGesture = pendingGlassNavigationSwitch;
         pendingGlassNavigationSwitch = false;
         if (fastLiquid) {
-            if(slideDirection != 0 && previous != null) {
+            if (slideDirection != 0 && previous != null) {
+                // Heavy full-screen double drawing caused visible overlap/jank
+                // on repeated swipes. Release the previous hierarchy in the
+                // same frame and translate only the incoming screen.
                 previous.animate().cancel();
+                screenHost.removeView(previous);
                 next.setAlpha(1f);
-                next.setTranslationX(-slideDirection*Ui.dp(this,64));
-                next.animate().translationX(0f).setDuration(230)
-                        .setInterpolator(new android.view.animation.PathInterpolator(.2f,.8f,.2f,1f)).start();
-                previous.animate().translationX(slideDirection*Ui.dp(this,100))
-                        .alpha(.82f).setDuration(185)
-                        .withEndAction(() -> {
-                            if(generation==screenTransitionGeneration && previous.getParent()==screenHost)
-                                screenHost.removeView(previous);
-                        }).start();
+                next.setTranslationY(0f);
+                next.setTranslationX(-slideDirection * Ui.dp(this, 46));
+                next.animate().translationX(0f).setDuration(190)
+                        .setInterpolator(new android.view.animation.PathInterpolator(
+                                .16f, .8f, .24f, 1f)).start();
                 return;
             }
             if (previous != null && previous.getParent() == screenHost) {
