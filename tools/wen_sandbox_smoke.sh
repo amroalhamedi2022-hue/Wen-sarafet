@@ -87,7 +87,10 @@ read -r TX TY <<< "$ANALYTICS_POINT"
 # No extra click/hold handler is invoked by the test: native Android input only.
 adb shell screencap -p /sdcard/wen-before-hold.png
 adb pull /sdcard/wen-before-hold.png "$OUT/nav-before-hold.png" >/dev/null
-adb shell input swipe "$TX" "$TY" "$TX" "$TY" 1400 &
+# On a software-rendered emulator adb screencap + pull can exceed 1.7s.
+# A 1.4s fake hold ended BEFORE the screenshot could be recorded.
+# Keep the pointer down for five seconds so this is an actual DURING image.
+adb shell input swipe "$TX" "$TY" "$TX" "$TY" 5200 &
 hold_pid=$!
 sleep 0.69
 adb shell screencap -p /sdcard/wen-during-hold.png
