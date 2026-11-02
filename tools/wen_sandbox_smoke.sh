@@ -69,6 +69,45 @@ adb shell am force-stop "$PACKAGE" || true
 adb shell am start -W -n "$COMPONENT"
 sleep 3
 nav_dump "$OUT/wen-nav-motion.xml"
+# Acceptance for contextual top chrome and accessible bubble FAB.
+python3 - "$OUT/wen-nav-motion.xml" <<'PY'
+import sys,xml.etree.ElementTree as ET
+nodes=list(ET.parse(sys.argv[1]).getroot().iter("node"))
+assert any(n.get("text")=="الرئيسية" for n in nodes), "Home header must describe this page"
+assert any(n.get("content-desc")=="إضافة عملية" for n in nodes), "Bubble FAB missing"
+print("PASS: contextual primary header and accessible bubble button")
+PY
+FAB_POINT="$(python3 - "$OUT/wen-nav-motion.xml" <<'PY'
+import sys,re,xml.etree.ElementTree as ET
+nodes=[n for n in ET.parse(sys.argv[1]).getroot().iter("node")
+       if n.get("content-desc")=="إضافة عملية"]
+if len(nodes)!=1: raise SystemExit("FAB accessible node missing/duplicated")
+m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",nodes[0].get("bounds",""))
+if not m: raise SystemExit("FAB has no usable bounds")
+a,b,c,d=map(int,m.groups())
+print((a+c)//2,(b+d)//2)
+PY
+)"
+read -r FX FY <<< "$FAB_POINT"
+adb shell input tap "$FX" "$FY"
+sleep 3
+adb shell uiautomator dump /sdcard/wen-add-transaction.xml >/dev/null
+adb pull /sdcard/wen-add-transaction.xml "$OUT/wen-add-transaction.xml" >/dev/null
+python3 - "$OUT/wen-add-transaction.xml" <<'PY'
+import sys,xml.etree.ElementTree as ET
+nodes=list(ET.parse(sys.argv[1]).getroot().iter("node"))
+texts=[n.get("text","") for n in nodes]
+if "إضافة عملية" not in texts or "نوع العملية" not in texts:
+    raise SystemExit("FAIL: bubble FAB tap did not open Add Transaction form")
+print("PASS: glass FAB tap opens Add Transaction form")
+PY
+adb shell screencap -p /sdcard/wen-fab-add-form.png
+adb pull /sdcard/wen-fab-add-form.png "$OUT/fab-add-transaction.png" >/dev/null
+# Re-enter home for existing Hold+Drag verification.
+adb shell am force-stop "$PACKAGE"
+adb shell am start -W -n "$COMPONENT"
+sleep 3
+nav_dump "$OUT/wen-nav-motion.xml"
 ANALYTICS_POINT="$(python3 - "$OUT/wen-nav-motion.xml" <<'PY'
 import re, sys, xml.etree.ElementTree as ET
 root=ET.parse(sys.argv[1]).getroot()
