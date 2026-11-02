@@ -34,7 +34,8 @@ for forbidden in ["while (true)", "postDelayed", "TimerTask", "Thread.sleep",
 assert "GlassMotion.bindPress(view, SKY)" in ui
 assert "GlassMotion.bindNavigationTab(" in main
 assert "bindNavigationTab(View tab, FrameLayout track, View lens" in engine
-assert "scaleX(1.06f).scaleY(1.09f)" in engine
+assert "scaleX(1.06f).scaleY(1.09f)" not in engine, "No separate enlarged touch bubble"
+assert "optic.bindPhysicalPill(lens);" in engine
 assert "MotionEvent.ACTION_CANCEL" in engine
 assert "lens.animate().translationX(fingerLensX(view.getLeft()+event.getX()))" in engine
 assert "private float fingerLensX(float fingerX)" in engine
@@ -82,8 +83,8 @@ assert "glass.setMorph(1f);" in engine
 assert "glass.setMorph(0f);" in engine
 assert "private final RectF fluid = new RectF();" in lensSource
 assert "public void setMorph(float fraction)" in lensSource
-assert "surface.height()*.70f*morph" in lensSource
-assert "canvas.drawRoundRect(fluid, r, r, halo);" in lensSource
+assert "fluid.set(surface);" in lensSource, "Pressed outline must preserve resting pill dimensions"
+assert "canvas.drawRoundRect(fluid, r, r, halo);" not in lensSource
 assert "if (morphAnimator != null)" in engine
 move = engine.split("class NavigationGesture", 1)[1].split(
     "case MotionEvent.ACTION_MOVE:", 1)[1].split("cancelled=false;", 1)[0]
@@ -118,7 +119,7 @@ assert 'wrapper.setTag("wen_top_chrome");' in main
 assert "animateGlassTopBar(next);" in main
 assert "Ui.pressAnimation(back);" in main
 assert "canvas.drawLine(" not in lensSource, "The old straight highlight must not return"
-assert "canvas.drawOval(inner, opticalCore);" in lensSource
+assert "canvas.drawOval(inner, opticalCore);" not in lensSource
 # The original icon-scale stand-in is no longer allowed: optical sampling
 # must visibly magnify ORIGINAL tab pixels inside the lens.
 assert "focusLensTab(" not in engine
@@ -130,10 +131,14 @@ optical = (p/"glass-engine/src/main/java/app/wensarafet/glass/WenOpticalNavigati
 assert "new BitmapShader(source, Shader.TileMode.CLAMP" in optical
 assert "tabStrip.draw(capture);" in optical
 assert "sampleMatrix.setScale(zoom, zoom, centreX, cy);" in optical
-assert "canvas.drawRoundRect(droplet, ry, ry, magnified);" in optical
+assert "canvas.drawRoundRect(droplet, radius, radius, magnified);" in optical
 assert "setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);" in optical
 assert "setVisibility(INVISIBLE);" in optical
-assert "float zoom = 1f + .76f * opacity;" in optical, "Minimum 1.76x real optical magnification"
+assert "float zoom = 1f + .26f * opacity;" in optical, "Subtle optical magnification, not second bubble"
+assert "physicalPill.getX()" in optical and "physicalPill.getWidth()" in optical
+assert "canvas.drawRoundRect(droplet, radius, radius, magnified);" in optical
+assert "canvas.drawRoundRect(droplet, ry, ry, body);" not in optical
+assert "canvas.drawRoundRect(droplet, ry, ry, rim);" not in optical
 progress = optical.split("public void progress(float next)",1)[1].split("public void discard()",1)[0]
 assert "discard();" not in progress, "Initial animator tick at zero must never destroy the captured bitmap"
 assert "opacity <= .005f ? INVISIBLE : VISIBLE" in progress
@@ -171,7 +176,14 @@ assert 'headerTitle="الديون"' in main
 assert 'headerTitle="التحليلات"' in main
 assert 'headerTitle="الرئيسية"' in main
 assert "Ui.isLiquidTheme(this) ? .82f : .84f" in main
-assert "getHeight() * (.48f + .22f * opacity)" in optical
+assert "physicalPill.getHeight()" in optical
+assert "returnFromAddWithReverse(false);" in main
+assert "returnFromAddWithReverse(transactionsTab);" in main
+assert "final boolean reverseFab = pendingFabReverse" in main
+assert "screenHost.addView(next, 0, match);" in main
+assert "createCircularReveal(" in main
+assert "outgoing,cx,cy,startRadius,Math.max(1f,fabRevealRadius)" in main
+assert "outgoing.getParent()==screenHost" in main
 
 assert 'final boolean iconOnlyLaunch = startupIconAnimationPending' in main
 assert "if (iconOnlyLaunch) {" in main
