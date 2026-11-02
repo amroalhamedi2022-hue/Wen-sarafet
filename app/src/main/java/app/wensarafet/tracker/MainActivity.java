@@ -1117,7 +1117,12 @@ public final class MainActivity extends Activity {
 
         LinearLayout results=Ui.column(this);
         content.addView(results);
-        final int pageSize=Math.max(20,Math.min(75,limit));
+        // Keep every historical transaction reachable via the existing
+        // "load more" paging. Only the initial UI batch gets smaller in the
+        // isolated Liquid sandbox: constructing 75 decorated rows before the
+        // next frame was a major source of tab-switch hitching.
+        final int initialCap = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) ? 24 : 75;
+        final int pageSize=Math.max(20,Math.min(initialCap,limit));
         final int[] offset={0};
         final Runnable[] loadNext={null};
         loadNext[0]=()->{
