@@ -82,7 +82,7 @@ assert "glass.setMorph(1f);" in engine
 assert "glass.setMorph(0f);" in engine
 assert "private final RectF fluid = new RectF();" in lensSource
 assert "public void setMorph(float fraction)" in lensSource
-assert "surface.height()*.57f*morph" in lensSource
+assert "surface.height()*.70f*morph" in lensSource
 assert "canvas.drawRoundRect(fluid, r, r, halo);" in lensSource
 assert "if (morphAnimator != null)" in engine
 move = engine.split("class NavigationGesture", 1)[1].split(
@@ -152,8 +152,25 @@ assert "setLayerType(View.LAYER_TYPE_SOFTWARE" not in optical
 assert "startupIconAnimationPending = true" in main
 assert "private void animateStartupIcons(View page)" in main
 assert "startupIconAnimationPending = false;" in main
-assert "setStartDelay(i * 48L).setDuration(350)" in main
+assert "setStartDelay(i*65L)" in main
 assert "animateStartupIcons(next);" in main
+assert "page.getViewTreeObserver().addOnPreDrawListener(" in main
+assert "page.postOnAnimation(() -> {" in main
+assert "private void bindGlassFab(TextView fab)" in main
+assert "bubble.setPress(1f);" in main and "bubble.setPress(0f);" in main
+assert "bindGlassFab(fab);" in main
+fab=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java").read_text(encoding="utf-8")
+assert "public void setPress(float fraction)" in fab
+assert "c.drawCircle(mx,my,radius,fill);" in fab
+assert "android.view.ViewAnimationUtils.createCircularReveal(" in main
+assert "pendingFabReveal=true;" in main
+assert 'headerTitle="كل العمليات"' in main
+assert 'headerTitle="الديون"' in main
+assert 'headerTitle="التحليلات"' in main
+assert 'headerTitle="الرئيسية"' in main
+assert "Ui.isLiquidTheme(this) ? .82f : .84f" in main
+assert "getHeight() * (.48f + .22f * opacity)" in optical
+
 assert 'final boolean iconOnlyLaunch = startupIconAnimationPending' in main
 assert "if (iconOnlyLaunch) {" in main
 assert "screenHost.postOnAnimation(() -> {" in main
