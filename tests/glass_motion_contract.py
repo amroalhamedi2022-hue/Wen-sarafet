@@ -220,9 +220,9 @@ assert 'Class.forName("app.wensarafet.tracker.SandboxOpticalGlass")' in main or 
 assert 'attach.invoke(null, fabGlassHost, root, fab)' in main
 assert 'if (!externalFabMaterial) bindGlassFab(fab);' in main
 assert 'movingFab.animate()' in main, "Root FAB material and glyph must scroll together"
-assert "scroll.setPadding(0, 0, 0, Ui.dp(this, 90));" in main
-assert "scroll.setClipToPadding(true);" in main, "No card artwork behind floating nav"
-assert "scroll.setBackground(Ui.glassScreenBackground(this));" in main, "Backdrop capture must never see black transparent footer"
+assert "scroll.setPadding(0, 0, 0, Ui.dp(this, 90));" not in main, "Blank clipped nav underlay kills visible refraction"
+assert "scroll.setClipToPadding(true);" not in main, "Do not clip away the live scene under optical navigation"
+assert "scroll.setBackground(Ui.glassScreenBackground(this));" in main, "Backdrop must not sample transparent black"
 
 fab=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java").read_text(encoding="utf-8")
 assert "opticalDepth.setShader(new RadialGradient(" in fab
