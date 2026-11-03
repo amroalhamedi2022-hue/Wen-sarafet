@@ -1194,19 +1194,25 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         return item;
     }
 
+    /**
+     * Import a provider event exactly once. The captured transaction, actual account
+     * posting and inbox acknowledgement commit in the SAME SQLite transaction.
+     */
     public long importCapture(long captureId, String type) {
-        if (!isCapturePending(captureId)) return -1;
         SQLiteDatabase writable = getWritableDatabase();
         writable.beginTransaction();
         try {
+            if (!isCapturePending(captureId)) return -1;
             Models.CaptureItem item = getCapture(captureId);
-            if (item == null || item.amountMinor == null || item.currency == null ||
+            if (item == null || item.amountMinor == null || item.amountMinor<=0 || item.currency == null ||
                     (!FinanceRules.EXPENSE.equals(type) && !FinanceRules.INCOME.equals(type))) return -1;
             long accountId = findProviderAccount(item.provider, item.currency);
             if (accountId < 0) return -1;
             Models.Account account = getAccount(accountId);
+            if (account==null || !isActiveAccount(writable,accountId)) return -1;
             long nextBalance = item.balanceMinor != null ? item.balanceMinor
                     : FinanceRules.balancesAfter(type, item.amountMinor, account.balanceMinor, null)[0];
+            NonNegativeBalanceRules.requireNonNegative(nextBalance);
             // Provider balances can include other off-app movements: persist the actual delta.
             long capturedImpact = FinanceRules.EXPENSE.equals(type)
                     ? Math.subtractExact(account.balanceMinor, nextBalance)
@@ -1218,11 +1224,13 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             tx.put("affects_balance", 1); tx.put("base_affects_balance", 1);
             tx.put("balance_impact_minor", capturedImpact);
             long txId = writable.insertOrThrow("transactions", null, tx);
-            NonNegativeBalanceRules.requireNonNegative(nextBalance); // reject overdraft and negative captured balance
             ContentValues balance = new ContentValues(); balance.put("balance_minor", nextBalance);
-            writable.update("accounts", balance, "id=?", new String[]{String.valueOf(accountId)});
+            if (writable.update("accounts",balance,"id=?",new String[]{String.valueOf(accountId)})!=1)
+                throw new IllegalStateException("الحساب الأصلي لم يعد موجودًا");
             ContentValues done = new ContentValues(); done.put("status", "IMPORTED"); done.put("transaction_id", txId);
-            writable.update("capture_inbox", done, "id=? AND status='PENDING'", new String[]{String.valueOf(captureId)});
+            if (writable.update("capture_inbox",done,"id=? AND status='PENDING'",
+                    new String[]{String.valueOf(captureId)})!=1)
+                throw new IllegalStateException("تم استيراد الرسالة في عملية أخرى؛ لم تُحفظ عملية مكررة");
             writable.setTransactionSuccessful();
             return txId;
         } finally {
@@ -1233,37 +1241,52 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     }
 
     public long importCaptureTransfer(long captureId, long sourceId, long destinationId) {
-        if (!isCapturePending(captureId)) return -1;
-        Models.CaptureItem item = getCapture(captureId);
-        if (item == null || item.amountMinor == null || item.currency == null) return -1;
-        long txId = addCapturedTransfer(item, sourceId, destinationId);
-        ContentValues done = new ContentValues(); done.put("status", "IMPORTED"); done.put("transaction_id", txId);
-        getWritableDatabase().update("capture_inbox", done, "id=? AND status='PENDING'", new String[]{String.valueOf(captureId)});
-        return txId;
-    }
-
-    private long addCapturedTransfer(Models.CaptureItem item, long sourceId, long destinationId) {
         SQLiteDatabase writable = getWritableDatabase();
         writable.beginTransaction();
         try {
-            Models.Account source = getAccount(sourceId), destination = getAccount(destinationId);
-            if (source == null || destination == null || source.id == destination.id || !source.currency.equals(item.currency) || !destination.currency.equals(item.currency)) return -1;
-            ContentValues tx = new ContentValues(); tx.put("type", FinanceRules.TRANSFER); tx.put("amount_minor", item.amountMinor); tx.put("currency", item.currency);
-            tx.put("account_id", sourceId); tx.put("destination_account_id", destinationId); tx.putNull("category_id"); tx.put("note", ""); tx.put("raw_text", item.rawText);
-            tx.put("needs_review", 0); tx.put("created_at", item.receivedAt); tx.put("source", "CAPTURED");
-            tx.put("affects_balance", 1); tx.put("base_affects_balance", 1);
-            tx.put("balance_impact_minor", item.amountMinor);
-            long id = writable.insertOrThrow("transactions", null, tx);
-            long[] balances = FinanceRules.balancesAfter(FinanceRules.TRANSFER, item.amountMinor, source.balanceMinor, destination.balanceMinor);
-            NonNegativeBalanceRules.requireNonNegative(balances[0]); // inbound capture cannot overdraw source
-            ContentValues a = new ContentValues(); a.put("balance_minor", balances[0]); writable.update("accounts", a, "id=?", new String[]{String.valueOf(sourceId)});
-            ContentValues b = new ContentValues(); b.put("balance_minor", balances[1]); writable.update("accounts", b, "id=?", new String[]{String.valueOf(destinationId)});
-            writable.setTransactionSuccessful(); return id;
+            if (!isCapturePending(captureId)) return -1;
+            Models.CaptureItem item = getCapture(captureId);
+            if (item == null || item.amountMinor == null || item.amountMinor<=0 || item.currency == null) return -1;
+            long txId = addCapturedTransfer(writable,item,sourceId,destinationId);
+            if (txId<0) return -1; // invalid accounts leave the inbox pending, not falsely imported
+            ContentValues done = new ContentValues(); done.put("status", "IMPORTED"); done.put("transaction_id", txId);
+            if (writable.update("capture_inbox",done,"id=? AND status='PENDING'",
+                    new String[]{String.valueOf(captureId)})!=1)
+                throw new IllegalStateException("تم استيراد الحوالة في عملية أخرى؛ لم يُحفظ تكرار");
+            writable.setTransactionSuccessful();
+            return txId;
         } finally {
             writable.endTransaction();
             BalanceWidgetProvider.updateAll(appContext);
             BudgetAlertManager.checkAll(appContext);
         }
+    }
+
+    /** Caller holds the SQLite transaction; never commit the transfer separately. */
+    private long addCapturedTransfer(SQLiteDatabase writable, Models.CaptureItem item,
+                                     long sourceId, long destinationId) {
+        Models.Account source = getAccount(sourceId), destination = getAccount(destinationId);
+        if (source == null || destination == null || source.id == destination.id
+                || !isActiveAccount(writable,sourceId) || !isActiveAccount(writable,destinationId)
+                || !source.currency.equals(item.currency) || !destination.currency.equals(item.currency)) return -1;
+        long[] balances = FinanceRules.balancesAfter(FinanceRules.TRANSFER,item.amountMinor,
+                source.balanceMinor,destination.balanceMinor);
+        NonNegativeBalanceRules.requireNonNegative(balances[0]);
+        ContentValues tx = new ContentValues();
+        tx.put("type", FinanceRules.TRANSFER); tx.put("amount_minor", item.amountMinor); tx.put("currency", item.currency);
+        tx.put("account_id", sourceId); tx.put("destination_account_id", destinationId); tx.putNull("category_id");
+        tx.put("note", ""); tx.put("raw_text", item.rawText); tx.put("needs_review", 0);
+        tx.put("created_at", item.receivedAt); tx.put("source", "CAPTURED");
+        tx.put("affects_balance", 1); tx.put("base_affects_balance", 1);
+        tx.put("balance_impact_minor", item.amountMinor);
+        long id = writable.insertOrThrow("transactions", null, tx);
+        ContentValues from = new ContentValues(); from.put("balance_minor", balances[0]);
+        if (writable.update("accounts",from,"id=? AND active=1",new String[]{String.valueOf(sourceId)})!=1)
+            throw new IllegalStateException("تعذّر تحديث الحساب المصدر");
+        ContentValues to = new ContentValues(); to.put("balance_minor", balances[1]);
+        if (writable.update("accounts",to,"id=? AND active=1",new String[]{String.valueOf(destinationId)})!=1)
+            throw new IllegalStateException("تعذّر تحديث الحساب المستلم");
+        return id;
     }
 
     private long findProviderAccount(String provider, String currency) {

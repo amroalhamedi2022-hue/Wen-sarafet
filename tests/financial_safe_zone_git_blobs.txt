@@ -2,7 +2,7 @@
 # FinanceDbHelper and pure accounting routines are frozen after explicit owner request.
 # Explicit 2026-11-03 owner financial bug report: approved cashflow correction is isolated in a Draft PR.
 # NEVER treat this updated baseline as permission to merge, sign or alter live account data.
-2763817f12e916fe47e44f75b315d12054163914  app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java
+f6efcb4d8d3be3b5b1175cc299538acb839cdfa1  app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java
 37badf39525c09eaf4e5abf5565031bcab7cd108  app/src/main/java/app/wensarafet/tracker/FinanceRules.java
 6a0fb5a1af1cba7f25f5bdd1206163086e025a71  app/src/main/java/app/wensarafet/tracker/DebtLedgerRules.java
 29f4d3383e97ed45e3b7574056e5adadb0b52486  app/src/main/java/app/wensarafet/tracker/FxTransferMath.java

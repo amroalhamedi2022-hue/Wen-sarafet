@@ -38,3 +38,8 @@ No automatic historic account-balance correction is permitted here. Legacy pre-v
 ## Additional safety hardening
 - An explicit manual debt-to-category exit is permitted only for an intact manual non-FX, non-split debt row with ledger provenance; outstanding repayments on a debt opening must be handled first. The generic editor still rejects arbitrary debt/FX changes.
 - New original-package 1.8.6 release in GitHub CI remains **UNSIGNED**; required original owner signing keystore is not available in repository or CI. Signed update and real-device validation remain blockers to shipping.
+
+## Captured message atomicity repair
+- Ordinary imported provider expenses/income check PENDING inside their SQLite write transaction and require a single-row compare-and-swap acknowledgement; failed acknowledgement rolls back the new transaction and account effect.
+- Own-account transfer imports now commit both account changes, a transaction row, and inbox status together; invalid account selection does not mark a message imported. Duplicate imports are rejected.
+- The read-only safety test uses a fictional SQLite fixture. It cannot establish that historical live captures were free of duplicates; reconciliation is required.
