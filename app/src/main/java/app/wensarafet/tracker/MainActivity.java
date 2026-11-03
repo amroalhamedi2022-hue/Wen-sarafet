@@ -1240,7 +1240,9 @@ public final class MainActivity extends Activity {
         if (!FinanceRules.EXPENSE.equals(tx.type) && !FinanceRules.INCOME.equals(tx.type)) {
             Toast.makeText(this, "حوّل العملية أولًا إلى مصروف أو دخل", Toast.LENGTH_LONG).show(); return;
         }
-        String inferredDirection = FinanceRules.INCOME.equals(tx.type) ? FinanceRules.DEBT_RECEIVABLE : FinanceRules.DEBT_PAYABLE;
+        String inferredDirection = FinanceRules.SPECIAL_DEBT.equals(specialKind)
+                ? (FinanceRules.EXPENSE.equals(tx.type) ? FinanceRules.DEBT_RECEIVABLE : FinanceRules.DEBT_PAYABLE)
+                : (FinanceRules.EXPENSE.equals(tx.type) ? FinanceRules.DEBT_PAYABLE : FinanceRules.DEBT_RECEIVABLE);
         List<Models.DebtPerson> people = db.getDebtPeople();
         if (people.isEmpty()) {
             showQuickAddDebtPerson(() -> showDebtClassificationDialog(tx, specialKind)); return;
