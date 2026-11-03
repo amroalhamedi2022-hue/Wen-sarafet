@@ -69,7 +69,8 @@ assert "if (!lowPower)" in backdrop
 assert "if (!lowPower) {" in backdrop.split("@Override public void draw(Canvas canvas)",1)[1]
 assert "new " not in backdrop.split("@Override public void draw(Canvas canvas)",1)[1].split("@Override public void setAlpha",1)[0]
 assert "glassScreenBackground(this)" in main
-assert main.count("setBackground(Ui.glassScreenBackground(this))") == 4
+assert main.count("setBackground(Ui.glassScreenBackground(this))") >= 4, "Original four scene backgrounds must remain"
+assert "scroll.setBackground(Ui.glassScreenBackground(this));" in main, "Frosted footer reuses scene background"
 assert "new RadialGradient" in engine
 assert "new LinearGradient" in engine
 assert "innerBorder.set(surface)" in engine
