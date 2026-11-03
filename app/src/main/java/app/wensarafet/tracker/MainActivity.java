@@ -948,7 +948,29 @@ public final class MainActivity extends Activity {
         });
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));
         fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18), Ui.dp(this, 88));
-        root.addView(fab, fabParams);
+        final FrameLayout fabGlassHost;
+        final View movingFab;
+        if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)) {
+            // One container owns both the true circular material and the
+            // ORIGINAL click target. Scrolling must move them together.
+            FrameLayout wrapper = new FrameLayout(this);
+            wrapper.setClipChildren(false);
+            wrapper.setClipToPadding(false);
+            fabGlassHost = new FrameLayout(this);
+            fabGlassHost.setClipChildren(false);
+            wrapper.addView(fabGlassHost, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+            wrapper.addView(fab, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+            root.addView(wrapper, fabParams);
+            movingFab = wrapper;
+        } else {
+            fabGlassHost = null;
+            root.addView(fab, fabParams);
+            movingFab = fab;
+        }
         final boolean[] chromeHidden = {false};
         final int[] upwardTravel = {0};
         final View topBarBackground = topBar.findViewWithTag("main_header_background");
@@ -970,12 +992,12 @@ public final class MainActivity extends Activity {
                     bottomNav.setTranslationY(Ui.dp(this, 76));
                     bottomNav.setAlpha(0f);
                     bottomNav.setVisibility(View.INVISIBLE);
-                    fab.animate().cancel();
-                    fab.setTranslationY(Ui.dp(this, 70));
+                    movingFab.animate().cancel();
+                    movingFab.setTranslationY(Ui.dp(this, 70));
                 } else {
                     bottomNav.animate().translationY(Ui.dp(this, 76)).alpha(0f).setDuration(220)
                             .withEndAction(() -> { if (chromeHidden[0]) bottomNav.setVisibility(View.INVISIBLE); }).start();
-                    fab.animate().translationY(Ui.dp(this, 70)).setDuration(220).start();
+                    movingFab.animate().translationY(Ui.dp(this, 70)).setDuration(220).start();
                 }
             } else if ((showAtTop || showWhileAscending) && chromeHidden[0]) {
                 chromeHidden[0] = false;
@@ -985,18 +1007,32 @@ public final class MainActivity extends Activity {
                     bottomNav.animate().cancel();
                     bottomNav.setAlpha(1f);
                     bottomNav.setTranslationY(0f);
-                    fab.animate().cancel();
-                    fab.setTranslationY(0f);
+                    movingFab.animate().cancel();
+                    movingFab.setTranslationY(0f);
                 } else {
                     bottomNav.setAlpha(0f);
                     bottomNav.setTranslationY(Ui.dp(this, 76));
                     bottomNav.animate().translationY(0f).alpha(1f).setDuration(220).start();
-                    fab.animate().translationY(0f).setDuration(220).start();
+                    movingFab.animate().translationY(0f).setDuration(220).start();
                 }
             }
         });
         setContentView(root);
-        bindGlassFab(fab);
+        boolean externalFabMaterial = false;
+        if (fabGlassHost != null) {
+            try {
+                Class<?> provider = Class.forName(
+                        "app.wensarafet.tracker.SandboxOpticalGlass");
+                java.lang.reflect.Method attach = provider.getMethod("attachFab",
+                        FrameLayout.class, FrameLayout.class, TextView.class);
+                externalFabMaterial = Boolean.TRUE.equals(
+                        attach.invoke(null, fabGlassHost, root, fab));
+            } catch (ReflectiveOperationException | LinkageError failure) {
+                android.util.Log.w("WenGlassProbe",
+                        "SANDBOX_FAB_MATERIAL_UNAVAILABLE", failure);
+            }
+        }
+        if (!externalFabMaterial) bindGlassFab(fab);
         Ui.animateScreen(root);
         // The primary Liquid screen already slides. Staggering financial cards
         // on top of it previously caused multiple simultaneous alpha/translation
@@ -1080,6 +1116,19 @@ public final class MainActivity extends Activity {
         nav.setBackground(Ui.glassNavigationBackground(this, 26));
         nav.setElevation(Ui.dp(this, 12));
         final boolean liquid = Ui.isLiquidTheme(this);
+        if (liquid && SandboxMode.isSandbox(this)) {
+            // An opaque blue shell hides the sampled underlay. Keep this bar
+            // nearly neutral; the moving native lens supplies actual optics.
+            android.graphics.drawable.GradientDrawable quietChrome =
+                    new android.graphics.drawable.GradientDrawable(
+                            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                            Ui.DARK ? new int[]{0x65404966, 0x4039435C}
+                                    : new int[]{0x9CFFFFFF, 0x73F3F9FF});
+            quietChrome.setCornerRadius(Ui.dp(this, 26));
+            quietChrome.setStroke(Math.max(1, Ui.dp(this, 1)),
+                    Ui.DARK ? 0x4DE7F4FF : 0x80FFFFFF);
+            nav.setBackground(quietChrome);
+        }
 
         TextView home = navButton("🏠\nالرئيسية", selectedTab == TAB_HOME);
         TextView tx = navButton("📋\nالعمليات", selectedTab == TAB_TRANSACTIONS);
