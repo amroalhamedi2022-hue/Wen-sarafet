@@ -110,4 +110,7 @@ assert "if (!affectsBalance)" in edit
 assert "return total;" in rules
 assert "getExpenseTotal(" in src and "AND COALESCE(c.exclude_from_expense,0)=0" in src
 assert "getCategoryExpenseTotals(" in src
+assert "public void reclassifyDebtTransactionToCategory(" in src
+assert "safeExplicitDebtExit=eligible.moveToFirst()" in src
+assert "db.reclassifyDebtTransactionToCategory" in (ROOT/"app/src/main/java/app/wensarafet/tracker/MainActivity.java").read_text(encoding="utf-8")
 print("DebtCashflowIntegrityContract PASS: exact old postings, full debt outflows, analytics exclusions, lossless backfill, no automatic account corrections")

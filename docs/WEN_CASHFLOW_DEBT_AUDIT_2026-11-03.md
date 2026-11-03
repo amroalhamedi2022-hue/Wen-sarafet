@@ -12,7 +12,7 @@ Paying for a brother correctly deducted account funds on purchase, but convertin
 ## Proposed Draft-only implementation
 - Every recorded physical money movement posts once when its explicit `base_affects_balance` is true, including loans, repayments and expense categories excluded from spending analytics.
 - Expense / category / monthly-budget analytics continue to exclude loans and categories marked excluded. Debt movements remain in their ledger and are not ordinary expenses.
-- SQLite v14 persists `balance_impact_minor` per transaction. A v13-to-v14 migration derives original, **historical engine** postings for pre-existing rows, including legacy zero-debit loans and excluded expenses. The migration does not UPDATE accounts, debt ledger, amounts, dates, categories, or checkpoints.
+- SQLite v14 persists `balance_impact_minor` per transaction. A v13-to-v14 migration derives original, **historical engine** postings for pre-existing rows, including legacy zero-debit loans and excluded expenses. The migration does not UPDATE accounts, debt ledger, amounts, dates, categories, or checkpoints. Historical provider-captured transactions whose original source-balance delta cannot be reconstructed are explicitly marked with UNKNOWN posting impact (NULL), and any attempt to reverse or recategorise them is safely rejected without changing account balances; post-v14 captures record actual deltas.
 - Edits, recategorisation, debt edits, deletion, simple deletion undo, captures and FX now use the durable original posting where relevant, instead of re-deriving it from the current category. Imported provider balances preserve their actual applied delta.
 - All changes remain in a new isolated functional Draft branch based on PR #26, not main, and do not touch the independent Liquid Glass UI.
 
@@ -34,3 +34,7 @@ No automatic historic account-balance correction is permitted here. Legacy pre-v
 - Source/CI success cannot prove the user's existing private finance data is intact, nor prove no unknown historic discrepancy exists.
 
 **Status:** patch candidate under test; do not describe as installed, released or fully validated.
+
+## Additional safety hardening
+- An explicit manual debt-to-category exit is permitted only for an intact manual non-FX, non-split debt row with ledger provenance; outstanding repayments on a debt opening must be handled first. The generic editor still rejects arbitrary debt/FX changes.
+- New original-package 1.8.6 release in GitHub CI remains **UNSIGNED**; required original owner signing keystore is not available in repository or CI. Signed update and real-device validation remain blockers to shipping.

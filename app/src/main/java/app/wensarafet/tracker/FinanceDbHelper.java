@@ -1302,6 +1302,20 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     public void reclassifyTransaction(long transactionId, String newType, long sourceId,
                                       Long destinationId, Long categoryId,
                                       List<Models.SplitInput> splits) {
+        reclassifyTransactionInternal(transactionId,newType,sourceId,destinationId,categoryId,splits,false);
+    }
+
+    /** Explicitly leave a debt ledger: prohibit FX, splits and imported/corrupt debt lineage. */
+    public void reclassifyDebtTransactionToCategory(long transactionId, String newType,
+                                                    long sourceId, long categoryId) {
+        if (!FinanceRules.EXPENSE.equals(newType) && !FinanceRules.INCOME.equals(newType))
+            throw new IllegalArgumentException("الدين يُحوّل إلى مصروف أو دخل فقط");
+        reclassifyTransactionInternal(transactionId,newType,sourceId,null,categoryId,new ArrayList<>(),true);
+    }
+
+    private void reclassifyTransactionInternal(long transactionId, String newType, long sourceId,
+                                      Long destinationId, Long categoryId,
+                                      List<Models.SplitInput> splits, boolean allowDebtExit) {
         SQLiteDatabase writable = getWritableDatabase();
         writable.beginTransaction();
         try {
@@ -1315,8 +1329,27 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                     "OR t.debt_direction IS NOT NULL " +
                     "OR EXISTS(SELECT 1 FROM debt_movements d WHERE d.transaction_id=t.id))",
                     new String[]{String.valueOf(transactionId)})) {
-                if(restricted.moveToFirst())
-                    throw new IllegalArgumentException("العملية مرتبطة بتحويل أو دين؛ استخدم تعديلها المخصص");
+                if(restricted.moveToFirst()) {
+                    boolean safeExplicitDebtExit=false;
+                    if(allowDebtExit && categoryId!=null && destinationId==null
+                            && (FinanceRules.EXPENSE.equals(newType) || FinanceRules.INCOME.equals(newType))
+                            && (splits==null || splits.isEmpty())) {
+                        try(Cursor eligible=writable.rawQuery(
+                                "SELECT 1 FROM transactions t WHERE t.id=? AND t.source='MANUAL' " +
+                                "AND t.special_kind IN ('DEBT','DEBT_PAYMENT') AND t.debt_person_id IS NOT NULL " +
+                                "AND t.debt_direction IN ('RECEIVABLE','PAYABLE') " +
+                                "AND t.type IN ('EXPENSE','INCOME') AND t.destination_account_id IS NULL " +
+                                "AND t.destination_amount_minor IS NULL AND t.exchange_rate IS NULL " +
+                                "AND t.exchange_rate_source IS NULL AND t.exchange_rate_checked_at IS NULL " +
+                                "AND NOT EXISTS(SELECT 1 FROM transaction_splits s WHERE s.transaction_id=t.id) " +
+                                "AND EXISTS(SELECT 1 FROM debt_movements d WHERE d.transaction_id=t.id)",
+                                new String[]{String.valueOf(transactionId)})) {
+                            safeExplicitDebtExit=eligible.moveToFirst();
+                        }
+                    }
+                    if(!safeExplicitDebtExit)
+                        throw new IllegalArgumentException("العملية مرتبطة بتحويل أو دين؛ استخدم تعديلها المخصص");
+                }
             }
             String oldType; long amount; long oldSourceId; Long oldDestinationId; String currency; boolean affectsBalance; boolean baseAffectsBalance;
             try (Cursor c = writable.rawQuery("SELECT type,amount_minor,account_id,destination_account_id,currency,affects_balance,base_affects_balance FROM transactions WHERE id=?", new String[]{String.valueOf(transactionId)})) {
