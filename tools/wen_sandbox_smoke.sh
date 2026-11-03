@@ -228,7 +228,13 @@ if ! grep -q 'MIT_VIEW_GLASS_PRESS_ACTIVE' "$OUT/advanced-glass-probe.log"; then
   echo "FAIL: native Liquid Glass pressed refraction never became active"
   exit 1
 fi
-echo "PASS: sandbox native View glass renderer, backdrop and gesture-active refraction"
+if ! grep -q 'MIT_FAB_GLASS_ATTACHED' "$OUT/advanced-glass-probe.log" ||
+   ! grep -q 'MIT_FAB_BACKDROP_BOUND source=scroll' "$OUT/advanced-glass-probe.log" ||
+   ! grep -q 'MIT_VIEW_GLASS_BACKDROP_BOUND source=scroll' "$OUT/advanced-glass-probe.log"; then
+  echo "FAIL: FAB/nav material not sampling the real scroll underlay"
+  exit 1
+fi
+echo "PASS: native glass FAB/nav sample scroll underlay and respond to touch"
 # Navigate back using accessibility semantics, no hard-coded device coordinates.
 nav_dump "$OUT/wen-nav-after.xml"
 HOME_POINT="$(python3 - "$OUT/wen-nav-after.xml" <<'PY'
