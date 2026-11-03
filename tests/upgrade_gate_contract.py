@@ -22,7 +22,7 @@ command = ('set -euo pipefail\nPROJECT_DIR="$1"\n'
            + '\nprintf "%s|%s" "$APP_VERSION_CODE" "$APP_VERSION_NAME"\n')
 parsed = subprocess.run(["bash", "-c", command, "bash", str(root)],
                         capture_output=True, text=True, check=True)
-assert parsed.stdout == "22|1.8.6", parsed
+assert parsed.stdout == "23|1.8.7", parsed
 
 cert = "6b8268e5b647b12a2aa055d7a22f7b8ea888e40fb863e74409938aad4ec789c9"
 with tempfile.TemporaryDirectory() as directory:
@@ -53,9 +53,9 @@ case "$2" in
       *current-183*) code=19 ;;
       *current-184*) code=20 ;;
       *current-185*|*same-as-current*) code=21 ;;
-      *) code=22 ;;
+      *) code=23 ;;
     esac
-    echo "package: name='$pkg' versionCode='$code' versionName='1.8.6'"
+    echo "package: name='$pkg' versionCode='$code' versionName='1.8.7'"
     ;;
   xmltree)
     case "$3" in
