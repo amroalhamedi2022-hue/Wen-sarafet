@@ -33,6 +33,8 @@ capture() {
  adb shell dumpsys activity activities > "$OUT/activities-$name.txt" || true
 }
 capture home
+# First-draw optical QA: never ship a beautiful empty nav bar with invisible icons.
+python3 tools/check_nav_glyph_legibility.py "$OUT/home.png"
 # Check both material clarity AND optical movement in the same emulator run.
 # Do not abort early on tint bleed and conceal whether refraction also works.
 nav_ghost_failed=0
