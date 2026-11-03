@@ -902,13 +902,11 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)) {
-            // Reserve actual layout space under the floating nav and clip
-            // transaction/account cards BEFORE the bar. Without this, the
-            // glass sampled full-size bank logos and amounts under its tabs.
-            // The scroll view has a real scene-coloured underlay so an AGSL
-            // capture in the clipped area never samples transparent black.
-            scroll.setPadding(0, 0, 0, Ui.dp(this, 90));
-            scroll.setClipToPadding(true);
+            // Keep actual content available under the optical nav. A blank
+            // padded footer killed visible refraction during Hold even while
+            // the gesture/morph callbacks ran. Legibility is now handled by
+            // the optical centre frost and neutral nav backing, not clipping
+            // away all image detail behind the lens.
             scroll.setBackground(Ui.glassScreenBackground(this));
         }
         LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();
