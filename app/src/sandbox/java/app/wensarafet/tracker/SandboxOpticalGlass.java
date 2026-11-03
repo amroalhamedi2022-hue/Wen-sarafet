@@ -52,17 +52,17 @@ public final class SandboxOpticalGlass {
             glass.setEnableShadow(false);
             glass.setEnableEdgeHighlight(true);
             glass.setCornerRadius(999f);
-            glass.setBevelWidth(12f * d);
+            glass.setBevelWidth(9.5f * d);
             glass.setRefractionFalloff(1.4f);
-            glass.setDispersionStrength(.09f);
-            glass.setDisplacementScale(58f);
-            glass.setRefractionHeight(16f * d);
+            glass.setDispersionStrength(.025f);
+            glass.setDisplacementScale(35f);
+            glass.setRefractionHeight(9.5f * d);
             glass.setEdgeSoftness(1.8f * d);
-            glass.setAberrationIntensity(1.1f);
+            glass.setAberrationIntensity(.38f);
             glass.setSaturation(106f);
-            glass.setGlassTint(Color.WHITE, .025f);
+            glass.setGlassTint(Color.WHITE, .045f);
             glass.setEdgeHighlightBorderWidth(.65f * d);
-            glass.setEdgeHighlightOpacity(39f);
+            glass.setEdgeHighlightOpacity(27f);
             lens.setClipChildren(false);
             lens.setClipToPadding(false);
             lens.addView(glass, new FrameLayout.LayoutParams(
@@ -84,12 +84,12 @@ public final class SandboxOpticalGlass {
                     float t = Math.max(0f, Math.min(1f, fraction));
                     // Dynamic lens profile. The middle remains quiet; only
                     // the bevel gains thickness, light and dispersion on hold.
-                    glass.setBevelWidth((12f + 2f * t) * d);
-                    glass.setRefractionHeight((16f + 13f * t) * d);
-                    glass.setDispersionStrength(.09f + .07f * t);
-                    glass.setDisplacementScale(58f + 26f * t);
-                    glass.setAberrationIntensity(1.1f + .65f * t);
-                    glass.setGlassTint(Color.WHITE, .025f + .023f * t);
+                    glass.setBevelWidth((9.5f + 1.7f * t) * d);
+                    glass.setRefractionHeight((9.5f + 8f * t) * d);
+                    glass.setDispersionStrength(.025f + .04f * t);
+                    glass.setDisplacementScale(35f + 24f * t);
+                    glass.setAberrationIntensity(.38f + .30f * t);
+                    glass.setGlassTint(Color.WHITE, .045f + .022f * t);
                     glass.setScaleX(1f + (.047f + .018f * Math.abs(dragDirection)) * t);
                     glass.setScaleY(1f + .027f * t);
                     sheen.setMotion(t, dragDirection);
@@ -186,12 +186,12 @@ public final class SandboxOpticalGlass {
             glass.setCornerRadius(999f);
             glass.setBevelWidth(10.5f * d);
             glass.setRefractionFalloff(1.35f);
-            glass.setRefractionHeight(10f * d);
-            glass.setDispersionStrength(.08f);
+            glass.setRefractionHeight(8f * d);
+            glass.setDispersionStrength(.05f);
             glass.setEdgeSoftness(1.2f * d);
             glass.setEdgeHighlightBorderWidth(.70f * d);
             glass.setEdgeHighlightOpacity(45f);
-            glass.setDisplacementScale(62f);
+            glass.setDisplacementScale(37f);
             glass.setSaturation(107f);
             glass.setGlassTint(Color.WHITE, .16f);
             host.setClipChildren(false);
@@ -270,8 +270,8 @@ public final class SandboxOpticalGlass {
 
     private static void renderFabMaterial(LiquidGlassView glass,
                                           OpticalSheen sheen, float density, float t) {
-        glass.setRefractionHeight((10f + 9f * t) * density);
-        glass.setDispersionStrength(.08f + .08f * t);
+        glass.setRefractionHeight((8f + 6f * t) * density);
+        glass.setDispersionStrength(.05f + .035f * t);
         glass.setBevelWidth((10.5f + 2.0f * t) * density);
         glass.setGlassTint(Color.WHITE, .16f + .055f * t);
         glass.setScaleX(1f + .037f * t);
@@ -327,11 +327,11 @@ public final class SandboxOpticalGlass {
             if (circle) {
                 frost.setShader(new RadialGradient(w*.5f, h*.5f,
                         Math.max(1f, Math.min(w,h)*.51f),
-                        new int[]{0xD5FFFFFF,0xB8FFFFFF,0x3AFFFFFF},
+                        new int[]{0xECFFFFFF,0xDCFFFFFF,0x72FFFFFF},
                         new float[]{0f,.62f,1f}, Shader.TileMode.CLAMP));
             } else {
                 frost.setShader(new LinearGradient(0f,0f,0f,h,
-                        new int[]{0x70FFFFFF,0xC8FFFFFF,0xB9FFFFFF,0x55FFFFFF},
+                        new int[]{0x9AFFFFFF,0xEBFFFFFF,0xE1FFFFFF,0xA9FFFFFF},
                         new float[]{0f,.27f,.68f,1f}, Shader.TileMode.CLAMP));
             }
             float margin = d * .85f;
