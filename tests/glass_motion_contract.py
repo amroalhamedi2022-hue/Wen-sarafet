@@ -209,7 +209,10 @@ assert "setLayerType(View.LAYER_TYPE_SOFTWARE" not in optical
 assert "startupIconAnimationPending = true" in main
 assert "private void animateStartupIcons(View page)" in main
 assert "startupIconAnimationPending = false;" in main
-assert "setStartDelay(i*65L)" in main
+assert "setStartDelay(i*22L)" in main
+assert "icon.setAlpha(.88f);" in main, "Icon labels must be readable before compositor animation starts"
+assert "icon.setAlpha(0f);" not in main, "Never hide all tabs until the next touch"
+assert "icon.setScaleX(.95f); icon.setScaleY(.95f);" in main
 assert "animateStartupIcons(next);" in main
 assert "page.getViewTreeObserver().addOnPreDrawListener(" in main
 assert "page.postOnAnimation(() -> {" in main
