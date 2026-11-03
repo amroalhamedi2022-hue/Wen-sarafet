@@ -1133,8 +1133,8 @@ public final class MainActivity extends Activity {
             android.graphics.drawable.GradientDrawable quietChrome =
                     new android.graphics.drawable.GradientDrawable(
                             android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-                            Ui.DARK ? new int[]{0xE83B445D, 0xDF313B55}
-                                    : new int[]{0xF2FAFDFF, 0xECF2F9FF});
+                            Ui.DARK ? new int[]{0xF1434D67, 0xE936405A}
+                                    : new int[]{0xFCFAFDFF, 0xF8F3F9FF});
             quietChrome.setCornerRadius(Ui.dp(this, 26));
             quietChrome.setStroke(Math.max(1, Ui.dp(this, 1)),
                     Ui.DARK ? 0x4DE7F4FF : 0x80FFFFFF);
