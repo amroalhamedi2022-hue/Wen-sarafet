@@ -14,7 +14,7 @@ import java.util.Locale;
 
 public final class FinanceDbHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "wen_sarafet.db";
-    static final int DB_VERSION = 13; // Shared with backup preflight; reject newer schema before replacement.
+    static final int DB_VERSION = 14; // Shared with backup preflight; reject newer schema before replacement.
     private final Context appContext;
 
     public FinanceDbHelper(Context context) {
@@ -30,7 +30,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     @Override public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, currency TEXT NOT NULL, balance_minor INTEGER NOT NULL DEFAULT 0, built_in INTEGER NOT NULL DEFAULT 1, position INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1)");
         db.execSQL("CREATE TABLE categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, kind TEXT NOT NULL, emoji TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0, exclude_from_expense INTEGER NOT NULL DEFAULT 0, archived INTEGER NOT NULL DEFAULT 0)");
-        db.execSQL("CREATE TABLE transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, amount_minor INTEGER NOT NULL, currency TEXT NOT NULL, account_id INTEGER NOT NULL, destination_account_id INTEGER, category_id INTEGER, note TEXT NOT NULL DEFAULT '', raw_text TEXT, needs_review INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, source TEXT NOT NULL DEFAULT 'MANUAL', affects_balance INTEGER NOT NULL DEFAULT 1, base_affects_balance INTEGER NOT NULL DEFAULT 1, special_kind TEXT, debt_person_id INTEGER, debt_direction TEXT, destination_amount_minor INTEGER, exchange_rate TEXT, exchange_rate_source TEXT, exchange_rate_checked_at INTEGER, FOREIGN KEY(account_id) REFERENCES accounts(id), FOREIGN KEY(destination_account_id) REFERENCES accounts(id), FOREIGN KEY(category_id) REFERENCES categories(id))");
+        db.execSQL("CREATE TABLE transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, amount_minor INTEGER NOT NULL, currency TEXT NOT NULL, account_id INTEGER NOT NULL, destination_account_id INTEGER, category_id INTEGER, note TEXT NOT NULL DEFAULT '', raw_text TEXT, needs_review INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, source TEXT NOT NULL DEFAULT 'MANUAL', affects_balance INTEGER NOT NULL DEFAULT 1, base_affects_balance INTEGER NOT NULL DEFAULT 1, balance_impact_minor INTEGER NOT NULL DEFAULT 0, special_kind TEXT, debt_person_id INTEGER, debt_direction TEXT, destination_amount_minor INTEGER, exchange_rate TEXT, exchange_rate_source TEXT, exchange_rate_checked_at INTEGER, FOREIGN KEY(account_id) REFERENCES accounts(id), FOREIGN KEY(destination_account_id) REFERENCES accounts(id), FOREIGN KEY(category_id) REFERENCES categories(id))");
         db.execSQL("CREATE TABLE transaction_splits (id INTEGER PRIMARY KEY AUTOINCREMENT, transaction_id INTEGER NOT NULL, category_id INTEGER, amount_minor INTEGER NOT NULL, special_kind TEXT, debt_person_id INTEGER, debt_direction TEXT, " +
                 "CHECK ((special_kind IS NULL AND category_id IS NOT NULL AND debt_person_id IS NULL AND debt_direction IS NULL) OR " +
                 "(category_id IS NULL AND debt_person_id IS NOT NULL AND ((special_kind='DEBT' AND debt_direction='RECEIVABLE') OR (special_kind='DEBT_PAYMENT' AND debt_direction='PAYABLE')))), " +
@@ -103,6 +103,26 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             // future debt/category/detail changes are represented accurately.
             recreateAuditTriggers(db);
         }
+        if (oldVersion < 14) {
+            // Capture OLD posted impacts without modifying accounts or historic transactions.
+            backfillLegacyPostedBalanceImpact(db);
+        }
+    }
+
+    private static void backfillLegacyPostedBalanceImpact(SQLiteDatabase db) {
+        db.execSQL("ALTER TABLE transactions ADD COLUMN balance_impact_minor INTEGER NOT NULL DEFAULT 0");
+        String sql = "UPDATE transactions SET balance_impact_minor = CASE " +
+                "WHEN affects_balance=0 THEN 0 " +
+                "WHEN type='EXPENSE' THEN CASE " +
+                "WHEN EXISTS(SELECT 1 FROM transaction_splits s WHERE s.transaction_id=transactions.id) " +
+                "THEN COALESCE((SELECT SUM(s.amount_minor) FROM transaction_splits s " +
+                "LEFT JOIN categories c ON c.id=s.category_id WHERE s.transaction_id=transactions.id " +
+                "AND (s.special_kind='DEBT_PAYMENT' OR (s.special_kind IS NULL AND COALESCE(c.exclude_from_expense,0)=0))),0) " +
+                "WHEN EXISTS(SELECT 1 FROM categories c WHERE c.id=transactions.category_id AND c.exclude_from_expense=1) THEN 0 " +
+                "ELSE amount_minor END " +
+                "WHEN type IN ('INCOME','TRANSFER') THEN amount_minor ELSE 0 END";
+        db.execSQL(sql);
+        // The enclosing SQLiteOpenHelper upgrade is atomic. Account balances stay untouched.
     }
 
     private static void createCaptureSchema(SQLiteDatabase db) {
@@ -964,6 +984,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             tx.put("note", note == null ? "" : note.trim()); tx.putNull("raw_text"); tx.put("created_at", createdAt); tx.put("source", "MANUAL");
             tx.put("affects_balance", affectsBalance ? 1 : 0);
             tx.put("base_affects_balance", affectsBalance ? 1 : 0);
+            tx.put("balance_impact_minor", affectsBalance ? amountMinor : 0L);
             long txId = db.insertOrThrow("transactions", null, tx);
 
             if (splits != null) {
@@ -1032,7 +1053,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             if (account == null || !isActiveAccount(writable, accountId) || !currency.equals(account.currency))
                 throw new IllegalArgumentException("الحساب غير صالح لهذه العملة");
             long createdAt = System.currentTimeMillis();
-            boolean affectsBalance = FinanceRules.SPECIAL_DEBT_PAYMENT.equals(actualKind) && baseAffectsBalance;
+            boolean affectsBalance = baseAffectsBalance;
             ContentValues tx = new ContentValues();
             tx.put("type", type); tx.put("amount_minor", amountMinor); tx.put("currency", currency);
             tx.put("account_id", accountId); tx.putNull("destination_account_id"); tx.putNull("category_id");
@@ -1040,6 +1061,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             tx.put("created_at", createdAt); tx.put("source", "MANUAL");
             tx.put("affects_balance", affectsBalance ? 1 : 0);
             tx.put("base_affects_balance", baseAffectsBalance ? 1 : 0);
+            tx.put("balance_impact_minor", affectsBalance ? amountMinor : 0L);
             tx.put("special_kind", actualKind); tx.put("debt_person_id", personId); tx.put("debt_direction", direction);
             long txId = writable.insertOrThrow("transactions", null, tx);
             if (affectsBalance) applyBalanceEffect(writable, type, amountMinor, accountId, null);
@@ -1089,6 +1111,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             tx.put("exchange_rate_checked_at",checkedAt);
             tx.put("note","");tx.put("created_at",System.currentTimeMillis());
             tx.put("source","MANUAL_FX");tx.put("affects_balance",1);tx.put("base_affects_balance",1);
+            tx.put("balance_impact_minor", sourceAmountMinor);
             long id=writable.insertOrThrow("transactions",null,tx);
             ContentValues sourceUpdate=new ContentValues();sourceUpdate.put("balance_minor",newBalances[0]);
             if(writable.update("accounts",sourceUpdate,"id=? AND active=1",new String[]{String.valueOf(source.id)})!=1)
@@ -1182,13 +1205,19 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             long accountId = findProviderAccount(item.provider, item.currency);
             if (accountId < 0) return -1;
             Models.Account account = getAccount(accountId);
+            long nextBalance = item.balanceMinor != null ? item.balanceMinor
+                    : FinanceRules.balancesAfter(type, item.amountMinor, account.balanceMinor, null)[0];
+            // Provider balances can include other off-app movements: persist the actual delta.
+            long capturedImpact = FinanceRules.EXPENSE.equals(type)
+                    ? Math.subtractExact(account.balanceMinor, nextBalance)
+                    : Math.subtractExact(nextBalance, account.balanceMinor);
             ContentValues tx = new ContentValues();
             tx.put("type", type); tx.put("amount_minor", item.amountMinor); tx.put("currency", item.currency); tx.put("account_id", accountId);
             tx.putNull("destination_account_id"); tx.putNull("category_id"); tx.put("note", item.counterparty == null ? "" : item.counterparty);
             tx.put("raw_text", item.rawText); tx.put("needs_review", 1); tx.put("created_at", item.receivedAt); tx.put("source", "CAPTURED");
             tx.put("affects_balance", 1); tx.put("base_affects_balance", 1);
+            tx.put("balance_impact_minor", capturedImpact);
             long txId = writable.insertOrThrow("transactions", null, tx);
-            long nextBalance = item.balanceMinor != null ? item.balanceMinor : FinanceRules.balancesAfter(type, item.amountMinor, account.balanceMinor, null)[0];
             NonNegativeBalanceRules.requireNonNegative(nextBalance); // reject overdraft and negative captured balance
             ContentValues balance = new ContentValues(); balance.put("balance_minor", nextBalance);
             writable.update("accounts", balance, "id=?", new String[]{String.valueOf(accountId)});
@@ -1223,6 +1252,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             tx.put("account_id", sourceId); tx.put("destination_account_id", destinationId); tx.putNull("category_id"); tx.put("note", ""); tx.put("raw_text", item.rawText);
             tx.put("needs_review", 0); tx.put("created_at", item.receivedAt); tx.put("source", "CAPTURED");
             tx.put("affects_balance", 1); tx.put("base_affects_balance", 1);
+            tx.put("balance_impact_minor", item.amountMinor);
             long id = writable.insertOrThrow("transactions", null, tx);
             long[] balances = FinanceRules.balancesAfter(FinanceRules.TRANSFER, item.amountMinor, source.balanceMinor, destination.balanceMinor);
             NonNegativeBalanceRules.requireNonNegative(balances[0]); // inbound capture cannot overdraw source
@@ -1333,8 +1363,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 if(fx.moveToFirst() && !fx.isNull(0))
                     throw new IllegalArgumentException("التحويل متعدد العملات: احذفه بعد التأكد وأضف تحويلًا جديدًا لتغيير المبلغ أو الحسابات");
             }
-            long oldBalanceImpact = FinanceRules.EXPENSE.equals(oldType)
-                    ? existingExpenseBalanceImpact(writable, transactionId, amount) : amount;
+            long oldBalanceImpact = postedBalanceImpact(writable, transactionId);
             ensureDebtOpeningCanBeRemoved(writable, transactionId);
             if (affectsBalance) reverseBalanceEffect(writable, oldType, oldBalanceImpact, oldSourceId, oldDestinationId);
             List<Long> affectedDebts = removeDebtMovementsForTransaction(writable, transactionId);
@@ -1346,6 +1375,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             if (categoryId == null) cv.putNull("category_id"); else cv.put("category_id", categoryId);
             cv.putNull("special_kind"); cv.putNull("debt_person_id"); cv.putNull("debt_direction");
             cv.put("affects_balance", baseAffectsBalance ? 1 : 0);
+            cv.put("balance_impact_minor", baseAffectsBalance ? amount : 0L);
             cv.put("needs_review", 0);
             writable.update("transactions", cv, "id=?", new String[]{String.valueOf(transactionId)});
             if (splits != null) for (Models.SplitInput split : splits) {
@@ -1380,9 +1410,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 }
             }
             if (baseAffectsBalance) {
-                long newBalanceImpact = FinanceRules.EXPENSE.equals(newType)
-                        ? expenseBalanceImpact(writable, amount, categoryId, splits) : amount;
-                applyBalanceEffect(writable, newType, newBalanceImpact, sourceId, destinationId);
+                applyBalanceEffect(writable, newType, amount, sourceId, destinationId);
             }
             for (Long debtId : affectedDebts) recomputeDebt(writable, debtId);
             writable.setTransactionSuccessful();
@@ -1639,7 +1667,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                     if (!c.moveToFirst()) throw new IllegalStateException("عملية مالية مرتبطة بالدين لم تعد موجودة");
                     type=c.getString(0); amount=c.getLong(1); sourceId=c.getLong(2); destinationId=c.isNull(3)?null:c.getLong(3); affects=c.getInt(4)==1;
                 }
-                if (affects) reverseBalanceEffect(writable, type, amount, sourceId, destinationId);
+                if (affects) reverseBalanceEffect(writable, type, postedBalanceImpact(writable, txId), sourceId, destinationId);
                 ContentValues capture = new ContentValues(); capture.put("status", "IGNORED"); capture.putNull("transaction_id");
                 writable.update("capture_inbox", capture, "transaction_id=?", new String[]{String.valueOf(txId)});
                 if(writable.delete("transactions", "id=?", new String[]{String.valueOf(txId)})!=1)
@@ -1681,7 +1709,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 String required = FinanceRules.INCOME.equals(type) ? FinanceRules.DEBT_RECEIVABLE : FinanceRules.DEBT_PAYABLE;
                 if (!required.equals(direction)) throw new IllegalArgumentException("اتجاه السداد لا يطابق اتجاه العملية المالية");
             }
-            long oldImpact = FinanceRules.EXPENSE.equals(type) ? existingExpenseBalanceImpact(writable, transactionId, amount) : amount;
+            long oldImpact = postedBalanceImpact(writable, transactionId);
             ensureDebtOpeningCanBeRemoved(writable, transactionId);
             if (affectsBalance) reverseBalanceEffect(writable, type, oldImpact, sourceId, destinationId);
             List<Long> oldDebts = removeDebtMovementsForTransaction(writable, transactionId);
@@ -1689,8 +1717,8 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             writable.delete("transaction_splits", "transaction_id=?", new String[]{String.valueOf(transactionId)});
             ContentValues values = new ContentValues(); values.putNull("destination_account_id"); values.putNull("category_id");
             values.put("special_kind", specialKind); values.put("debt_person_id", personId); values.put("debt_direction", direction);
-            boolean actualMoney = FinanceRules.SPECIAL_DEBT_PAYMENT.equals(specialKind) && baseAffects;
-            values.put("affects_balance", actualMoney ? 1 : 0); values.put("needs_review", 0);
+            boolean actualMoney = baseAffects;
+            values.put("affects_balance", actualMoney ? 1 : 0); values.put("balance_impact_minor", actualMoney ? amount : 0L); values.put("needs_review", 0);
             writable.update("transactions", values, "id=?", new String[]{String.valueOf(transactionId)});
             if (actualMoney) applyBalanceEffect(writable, type, amount, sourceId, null);
             if (FinanceRules.SPECIAL_DEBT.equals(specialKind)) {
@@ -1723,13 +1751,14 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 if (!required.equals(direction)) throw new IllegalArgumentException("اتجاه السداد لا يطابق العملية");
             }
             ensureDebtOpeningCanBeRemoved(writable, transactionId);
-            if (affects) reverseBalanceEffect(writable, type, oldAmount, sourceId, null);
+            if (affects) reverseBalanceEffect(writable, type, postedBalanceImpact(writable, transactionId), sourceId, null);
             List<Long> oldDebts = removeDebtMovementsForTransaction(writable, transactionId);
             for (Long debtId : oldDebts) recomputeDebt(writable, debtId);
             ContentValues values = new ContentValues(); values.put("amount_minor", amountMinor); values.put("debt_person_id", personId); values.put("debt_direction", direction); values.put("special_kind", actualSpecial);
-            values.put("affects_balance", FinanceRules.SPECIAL_DEBT_PAYMENT.equals(actualSpecial) && baseAffects ? 1 : 0);
+            values.put("affects_balance", baseAffects ? 1 : 0);
+            values.put("balance_impact_minor", baseAffects ? amountMinor : 0L);
             writable.update("transactions", values, "id=?", new String[]{String.valueOf(transactionId)});
-            if (FinanceRules.SPECIAL_DEBT_PAYMENT.equals(actualSpecial) && baseAffects) applyBalanceEffect(writable, type, amountMinor, sourceId, null);
+            if (baseAffects) applyBalanceEffect(writable, type, amountMinor, sourceId, null);
             if (FinanceRules.SPECIAL_DEBT.equals(actualSpecial)) {
                 long debtId=findOrCreateOpenDebt(writable,personId,direction,currency,note,createdAt);
                 insertDebtMovement(writable,debtId,transactionId,"OPEN",amountMinor,createdAt,note); recomputeDebt(writable,debtId);
@@ -1787,6 +1816,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             if(rawText==null)tx.putNull("raw_text");else tx.put("raw_text",rawText);
             tx.put("needs_review",needsReview);tx.put("created_at",createdAt);tx.put("source",source);
             tx.put("affects_balance",affects);tx.put("base_affects_balance",baseAffects);
+            tx.put("balance_impact_minor", affects==1 ? impact : 0L);
             writable.insertOrThrow("transactions",null,tx);
             ContentValues restoreEvent=new ContentValues();restoreEvent.put("action","RESTORE");
             if(writable.update("change_history",restoreEvent,
@@ -1880,12 +1910,13 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 writable.setTransactionSuccessful();
                 return;
             }
-            boolean excludedExpense=FinanceRules.EXPENSE.equals(type) && categoryExcluded(writable,categoryId);
-            long delta=SimpleTransactionEditRules.balanceDelta(type,oldAmount,newAmountMinor,
-                    affectsBalance,excludedExpense);
+            long oldPosted=postedBalanceImpact(writable,transactionId);
+            long nextPosted=affectsBalance?newAmountMinor:0L;
+            long delta=SimpleTransactionEditRules.postedBalanceDelta(type,oldPosted,nextPosted);
             if(delta!=0L)adjustBalance(writable,accountId,delta);
             ContentValues cv=new ContentValues();
             cv.put("amount_minor",newAmountMinor);
+            cv.put("balance_impact_minor",nextPosted);
             cv.put("note",cleanNote);
             if(writable.update("transactions",cv,"id=?",new String[]{String.valueOf(transactionId)})!=1)
                 throw new IllegalStateException("تعذّر حفظ تعديل العملية");
@@ -1919,8 +1950,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 hasSpecialMetadata=!c.isNull(13)||!c.isNull(14)||!c.isNull(15)||!c.isNull(16)||
                         !c.isNull(17)||!c.isNull(18)||!c.isNull(19);
             }
-            long balanceImpact = FinanceRules.EXPENSE.equals(type)
-                    ? existingExpenseBalanceImpact(writable, transactionId, amount) : amount;
+            long balanceImpact = postedBalanceImpact(writable, transactionId);
             Long fxDestinationMinor=null;
             try(Cursor fx=writable.rawQuery("SELECT destination_amount_minor FROM transactions WHERE id=?",
                     new String[]{String.valueOf(transactionId)})) {
@@ -2084,43 +2114,26 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         }
     }
 
+    /** Classification/exclusion changes spending analytics, never real cash flow. */
     private long expenseBalanceImpact(SQLiteDatabase readable, long total, Long categoryId,
                                       List<Models.SplitInput> splits) {
-        List<Long> includedParts = new ArrayList<>();
-        if (splits != null && !splits.isEmpty()) {
-            for (Models.SplitInput split : splits)
-                if (SplitDebtRules.affectsOutgoingBalance(split,
-                        split.specialKind == null && categoryExcluded(readable, split.categoryId)))
-                    includedParts.add(split.amountMinor);
-            // A split made entirely of excluded categories intentionally has zero balance impact.
-            if (includedParts.isEmpty()) return 0L;
-            return FinanceRules.expenseBalanceImpact(total, false, includedParts);
+        if (total<=0) throw new IllegalArgumentException("مبلغ العملية غير صالح");
+        if (splits!=null && !splits.isEmpty()) SplitDebtRules.checkParts(total,splits);
+        return total;
+    }
+
+    /** Exact historical posting, including zero-impact legacy transactions. */
+    private static long postedBalanceImpact(SQLiteDatabase readable, long transactionId) {
+        try (Cursor c=readable.rawQuery(
+                "SELECT balance_impact_minor FROM transactions WHERE id=?",
+                new String[]{String.valueOf(transactionId)})) {
+            if (!c.moveToFirst()) throw new IllegalArgumentException("العملية غير موجودة");
+            return c.getLong(0);
         }
-        return FinanceRules.expenseBalanceImpact(total,
-                categoryId != null && categoryExcluded(readable, categoryId), null);
     }
 
     private long existingExpenseBalanceImpact(SQLiteDatabase readable, long transactionId, long total) {
-        List<Long> includedParts = new ArrayList<>();
-        int splitCount = 0;
-        try (Cursor c = readable.rawQuery("SELECT s.amount_minor,COALESCE(c.exclude_from_expense,0),s.special_kind FROM transaction_splits s " +
-                "LEFT JOIN categories c ON c.id=s.category_id WHERE s.transaction_id=?",
-                new String[]{String.valueOf(transactionId)})) {
-            while (c.moveToNext()) {
-                splitCount++;
-                String special = c.isNull(2) ? null : c.getString(2);
-                if (FinanceRules.SPECIAL_DEBT_PAYMENT.equals(special) ||
-                        (special == null && c.getInt(1) == 0)) includedParts.add(c.getLong(0));
-            }
-        }
-        if (splitCount > 0) return includedParts.isEmpty() ? 0L
-                : FinanceRules.expenseBalanceImpact(total, false, includedParts);
-        try (Cursor c = readable.rawQuery("SELECT COALESCE(c.exclude_from_expense,0) FROM transactions t " +
-                "LEFT JOIN categories c ON c.id=t.category_id WHERE t.id=?",
-                new String[]{String.valueOf(transactionId)})) {
-            boolean excluded = c.moveToFirst() && c.getInt(0) == 1;
-            return FinanceRules.expenseBalanceImpact(total, excluded, null);
-        }
+        return postedBalanceImpact(readable, transactionId);
     }
 
     private boolean categoryExcluded(SQLiteDatabase readable, long categoryId) {
