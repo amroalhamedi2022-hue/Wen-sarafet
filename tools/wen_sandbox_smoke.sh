@@ -33,8 +33,13 @@ capture() {
  adb shell dumpsys activity activities > "$OUT/activities-$name.txt" || true
 }
 capture home
-# Fail on strong tinted bank logo from the scrolling view ghosting behind tab labels.
-python3 tools/check_liquid_glass_ghosting.py "$OUT/home.png"
+# Check both material clarity AND optical movement in the same emulator run.
+# Do not abort early on tint bleed and conceal whether refraction also works.
+nav_ghost_failed=0
+if ! python3 tools/check_liquid_glass_ghosting.py "$OUT/home.png"; then
+  nav_ghost_failed=1
+  echo "INFO: nav tint failed; still gathering independent optical-motion evidence"
+fi
 capture analytics --ez open_analytics true
 capture transactions --ez open_transactions true
 # Android emulator's Pixel Launcher can show a system ANR overlay even when
@@ -296,5 +301,9 @@ adb shell dumpsys gfxinfo "$PACKAGE" > "$OUT/gfxinfo.txt" || true
 if grep -E "FATAL EXCEPTION|Process: $PACKAGE" "$OUT/android-runtime.log"; then
  echo "Runtime exception in sandbox"
  exit 1
+fi
+if [ "${nav_ghost_failed:-0}" -ne 0 ]; then
+  echo "FAIL: optical motion tested, but nav-background contamination exceeds visual limit"
+  exit 1
 fi
 echo "PASS: independent finance app launches home/analytics/transactions without activation"
