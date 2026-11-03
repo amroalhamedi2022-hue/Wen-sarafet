@@ -102,6 +102,8 @@ paths={
 for start,required in paths.items():
     assert start in src,start
     segment=src.split(start,1)[1].split("\n    public ",1)[0]
+    if start=="public void reclassifyTransaction(":
+        segment=src.split("private void reclassifyTransactionInternal(",1)[1].split("\n    public long addDebtPerson(",1)[0]
     for check in required:
         assert check in segment,(start,check)
 
