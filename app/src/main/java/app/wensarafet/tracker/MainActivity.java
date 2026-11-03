@@ -242,9 +242,11 @@ public final class MainActivity extends Activity {
             View icon = page.findViewWithTag(id);
             if (icon == null) continue;
             icon.animate().cancel();
-            icon.setAlpha(0f);
-            icon.setScaleX(.76f); icon.setScaleY(.76f);
-            icon.setTranslationY(Ui.dp(this, 11));
+            // Keep every action legible even if hardware compositor delays
+            // the first animation frame on a slow device/emulator.
+            icon.setAlpha(.88f);
+            icon.setScaleX(.95f); icon.setScaleY(.95f);
+            icon.setTranslationY(Ui.dp(this, 3));
             icons.add(icon);
         }
         page.getViewTreeObserver().addOnPreDrawListener(
@@ -261,10 +263,10 @@ public final class MainActivity extends Activity {
                     for (int i=0; i<icons.size(); i++) {
                         View icon=icons.get(i);
                         icon.animate().alpha(1f).scaleX(1f).scaleY(1f)
-                                .translationY(0f).setStartDelay(i*65L)
-                                .setDuration(430L)
-                                .setInterpolator(new android.view.animation.OvershootInterpolator(.65f))
-                                .withLayer().start();
+                                .translationY(0f).setStartDelay(i*22L)
+                                .setDuration(290L)
+                                .setInterpolator(new android.view.animation.OvershootInterpolator(.22f))
+                                .start();
                     }
                 });
                 return true;
