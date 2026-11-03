@@ -84,7 +84,16 @@ assert "materialBridge.reset();" in engine
 track=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenNavigationTrack.java").read_text(encoding="utf-8")
 assert "GlassGestureBridge" in track and "getGlassGestureBridge()" in track
 sandbox=(p/"app/src/sandbox/java/app/wensarafet/tracker/SandboxOpticalGlass.java").read_text(encoding="utf-8")
-assert "MIT_VIEW_GLASS_PRESS_ACTIVE" in sandbox and "glass.setRefractionHeight(17f + 22f * t)" in sandbox
+assert "MIT_VIEW_GLASS_PRESS_ACTIVE" in sandbox
+assert "glass.setRefractionHeight((16f + 13f * t) * d)" in sandbox, "Material thickness must follow density"
+assert "glass.setBevelWidth((12f + 2f * t) * d)" in sandbox
+assert "glass.setDispersionStrength(.09f + .07f * t)" in sandbox
+assert "public static boolean attachFab(FrameLayout host, FrameLayout root, TextView fab)" in sandbox
+assert "MIT_FAB_BACKDROP_BOUND" in sandbox and "MIT_FAB_GLASS_ATTACHED" in sandbox
+assert "fab.setBackground(null);" in sandbox and "fab.setElevation(0f);" in sandbox
+assert "private final Path clipShape = new Path();" in sandbox, "No per-frame clip path allocations"
+assert "new Path()" not in sandbox.split("@Override protected void onDraw(Canvas canvas)",1)[1], "Avoid per-frame path allocation"
+assert "glass.setEnableDynamicBackground(false)" in sandbox, "No idle glass polling"
 assert "track.setGlassGestureBridge" in sandbox
 assert "import app.wensarafet.glass.WenNavigationTrack;" in sandbox
 assert "glass.setMorph(1f);" in engine
@@ -201,6 +210,10 @@ assert "ValueAnimator.ofFloat(bubble.getPress(),target)" in main
 assert "bubble.setPress((Float)anim.getAnimatedValue())" in main
 assert "bubble.setPress(0f);" in main
 assert "bindGlassFab(fab);" in main
+assert 'Class.forName("app.wensarafet.tracker.SandboxOpticalGlass")' in main or 'Class.forName(\n                        "app.wensarafet.tracker.SandboxOpticalGlass")' in main
+assert 'attach.invoke(null, fabGlassHost, root, fab)' in main
+assert 'if (!externalFabMaterial) bindGlassFab(fab);' in main
+assert 'movingFab.animate()' in main, "Root FAB material and glyph must scroll together"
 fab=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java").read_text(encoding="utf-8")
 assert "opticalDepth.setShader(new RadialGradient(" in fab
 assert "c.drawCircle(mx,my,radius, opticalDepth);" in fab
