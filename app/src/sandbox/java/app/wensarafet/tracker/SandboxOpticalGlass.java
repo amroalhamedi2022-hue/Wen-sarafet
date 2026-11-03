@@ -7,6 +7,7 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RadialGradient;
+import android.graphics.LinearGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.view.MotionEvent;
@@ -287,6 +288,10 @@ public final class SandboxOpticalGlass {
     private static final class OpticalSheen extends View {
         private final Paint glint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint perimeter = new Paint(Paint.ANTI_ALIAS_FLAG);
+        // The backing image is real. A softly frosted CENTRE must protect tab
+        // labels from giant bank logos in the scrolling underlay; keep the
+        // refracting bevel comparatively clear and visually alive.
+        private final Paint frost = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Matrix translation = new Matrix();
         private final RectF bounds = new RectF();
         private final Path clipShape = new Path();
@@ -319,6 +324,16 @@ public final class SandboxOpticalGlass {
                     new int[]{0x8AFFFFFF, 0x3BAADFF6, 0x0AEDD9FF, 0},
                     new float[]{0f, .17f, .46f, 1f}, Shader.TileMode.CLAMP);
             glint.setShader(shader);
+            if (circle) {
+                frost.setShader(new RadialGradient(w*.5f, h*.5f,
+                        Math.max(1f, Math.min(w,h)*.51f),
+                        new int[]{0xD5FFFFFF,0xB8FFFFFF,0x3AFFFFFF},
+                        new float[]{0f,.62f,1f}, Shader.TileMode.CLAMP));
+            } else {
+                frost.setShader(new LinearGradient(0f,0f,0f,h,
+                        new int[]{0x70FFFFFF,0xC8FFFFFF,0xB9FFFFFF,0x55FFFFFF},
+                        new float[]{0f,.27f,.68f,1f}, Shader.TileMode.CLAMP));
+            }
             float margin = d * .85f;
             bounds.set(margin, margin, w - margin, h - margin);
             float rounded = circle ? Math.min(w,h)*.49f : h*.49f;
@@ -339,6 +354,12 @@ public final class SandboxOpticalGlass {
             float radius = circle ? Math.min(w, h) * .49f : h * .49f;
             int save=canvas.save();
             canvas.clipPath(clipShape);
+            // Frost is drawn ABOVE the real refractive optical image,
+            // deliberately strongest in the centre and lighter on the bevel.
+            // The centre can be read while the optical edge still bends light.
+            if (circle) canvas.drawCircle(w*.5f,h*.5f,
+                    Math.min(w,h)*.5f - margin, frost);
+            else canvas.drawRoundRect(bounds,radius,radius,frost);
             translation.reset();
             translation.setTranslate(w * (.25f + .24f * direction), h * (.03f + .06f * pressure));
             shader.setLocalMatrix(translation);
