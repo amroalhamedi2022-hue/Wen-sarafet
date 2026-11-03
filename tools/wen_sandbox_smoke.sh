@@ -33,6 +33,8 @@ capture() {
  adb shell dumpsys activity activities > "$OUT/activities-$name.txt" || true
 }
 capture home
+# Fail on strong tinted bank logo from the scrolling view ghosting behind tab labels.
+python3 tools/check_liquid_glass_ghosting.py "$OUT/home.png"
 capture analytics --ez open_analytics true
 capture transactions --ez open_transactions true
 # Android emulator's Pixel Launcher can show a system ANR overlay even when
