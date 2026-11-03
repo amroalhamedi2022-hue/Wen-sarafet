@@ -16,7 +16,7 @@ public final class SimpleTransactionEditRulesTest {
         eq(350,SimpleTransactionEditRules.balanceDelta(FinanceRules.INCOME,150,500,true,false),"increase income");
         eq(-200,SimpleTransactionEditRules.balanceDelta(FinanceRules.INCOME,500,300,true,false),"decrease income");
         eq(0,SimpleTransactionEditRules.balanceDelta(FinanceRules.EXPENSE,150,500,false,false),"record-only unchanged");
-        eq(0,SimpleTransactionEditRules.balanceDelta(FinanceRules.EXPENSE,150,500,true,true),"excluded expense unchanged");
+        eq(-350,SimpleTransactionEditRules.balanceDelta(FinanceRules.EXPENSE,150,500,true,true),"excluded expense changes bank balance");
         eq(350,SimpleTransactionEditRules.balanceDelta(FinanceRules.INCOME,150,500,true,true),"income never excluded");
         rejects(()->SimpleTransactionEditRules.balanceDelta(FinanceRules.EXPENSE,0,1,true,false),"zero original");
         rejects(()->SimpleTransactionEditRules.balanceDelta(FinanceRules.EXPENSE,1,0,true,false),"zero edited");
@@ -24,6 +24,10 @@ public final class SimpleTransactionEditRulesTest {
         // No silent wraparound, even with otherwise-valid positive transaction amounts.
         // Large balance overflow is additionally guarded by FinanceDbHelper.adjustBalance.
         eq(Long.MAX_VALUE-1,SimpleTransactionEditRules.balanceDelta(FinanceRules.INCOME,1,Long.MAX_VALUE,true,false),"large valid");
-        System.out.println("SimpleTransactionEditRulesTest passed: expense, income, excluded, record-only, limits.");
+        eq(-500,SimpleTransactionEditRules.postedBalanceDelta(FinanceRules.EXPENSE,0,500),"legacy zero debit to full posting");
+        eq(0,SimpleTransactionEditRules.postedBalanceDelta(FinanceRules.EXPENSE,500,500),"recategorize without cash change");
+        eq(500,SimpleTransactionEditRules.postedBalanceDelta(FinanceRules.EXPENSE,500,0),"delete or remove posting");
+        eq(400,SimpleTransactionEditRules.postedBalanceDelta(FinanceRules.INCOME,100,500),"income posting increases");
+        System.out.println("SimpleTransactionEditRulesTest passed: cashflow independent from classification.");
     }
 }

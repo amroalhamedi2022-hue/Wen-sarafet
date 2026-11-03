@@ -38,13 +38,14 @@ public final class FinanceRules {
 
     public static long expenseBalanceImpact(long total, boolean wholeExcluded, List<Long> includedSplitParts) {
         if (total <= 0) throw new IllegalArgumentException("المبلغ يجب أن يكون أكبر من صفر");
-        if (includedSplitParts == null || includedSplitParts.isEmpty()) return wholeExcluded ? 0L : total;
+        // Analytics exclusion is not a balance refund.
+        if (includedSplitParts == null || includedSplitParts.isEmpty()) return total;
         long included = 0L;
         for (Long part : includedSplitParts) {
             if (part == null || part < 0) throw new IllegalArgumentException("جزء الرصيد غير صالح");
             included = Math.addExact(included, part);
         }
         if (included > total) throw new IllegalArgumentException("أجزاء الرصيد تتجاوز مبلغ العملية");
-        return included;
+        return total;
     }
 }

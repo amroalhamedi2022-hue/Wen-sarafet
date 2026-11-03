@@ -1240,7 +1240,9 @@ public final class MainActivity extends Activity {
         if (!FinanceRules.EXPENSE.equals(tx.type) && !FinanceRules.INCOME.equals(tx.type)) {
             Toast.makeText(this, "حوّل العملية أولًا إلى مصروف أو دخل", Toast.LENGTH_LONG).show(); return;
         }
-        String inferredDirection = FinanceRules.INCOME.equals(tx.type) ? FinanceRules.DEBT_RECEIVABLE : FinanceRules.DEBT_PAYABLE;
+        String inferredDirection = FinanceRules.SPECIAL_DEBT.equals(specialKind)
+                ? (FinanceRules.EXPENSE.equals(tx.type) ? FinanceRules.DEBT_RECEIVABLE : FinanceRules.DEBT_PAYABLE)
+                : (FinanceRules.EXPENSE.equals(tx.type) ? FinanceRules.DEBT_PAYABLE : FinanceRules.DEBT_RECEIVABLE);
         List<Models.DebtPerson> people = db.getDebtPeople();
         if (people.isEmpty()) {
             showQuickAddDebtPerson(() -> showDebtClassificationDialog(tx, specialKind)); return;
@@ -1278,7 +1280,7 @@ public final class MainActivity extends Activity {
         form.addView(Ui.text(this,"يمكنك من القائمة التالية تغيير العملية إلى تصنيف عادي؛ وسيعكس التطبيق أثر الدين السابق تلقائيًا.",11,Ui.MUTED,false));
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تعديل حركة الدين").setView(form).setNeutralButton("تغيير التصنيف",null).setNegativeButton("إلغاء",null).setPositiveButton("حفظ",null).create();
         dialog.setOnShowListener(x->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{Long value=Money.parseMinor(amount.getText().toString());if(value==null||value<=0)throw new IllegalArgumentException("اكتب مبلغًا صحيحًا");String direction=receivable.isChecked()?FinanceRules.DEBT_RECEIVABLE:FinanceRules.DEBT_PAYABLE;db.updateDebtTransaction(tx.id,value,people.get(person.getSelectedItemPosition()).id,direction);dialog.dismiss();showMain(transactionsTab);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}});
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{dialog.dismiss();String[] options={"مصروف", "دخل", "تحويل بين حساباتي"};new AlertDialog.Builder(this).setTitle("تغيير التصنيف").setItems(options,(d,w)->{if(w==0)showCategoryPicker(tx,FinanceRules.EXPENSE);else if(w==1)showCategoryPicker(tx,FinanceRules.INCOME);else showTransactionTransferDialog(tx);}).show();});});dialog.show();
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{dialog.dismiss();String[] options={"مصروف", "دخل"};new AlertDialog.Builder(this).setTitle("تغيير التصنيف").setItems(options,(d,w)->{if(w==0)showCategoryPicker(tx,FinanceRules.EXPENSE);else showCategoryPicker(tx,FinanceRules.INCOME);}).show();});});dialog.show();
     }
 
     private void showCategoryPicker(Models.Transaction tx, String type) {
@@ -1288,8 +1290,11 @@ public final class MainActivity extends Activity {
         String title = FinanceRules.EXPENSE.equals(type) ? "اختر تصنيف المصروف" : "اختر تصنيف الدخل";
         new AlertDialog.Builder(this).setTitle(title).setItems(labels, (d, which) -> {
             try {
-                db.reclassifyTransaction(tx.id, type, tx.accountId, null, categories.get(which).id, new ArrayList<>());
-                Toast.makeText(this, "تم تحديث العملية والرصيد", Toast.LENGTH_SHORT).show(); showMain(transactionsTab);
+                if(tx.specialKind != null)
+                    db.reclassifyDebtTransactionToCategory(tx.id,type,tx.accountId,categories.get(which).id);
+                else
+                    db.reclassifyTransaction(tx.id, type, tx.accountId, null, categories.get(which).id, new ArrayList<>());
+                Toast.makeText(this, "تم تحديث التصنيف والحساب", Toast.LENGTH_SHORT).show(); showMain(transactionsTab);
             } catch (Exception error) { Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show(); }
         }).setNegativeButton("إلغاء", null).show();
     }

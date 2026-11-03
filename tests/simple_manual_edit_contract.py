@@ -25,7 +25,7 @@ method=db_source.split("public void editSimpleManualTransaction(",1)[1].split(
     "public void deleteTransaction(",1)[0]
 for required in ("writable.beginTransaction();",
                  "oldAmount!=expectedAmountMinor", "oldNote.equals",
-                 "SimpleTransactionEditRules.balanceDelta", "adjustBalance(writable,accountId,delta)",
+                 "SimpleTransactionEditRules.postedBalanceDelta", "adjustBalance(writable,accountId,delta)",
                  "writable.update(\"transactions\"", "writable.setTransactionSuccessful();",
                  "writable.endTransaction();", "BalanceWidgetProvider.updateAll(appContext);"):
     assert required in method,required

@@ -11,11 +11,11 @@ public class SplitDebtRulesTest {
     List<Models.SplitInput> parts = Arrays.asList(ordinary, open, pay);
     ok(SplitDebtRules.checkParts(20000, parts)==20000, "sum exactly in minor units");
     ok(SplitDebtRules.affectsOutgoingBalance(ordinary,false), "normal expense decreases account");
-    ok(!SplitDebtRules.affectsOutgoingBalance(open,false), "debt opening is reference only");
+    ok(SplitDebtRules.affectsOutgoingBalance(open,false), "lending money is a real debit");
     ok(SplitDebtRules.affectsOutgoingBalance(pay,false), "repayment decreases account");
-    ok(!SplitDebtRules.affectsOutgoingBalance(ordinary,true), "excluded category unchanged");
+    ok(SplitDebtRules.affectsOutgoingBalance(ordinary,true), "excluded category still debits account");
     long impact=0;for(Models.SplitInput p:parts)if(SplitDebtRules.affectsOutgoingBalance(p,false))impact+=p.amountMinor;
-    ok(impact==15000, "single account debit not full 20000 and not duplicated");
+    ok(impact==20000, "full 20000 debited once, including lending and repayment");
     reject(()->SplitDebtRules.checkParts(19999, parts));
     reject(()->SplitDebtRules.checkParts(20001, parts));
     reject(()->SplitDebtRules.checkParts(20000, Arrays.asList(ordinary)));
