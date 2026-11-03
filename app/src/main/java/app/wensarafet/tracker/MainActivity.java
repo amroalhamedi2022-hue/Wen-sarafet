@@ -931,6 +931,9 @@ public final class MainActivity extends Activity {
                 : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this));
         fab.setElevation(Ui.dp(this, 8));
         fab.setTag("wen_intro_fab");
+        // Accessibility is a functional requirement of the FAB itself, not
+        // a side effect of whichever material renderer is currently active.
+        fab.setContentDescription("إضافة عملية");
         fab.setOnClickListener(v -> {
             if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) && screenHost != null) {
                 int[] pos=new int[2], host=new int[2];
