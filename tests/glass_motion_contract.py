@@ -85,9 +85,9 @@ track=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenNavigationTrack.jav
 assert "GlassGestureBridge" in track and "getGlassGestureBridge()" in track
 sandbox=(p/"app/src/sandbox/java/app/wensarafet/tracker/SandboxOpticalGlass.java").read_text(encoding="utf-8")
 assert "MIT_VIEW_GLASS_PRESS_ACTIVE" in sandbox
-assert "glass.setRefractionHeight((16f + 13f * t) * d)" in sandbox, "Material thickness must follow density"
-assert "glass.setBevelWidth((12f + 2f * t) * d)" in sandbox
-assert "glass.setDispersionStrength(.09f + .07f * t)" in sandbox
+assert "glass.setRefractionHeight((9.5f + 8f * t) * d)" in sandbox, "Material thickness must follow density"
+assert "glass.setBevelWidth((9.5f + 1.7f * t) * d)" in sandbox
+assert "glass.setDispersionStrength(.025f + .04f * t)" in sandbox
 assert "public static boolean attachFab(FrameLayout host, FrameLayout root, TextView fab)" in sandbox
 assert "MIT_FAB_BACKDROP_BOUND" in sandbox and "MIT_FAB_GLASS_ATTACHED" in sandbox
 assert "private static View findUnderlay(View view)" in sandbox, "Backdrop must exclude its own glyphs"
@@ -100,6 +100,8 @@ assert "fab.setBackground(null);" in sandbox and "fab.setElevation(0f);" in sand
 assert "private final Path clipShape = new Path();" in sandbox, "No per-frame clip path allocations"
 assert "new Path()" not in sandbox.split("@Override protected void onDraw(Canvas canvas)",1)[1], "Avoid per-frame path allocation"
 assert "glass.setEnableDynamicBackground(false)" in sandbox, "No idle glass polling"
+assert "new int[]{0x9AFFFFFF,0xEBFFFFFF,0xE1FFFFFF,0xA9FFFFFF}" in sandbox, "Centre frost must mask oversized text ghosts"
+assert "glass.setAberrationIntensity(.38f + .30f * t)" in sandbox, "Chromatic rim must remain subtle"
 assert "track.setGlassGestureBridge" in sandbox
 assert "import app.wensarafet.glass.WenNavigationTrack;" in sandbox
 assert "glass.setMorph(1f);" in engine
