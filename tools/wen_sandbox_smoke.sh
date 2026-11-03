@@ -229,7 +229,7 @@ if ! grep -q 'MIT_VIEW_GLASS_PRESS_ACTIVE' "$OUT/advanced-glass-probe.log"; then
   exit 1
 fi
 if ! grep -q 'MIT_FAB_GLASS_ATTACHED' "$OUT/advanced-glass-probe.log" ||
-   ! grep -q 'MIT_FAB_BACKDROP_BOUND source=scroll' "$OUT/advanced-glass-probe.log" ||
+   ! grep -q 'MIT_FAB_BACKDROP_BOUND source=root' "$OUT/advanced-glass-probe.log" ||
    ! grep -q 'MIT_VIEW_GLASS_BACKDROP_BOUND source=scroll' "$OUT/advanced-glass-probe.log"; then
   echo "FAIL: FAB/nav material not sampling the real scroll underlay"
   exit 1
