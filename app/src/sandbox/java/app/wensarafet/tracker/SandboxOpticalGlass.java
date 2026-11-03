@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -256,6 +257,7 @@ public final class SandboxOpticalGlass {
         private final Paint perimeter = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Matrix translation = new Matrix();
         private final RectF bounds = new RectF();
+        private final Path clipShape = new Path();
         private final float d;
         private final boolean circle;
         private RadialGradient shader;
@@ -285,6 +287,16 @@ public final class SandboxOpticalGlass {
                     new int[]{0x8AFFFFFF, 0x3BAADFF6, 0x0AEDD9FF, 0},
                     new float[]{0f, .17f, .46f, 1f}, Shader.TileMode.CLAMP);
             glint.setShader(shader);
+            float margin = d * .85f;
+            bounds.set(margin, margin, w - margin, h - margin);
+            float rounded = circle ? Math.min(w,h)*.49f : h*.49f;
+            clipShape.reset();
+            if (circle) {
+                clipShape.addCircle(w*.5f, h*.5f, Math.min(w,h)*.5f,
+                        Path.Direction.CW);
+            } else {
+                clipShape.addRoundRect(bounds, rounded, rounded, Path.Direction.CW);
+            }
         }
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
@@ -294,8 +306,7 @@ public final class SandboxOpticalGlass {
             bounds.set(margin, margin, w - margin, h - margin);
             float radius = circle ? Math.min(w, h) * .49f : h * .49f;
             int save=canvas.save();
-            if (circle) canvas.clipPath(circlePath(w, h));
-            else canvas.clipPath(capsulePath(bounds, radius));
+            canvas.clipPath(clipShape);
             translation.reset();
             translation.setTranslate(w * (.25f + .24f * direction), h * (.03f + .06f * pressure));
             shader.setLocalMatrix(translation);
@@ -306,17 +317,6 @@ public final class SandboxOpticalGlass {
             perimeter.setAlpha((int)(29f + 30f * pressure));
             if (circle) canvas.drawCircle(w*.5f, h*.5f, Math.min(w,h)*.5f-margin, perimeter);
             else canvas.drawRoundRect(bounds, radius, radius, perimeter);
-        }
-        // Paths are tiny (one FAB or single selected pill) and no live timer runs.
-        private android.graphics.Path circlePath(int w,int h) {
-            android.graphics.Path path = new android.graphics.Path();
-            path.addCircle(w*.5f, h*.5f, Math.min(w,h)*.5f, android.graphics.Path.Direction.CW);
-            return path;
-        }
-        private android.graphics.Path capsulePath(RectF rect,float radius) {
-            android.graphics.Path path = new android.graphics.Path();
-            path.addRoundRect(rect, radius, radius, android.graphics.Path.Direction.CW);
-            return path;
         }
     }
 }
