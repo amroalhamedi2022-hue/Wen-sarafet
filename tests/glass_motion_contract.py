@@ -93,7 +93,7 @@ assert "MIT_FAB_BACKDROP_BOUND" in sandbox and "MIT_FAB_GLASS_ATTACHED" in sandb
 assert "private static View findUnderlay(View view)" in sandbox, "Backdrop must exclude its own glyphs"
 assert "if (view instanceof ScrollView) return view;" in sandbox
 assert "glass.setBackdropSource(source != null ? source : container);" in sandbox
-assert "glass.setBackdropSource(source != null ? source : root);" in sandbox
+assert "glass.setBackdropSource(root);" in sandbox, "FAB requires full scene background outside scrolling viewport"
 assert 'MIT_VIEW_GLASS_BACKDROP_BOUND source=' in sandbox
 assert 'MIT_FAB_BACKDROP_BOUND source=' in sandbox
 assert "fab.setBackground(null);" in sandbox and "fab.setElevation(0f);" in sandbox
