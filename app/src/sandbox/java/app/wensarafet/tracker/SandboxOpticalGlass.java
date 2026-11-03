@@ -15,6 +15,7 @@ import android.widget.TextView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ScrollView;
 
 import app.wensarafet.glass.WenNavigationTrack;
 import com.example.liquidglass.LiquidGlassView;
@@ -125,9 +126,14 @@ public final class SandboxOpticalGlass {
                 View nav = (View) track.getParent();
                 if (!(nav.getParent() instanceof ViewGroup)) return;
                 ViewGroup container = (ViewGroup) nav.getParent();
-                glass.setBackdropSource(container);
+                // The root contains the navigation glyphs. Capturing it makes
+                // the lens draw a SECOND distorted copy of its own labels.
+                // Capture only the underlying scroll viewport instead.
+                View source = findUnderlay(container);
+                glass.setBackdropSource(source != null ? source : container);
                 android.util.Log.i("WenGlassProbe",
-                        "MIT_VIEW_GLASS_BACKDROP_BOUND");
+                        "MIT_VIEW_GLASS_BACKDROP_BOUND source="
+                                + (source != null ? "scroll" : "root-fallback"));
             });
             android.util.Log.i("WenGlassProbe", "MIT_VIEW_GLASS_ATTACHED");
             return true;
@@ -136,6 +142,27 @@ public final class SandboxOpticalGlass {
             lens.removeAllViews();
             return false;
         }
+    }
+
+
+    /**
+     * Find a scroll viewport under the floating chrome, NOT the nav/FAB
+     * branch itself. The third-party library accepts any backdrop View in
+     * screen coordinates, so there is no reason to sample selected glyphs.
+     * Resolves once per screen mount, with no per-frame tree traversal.
+     */
+    private static View findUnderlay(View view) {
+        if (view instanceof ScrollView) return view;
+        if (!(view instanceof ViewGroup)) return null;
+        ViewGroup group = (ViewGroup) view;
+        for (int i=0; i<group.getChildCount(); i++) {
+            View child = group.getChildAt(i);
+            if (child instanceof WenNavigationTrack
+                    || child instanceof LiquidGlassView) continue;
+            View source = findUnderlay(child);
+            if (source != null) return source;
+        }
+        return null;
     }
 
     /** Native circular material underneath the EXISTING accessible + TextView. */
@@ -216,8 +243,11 @@ public final class SandboxOpticalGlass {
             });
             host.post(() -> {
                 if (!host.isAttachedToWindow()) return;
-                glass.setBackdropSource(root);
-                android.util.Log.i("WenGlassProbe", "MIT_FAB_BACKDROP_BOUND");
+                View source = findUnderlay(root);
+                glass.setBackdropSource(source != null ? source : root);
+                android.util.Log.i("WenGlassProbe",
+                        "MIT_FAB_BACKDROP_BOUND source="
+                                + (source != null ? "scroll" : "root-fallback"));
             });
             // Remove Android's rectangular/elevated background entirely:
             // the actual circular AGSL material lives below the + glyph.
