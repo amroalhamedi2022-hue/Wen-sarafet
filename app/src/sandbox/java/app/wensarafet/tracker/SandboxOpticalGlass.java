@@ -178,21 +178,21 @@ public final class SandboxOpticalGlass {
             glass.setUseShaderPipeline(true);
             glass.setEnableDynamicBackground(false);
             glass.setEnableBackdropBlur(true);
-            glass.setBlurAmount(.012f);
+            glass.setBlurAmount(.045f);
             glass.setEnableShadow(false);
             glass.setEnableChromaticAberration(true);
             glass.setEnableEdgeHighlight(true);
             glass.setCornerRadius(999f);
             glass.setBevelWidth(10.5f * d);
             glass.setRefractionFalloff(1.35f);
-            glass.setRefractionHeight(14f * d);
-            glass.setDispersionStrength(.10f);
+            glass.setRefractionHeight(10f * d);
+            glass.setDispersionStrength(.08f);
             glass.setEdgeSoftness(1.2f * d);
             glass.setEdgeHighlightBorderWidth(.70f * d);
             glass.setEdgeHighlightOpacity(45f);
             glass.setDisplacementScale(62f);
             glass.setSaturation(107f);
-            glass.setGlassTint(Color.WHITE, .025f);
+            glass.setGlassTint(Color.WHITE, .16f);
             host.setClipChildren(false);
             host.setClipToPadding(false);
             host.addView(glass, new FrameLayout.LayoutParams(-1, -1));
@@ -243,11 +243,13 @@ public final class SandboxOpticalGlass {
             });
             host.post(() -> {
                 if (!host.isAttachedToWindow()) return;
-                View source = findUnderlay(root);
-                glass.setBackdropSource(source != null ? source : root);
+                // FAB is partly outside the scroll viewport. Sampling that
+                // view produced TRANSPARENT BLACK pixels and a black orb.
+                // Root includes the scene background and avoids empty capture.
+                // The native backdrop recorder excludes this glass branch.
+                glass.setBackdropSource(root);
                 android.util.Log.i("WenGlassProbe",
-                        "MIT_FAB_BACKDROP_BOUND source="
-                                + (source != null ? "scroll" : "root-fallback"));
+                        "MIT_FAB_BACKDROP_BOUND source=root");
             });
             // Remove Android's rectangular/elevated background entirely:
             // the actual circular AGSL material lives below the + glyph.
@@ -267,10 +269,10 @@ public final class SandboxOpticalGlass {
 
     private static void renderFabMaterial(LiquidGlassView glass,
                                           OpticalSheen sheen, float density, float t) {
-        glass.setRefractionHeight((14f + 10f * t) * density);
-        glass.setDispersionStrength(.10f + .10f * t);
+        glass.setRefractionHeight((10f + 9f * t) * density);
+        glass.setDispersionStrength(.08f + .08f * t);
         glass.setBevelWidth((10.5f + 2.0f * t) * density);
-        glass.setGlassTint(Color.WHITE, .025f + .045f * t);
+        glass.setGlassTint(Color.WHITE, .16f + .055f * t);
         glass.setScaleX(1f + .037f * t);
         glass.setScaleY(1f - .042f * t);
         sheen.setMotion(t, 0f);
