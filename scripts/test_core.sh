@@ -27,6 +27,19 @@ compile \
   "$PROJECT_DIR/tests/FinanceCoreTest.java"
 
 java -cp "$OUT_DIR" FinanceCoreTest
+# Friend full-app Arabic supplement: test without modifying legacy English parser.
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/Money.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/TransactionParser.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/ArabicSmsParserPilot.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FriendArabicCapturePolicy.java" \
+  "$PROJECT_DIR/tests/ArabicSmsParserPilotTest.java" \
+  "$PROJECT_DIR/tests/FriendArabicCapturePolicyTest.java"
+java -cp "$OUT_DIR" ArabicSmsParserPilotTest
+java -cp "$OUT_DIR" FriendArabicCapturePolicyTest
+python3 "$PROJECT_DIR/tests/friend_arabic_safe_capture_contract.py"
+
 compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/CategorySuggestionRules.java" \
   "$PROJECT_DIR/tests/CategorySuggestionRulesTest.java"

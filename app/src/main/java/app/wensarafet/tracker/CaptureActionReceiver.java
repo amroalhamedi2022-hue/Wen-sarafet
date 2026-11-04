@@ -13,7 +13,14 @@ public final class CaptureActionReceiver extends BroadcastReceiver {
         if (id < 0) return;
         FinanceDbHelper db = new FinanceDbHelper(context);
         long tx;
-        try { tx = db.importCapture(id, type); } finally { db.close(); }
+        try {
+            Models.CaptureItem item=db.getCapture(id);
+            if(item!=null && "SMS_UNVERIFIED".equals(item.channel)) {
+                Toast.makeText(context,"حدد البنك أو المحفظة في صندوق المراجعة أولًا",Toast.LENGTH_LONG).show();
+                return;
+            }
+            tx=db.importCapture(id,type);
+        } finally { db.close(); }
         CaptureEngine.cancelNotification(context, id);
         Toast.makeText(context, tx >= 0 ? "تم حفظ العملية — اختر تصنيفها لاحقًا" : "تعذر حفظ العملية، راجع صندوق المراجعة", Toast.LENGTH_LONG).show();
     }

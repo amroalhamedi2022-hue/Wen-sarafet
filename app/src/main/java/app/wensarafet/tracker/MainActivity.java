@@ -2024,7 +2024,7 @@ public final class MainActivity extends Activity {
         page.addView(pageHeader("صندوق المراجعة", () -> showSettings()), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 78)));
         ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 34));
         List<Models.CaptureItem> items = db.getPendingCaptures();
-        TextView info = Ui.text(this, "العمليات غير الواضحة لا تدخل المصروفات أو الدخل قبل اختيارك. منع التكرار يعمل بين SMS وإشعار التطبيق.", 12, Ui.MUTED, false); info.setPadding(Ui.dp(this, 3), 0, Ui.dp(this, 3), Ui.dp(this, 10)); content.addView(info);
+        TextView info = Ui.text(this, "الرسائل العربية الجديدة تدخل للمراجعة أولًا دون حفظ تلقائي. عند اسم مرسل غير معروف اختر الحساب بنفسك قبل الحفظ. الرسائل الإنجليزية المعتمدة تحتفظ بقواعدها.", 12, Ui.MUTED, false); info.setPadding(Ui.dp(this, 3), 0, Ui.dp(this, 3), Ui.dp(this, 10)); content.addView(info);
         if (items.isEmpty()) { TextView empty = Ui.text(this, "لا توجد عمليات معلّقة للمراجعة ✓", 16, Ui.TEXT, true); empty.setGravity(Gravity.CENTER); empty.setBackground(Ui.rounded(Ui.SURFACE, 20, this)); content.addView(empty, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 120))); }
         else for (Models.CaptureItem item : items) content.addView(captureReviewCard(item));
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1)); setContentView(page); Ui.animateScreen(page); content.post(() -> Ui.animateChildren(content));
@@ -2032,10 +2032,15 @@ public final class MainActivity extends Activity {
 
     private View captureReviewCard(Models.CaptureItem item) {
         LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12)); card.setBackground(Ui.rounded(Ui.SURFACE, 20, this)); card.setElevation(Ui.dp(this, 2));
-        String provider = "BOP".equals(item.provider) ? "بنك فلسطين" : "JAWAL".equals(item.provider) ? "Jawwal Pay" : "PalPay";
-        LinearLayout head = Ui.row(this); head.addView(Ui.text(this, provider + " • " + ("SMS".equals(item.channel) ? "رسالة" : "إشعار"), 14, Ui.TEXT, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 38), 1));
+        String provider = "BOP".equals(item.provider) ? "بنك فلسطين" : "JAWAL".equals(item.provider) ? "Jawwal Pay" : "PALPAY".equals(item.provider) ? "PalPay" : "جهة مالية غير محددة";
+        LinearLayout head = Ui.row(this); head.addView(Ui.text(this, provider + " • " + (item.channel.startsWith("SMS") ? "رسالة" : "إشعار"), 14, Ui.TEXT, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 38), 1));
         String money = item.amountMinor == null ? "مبلغ غير مقروء" : Money.format(item.amountMinor, item.currency == null ? "" : item.currency); TextView amount = Ui.text(this, money, 15, Ui.VIOLET, true); amount.setGravity(Gravity.END | Gravity.CENTER_VERTICAL); head.addView(amount); card.addView(head);
         TextView raw = Ui.text(this, item.rawText, 12, Ui.TEXT, false); raw.setPadding(Ui.dp(this, 10), Ui.dp(this, 9), Ui.dp(this, 10), Ui.dp(this, 9)); raw.setBackground(Ui.rounded(Ui.BRAND_SOFT, 12, this)); card.addView(raw);
+        if ("SMS_UNVERIFIED".equals(item.channel)) {
+            TextView caution=Ui.text(this,"هذه الرسالة من مُرسل لم نتعرّف عليه. اختر بنك فلسطين أو جوال باي أو PalPay بنفسك قبل تسجيل أي عملية. لا تعتمد على رقم جهة واتساب.",12,Ui.EXPENSE,true);
+            caution.setPadding(Ui.dp(this,6),Ui.dp(this,8),Ui.dp(this,6),Ui.dp(this,5));
+            card.addView(caution);
+        }
         if (FinanceRules.TRANSFER.equals(item.inferredType)) { TextView detected = Ui.text(this, "↔ وُجد اسمك في الحوالة — اختر الحساب المصدر والمستلم", 12, Ui.BRAND, true); detected.setPadding(Ui.dp(this, 6), Ui.dp(this, 8), Ui.dp(this, 6), 0); card.addView(detected); }
         if (item.amountMinor != null && item.currency != null) {
             LinearLayout types = Ui.row(this); Button expense = miniButton("مصروف"); Button income = miniButton("دخل"); Button transfer = miniButton("بين حساباتي");
@@ -2047,6 +2052,36 @@ public final class MainActivity extends Activity {
     }
 
     private void resolveCapture(long id, String type) {
+        Models.CaptureItem item=db.getCapture(id);
+        if(item!=null && "SMS_UNVERIFIED".equals(item.channel)) {
+            String[] providers={"بنك فلسطين","جوال باي","PalPay"};
+            String[] codes={"BOP","JAWAL","PALPAY"};
+            new AlertDialog.Builder(this)
+                .setTitle("حدد البنك أو المحفظة الفعلية")
+                .setMessage("لا نعرف اسم مرسل SMS. اختيارك سيحدد الحساب الذي قد يتغير رصيده. تحقق من جهة الرسالة والمبلغ والرصيد المعروض قبل الحفظ.")
+                .setItems(providers,(dialog,which)->new AlertDialog.Builder(this)
+                    .setTitle("تأكيد حفظ الحركة")
+                    .setMessage("الجهة: "+providers[which]+"\nالمبلغ: "+Money.format(item.amountMinor,item.currency)+
+                            "\nالاتجاه: "+(FinanceRules.EXPENSE.equals(type)?"مصروف / مبلغ خارج":"دخل / مبلغ داخل")+
+                            "\nالرصيد المذكور: "+(item.balanceMinor==null?"غير متوفر":Money.format(item.balanceMinor,item.currency))+
+                            "\n\nسيُحدّث رصيد حساب هذه الجهة. هل البيانات صحيحة؟")
+                    .setNegativeButton("إلغاء",null)
+                    .setPositiveButton("حفظ بعد التأكد",(confirm,yes)->{
+                        try {
+                            if(!FriendCaptureProviderSelector.choose(db,id,codes[which]))
+                                throw new IllegalStateException("الرسالة لم تعد قيد المراجعة");
+                            long tx=db.importCapture(id,type);
+                            if(tx<0)throw new IllegalStateException("لم يُحفظ شيء: تأكد من وجود حساب نشط بنفس العملة للجهة المختارة");
+                            CaptureEngine.cancelNotification(this,id);
+                            Toast.makeText(this,"تم حفظ الحركة في الحساب الذي اخترته",Toast.LENGTH_LONG).show();
+                        }catch(Exception failure){
+                            Toast.makeText(this,failure.getMessage(),Toast.LENGTH_LONG).show();
+                        }
+                        showCaptureInbox();
+                    }).show())
+                .setNegativeButton("إلغاء",null).show();
+            return;
+        }
         long tx = db.importCapture(id, type); CaptureEngine.cancelNotification(this, id);
         Toast.makeText(this, tx >= 0 ? "تم حفظ العملية — ستجدها بانتظار التصنيف" : "تعذر الحفظ؛ تأكد من وجود حساب بنفس العملة", Toast.LENGTH_LONG).show(); showCaptureInbox();
     }
