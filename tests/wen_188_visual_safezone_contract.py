@@ -54,18 +54,18 @@ assert current_main.count(visual_hook) == 1, "Expected one visual-only integrati
 # against the original 1.8.8; no DB, Save, ledger, or callback edits allowed.
 split_ui_hooks = [
     (
-        "        // Auto-calculate ONLY the last split entry; original save logic is unchanged.\\n"
-        "        SplitRemainderUi.bind(rowsBox, () -> tx.amountMinor, null);\\n"
+        "        // Auto-calculate ONLY the last split entry; original save logic is unchanged.\n"
+        "        SplitRemainderUi.bind(rowsBox, () -> tx.amountMinor, null);\n"
     ),
     (
-        "        SplitRemainderUi.bind(splitRowsBox, () -> {\\n"
-        "            Long total = Money.parseMinor(amount.getText().toString());\\n"
-        "            return total == null ? -1L : total;\\n"
-        "        }, amount);\\n"
+        "        SplitRemainderUi.bind(splitRowsBox, () -> {\n"
+        "            Long total = Money.parseMinor(amount.getText().toString());\n"
+        "            return total == null ? -1L : total;\n"
+        "        }, amount);\n"
     ),
-    "        amount.setTag(SplitRemainderUi.AMOUNT_FIELD_TAG);\\n",
-    "            SplitRemainderUi.refresh(container);\\n",
-    "        SplitRemainderUi.refresh(container);\\n",
+    "        amount.setTag(SplitRemainderUi.AMOUNT_FIELD_TAG);\n",
+    "            SplitRemainderUi.refresh(container);\n",
+    "        SplitRemainderUi.refresh(container);\n",
 ]
 cleaned_main = current_main.replace(visual_hook, "")
 for hook in split_ui_hooks:
