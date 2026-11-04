@@ -1159,6 +1159,7 @@ public final class MainActivity extends Activity {
 
         TextView[] items = new TextView[]{home, tx, debts, analytics};
         LinearLayout tabs = liquid ? Ui.row(this) : nav;
+        if (liquid) tabs.setTag("wen_glass_tab_content");
         for (int i = 0; i < items.length; i++) {
             TextView item = items[i];
             item.setTag("wen_intro_nav_" + i);
@@ -1173,8 +1174,8 @@ public final class MainActivity extends Activity {
                     new app.wensarafet.glass.WenNavigationTrack(this, Ui.DARK);
             FrameLayout lens = new FrameLayout(this);
             lens.setBackground(Ui.glassSlidingNavigationLens(this));
-            // Keep lens below tab text: elevated lens would obscure the active label.
-            // Parent nav already has elevation, so extra lens Z is unnecessary.
+            // The built-in lens stays below labels; the sandbox's native lens
+            // is raised over them after the real tab hit targets are mounted.
             FrameLayout.LayoutParams lensParams = new FrameLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.TOP | Gravity.LEFT);
             track.addView(lens, lensParams);
@@ -1199,6 +1200,16 @@ public final class MainActivity extends Activity {
             }
             track.addView(tabs, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            if (track.getGlassGestureBridge() != null) {
+                // The native refractive material must be composited AFTER glyphs,
+                // not just a decorative rim above otherwise undistorted labels.
+                // It is passive: original TextViews still own click / drag / a11y.
+                lens.setClickable(false);
+                lens.setFocusable(false);
+                lens.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                lens.bringToFront();
+                android.util.Log.i("WenGlassProbe", "MIT_NAV_MATERIAL_ABOVE_GLYPHS");
+            }
             // Hardware-composited passive optical layer must be ABOVE the glyphs.
             // It never takes click/hold ownership away from any real tab.
             if (track.getOptic() != null) track.getOptic().bringToFront();
