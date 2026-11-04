@@ -72,6 +72,11 @@ jobs:
           profile: pixel_6
           ram-size: 3072M
           heap-size: 512M
+          # API 33 Google APIs image otherwise tries to allocate a 7.3GB userdata
+          # partition on a runner with only ~3.7GB free, crashing before boot.
+          # These isolated Java UI tests need under 1GB of app data.
+          disk-size: 1536M
+          sdcard-path-or-size: 128M
           disable-animations: true
           emulator-boot-timeout: 600
           # The emulator action executes each newline as a separate /bin/sh -c call.
