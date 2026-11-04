@@ -9,7 +9,7 @@ MAIN = "app/src/main/java/app/wensarafet/tracker/MainActivity.java"
 APP_GRADLE = "app/build.gradle"
 SETTINGS = "settings.gradle"
 ALLOWED = {
-    MAIN, APP_GRADLE, SETTINGS,
+    MAIN, APP_GRADLE, SETTINGS, "gradle.properties",
     "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java",
     "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java",
     "glass-engine/src/main/java/app/wensarafet/glass/GlassMotion.java",
@@ -62,6 +62,12 @@ settings = (ROOT / SETTINGS).read_text(encoding="utf-8")
 repo_line = "repositories { google(); mavenCentral(); maven { url 'https://jitpack.io' } }"
 assert settings.count(repo_line) == 1
 assert settings.replace(repo_line, "repositories { google(); mavenCentral() }") == baseline(SETTINGS)
+
+properties = (ROOT / "gradle.properties").read_text(encoding="utf-8")
+assert properties.count("android.useAndroidX=true") == 1
+assert properties.replace("android.useAndroidX=true", "android.useAndroidX=false") == baseline("gradle.properties"), (
+    "SAFE ZONE: Gradle properties altered beyond the renderer's AndroidX prerequisite"
+)
 
 for callback in [
     "home.setOnClickListener(v -> showMain(false));",
