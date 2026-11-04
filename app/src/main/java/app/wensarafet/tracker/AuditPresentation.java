@@ -56,7 +56,7 @@ public final class AuditPresentation {
         if("EDIT".equals(action))return "تعديل "+object;
         if("DELETE".equals(action))return "حذف "+object;
         if("RESTORE".equals(action))return "استرجاع "+object;
-        if("UNDO".equals(action))return "التراجع عن تعديل "+object;
+        if("UNDO".equals(action))return "تراجع عن تعديل "+object;
         return "تغيير في "+object;
     }
 
