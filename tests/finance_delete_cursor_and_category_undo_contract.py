@@ -57,11 +57,11 @@ assert all(s in safe_sql for s in ("t.source='MANUAL'", 't.needs_review=0',
   't.exchange_rate_checked_at IS NULL', 'debt_movements', 'capture_inbox',
   'transaction_splits', 'oldcat.kind=t.type', 'newcat.kind=t.type'))
 
-hist_section = SRC.split('public List<AuditEntry> getChangeHistory(int limit) {',1)[1].split('public void undoLatestSimpleCategoryChange',1)[0]
+hist_section = SRC.split('public List<AuditEntry> getChangeHistoryPage(int page, int pageSize, String query, String filter) {',1)[1].split('public void undoLatestSimpleCategoryChange',1)[0]
 marker = 'SAFE_CATEGORY_UNDO_SQL +'
-raw_history = hist_section.split('rawQuery(',1)[1].split('new String[]{String.valueOf(Math.min(',1)[0]
+raw_history = hist_section.split('rawQuery(',1)[1].split('new String[]{table,table,term,',1)[0]
 history_sql = ''.join(tokens(raw_history.split(marker)[0])) + safe_sql + ''.join(tokens(raw_history.split(marker)[1]))
-assert history_sql.count('?') == 1
+assert history_sql.count('?') == 9, history_sql
 
 conn.executescript('''
  CREATE TABLE change_history(id INTEGER PRIMARY KEY,table_name TEXT,record_id INTEGER,
@@ -79,7 +79,7 @@ conn.executescript('''
  INSERT INTO change_history VALUES(1,'transactions',91,'EDIT','before','after',1,0,3,4,'EXPENSE','EXPENSE',2,2,200,200);
 ''')
 def undoable():
-    result=conn.execute(history_sql, (30,)).fetchone()
+    result=conn.execute(history_sql, ('','', '', '%','%','%','%',30,0)).fetchone()
     return result[7]
 assert undoable() == 1
 cases=[
