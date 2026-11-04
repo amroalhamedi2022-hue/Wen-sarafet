@@ -17,6 +17,7 @@ public final class WenNavigationTrack extends FrameLayout {
     private final WenOpticalNavigationOverlay optic;
     private final Drawable opticalForeground;
     private boolean externalGlassActive;
+    private boolean opticalCrownDrawConfirmed;
     /** Gesture-only contract. The glass-engine has NO dependency on sandbox SDK. */
     public interface GlassGestureBridge {
         void morph(float fraction);
@@ -70,6 +71,7 @@ public final class WenNavigationTrack extends FrameLayout {
     /** Sandbox-only: a separately tested native View material owns the optics. */
     public void setExternalGlassActive(boolean active) {
         externalGlassActive = active;
+        opticalCrownDrawConfirmed = false;
         optic.discard();
         invalidate();
     }
@@ -84,7 +86,13 @@ public final class WenNavigationTrack extends FrameLayout {
         super.dispatchDraw(canvas);
         // Guaranteed post-children optical composite, same coordinates as pill.
         if (externalGlassActive) {
-            if (externalGlassBridge != null) externalGlassBridge.drawForeground(canvas);
+            if (externalGlassBridge != null) {
+                externalGlassBridge.drawForeground(canvas);
+                if (!opticalCrownDrawConfirmed && canvas.isHardwareAccelerated()) {
+                    opticalCrownDrawConfirmed = true;
+                    android.util.Log.i("WenGlassProbe", "MIT_NAV_FRONT_ABOVE_GLYPHS");
+                }
+            }
         } else {
             optic.renderOnto(canvas);
         }
