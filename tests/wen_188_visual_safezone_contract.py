@@ -85,6 +85,9 @@ assert "Money.parseMinor" in split_ui
 assert "SplitRemainderRules.lastPart" in split_ui
 assert "Math.addExact" in split_calculation and "Math.subtractExact" in split_calculation
 assert "derived.setKeyListener(null)" in split_ui, "Last split amount must be read-only"
+assert "if (becameEarlierPart) derived.setText(\"\");" in split_ui, "Former automatic remainder must become a blank editable entry"
+assert "derived.setContentDescription(\"مبلغ الجزء\");" in split_ui, "Accessibility label must be restored after adding a part"
+assert "SplitRemainderUi.refresh(container);" in current_main, "Add/remove must recalculate final amount"
 
 
 # The source-only overlay REMOVES (never grants) AndroidX's automatic
