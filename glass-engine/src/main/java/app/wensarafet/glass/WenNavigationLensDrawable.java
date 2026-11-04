@@ -64,7 +64,7 @@ public final class WenNavigationLensDrawable extends Drawable {
         specularCrown.setStrokeWidth(density * 2.3f);
         lowerShadow.setStyle(Paint.Style.STROKE);
         lowerShadow.setStrokeWidth(density * 1.8f);
-        lowerShadow.setColor(opacity(dark ? Color.BLACK : accent, dark ? 96 : 59));
+        lowerShadow.setColor(opacity(Color.BLACK, dark ? 96 : 52));
     }
 
     private static int opacity(int color, int a) {
@@ -92,18 +92,18 @@ public final class WenNavigationLensDrawable extends Drawable {
         outerRim.setShader(new LinearGradient(surface.left, surface.top,
                 surface.right, surface.bottom,
                 new int[]{opacity(Color.WHITE, dark ? 185 : 245),
-                        opacity(accent, dark ? 140 : 95),
+                        opacity(Color.WHITE, dark ? 140 : 102),
                         opacity(Color.WHITE, dark ? 125 : 205)},
                 null, Shader.TileMode.CLAMP));
         innerRim.setColor(opacity(Color.WHITE, dark ? 78 : 176));
         specularCrown.setShader(new LinearGradient(surface.left, surface.top,
                 surface.right, surface.bottom,
-                new int[]{0xEFFFFFFF, 0x79D2FCFF, 0x0AFFFFFF,
-                        0x8AE4EDFF, 0xD7FFFFFF}, null, Shader.TileMode.CLAMP));
+                new int[]{0xEFFFFFFF, 0x79FFFFFF, 0x0AFFFFFF,
+                        0x8AFFFFFF, 0xD7FFFFFF}, null, Shader.TileMode.CLAMP));
         chromaticRim.setShader(new LinearGradient(surface.left, surface.top,
                 surface.right, surface.bottom,
-                new int[]{0xFF98EBFF, 0xFFACC0FF, 0xFFE7B8F5,
-                        0xFFFEEBB4, 0xFF91EBFC, 0xFFB7B1FF},
+                new int[]{0x76FFFFFF, 0xA4FFFFFF, 0x68FFFFFF,
+                        0x8CFFFFFF, 0x62FFFFFF, 0x98FFFFFF},
                 null, Shader.TileMode.CLAMP));
         applyAlpha();
     }
@@ -145,7 +145,7 @@ public final class WenNavigationLensDrawable extends Drawable {
         edge.inset(outerRim.getStrokeWidth()*.5f, outerRim.getStrokeWidth()*.5f);
         outerRim.setAlpha((int) (alpha * (.76f + .12f * morph)));
         canvas.drawRoundRect(edge, r, r, outerRim);
-        // Subtle rainbow refraction at rest, richer on hold, SAME pill shape.
+        // Colourless specular perimeter at rest and on hold, SAME pill shape.
         chromaticRim.setAlpha((int)(alpha * (.29f + .42f * morph)));
         canvas.drawRoundRect(edge, r, r, chromaticRim);
         inner.set(fluid);
