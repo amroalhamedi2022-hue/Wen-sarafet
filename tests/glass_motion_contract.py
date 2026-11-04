@@ -98,6 +98,7 @@ assert 'tabs.setTag("wen_glass_tab_content");' in main, "The native sampling sou
 assert "tabs.setBackground(sampledPlate);" in main, "Opaque backdrop avoids black capsules"
 assert "glass.setEnableBackdropBlur(false);" in sandbox, "Sampled tab text cannot be blurred"
 assert "lens.bringToFront();" in main, "Native material must be in front of navigation text"
+assert "return false; // never steal the original tab gesture" in main, "Native over-glyph material must not capture touch"
 assert "MIT_NAV_MATERIAL_ABOVE_GLYPHS" in main
 assert "glass.setBackdropSource(root);" in sandbox, "FAB requires full scene background outside scrolling viewport"
 assert 'MIT_VIEW_GLASS_BACKDROP_BOUND source=' in sandbox
