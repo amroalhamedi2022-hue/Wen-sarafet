@@ -1,4 +1,6 @@
 # Wen Glass — integration without functional changes
+
+> **Baseline update — 4 Nov 2026:** The authoritative **signed 1.8.8, visual-only Safe Zone merge plan** is [`WEN_188_VISUAL_ONLY_SAFEZONE_MERGE_PLAN_2026-11-04.md`](WEN_188_VISUAL_ONLY_SAFEZONE_MERGE_PLAN_2026-11-04.md). It pins the exact 1.8.8 code/approved APK identity, rejects the isolated Arabic SMS branch, and prohibits wholesale PR #28 merging. This earlier design note is supporting context only; the 1.8.8 plan takes precedence.
 **Status:** proposed architecture & gates only. **NO MERGE / NO CHERRY-PICK INTO ORIGINAL APP.**
 **Trial PR:** #28 (`design/wen-full-unlocked-sandbox-20261101`).
 **Target candidate:** latest protected branch when user later approves; never assume `main` is current.
