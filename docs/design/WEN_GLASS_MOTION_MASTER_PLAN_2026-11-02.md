@@ -1,6 +1,24 @@
 # وين صرفت — الخطة الرئيسية لمحرك حركات Liquid Glass
 
 
+## ✅ 4 نوفمبر 2026 — إصلاح العدسة فوق النص من دون اعتراض اللمس (مُثبت بالمحاكي)
+
+Latest tested functional/UI commit: `f4f5177b459d42e6db53fc2eb91bde2c340e6d55` on `design/wen-full-unlocked-sandbox-20261101`, PR #28 Draft. The original financial application, production signature, protected code, SQLite and business logic were not modified by this visual/gesture batch.
+
+**التعديلات والنتائج المؤكدة:**
+- The native material is now composited **above** navigation labels/icons and samples the actual opaque tab strip; the older scroll-content sample exposed page-text ghosts and a dark/black capsule. The native lens FrameLayout now returns `false` from `dispatchTouchEvent`, letting the actual underlying tab TextViews own clicks and Hold+Drag.
+- Removed spectrum/pink/orange/blue chromatic rims, RGB-split GPU shaders and native chromatic aberration on both navigation and the FAB (including Canvas fallback). Light reflections are neutral, white/silver, while the lens remains optically active.
+- Floating Add (+) material uses circular clipping, lighter blur/frost, with a non-clickable optical surface above the glyph. Its original Add Transaction click and accessibility label remain unchanged.
+- Real emulator smoke first failed Hold+Drag until the raised optical View was made touch-through, then **passed** with event evidence: `DOWN tab=0`, `HOVER tab=1,2,3`, `UP_TARGET tab=3 from=0`, and a successful Analytics selection. Added anti-regression contracts and gesture traces.
+- CI for this commit: sandbox APK build+lint `41786778149` PASS, emulator held-frame/gesture/FAB smoke `41786778123` PASS, source/finance/security `41786778254` PASS, Android debug compile `41786777977` PASS, unsigned original-package compile `41786778109` PASS.
+- Sandbox APK: `app-sandbox.apk`, 13,114,737 bytes, SHA-256 `6de3e44ecf6aa49aa9aa3cdeff6308427f85e8da30128cc26832210fb51b683f`, artifact ID `13300858836`, ARM64/ARM32 native library variants, Android APK signing block present. Actual emulator screenshots, log and gesture dumps: artifact ID `13301597817`. The benchmark screenshots show the neutral lens visible during press, legible navigation, circular FAB, and Analytics after native hold-drag.
+
+**حدود القبول:** Android emulator visual/interaction regression now passes, but actual Xiaomi Pad 5/phone visual acceptance, 60/120Hz jank/battery, TalkBack and multi-theme physical-device verification are not established. Do not call this an original-package signed release, claim perfect Apple parity or merge sandbox protection exceptions into production. This is a separate debug-key-signed sandbox install for fictional data; its signature may change across CI runs.
+
+
+---
+
+
 ## ✅ 4 نوفمبر 2026 — طبقة زجاج أمام النص + ضغط حقيقي للزر العائم
 
 **آخر Commit للبرمجة والاختبارات المختبرة:** `175deca62f4ff67ab21bc9a9414e09a0b5a90246`. فرع `design/wen-full-unlocked-sandbox-20261101`، PR #28 Draft. **لا دمج في main ولا تعديل لمنطق المال/SQLite.**
