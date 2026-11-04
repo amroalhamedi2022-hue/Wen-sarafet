@@ -1,0 +1,44 @@
+plugins { id "com.android.application" }
+
+android {
+    namespace "app.wensarafet.smslab"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "app.wensarafet.smslab"
+        minSdk 33
+        targetSdk 35
+        versionCode 1
+        versionName "0.1"
+    }
+
+    buildTypes {
+        release { debuggable false; minifyEnabled false }
+        debug { debuggable true }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    // Copy selected read-only parser sources rather than pulling in the finance app.
+    // Existing English parser and money rules are compiled UNCHANGED.
+    sourceSets {
+        main {
+            java.srcDirs "src/main/java", "${layout.buildDirectory.get().asFile}/generated/pilot-src"
+        }
+    }
+}
+
+tasks.register("stagePilotSources", Copy) {
+    from(rootProject.file("app/src/main/java")) {
+        include "app/wensarafet/tracker/ArabicSmsParserPilot.java"
+        include "app/wensarafet/tracker/TransactionParser.java"
+        include "app/wensarafet/tracker/Money.java"
+        include "app/wensarafet/tracker/FinanceRules.java"
+    }
+    into(layout.buildDirectory.dir("generated/pilot-src"))
+}
+
+tasks.named("preBuild") { dependsOn("stagePilotSources") }
