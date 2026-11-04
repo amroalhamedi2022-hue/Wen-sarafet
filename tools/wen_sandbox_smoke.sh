@@ -33,8 +33,27 @@ capture() {
  adb shell dumpsys activity activities > "$OUT/activities-$name.txt" || true
 }
 capture home
-# First-draw optical QA: never ship a beautiful empty nav bar with invisible icons.
-python3 tools/check_nav_glyph_legibility.py "$OUT/home.png"
+# Slow software-rendered emulator startup may briefly capture its intro/splash
+# instead of the first composed nav frame. Retry the live framebuffer, NEVER
+# mark an actually invisible navigation as acceptable.
+first_nav_visible=0
+for attempt in 1 2 3 4; do
+  if python3 tools/check_nav_glyph_legibility.py "$OUT/home.png"; then
+    first_nav_visible=1
+    break
+  fi
+  if ! adb shell pidof "$PACKAGE" >/dev/null 2>&1; then
+    echo "FAIL: sandbox process vanished before first navigation appeared"
+    exit 1
+  fi
+  echo "INFO: first nav frame not ready on attempt $attempt; retrying live screenshot"
+  sleep 2
+  adb exec-out screencap -p > "$OUT/home.png" || true
+done
+if [ "$first_nav_visible" -ne 1 ]; then
+  echo "FAIL: navigation glyphs remained invisible after startup retries"
+  exit 1
+fi
 # Check both material clarity AND optical movement in the same emulator run.
 # Do not abort early on tint bleed and conceal whether refraction also works.
 nav_ghost_failed=0
