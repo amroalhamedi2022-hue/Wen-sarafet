@@ -84,6 +84,7 @@ public final class GlassMotion {
         private final int slop;
         private boolean tracking;
         private boolean cancelled;
+        private boolean tapEligible;
         private float downX, downY;
         private int hovered;
         private ValueAnimator morphAnimator;
@@ -192,6 +193,7 @@ public final class GlassMotion {
                             + " lensWidth=" + lens.getWidth()
                             + " optic=" + (optic != null));
                     tracking=true; cancelled=false; hovered=originIndex;
+                    tapEligible=true;
                     downX=event.getX(); downY=event.getY();
                     lens.animate().cancel();
                     // Repeated DOWNs after a same-tab release must start with
@@ -231,6 +233,9 @@ public final class GlassMotion {
                     if (!tracking) return true;
                     float x=origin.getLeft()+event.getX();
                     float y=origin.getTop()+event.getY();
+                    if (Math.abs(event.getX()-downX)>slop
+                            || Math.abs(event.getY()-downY)>slop)
+                        tapEligible=false;
                     if (!insideVertical(y)) {
                         // Hold the last optical position while the pointer is
                         // temporarily out of bounds. Returning during MOVE made
@@ -281,6 +286,11 @@ public final class GlassMotion {
                             + (origin.getLeft()+event.getX()));
                     if (hovered == selected) {
                         returnToSelected();
+                        // Critical 1.8.8 parity: tapping the ALREADY selected
+                        // tab must still invoke its original refresh/callback.
+                        // A completed drag back to the same tab is NOT a tap.
+                        if (tapEligible && hovered == originIndex)
+                            tabs[hovered].performClick();
                     } else {
                         // Pin to the actual destination BEFORE the old View is
                         // removed. The next page will materialise at this same tab.
