@@ -1159,7 +1159,19 @@ public final class MainActivity extends Activity {
 
         TextView[] items = new TextView[]{home, tx, debts, analytics};
         LinearLayout tabs = liquid ? Ui.row(this) : nav;
-        if (liquid) tabs.setTag("wen_glass_tab_content");
+        if (liquid) {
+            tabs.setTag("wen_glass_tab_content");
+            if (SandboxMode.isSandbox(this)) {
+                // The native refractor samples THIS tab strip. A transparent
+                // backdrop turns its ARGB texture into a black glass capsule.
+                // Make the sampled plate opaque and quietly match nav chrome.
+                android.graphics.drawable.GradientDrawable sampledPlate =
+                        new android.graphics.drawable.GradientDrawable();
+                sampledPlate.setColor(Ui.DARK ? 0xFF30394C : 0xFFF8FBFF);
+                sampledPlate.setCornerRadius(Ui.dp(this, 26));
+                tabs.setBackground(sampledPlate);
+            }
+        }
         for (int i = 0; i < items.length; i++) {
             TextView item = items[i];
             item.setTag("wen_intro_nav_" + i);
