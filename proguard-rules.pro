@@ -11,3 +11,8 @@
 -keep class **.R
 -keep class **.R$* { <fields>; }
 -dontwarn java.lang.invoke.StringConcatFactory
+
+# Optional API 36 optical classes in the MIT lens library; guarded at runtime.
+# Narrowly suppress R8's unresolved-platform warning (no finance/security keep rule).
+-dontwarn android.graphics.RuntimeColorFilter
+-dontwarn android.graphics.RuntimeXfermode
