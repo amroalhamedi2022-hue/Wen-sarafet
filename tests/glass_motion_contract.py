@@ -98,7 +98,9 @@ assert 'MIT_VIEW_GLASS_BACKDROP_BOUND source=' in sandbox
 assert 'MIT_FAB_BACKDROP_BOUND source=' in sandbox
 assert "fab.setBackground(null);" in sandbox and "fab.setElevation(0f);" in sandbox
 assert "private final Path clipShape = new Path();" in sandbox, "No per-frame clip path allocations"
-assert "new Path()" not in sandbox.split("@Override protected void onDraw(Canvas canvas)",1)[1], "Avoid per-frame path allocation"
+sheen_draw=sandbox.split("private static final class OpticalSheen extends View",1)[1].split("@Override protected void onDraw(Canvas canvas)",1)[1].split("private static final class OpticalCrown",1)[0]
+assert "new Path()" not in sheen_draw, "Avoid per-frame path allocation in the sheen"
+assert "new Path()" not in sandbox.split("void paint(Canvas canvas, int width, int height",1)[1], "No path allocations in the foreground optical crown"
 assert "glass.setEnableDynamicBackground(false)" in sandbox, "No idle glass polling"
 assert "new int[]{0x9AFFFFFF,0xEBFFFFFF,0xE1FFFFFF,0xA9FFFFFF}" in sandbox, "Centre frost must mask oversized text ghosts"
 assert "glass.setAberrationIntensity(.38f + .85f * t)" in sandbox, "Chromatic refraction must visibly respond"
