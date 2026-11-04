@@ -39,7 +39,7 @@ assert "optic.bindPhysicalPill(lens);" in engine
 assert "MotionEvent.ACTION_CANCEL" in engine
 assert "lens.animate().translationX(fingerLensX(view.getLeft()+event.getX()))" in engine
 assert "private float fingerLensX(float fingerX)" in engine
-assert "lens.setTranslationX(destination)" in engine
+assert "lens.setTranslationX(fluidX)" in engine, "On-MOVE nav lens follows with viscous lag"
 assert "boolean fromNavGesture = pendingGlassNavigationSwitch;" in main
 assert "if (fromNavGesture || paletteSwitch)" in main
 assert "boolean paletteSwitch = pendingPaletteSwitch;" in main
@@ -56,7 +56,7 @@ assert "new app.wensarafet.glass.WenNavigationTrack(this, Ui.DARK)" in main, "Na
 assert "view.setSelected(selected);" in main
 assert "tabs[hovered].performClick();" in engine
 assert "tracking=true; cancelled=false;" in engine
-assert "lens.setTranslationX(destination)" in engine
+assert "lens.setTranslationX(fluidX)" in engine
 assert "new NavigationGesture(" in engine
 assert "boolean fromNavGesture = pendingGlassNavigationSwitch;" in main
 assert "lastGlassNavigationTab = selectedTab;" in main
@@ -76,7 +76,7 @@ assert "public static void finishNavigationLensHandoff(FrameLayout track, View l
 assert "morphTo(1f, 190);" in engine, "Hold must create a deeper optical droplet"
 assert "morphTo(0f, 190);" in engine, "Release/cancel must restore the resting pill"
 assert "lens.setTranslationX(tabs[hovered].getLeft());" in engine, "Pin at destination before click"
-assert "lens.setTranslationX(destination)" in engine, "Dragged lens follows fingertip"
+assert "lens.setTranslationX(fluidX)" in engine, "Dragged lens smoothly follows fingertip"
 assert "WenNavigationLensDrawable glass = opticalLens();" in engine
 assert "glass != null ? glass.getMorph() : materialProgress" in engine, "External glass shares finite morph animator"
 assert "materialBridge.morph(progress);" in engine and "materialBridge.follow(x);" in engine
@@ -85,9 +85,18 @@ track=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenNavigationTrack.jav
 assert "GlassGestureBridge" in track and "getGlassGestureBridge()" in track
 sandbox=(p/"app/src/sandbox/java/app/wensarafet/tracker/SandboxOpticalGlass.java").read_text(encoding="utf-8")
 assert "MIT_VIEW_GLASS_PRESS_ACTIVE" in sandbox
-assert "glass.setRefractionHeight((6.0f + 10f * t) * d)" in sandbox, "Active refraction grows on hold without blurring labels"
-assert "glass.setBevelWidth((7.5f + 1.6f * t) * d)" in sandbox
+assert "glass.setRefractionHeight((6.0f + 10f * t + 4.4f * strain) * d)" in sandbox, "Hold refraction grows smoothly with liquid strain"
+assert "glass.setBevelWidth((7.5f + 1.6f * t + 1.25f * strain) * d)" in sandbox
 assert "glass.setDispersionStrength(0f);" in sandbox and "setEnableChromaticAberration(true)" not in sandbox, "The material must have neutral, non-rainbow edges"
+assert "private void applyLiquidMaterial()" in sandbox, "Liquid effect remains bounded to nav material"
+assert "Math.abs(pull)" in sandbox and "dragAnchor = pointerX" in sandbox
+assert "dragEnergy * t" in sandbox, "Stretch must fade during finite release animation"
+assert "glass.setScaleX(1f + .025f * t + .088f * strain)" in sandbox
+assert "glass.setScaleY(1f + .016f * t - .041f * strain)" in sandbox
+assert "motionReduced()" in sandbox, "Reduced-motion disables directional stretch"
+assert "materialBridge.follow(view.getLeft()+event.getX());" in engine
+assert "lens.getTranslationX()) * .78f" in engine, "Viscous tracking is finite and bounded"
+assert ".setDuration(190).setInterpolator(NAV_SPRING).start();" in engine, "Release uses a damped spring"
 assert "public static boolean attachFab(FrameLayout host, FrameLayout root, TextView fab)" in sandbox
 assert "MIT_FAB_BACKDROP_BOUND" in sandbox and "MIT_FAB_GLASS_ATTACHED" in sandbox
 assert "private static View findUnderlay(View view)" in sandbox, "Backdrop must exclude its own glyphs"
