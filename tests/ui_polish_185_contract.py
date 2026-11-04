@@ -75,8 +75,10 @@ assert "getResources().getConfiguration().screenWidthDp<420" in checkpoint
 assert "getResources().getConfiguration().screenWidthDp<430" in debt_card
 assert "buttons.setOrientation(compact?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL)" in debt_card
 assert 'actionButton("سجل الحركات",false)' in debt_card
-assert 'actionButton("سداد جزئي",false)' in debt_card
-assert 'actionButton("✓ تم السداد",true)' in debt_card
+assert 'actionButton("سداد في الدفتر فقط",false)' in debt_card
+assert 'actionButton("سداد فعلي عبر حساب",true)' in debt_card
+assert "showAccountLinkedDebtPayment(debt)" in debt_card
+assert 'actionButton("✓ إغلاق الدفتر (دون حساب)",false)' in debt_card
 assert "db.markDebtPaid(debt.id)" in debt_card
 assert "db.deleteDebt(debt.id)" in debt_card
 assert "countDebtLinkedFinancialTransactions(debt.id)" in debt_card
