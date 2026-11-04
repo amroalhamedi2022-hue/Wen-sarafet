@@ -8,7 +8,7 @@ Date: 2026-11-04. Owner explicitly requested this targeted finance/UI repair.
 ## Repairs
 - New `reclassifyDebtTransactionToCategory` dedicated atomic path removes the debt ledger allocation, changes only category and special-debt identity and recalculates affected debt summaries. NEVER reverses or re-applies the original cash posting; does not edit source account, amount, currency, existing posted impact, timestamps or capture metadata. Permits compatible manual/captured source, **same financial type only**, and rejects split/FX/corrupt ledger records. If repayment depends on opening, refuse with actionable message. This protects historical debt transactions with uncertain imported/old cash postings.
 - Debt editing UI routes directly to same-direction category picker. The previous generic guard remains for other transfer/FX/debt mutation.
-- Separate clearly marked ledger-only repayments from real-account repayments. Real repayment picks an active account matching the debt currency, calls the atomic `addDebtTransaction` repayment path; receivable INCOME adds cash, payable EXPENSE debits cash. Ledger-only closing explicitly warns it never changes any account.
+- Separate clearly marked ledger-only repayments from real-account repayments. Real repayment picks an active account matching the debt currency, calls the atomic `addDebtPaymentToExactDebt` method targeting the clicked debt ID (not another older debt); receivable INCOME adds cash, payable EXPENSE debits cash. Ledger-only closing explicitly warns it never changes any account.
 - Audit events now render WRAP_CONTENT cards, searchable history with category filter, full pagination (40 items per page), event ID vs linked record ID, before/after values with names of accounts and debt people, and optional "show original" link. Delete/undo remains restricted to existing eligible safe actions.
 - Manual `setAccountBalance` now writes a before/after ACCOUNT_ADJUST entry in the same SQLite transaction. No log is created for an unchanged balance.
 - Database migration v14->v15 **refreshes audit triggers only**, preserving account/transaction/debt/backup/checkpoint rows. New audit triggers also capture note updates, debt note, category name/emoji/status and original transaction context. Old audit entries are never retroactively fabricated; legacy sparse entries still display whatever can be verified.
@@ -31,3 +31,6 @@ Date: 2026-11-04. Owner explicitly requested this targeted finance/UI repair.
 8. Back up and restore on isolated device/test data, ensure no old balance duplicated, no category checkpoint loss, no deleted real money records.
 
 No theme/Liquid Glass animation source changes were made.
+
+## Exact debt payment protection
+The prior general ledger allocation chose the oldest debt of the same person/currency, not necessarily the debt card clicked. The real-account repayment control now posts the payment only to the requested `debt.id`, guards insufficient funds and overpayment, and commits the account change, financial transaction and debt movement together. The original general-purpose historical allocation method remains unchanged for other workflows.

@@ -2369,9 +2369,8 @@ public final class MainActivity extends Activity {
                 if(amountMinor==null || amountMinor<=0 || amountMinor>debt.remainingMinor)
                     throw new IllegalArgumentException("المبلغ غير صحيح أو أكبر من المتبقي في الدين");
                 Models.Account selected=choices.get(account.getSelectedItemPosition());
-                db.addDebtTransaction(incoming?FinanceRules.INCOME:FinanceRules.EXPENSE,
-                        amountMinor,debt.currency,selected.id,note.getText().toString(),
-                        true,FinanceRules.SPECIAL_DEBT_PAYMENT,debt.personId,debt.direction);
+                // Exact selected debt id: never allocate a repayment to another old debt.
+                db.addDebtPaymentToExactDebt(debt.id,amountMinor,selected.id,note.getText().toString());
                 dialog.dismiss();
                 Toast.makeText(this,"تم تسجيل السداد في الحساب ودفتر الدين معًا",Toast.LENGTH_LONG).show();
                 showDebtPersonDetails(debt.personId,debt.personName,debt.direction);

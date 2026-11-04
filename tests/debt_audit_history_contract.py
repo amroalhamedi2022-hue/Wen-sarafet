@@ -60,11 +60,21 @@ for t in ("writable.beginTransaction()","writable.insertOrThrow(\u0022change_his
 
 linked=ui.split("private void showAccountLinkedDebtPayment(",1)[1].split(
     "private void showManualDebtPayment(",1)[0]
-assert "db.addDebtTransaction(" in linked
-assert "FinanceRules.SPECIAL_DEBT_PAYMENT" in linked
+assert "db.addDebtPaymentToExactDebt(debt.id,amountMinor,selected.id" in linked
+assert "db.addDebtTransaction(" not in linked
+
+exact=finance.split("public long addDebtPaymentToExactDebt(",1)[1].split(
+    "public long addFxTransfer(",1)[0]
+for required in ('"SELECT person_id,direction,currency FROM debts WHERE id=? AND closed_at IS NULL"',
+                 "long remaining=debtRemaining(writable,debtId)", 
+                 "amountMinor>remaining", 'applyBalanceEffect(writable,type,amountMinor,accountId,null)',
+                 'insertDebtMovement(writable,debtId,txId,"PAYMENT",amountMinor,now,safeNote)',
+                 '"balance_impact_minor"', 'writable.beginTransaction()', 'writable.setTransactionSuccessful()'):
+    assert required in exact,required
+assert "allocatePayment(" not in exact
 assert "amountMinor>debt.remainingMinor" in linked
 assert "debt.currency.equals(account.currency)" in linked
-assert "true,FinanceRules.SPECIAL_DEBT_PAYMENT,debt.personId,debt.direction" in linked
+assert "debt.currency.equals(account.currency)" in linked
 
 # Independent SQLite fixture: already paid money is NEVER debited or refunded
 # simply by moving a debt-related outflow into ordinary expense analytics.

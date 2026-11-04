@@ -1141,6 +1141,65 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         }
     }
 
+    /**
+     * Real cash repayment against EXACT debt id. Never auto-allocate to older debts
+     * of the same person; this operation posts account and ledger once, atomically.
+     */
+    public long addDebtPaymentToExactDebt(long debtId,long amountMinor,long accountId,String note) {
+        if(amountMinor<=0)throw new IllegalArgumentException("مبلغ السداد يجب أن يكون أكبر من صفر");
+        SQLiteDatabase writable=getWritableDatabase();
+        writable.beginTransaction();
+        try {
+            long personId;
+            String direction,currency;
+            try(Cursor c=writable.rawQuery(
+                    "SELECT person_id,direction,currency FROM debts WHERE id=? AND closed_at IS NULL",
+                    new String[]{String.valueOf(debtId)})) {
+                if(!c.moveToFirst())throw new IllegalArgumentException("سجل الدين مغلق أو غير موجود");
+                personId=c.getLong(0);direction=c.getString(1);currency=c.getString(2);
+            }
+            validateDebtDirection(direction);
+            long remaining=debtRemaining(writable,debtId);
+            if(amountMinor>remaining || remaining<=0)
+                throw new IllegalArgumentException("السداد أكبر من المتبقي أو الدين مسدد بالفعل");
+            Models.Account account=getAccount(accountId);
+            if(account==null || !currency.equals(account.currency) ||
+                    !isActiveAccount(writable,accountId))
+                throw new IllegalArgumentException("اختر حسابًا نشطًا بنفس عملة الدين");
+            String type=FinanceRules.DEBT_RECEIVABLE.equals(direction)
+                    ? FinanceRules.INCOME : FinanceRules.EXPENSE;
+            long now=System.currentTimeMillis();
+            String safeNote=note==null?"":note.trim();
+            ContentValues tx=new ContentValues();
+            tx.put("type",type);
+            tx.put("amount_minor",amountMinor);
+            tx.put("currency",currency);
+            tx.put("account_id",accountId);
+            tx.putNull("destination_account_id");
+            tx.putNull("category_id");
+            tx.put("note",safeNote);
+            tx.putNull("raw_text");
+            tx.put("created_at",now);
+            tx.put("source","MANUAL");
+            tx.put("affects_balance",1);
+            tx.put("base_affects_balance",1);
+            tx.put("balance_impact_minor",amountMinor);
+            tx.put("special_kind",FinanceRules.SPECIAL_DEBT_PAYMENT);
+            tx.put("debt_person_id",personId);
+            tx.put("debt_direction",direction);
+            long txId=writable.insertOrThrow("transactions",null,tx);
+            applyBalanceEffect(writable,type,amountMinor,accountId,null);
+            insertDebtMovement(writable,debtId,txId,"PAYMENT",amountMinor,now,safeNote);
+            recomputeDebt(writable,debtId);
+            writable.setTransactionSuccessful();
+            return txId;
+        }finally {
+            writable.endTransaction();
+            BalanceWidgetProvider.updateAll(appContext);
+            BudgetAlertManager.checkAll(appContext);
+        }
+    }
+
     /** New multi-currency transfer only; leaves all legacy same-currency transfers untouched. */
     public long addFxTransfer(long sourceId, long destinationId, long sourceAmountMinor,
                               String destUnitsPerSourceUnit, String rateSource, long checkedAt) {
