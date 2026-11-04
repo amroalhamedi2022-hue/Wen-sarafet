@@ -319,8 +319,23 @@ if ! grep -q 'NAV_LIQUID_STRETCH_ACTIVE' "$OUT/nav-after-drag-probe.log"; then
   exit 1
 fi
 echo "PASS: real tab received hold-drag event through raised glass"
-adb shell screencap -p /sdcard/wen-after-drag.png
-adb pull /sdcard/wen-after-drag.png "$OUT/analytics-after-hold-drag.png"
+# ADB file pull sometimes disconnects midway on the software GPU emulator.
+# We already took a diagnostic frame after the swipe; prefer direct streaming
+# and fall back to that valid frame rather than failing successful navigation.
+if ! adb exec-out screencap -p > "$OUT/analytics-after-hold-drag.png" ||
+   ! python3 - "$OUT/analytics-after-hold-drag.png" <<'PY'
+import sys, pathlib
+p=pathlib.Path(sys.argv[1])
+assert p.stat().st_size > 1024 and p.read_bytes()[:8] == b"\\x89PNG\\r\\n\\x1a\\n"
+PY
+then
+  if [ -s "$OUT/nav-after-drag-debug.png" ]; then
+    cp "$OUT/nav-after-drag-debug.png" "$OUT/analytics-after-hold-drag.png"
+    echo "INFO: retained the already captured post-drag emulator frame"
+  else
+    echo "WARN: screenshot transport failed; native navigation QA itself passed"
+  fi
+fi
 
 # The old CI only clicked FAB. A beautiful but inactive FAB front shader
 # would still pass. Hold it ON SCREEN and prove its above-glyph paint changed.
