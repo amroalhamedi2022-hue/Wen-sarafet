@@ -8,7 +8,7 @@ import android.graphics.RuntimeShader;
 
 /**
  * Finite-gesture GPU refraction of actual navigation pixels (Android API 33+).
- * AGSL bends the image field and performs subtle red/blue wavelength dispersion.
+ * AGSL bends the image field without coloured wavelength splitting.
  * The shader is allocated once per overlay and reused; low-end or unsupported
  * hardware safely falls back to the conventional two-plane Canvas optics.
  */
@@ -31,31 +31,21 @@ final class WenLiquidRuntimeOptics {
             "  float2 normal = shell / max(shellLength, 0.01);\n" +
             "  float bendPx = amount * (1.4 + 5.8 * opticalEdge);\n" +
             "  float2 refractedCoordinate = p - normal * bendPx;\n" +
-            "  float split = 0.48 * amount * opticalEdge;\n" +
             "  half4 middle = image.eval(refractedCoordinate);\n" +
-            "  half4 red = image.eval(refractedCoordinate + normal * split);\n" +
-            "  half4 blue = image.eval(refractedCoordinate - normal * split);\n" +
-            "  half a = max(max(red.a, middle.a), blue.a);\n" +
-            "  half3 refracted = half3(red.r, middle.g, blue.b);\n" +
+            "  half a = middle.a;\n" +
+            "  half3 refracted = middle.rgb;\n" +
             "  float nx = d.x / hw;\n" +
             "  float ny = d.y / hr;\n" +
             "  float drift = (pointer - centre.x) / hw;\n" +
             "  float arch = -0.12 + 0.07 * sin(nx * 2.7 + drift * 0.45) + 0.06 * nx * nx;\n" +
             "  float beam = exp(-72.0 * pow(ny - arch, 2.0));\n" +
             "  beam *= 1.0 - smoothstep(0.76, 0.97, abs(nx));\n" +
-            "  float u = clamp(0.5 + 0.5 * nx + 0.10 * drift, 0.0, 1.0);\n" +
-            "  half3 ice = half3(0.25, 0.78, 1.0);\n" +
-            "  half3 rose = half3(0.98, 0.37, 0.72);\n" +
-            "  half3 gold = half3(1.0, 0.88, 0.45);\n" +
-            "  half3 violet = half3(0.46, 0.52, 1.0);\n" +
-            "  half3 leftSpectrum = mix(ice, rose, half(smoothstep(0.1, 0.48, u)));\n" +
-            "  half3 rightSpectrum = mix(gold, violet, half(smoothstep(0.52, 0.96, u)));\n" +
-            "  half3 spectrum = mix(leftSpectrum, rightSpectrum, half(smoothstep(0.44, 0.64, u)));\n" +
+
             "  float upperGlint = exp(-48.0 * pow(ny + 0.82, 2.0));\n" +
             "  float glint = upperGlint * (1.0 - smoothstep(0.65, 0.98, abs(nx)));\n" +
             "  float light = amount * (0.28 * beam + 0.075 * glint + 0.045 * opticalEdge);\n" +
             "  a = max(a, half(light * 0.6));\n" +
-            "  refracted = mix(refracted, spectrum * a, half(clamp(light, 0.0, 0.36)));\n" +
+            "  refracted = mix(refracted, half3(a), half(clamp(light, 0.0, 0.36)));\n" +
             "  return half4(min(refracted, half3(a)), a);\n" +
             "}\n";
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
