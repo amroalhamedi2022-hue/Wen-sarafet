@@ -1191,7 +1191,17 @@ public final class MainActivity extends Activity {
             // One optical pill behind all four labels, never four independent pills.
             app.wensarafet.glass.WenNavigationTrack track =
                     new app.wensarafet.glass.WenNavigationTrack(this, Ui.DARK);
-            FrameLayout lens = new FrameLayout(this);
+            // The glass must be visually in FRONT of the tab labels while
+            // remaining completely transparent to input. A non-clickable
+            // FrameLayout still dispatches DOWN to its native material child,
+            // swallowing horizontal drags before the real tab TextViews.
+            FrameLayout lens = SandboxMode.isSandbox(this)
+                    ? new FrameLayout(this) {
+                        @Override public boolean dispatchTouchEvent(MotionEvent event) {
+                            return false; // never steal the original tab gesture
+                        }
+                    }
+                    : new FrameLayout(this);
             lens.setBackground(Ui.glassSlidingNavigationLens(this));
             // The built-in lens stays below labels; the sandbox's native lens
             // is raised over them after the real tab hit targets are mounted.
