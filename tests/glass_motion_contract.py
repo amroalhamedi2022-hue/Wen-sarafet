@@ -91,6 +91,7 @@ assert "glass.setDispersionStrength(0f);" in sandbox and "setEnableChromaticAber
 assert "private void applyLiquidMaterial()" in sandbox, "Liquid effect remains bounded to nav material"
 assert "Math.abs(pull)" in sandbox and "dragAnchor = pointerX" in sandbox
 assert "dragEnergy * t" in sandbox, "Stretch must fade during finite release animation"
+assert "NAV_LIQUID_STRETCH_ACTIVE" in sandbox, "Native touch drag must have a runtime proof marker"
 assert "glass.setScaleX(1f + .025f * t + .088f * strain)" in sandbox
 assert "glass.setScaleY(1f + .016f * t - .041f * strain)" in sandbox
 assert "motionReduced()" in sandbox, "Reduced-motion disables directional stretch"
