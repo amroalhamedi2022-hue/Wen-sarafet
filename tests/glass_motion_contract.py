@@ -74,7 +74,7 @@ assert "postDelayed" not in lensSource and "ValueAnimator" not in lensSource
 assert "finishNavigationLensHandoff(track, lens)" in main
 assert "public static void finishNavigationLensHandoff(FrameLayout track, View lens)" in engine
 assert "morphTo(1f, 190);" in engine, "Hold must create a deeper optical droplet"
-assert "morphTo(0f, 190);" in engine, "Release/cancel must restore the resting pill"
+assert "morphTo(0f, materialBridge != null ? LIQUID_RELEASE_MS : 190);" in engine, "Viscous nav recovers without changing normal release"
 assert "lens.setTranslationX(tabs[hovered].getLeft());" in engine, "Pin at destination before click"
 assert "lens.setTranslationX(fluidX)" in engine, "Dragged lens smoothly follows fingertip"
 assert "WenNavigationLensDrawable glass = opticalLens();" in engine
@@ -85,21 +85,27 @@ track=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenNavigationTrack.jav
 assert "GlassGestureBridge" in track and "getGlassGestureBridge()" in track
 sandbox=(p/"app/src/sandbox/java/app/wensarafet/tracker/SandboxOpticalGlass.java").read_text(encoding="utf-8")
 assert "MIT_VIEW_GLASS_PRESS_ACTIVE" in sandbox
-assert "glass.setRefractionHeight((6.0f + 10f * t + 4.4f * strain) * d)" in sandbox, "Hold refraction grows smoothly with liquid strain"
-assert "glass.setBevelWidth((7.5f + 1.6f * t + 1.25f * strain) * d)" in sandbox
+assert "glass.setRefractionHeight((6.0f + 11.5f * t + 6.2f * strain) * d)" in sandbox, "Stronger monochrome refraction under liquid strain"
+assert "glass.setBevelWidth((7.5f + 1.9f * t + 2.0f * strain) * d)" in sandbox
 assert "glass.setDispersionStrength(0f);" in sandbox and "setEnableChromaticAberration(true)" not in sandbox, "The material must have neutral, non-rainbow edges"
 assert "private void applyLiquidMaterial()" in sandbox, "Liquid effect remains bounded to nav material"
 assert "Math.abs(pull)" in sandbox and "dragAnchor = pointerX" in sandbox
 assert "dragEnergy * t" in sandbox, "Stretch must fade during finite release animation"
 assert "NAV_LIQUID_STRETCH_ACTIVE" in sandbox, "Native touch drag must have a runtime proof marker"
-assert "glass.setScaleX(1f + .025f * t + .088f * strain)" in sandbox
-assert "glass.setScaleY(1f + .016f * t - .041f * strain)" in sandbox
+assert "glass.setScaleX(1f + .028f * t + .143f * strain)" in sandbox
+assert "glass.setScaleY(1f + .012f * t - .065f * strain)" in sandbox
 assert "motionReduced()" in sandbox, "Reduced-motion disables directional stretch"
 assert "materialBridge.follow(view.getLeft()+event.getX());" in engine
 assert "materialProgress = 0f;" in engine, "Each fresh DOWN must reset stale stretch"
 assert "materialBridge.reset();" in engine, "Repeated touches cannot inherit drag direction"
-assert "lens.getTranslationX()) * .78f" in engine, "Viscous tracking is finite and bounded"
-assert ".setDuration(190).setInterpolator(NAV_SPRING).start();" in engine, "Release uses a damped spring"
+assert "LIQUID_FOLLOW = .60f" in engine and "lens.getTranslationX()) * follow;" in engine, "Stronger viscosity only with external nav material"
+assert "materialBridge == null ? .78f" in engine, "Retain the existing non-sandbox nav drag"
+assert "LIQUID_RELEASE_MS = 265L" in engine, "Liquid spring has longer finite release"
+assert "materialBridge != null ? LIQUID_RELEASE : NAV_SPRING" in engine, "Normal nav spring is unchanged"
+assert "dragEnergy * .86f" in sandbox, "Pull memory survives slowing but fades on release"
+assert "dragEnergy * t" in sandbox, "No perpetual strain when morph returns to zero"
+assert "glass.setDispersionStrength(0f);" in sandbox, "Optical edges stay neutral"
+assert ".setInterpolator(materialBridge != null ? LIQUID_RELEASE : NAV_SPRING)" in engine, "Release uses sandbox-only liquid spring"
 assert "public static boolean attachFab(FrameLayout host, FrameLayout root, TextView fab)" in sandbox
 assert "MIT_FAB_BACKDROP_BOUND" in sandbox and "MIT_FAB_GLASS_ATTACHED" in sandbox
 assert "private static View findUnderlay(View view)" in sandbox, "Backdrop must exclude its own glyphs"
