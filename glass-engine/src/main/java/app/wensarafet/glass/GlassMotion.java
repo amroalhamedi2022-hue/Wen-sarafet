@@ -269,6 +269,8 @@ public final class GlassMotion {
                     return true;
                 case MotionEvent.ACTION_CANCEL:
                 case MotionEvent.ACTION_POINTER_DOWN:
+                    android.util.Log.i("WenGlassProbe", "NAV_GESTURE_INTERRUPTED action="
+                            + event.getActionMasked() + " tab=" + originIndex);
                     tracking=false; cancelled=true;
                     returnToSelected();
                     return true;
