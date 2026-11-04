@@ -221,8 +221,15 @@ public final class SandboxOpticalGlass {
             // accessibility, touch and the Add Transaction click action.
             final OpticalCrown fabCrown = new OpticalCrown(d, true);
             final View frontSurface = new View(host.getContext()) {
+                private boolean pressedDrawConfirmed;
                 @Override protected void onDraw(Canvas canvas) {
                     fabCrown.paint(canvas, getWidth(), getHeight(), progress[0], 0f);
+                    if (!pressedDrawConfirmed && progress[0] > .65f
+                            && canvas.isHardwareAccelerated()) {
+                        pressedDrawConfirmed = true;
+                        android.util.Log.i("WenGlassProbe",
+                                "MIT_FAB_FRONT_PRESS_DRAWN");
+                    }
                 }
             };
             frontSurface.setWillNotDraw(false);
