@@ -46,17 +46,17 @@ public final class SandboxOpticalGlass {
             glass.setUseShaderPipeline(true);
             glass.setEnableDynamicBackground(false); // redraw only on gestures
             glass.setEnablePressEffect(false); // original tab owns touch
-            glass.setEnableBackdropBlur(true);
-            glass.setBlurAmount(.018f);
+            glass.setEnableBackdropBlur(false); // sampled glyphs must remain sharp
+            glass.setBlurAmount(0f);
             glass.setEnableChromaticAberration(false);
             glass.setEnableShadow(false);
             glass.setEnableEdgeHighlight(true);
             glass.setCornerRadius(999f);
-            glass.setBevelWidth(9.5f * d);
+            glass.setBevelWidth(7.5f * d);
             glass.setRefractionFalloff(1.4f);
             glass.setDispersionStrength(0f);
-            glass.setDisplacementScale(35f);
-            glass.setRefractionHeight(9.5f * d);
+            glass.setDisplacementScale(14f);
+            glass.setRefractionHeight(6.0f * d);
             glass.setEdgeSoftness(1.8f * d);
             glass.setAberrationIntensity(0f);
             glass.setSaturation(100f);
@@ -88,10 +88,10 @@ public final class SandboxOpticalGlass {
                     track.postInvalidateOnAnimation();
                     // Dynamic lens profile. The middle remains quiet; only
                     // the bevel gains thickness, light and dispersion on hold.
-                    glass.setBevelWidth((9.5f + 1.7f * t) * d);
-                    glass.setRefractionHeight((9.5f + 14f * t) * d);
+                    glass.setBevelWidth((7.5f + 1.6f * t) * d);
+                    glass.setRefractionHeight((6.0f + 10f * t) * d);
                     // No RGB wavelength splitting: only geometric refraction changes on hold.
-                    glass.setDisplacementScale(35f + 55f * t);
+                    glass.setDisplacementScale(14f + 42f * t);
                     // Chromatic aberration stays disabled at every press progress.
                     glass.setGlassTint(Color.WHITE, .045f + .022f * t);
                     glass.setScaleX(1f + (.047f + .018f * Math.abs(dragDirection)) * t);
@@ -202,7 +202,7 @@ public final class SandboxOpticalGlass {
             glass.setUseShaderPipeline(true);
             glass.setEnableDynamicBackground(false);
             glass.setEnableBackdropBlur(true);
-            glass.setBlurAmount(.045f);
+            glass.setBlurAmount(.014f);
             glass.setEnableShadow(false);
             glass.setEnableChromaticAberration(false);
             glass.setEnableEdgeHighlight(true);
@@ -392,7 +392,7 @@ public final class SandboxOpticalGlass {
             if (circle) {
                 frost.setShader(new RadialGradient(w*.5f, h*.5f,
                         Math.max(1f, Math.min(w,h)*.51f),
-                        new int[]{0x55FFFFFF,0x36FFFFFF,0x10FFFFFF},
+                        new int[]{0xC6FFFFFF,0xA6FFFFFF,0x54FFFFFF},
                         new float[]{0f,.62f,1f}, Shader.TileMode.CLAMP));
             } else {
                 frost.setShader(new LinearGradient(0f,0f,0f,h,
