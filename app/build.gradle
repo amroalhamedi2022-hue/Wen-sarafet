@@ -44,4 +44,6 @@ android {
 dependencies {
     // Android-only visual module: no repository access or finance logic.
     implementation project(":glass-engine")
+    // MIT-licensed native navigation optics; UI rendering only (no permissions).
+    implementation "com.github.QWEA0:liquidglass:v2.0.11"
 }
