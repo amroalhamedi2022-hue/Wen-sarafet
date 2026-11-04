@@ -1,5 +1,18 @@
 # وين صرفت — الخطة الرئيسية لمحرك حركات Liquid Glass
 
+## 4 November 2026 — Batch 2: increased viscosity, navigation ONLY (emulator verified)
+
+**Feature commit:** `8bceb86bc01fcc4b6620ba2ff91283f87c52790f` on `design/wen-full-unlocked-sandbox-20261101` / PR #28 Draft. User requested more viscosity and fluidity **only for navigation**. No FAB, SQLite, finances, security, original package or main branch modifications.
+
+- Sandbox-only nav tracking factor **0.78 → 0.60**; native touch-through tab handlers and accessible destination semantics are unchanged. Fallback and non-sandbox navigation retain 0.78.
+- Longer same-tab material release spring **190ms → 265ms**, with lower overshoot `0.24`; disabled animations and battery saver settle without elastic lag. Native drag-strain energy retains a small amount across slow finger movements (`max(newEnergy, oldEnergy * .86)`) and dissolves as the finite morph falls to zero. No idle timers or per-frame unbounded work.
+- More visible X stretch (`.088 → .143` per strain), Y compression (`.041 → .065`), neutral refraction (`4.4 → 6.2` strain px in dp-scaled settings), and stronger bevel. All optical tint, zero chromatic aberration, unblurred glyph sampling, over-glyph composite, and touch-through fixes are preserved.
+- **Verified CI on code SHA:** `41801375378` sandbox APK + lint PASS; `41801375211` actual Android emulator PASS; `41801375199` finance/security/source tests PASS; `41801375305` debug compile PASS; `41801375187` unsigned original-package candidate PASS.
+- Emulator shows legible tab icons at startup, successful FAB click (unchanged), held lens refraction, actual `UP_TARGET tab=3 from=0` and successful Home→Analytics Hold+Drag, active nav strain marker, and no activation blocker on isolated sandbox.
+- **Test APK:** `app.wensarafet.tracker.sandbox`, 13,114,737 bytes, SHA-256 `f9f4c60e7fbd655ecd2a1b3b2d230eb8adedb9f07074716e244690af5bb35749`. GitHub Actions artifact `13307308983` from `41801375378`. Debug-key-signed trial APK, **not** an update to the original installed app.
+- Remaining visual acceptance: physical tablet and phone testing for subjective gel feel, fluidity balance, 60/120Hz performance, and reduced-motion/manual accessibility. Do not merge to production without user acceptance and original signing/security review.
+
+
 ## 4 November 2026 — Navigation-only Liquid deformation (Batch 1)
 
 **Scope:** User explicitly limited this iteration to the bottom **navigation bar**. No FAB refactor, transaction/finance, database, background notification, authentication, production signing or main-branch change. This continues the already-approved neutral, touch-through optical lens.
