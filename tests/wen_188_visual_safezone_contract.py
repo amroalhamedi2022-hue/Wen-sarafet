@@ -9,7 +9,7 @@ MAIN = "app/src/main/java/app/wensarafet/tracker/MainActivity.java"
 APP_GRADLE = "app/build.gradle"
 SETTINGS = "settings.gradle"
 ALLOWED = {
-    MAIN, APP_GRADLE, SETTINGS, "gradle.properties",
+    MAIN, APP_GRADLE, SETTINGS, "gradle.properties", "proguard-rules.pro",
     "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java",
     "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java",
     "glass-engine/src/main/java/app/wensarafet/glass/GlassMotion.java",
@@ -77,6 +77,17 @@ for callback in [
 ]:
     assert callback in current_main, f"SAFE ZONE: changed original callback: {callback}"
 assert 'versionName "1.8.8"' in current_gradle
+rules = (ROOT / "proguard-rules.pro").read_text(encoding="utf-8")
+optional_platform_warnings = (
+    "\n# Optional API 36 optical classes in the MIT lens library; guarded at runtime.\n"
+    "# Narrowly suppress R8's unresolved-platform warning (no finance/security keep rule).\n"
+    "-dontwarn android.graphics.RuntimeColorFilter\n"
+    "-dontwarn android.graphics.RuntimeXfermode\n"
+)
+assert rules.count(optional_platform_warnings) == 1
+assert rules.replace(optional_platform_warnings, "") == baseline("proguard-rules.pro"), (
+    "SAFE ZONE: ProGuard rules changed beyond the two optional visual APIs"
+)
 assert "versionCode 24" in current_gradle
 assert 'applicationId "app.wensarafet.tracker"' in current_gradle
 
