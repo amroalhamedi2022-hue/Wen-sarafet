@@ -22,7 +22,7 @@ command = ('set -euo pipefail\nPROJECT_DIR="$1"\n'
            + '\nprintf "%s|%s" "$APP_VERSION_CODE" "$APP_VERSION_NAME"\n')
 parsed = subprocess.run(["bash", "-c", command, "bash", str(root)],
                         capture_output=True, text=True, check=True)
-assert parsed.stdout == "23|1.8.7", parsed
+assert parsed.stdout == "24|1.8.8", parsed
 
 cert = "6b8268e5b647b12a2aa055d7a22f7b8ea888e40fb863e74409938aad4ec789c9"
 with tempfile.TemporaryDirectory() as directory:
@@ -52,10 +52,11 @@ case "$2" in
       *current-182*) code=18 ;;
       *current-183*) code=19 ;;
       *current-184*) code=20 ;;
-      *current-185*|*same-as-current*) code=21 ;;
-      *) code=23 ;;
+      *current-185*) code=21 ;;
+      *current-187*|*same-as-current*) code=23 ;;
+      *) code=24 ;;
     esac
-    echo "package: name='$pkg' versionCode='$code' versionName='1.8.7'"
+    echo "package: name='$pkg' versionCode='$code' versionName='1.8.8'"
     ;;
   xmltree)
     case "$3" in
@@ -80,8 +81,8 @@ esac
 
     good = run("candidate.apk")
     assert good.returncode == 0 and "PASS" in good.stdout, (good.stdout, good.stderr)
-    previous = home / "current-185.apk"
-    previous.write_bytes(b"fake signed 1.8.5")
+    previous = home / "current-187.apk"
+    previous.write_bytes(b"fake signed 1.8.7")
     current_upgrade = subprocess.run(
         ["bash", str(checker), str(previous), str(home / "candidate.apk")],
         env=env, capture_output=True, text=True,

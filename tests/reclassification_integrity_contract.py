@@ -6,7 +6,7 @@ import json
 import sqlite3
 root=Path(__file__).resolve().parents[1]
 source=(root/"app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java").read_text()
-method=source.split("public void reclassifyTransaction(",1)[1].split("String oldType;",1)[0]
+method=source.split("private void reclassifyTransactionInternal(",1)[1].split("String oldType;",1)[0]
 assert method.index("writable.beginTransaction()") < method.index("SELECT 1 FROM transactions")
 assert method.index("SELECT 1 FROM transactions") < method.index("String oldType") if "String oldType" in method else True
 query=method.split('restricted=writable.rawQuery(',1)[1].split('new String[]{String.valueOf(transactionId)}',1)[0]
