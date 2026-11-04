@@ -173,7 +173,7 @@ public final class GlassMotion {
             lens.animate().cancel();
             if (ValueAnimator.areAnimatorsEnabled() && !lowPower(origin.getContext())) {
                 lens.animate().translationX(target).scaleX(1f).scaleY(1f)
-                        .setDuration(190).setInterpolator(COMPRESS).start();
+                        .setDuration(190).setInterpolator(NAV_SPRING).start();
             } else {
                 lens.setTranslationX(target); lens.setScaleX(1f); lens.setScaleY(1f);
             }
@@ -196,6 +196,10 @@ public final class GlassMotion {
                         optic.progress(.02f);
                     }
                     morphTo(1f, 190);
+                    // Establish the native liquid drag anchor at DOWN, not at
+                    // the first MOVE, so hold/stretch has stable direction.
+                    if (materialBridge != null)
+                        materialBridge.follow(view.getLeft()+event.getX());
                     android.util.Log.i("WenGlassProbe", "DOWN_MORPH completed");
                     if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
                         // Press creates a compact rounded bubble; hold leaves it
@@ -228,11 +232,14 @@ public final class GlassMotion {
                     if (materialBridge != null) materialBridge.follow(x);
                     float move=Math.abs(event.getX()-downX);
                     if (move>slop && lens.getWidth()>0) {
-                        // Direct translation tracks the fingertip; the animation
-                        // clock is not restarted for every ACTION_MOVE.
+                        // Slight one-sample viscous lag, bounded to the same
+                        // touch frame. No per-MOVE animator or idle choreographer.
+                        // UP pins the final tab, so selection never lags behind.
                         float destination=fingerLensX(x);
                         lens.animate().cancel();
-                        lens.setTranslationX(destination);
+                        float fluidX = lens.getTranslationX()
+                                + (destination - lens.getTranslationX()) * .78f;
+                        lens.setTranslationX(fluidX);
                         if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
                             lens.setScaleX(1f); lens.setScaleY(1f);
                         }
