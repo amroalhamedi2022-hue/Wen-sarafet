@@ -26,7 +26,9 @@ version_name="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\1/p
 [[ "$version_name" =~ ^1[.]8[.][0-9]+$ ]]
 grep -q 'android:layout_width="60dp"' app/src/main/res/layout/widget_balances.xml
 grep -q 'android:layout_width="54dp"' app/src/main/res/layout/widget_balances_triple.xml
-grep -q 'isVerificationMessage' app/src/main/java/app/wensarafet/tracker/CaptureEngine.java
+grep -Eq 'isVerificationMessage|FriendArabicCapturePolicy.isSecurityMessage' app/src/main/java/app/wensarafet/tracker/CaptureEngine.java
+# OTP guard remains mandatory and more comprehensive in the friend-specific parser.
+grep -Fq 'TransactionParser.isVerificationMessage(raw)' app/src/main/java/app/wensarafet/tracker/FriendArabicCapturePolicy.java
 grep -q 'DriveBackupManager' app/src/main/java/app/wensarafet/tracker/MainActivity.java
 grep -q 'addManualDebtPayment' app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java
 grep -q 'movementKind' app/src/main/java/app/wensarafet/tracker/DebtLedgerRules.java
