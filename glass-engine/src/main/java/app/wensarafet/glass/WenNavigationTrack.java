@@ -22,6 +22,8 @@ public final class WenNavigationTrack extends FrameLayout {
         void morph(float fraction);
         void follow(float pointerX);
         void reset();
+        /** The glass caustic is painted AFTER glyphs in the SAME track canvas. */
+        void drawForeground(Canvas canvas);
     }
     private GlassGestureBridge externalGlassBridge;
 
@@ -81,7 +83,11 @@ public final class WenNavigationTrack extends FrameLayout {
     @Override protected void dispatchDraw(Canvas canvas) {
         super.dispatchDraw(canvas);
         // Guaranteed post-children optical composite, same coordinates as pill.
-        if (!externalGlassActive) optic.renderOnto(canvas);
+        if (externalGlassActive) {
+            if (externalGlassBridge != null) externalGlassBridge.drawForeground(canvas);
+        } else {
+            optic.renderOnto(canvas);
+        }
     }
 
     @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
