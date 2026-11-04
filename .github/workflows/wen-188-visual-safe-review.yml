@@ -32,6 +32,14 @@ jobs:
           python3 tests/financial_safe_zone_guard.py
       - name: Run original finance, debt, migration and security tests
         run: bash scripts/test_core.sh
+      - name: Test approved split auto-remainder in exact monetary units
+        run: |
+          mkdir -p build/split-remainder-test
+          javac -encoding UTF-8 -d build/split-remainder-test \\
+            app/src/main/java/app/wensarafet/tracker/Money.java \\
+            app/src/main/java/app/wensarafet/tracker/SplitRemainderRules.java \\
+            tests/SplitRemainderRulesTest.java
+          java -cp build/split-remainder-test SplitRemainderRulesTest
       - name: Install SDK 35
         run: |
           test -n "$ANDROID_HOME"
