@@ -103,12 +103,12 @@ public final class SandboxOpticalGlass {
                     }
                     // Elastic capsule: follows the finger like a cohesive
                     // substance; never an independent halo or second bubble.
-                    glass.setBevelWidth((7.5f + 1.6f * t + 1.25f * strain) * d);
-                    glass.setRefractionHeight((6.0f + 10f * t + 4.4f * strain) * d);
-                    glass.setDisplacementScale(14f + 42f * t + 11f * strain);
+                    glass.setBevelWidth((7.5f + 1.9f * t + 2.0f * strain) * d);
+                    glass.setRefractionHeight((6.0f + 11.5f * t + 6.2f * strain) * d);
+                    glass.setDisplacementScale(14f + 46f * t + 15f * strain);
                     glass.setGlassTint(Color.WHITE, .045f + .022f * t);
-                    glass.setScaleX(1f + .025f * t + .088f * strain);
-                    glass.setScaleY(1f + .016f * t - .041f * strain);
+                    glass.setScaleX(1f + .028f * t + .143f * strain);
+                    glass.setScaleY(1f + .012f * t - .065f * strain);
                     sheen.setMotion(t, dragDirection * strain);
                     glass.invalidate();
                     track.postInvalidateOnAnimation();
@@ -137,7 +137,10 @@ public final class SandboxOpticalGlass {
                         float travelled = Math.min(1f,
                                 Math.abs(pull) / Math.max(1f, track.getWidth() * .55f));
                         float impulse = Math.min(1f, Math.abs(delta) / (25f * d));
-                        dragEnergy = Math.min(1f, travelled * .75f + impulse * .25f);
+                        float newEnergy = Math.min(1f, travelled * .78f + impulse * .22f);
+                        // Viscous memory: retain a little of the previous pull
+                        // when the finger slows, without a perpetual animator.
+                        dragEnergy = Math.min(1f, Math.max(newEnergy, dragEnergy * .86f));
                     }
                     pointerLast = pointerX;
                     applyLiquidMaterial();
