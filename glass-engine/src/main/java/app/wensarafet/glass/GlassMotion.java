@@ -188,6 +188,16 @@ public final class GlassMotion {
                     tracking=true; cancelled=false; hovered=originIndex;
                     downX=event.getX(); downY=event.getY();
                     lens.animate().cancel();
+                    // Repeated DOWNs after a same-tab release must start with
+                    // a fresh drag origin; never inherit old pull/velocity.
+                    if (morphAnimator != null) {
+                        morphAnimator.cancel();
+                        morphAnimator = null;
+                    }
+                    if (materialBridge != null) {
+                        materialBridge.reset();
+                        materialProgress = 0f;
+                    }
                     // Only the existing selected-tab pill receives optics on hold.
                     // Never draw a second circle or enlarge the whole pill.
                     if (optic != null) {
