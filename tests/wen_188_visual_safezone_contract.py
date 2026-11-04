@@ -16,6 +16,8 @@ ALLOWED = {
     "app/src/main/java/app/wensarafet/tracker/SplitRemainderUi.java",
     "app/src/main/java/app/wensarafet/tracker/SplitRemainderRules.java",
     "tests/SplitRemainderRulesTest.java",
+    "app/src/androidTest/java/app/wensarafet/tracker/SplitRemainderInstrumentedTest.java",
+    ".github/workflows/wen-188-split-ui-emulator.yml",
     "glass-engine/src/main/java/app/wensarafet/glass/GlassMotion.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenNavigationTrack.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenNavigationLensDrawable.java",
@@ -119,8 +121,21 @@ dependency = (
     '    implementation "com.github.QWEA0:liquidglass:v2.0.11"\n'
 )
 assert current_gradle.count(dependency) == 1
-assert current_gradle.replace(dependency, "") == baseline(APP_GRADLE), (
-    "SAFE ZONE: unexpected build, package, version or signing mutation"
+test_runner = (
+    '        // Test APK only; the release applicationId, permissions and signing stay identical.\n'
+    '        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"\n'
+)
+test_deps = (
+    '    // Android tests only: none of these dependencies enter the production APK.\n'
+    '    androidTestImplementation "androidx.test:core:1.6.1"\n'
+    '    androidTestImplementation "androidx.test:runner:1.6.2"\n'
+    '    androidTestImplementation "androidx.test.ext:junit:1.2.1"\n'
+)
+assert current_gradle.count(test_runner) == 1 and current_gradle.count(test_deps) == 1, (
+    "Instrumentation changes must be test APK only"
+)
+assert current_gradle.replace(test_runner, "").replace(test_deps, "").replace(dependency, "") == baseline(APP_GRADLE), (
+    "SAFE ZONE: unexpected build, package, version, dependency or signing mutation"
 )
 settings = (ROOT / SETTINGS).read_text(encoding="utf-8")
 repo_line = "repositories { google(); mavenCentral(); maven { url 'https://jitpack.io' } }"
