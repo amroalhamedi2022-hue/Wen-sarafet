@@ -161,6 +161,13 @@ public final class MainActivity extends Activity {
     }
 
     @Override public boolean dispatchTouchEvent(MotionEvent e) {
+        if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)) {
+            final int a = e.getActionMasked();
+            if (a == MotionEvent.ACTION_DOWN || a == MotionEvent.ACTION_UP
+                    || a == MotionEvent.ACTION_CANCEL)
+                android.util.Log.i("WenGlassProbe", "ACTIVITY_INPUT action=" + a
+                        + " x=" + e.getX() + " y=" + e.getY());
+        }
         switch(e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 primarySwipeActive=false;
@@ -1235,6 +1242,19 @@ public final class MainActivity extends Activity {
             }
             nav.addView(track, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            if (SandboxMode.isSandbox(this) && android.os.Build.VERSION.SDK_INT >= 29) {
+                // Explicitly protect the small floating tab strip against
+                // Android back/quick-switch edge gesture capture. Never touch
+                // the production app or intercept system gestures elsewhere.
+                track.post(() -> {
+                    if (!track.isAttachedToWindow() || track.getWidth() <= 0
+                            || track.getHeight() <= 0) return;
+                    track.setSystemGestureExclusionRects(
+                            java.util.Collections.singletonList(new android.graphics.Rect(
+                                    0, 0, track.getWidth(), track.getHeight())));
+                    android.util.Log.i("WenGlassProbe", "NAV_SYSTEM_GESTURE_EXCLUSION_BOUND");
+                });
+            }
             // During Hold+Drag (or a direct touch), the previous lens is
             // already under the released finger. Do not restart the new screen's
             // lens at the old selected tab: that caused a visible snap-back.
