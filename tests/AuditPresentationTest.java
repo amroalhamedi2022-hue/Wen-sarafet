@@ -40,6 +40,32 @@ public final class AuditPresentationTest {
         contains(deleted,"المبلغ: 8.00 ILS");
         check(AuditPresentation.details("EDIT","garbage",null,accounts,cats,currencies).size()==1,
                 "Legacy corrupted snapshots must not crash");
+        Map<Long,String> debtNames=new HashMap<>();
+        debtNames.put(12L,"أحمد • إلي");
+        Map<Long,String> debtCurrencies=new HashMap<>();
+        debtCurrencies.put(12L,"ILS");
+        Map<Long,String> people=new HashMap<>();
+        people.put(9L,"أحمد");
+        String debtBefore="debt=12, kind=OPEN, amount=5000, note=أصل الدين";
+        String debtAfter="debt=12, kind=OPEN, amount=4500, note=تعديل المبلغ";
+        check(AuditPresentation.title("DEBT_ADD","debt_movements",null,debtBefore).equals("تسجيل أصل الدين"),
+                "Debt opening title");
+        check(AuditPresentation.title("DEBT_EDIT","debt_movements",debtBefore,debtAfter).equals("تعديل أصل الدين"),
+                "Debt edit title");
+        contains(AuditPresentation.details("DEBT_EDIT",debtBefore,debtAfter,accounts,cats,currencies,
+                debtNames,debtCurrencies,people),"كان 50.00 ILS، وأصبح 45.00 ILS");
+        contains(AuditPresentation.details("DEBT_ADD",null,debtBefore,accounts,cats,currencies,
+                debtNames,debtCurrencies,people),"سجل الدين: أحمد • إلي");
+        String oldBalance="account=3, balance=90000";
+        String newBalance="account=3, balance=87000";
+        check(AuditPresentation.title("ACCOUNT_ADJUST","accounts",oldBalance,newBalance)
+                        .equals("تسوية رصيد الحساب يدويًا"),"Manual balance audit title");
+        contains(AuditPresentation.details("ACCOUNT_ADJUST",oldBalance,newBalance,accounts,cats,currencies),
+                "كان 900.00 ILS، وأصبح 870.00 ILS");
+        contains(AuditPresentation.details("CATEGORY_EDIT","طعام / 🍽","مواصلات / 🚕",accounts,cats,currencies),
+                "كان طعام / 🍽، وأصبح مواصلات / 🚕");
+        check("مشتريات, لأخوي".equals(AuditPresentation.fields("note=مشتريات, لأخوي, amount=1000")
+                        .get("note")),"Comma-containing notes retained by audit parser");
         check(AuditPresentation.fields(null).isEmpty(),"null snapshot");
         System.out.println("AuditPresentationTest PASS: clear Arabic changes, typed amounts, historical labels");
     }
