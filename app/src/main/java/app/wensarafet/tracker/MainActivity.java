@@ -584,6 +584,10 @@ public final class MainActivity extends Activity {
             navParams.setMargins(Ui.dp(this,4),0,Ui.dp(this,4),0);
             nav.addView(item,navParams);
         }
+        // Visual-only; keep every original 1.8.8 tab callback untouched.
+        if (Ui.isLiquidTheme(this))
+            NavigationVisualDecorator.install(nav,
+                    new TextView[]{home, tx, debts, analytics}, selectedTab);
         return nav;
     }
 
