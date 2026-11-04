@@ -1336,6 +1336,8 @@ public final class MainActivity extends Activity {
                 if (people.get(i).id==split.debtPersonId) { row.person.setSelection(i); break; }
             row.amount.setText(String.format(Locale.ROOT, "%.2f", split.amountMinor / 100.0));
         }
+        // Auto-calculate ONLY the last split entry; original save logic is unchanged.
+        SplitRemainderUi.bind(rowsBox, () -> tx.amountMinor, null);
         Button add = actionButton("＋ إضافة جزء", false); add.setOnClickListener(v -> addDebtSplitRow(rowsBox, rows, categories, people)); form.addView(add, fieldParams());
         ScrollView scroll = new ScrollView(this); scroll.addView(form);
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("تقسيم العملية")
@@ -3414,6 +3416,10 @@ public final class MainActivity extends Activity {
         Button addPart = actionButton("＋ إضافة جزء", false);
         splitBox.addView(addPart, fieldParams());
         form.addView(splitBox);
+        SplitRemainderUi.bind(splitRowsBox, () -> {
+            Long total = Money.parseMinor(amount.getText().toString());
+            return total == null ? -1L : total;
+        }, amount);
 
         EditText note = input("ملاحظة اختيارية");
         note.setMinLines(2);
@@ -3943,6 +3949,7 @@ public final class MainActivity extends Activity {
         category.setAdapter(adapter(labels));
         EditText amount = input("مبلغ الجزء");
         amount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        amount.setTag(SplitRemainderUi.AMOUNT_FIELD_TAG);
         Button remove = actionButton("حذف الجزء", false);
         remove.setTextColor(Ui.EXPENSE);
 
@@ -3958,10 +3965,12 @@ public final class MainActivity extends Activity {
             }
             rows.remove(ref);
             container.removeView(card);
+            SplitRemainderUi.refresh(container);
         });
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.setMargins(0, Ui.dp(this, 6), 0, Ui.dp(this, 6));
         container.addView(card, params);
+        SplitRemainderUi.refresh(container);
     }
 
     private TextView label(String text) {
