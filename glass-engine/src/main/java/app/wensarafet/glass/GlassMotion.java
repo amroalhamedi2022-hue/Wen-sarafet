@@ -220,7 +220,10 @@ public final class GlassMotion {
                         return true;
                     }
                     cancelled=false;
+                    int previousHover = hovered;
                     hovered=nearest(x);
+                    if (hovered != previousHover)
+                        android.util.Log.i("WenGlassProbe", "HOVER tab=" + hovered);
                     if (optic != null) optic.move(x);
                     if (materialBridge != null) materialBridge.follow(x);
                     float move=Math.abs(event.getX()-downX);
@@ -240,11 +243,16 @@ public final class GlassMotion {
                             + " tracking=" + tracking);
                     if(!tracking) return true;
                     tracking=false;
-                    if (!insideVertical(origin.getTop()+event.getY()) || cancelled) {
+                    // A transient excursion during MOVE must not veto an inside
+                    // release: only the final UP position decides the tab.
+                    if (!insideVertical(origin.getTop()+event.getY())) {
                         returnToSelected();
                         return true;
                     }
                     hovered=nearest(origin.getLeft()+event.getX());
+                    android.util.Log.i("WenGlassProbe", "UP_TARGET tab=" + hovered
+                            + " from=" + selected + " releasedX="
+                            + (origin.getLeft()+event.getX()));
                     if (hovered == selected) {
                         returnToSelected();
                     } else {
