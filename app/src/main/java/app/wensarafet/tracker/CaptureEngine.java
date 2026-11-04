@@ -18,17 +18,17 @@ public final class CaptureEngine {
 
     public static void handle(Context context, String provider, String channel, String sender, String rawText, long receivedAt) {
         String clean = TransactionParser.normalize(rawText);
-        if (clean.isEmpty() || TransactionParser.isVerificationMessage(clean)) return;
-        TransactionParser.Result parsed = TransactionParser.parse(provider, clean, TransferNameStore.get(context));
+        if (clean.isEmpty() || FriendArabicCapturePolicy.isSecurityMessage(clean)) return;
+        TransactionParser.Result parsed = FriendArabicCapturePolicy.parse(provider, clean, TransferNameStore.get(context));
         FinanceDbHelper db = new FinanceDbHelper(context);
         try {
             if (db.hasMatchingCapture(provider, channel, parsed.amountMinor, parsed.currency, parsed.type, parsed.counterparty, parsed.balanceMinor, receivedAt)) return;
             long id = db.insertCapture(provider, channel, sender, clean, parsed, fingerprint(provider + "|" + clean.toLowerCase(Locale.ROOT)), receivedAt);
             if (id < 0) return;
-            if (parsed.amountMinor != null && parsed.currency != null && parsed.type != null && !FinanceRules.TRANSFER.equals(parsed.type) && parsed.confidence >= 90) {
+            if (parsed.amountMinor != null && parsed.currency != null && parsed.type != null && !FinanceRules.TRANSFER.equals(parsed.type) && parsed.confidence >= 90 && !"SMS_UNVERIFIED".equals(channel) && !"OTHER".equals(provider)) {
                 long txId = db.importCapture(id, parsed.type);
-                if (txId >= 0) notifySaved(context, id, parsed, db, txId, clean); else notifyReview(context, id, parsed);
-            } else notifyReview(context, id, parsed);
+                if (txId >= 0) notifySaved(context, id, parsed, db, txId, clean); else notifyReview(context, id, parsed, "SMS_UNVERIFIED".equals(channel));
+            } else notifyReview(context, id, parsed, "SMS_UNVERIFIED".equals(channel));
         } finally { db.close(); }
     }
 
@@ -46,18 +46,18 @@ public final class CaptureEngine {
         return PendingIntent.getActivity(context, 17000 + (int) (id % 1000), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    private static void notifyReview(Context context, long id, TransactionParser.Result parsed) {
+    private static void notifyReview(Context context, long id, TransactionParser.Result parsed, boolean unknownSource) {
         if (!canNotify(context)) return;
         String channelId = NotificationPreferences.ensureChannel(context, NotificationPreferences.REVIEW);
         String amount = parsed.amountMinor == null ? "تعذر قراءة المبلغ" : Money.format(parsed.amountMinor, parsed.currency == null ? "" : parsed.currency);
         boolean internalTransfer = FinanceRules.TRANSFER.equals(parsed.type);
         android.app.Notification.Builder builder = new android.app.Notification.Builder(context, channelId)
                 .setSmallIcon(R.drawable.ic_notification).setColor(Color.rgb(104, 76, 190))
-                .setContentTitle(internalTransfer ? "تحويل بين حساباتك" : "عملية جديدة تحتاج تحديدًا")
-                .setContentText(internalTransfer ? amount + " — اختر من أي حساب وإلى أي حساب" : amount + " — اختر مصروف أو دخل")
+                .setContentTitle(unknownSource ? "رسالة مالية: اختر جهة الحساب أولًا" : (internalTransfer ? "تحويل بين حساباتك" : "عملية جديدة تحتاج تحديدًا"))
+                .setContentText(unknownSource ? amount + " — افتح صندوق المراجعة وحدد البنك أو المحفظة" : (internalTransfer ? amount + " — اختر من أي حساب وإلى أي حساب" : amount + " — اختر مصروف أو دخل"))
                 .setStyle(new android.app.Notification.BigTextStyle().bigText(internalTransfer ? amount + " — وجدنا اسمك في الحوالة. افتح صندوق المراجعة وحدد الحساب المصدر والمستلم." : amount + " — لم نستطع تحديد اتجاه العملية بأمان. اختر الآن أو راجعها لاحقًا من صندوق المراجعة."))
                 .setContentIntent(openInbox(context, id)).setAutoCancel(true);
-        if (!internalTransfer) {
+        if (!internalTransfer && !unknownSource) {
             builder.addAction(action(context, id, FinanceRules.EXPENSE, "مصروف", 1));
             builder.addAction(action(context, id, FinanceRules.INCOME, "دخل", 2));
         }
