@@ -87,12 +87,16 @@ sandbox=(p/"app/src/sandbox/java/app/wensarafet/tracker/SandboxOpticalGlass.java
 assert "MIT_VIEW_GLASS_PRESS_ACTIVE" in sandbox
 assert "glass.setRefractionHeight((9.5f + 14f * t) * d)" in sandbox, "Active optical material must deepen on hold"
 assert "glass.setBevelWidth((9.5f + 1.7f * t) * d)" in sandbox
-assert "glass.setDispersionStrength(.025f + .11f * t)" in sandbox
+assert "glass.setDispersionStrength(0f);" in sandbox and "setEnableChromaticAberration(true)" not in sandbox, "The material must have neutral, non-rainbow edges"
 assert "public static boolean attachFab(FrameLayout host, FrameLayout root, TextView fab)" in sandbox
 assert "MIT_FAB_BACKDROP_BOUND" in sandbox and "MIT_FAB_GLASS_ATTACHED" in sandbox
 assert "private static View findUnderlay(View view)" in sandbox, "Backdrop must exclude its own glyphs"
 assert "if (view instanceof ScrollView) return view;" in sandbox
-assert "glass.setBackdropSource(source != null ? source : container);" in sandbox
+assert "glass.setBackdropSource(source != null ? source : container);" in sandbox, "Backdrop has guarded fallback"
+assert "glass.setBackdropSource(tabContent);" in sandbox, "The active lens must refract the real tab glyphs"
+assert 'tabs.setTag("wen_glass_tab_content");' in main, "The native sampling source is the tab strip"
+assert "lens.bringToFront();" in main, "Native material must be in front of navigation text"
+assert "MIT_NAV_MATERIAL_ABOVE_GLYPHS" in main
 assert "glass.setBackdropSource(root);" in sandbox, "FAB requires full scene background outside scrolling viewport"
 assert 'MIT_VIEW_GLASS_BACKDROP_BOUND source=' in sandbox
 assert 'MIT_FAB_BACKDROP_BOUND source=' in sandbox
@@ -102,8 +106,10 @@ sheen_draw=sandbox.split("private static final class OpticalSheen extends View",
 assert "new Path()" not in sheen_draw, "Avoid per-frame path allocation in the sheen"
 assert "new Path()" not in sandbox.split("void paint(Canvas canvas, int width, int height",1)[1], "No path allocations in the foreground optical crown"
 assert "glass.setEnableDynamicBackground(false)" in sandbox, "No idle glass polling"
-assert "new int[]{0x9AFFFFFF,0xEBFFFFFF,0xE1FFFFFF,0xA9FFFFFF}" in sandbox, "Centre frost must mask oversized text ghosts"
-assert "glass.setAberrationIntensity(.38f + .85f * t)" in sandbox, "Chromatic refraction must visibly respond"
+assert "new int[]{0x20FFFFFF,0x3AFFFFFF,0x30FFFFFF,0x18FFFFFF}" in sandbox, "Thin neutral frost must leave the refracted glyph visible"
+assert "glass.setAberrationIntensity(0f);" in sandbox, "Colour-fringing must be disabled"
+assert "0xDB6BDFFF" not in sandbox and "0xDEFFBD88" not in sandbox, "No rainbow crown rim"
+assert "host.setClipToOutline(true);" in sandbox, "FAB material needs circular clipping"
 assert "track.setGlassGestureBridge" in sandbox
 assert "void drawForeground(Canvas canvas)" in track, "Track contract exposes over-tab composite"
 assert "externalGlassBridge.drawForeground(canvas);" in track, "Foreground must be drawn after tabs"
@@ -134,7 +140,7 @@ assert "SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)" in comparison
 assert "glassBalanceBackground(this, 20)" in comparison
 assert "setAutoSizeTextTypeUniformWithConfiguration(13, 18, 1" in comparison
 assert "trialGlass ? 136 : 116" in comparison
-assert "lens.setElevation(" not in main, "Glass lens must not cover its selected icon/text"
+assert "lens.setElevation(" not in main, "Native lens may be over glyphs without elevation or blocking touch"
 assert "tabs[previousIndex].getLeft()" in engine and "selected.getLeft()" in engine
 assert "previousIndex != selectedIndex" in engine
 assert "if (selected && !Ui.isLiquidTheme(this))" in main
@@ -179,10 +185,10 @@ assert "gpuOptics.attach(sample);" in optical
 assert "if (!gpuOptics.draw(canvas, droplet, strength, centreX))" in optical, "Hardware glass should use one refracted image"
 gpu=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenLiquidRuntimeOptics.java").read_text(encoding="utf-8")
 assert "RuntimeShader" in gpu and "shader.setInputShader(\"image\", backdrop)" in gpu
-assert "image.eval(refractedCoordinate)" in gpu and "image.eval(refractedCoordinate + normal * split)" in gpu
+assert "image.eval(refractedCoordinate)" in gpu and "normal * split" not in gpu, "No wavelength-split rainbow fringe"
 assert "float bendPx = amount * (1.4 + 5.8 * opticalEdge);" in gpu, "Capsule-normal edge physics"
 assert "float beam = exp(-72.0 * pow(ny - arch, 2.0));" in gpu, "Optical caustic ribbon follows geometry"
-assert "refracted = mix(refracted, spectrum * a, half(clamp(light, 0.0, 0.36)));" in gpu, "AGSL colors must be premultiplied"
+assert "refracted = mix(refracted, half3(a), half(clamp(light, 0.0, 0.36)));" in gpu, "AGSL caustic is neutral and premultiplied"
 assert "return half4(min(refracted, half3(a)), a);" in gpu, "No RGB exceeds output alpha"
 assert "sampleMatrix.reset();" in optical, "GPU refraction must avoid pre-magnifying the sampled background"
 assert "captureUnderlyingContent(capture, tabStrip);" in optical, "Glass must sample actual underlay, not just nav glyphs"
@@ -190,7 +196,8 @@ assert "navigationBar.setVisibility(View.INVISIBLE);" in optical, "Prevent recur
 assert "navigationBar.setVisibility(previous);" in optical, "Restore the navigation bar after capture"
 assert "UNDERLAY_CAPTURE_OK" in optical
 assert "body.setAlpha((int) (31f * strength));" in optical, "Keep live underlay visible through glass"
-assert "chromaticRim.setAlpha((int)(alpha * (.29f + .42f * morph)))" in lensSource, "Quiet resting spectral rim"
+assert "chromaticRim.setAlpha((int)(alpha * (.29f + .42f * morph)))" in lensSource, "Fallback rim still follows press but has no RGB spectrum"
+assert "0xFF98EBFF" not in lensSource and "0xFF8CEBFF" not in (p/"glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java").read_text(encoding="utf-8")
 smoke=(p/"tools/wen_sandbox_smoke.sh").read_text(encoding="utf-8")
 assert 'nav-during-hold-second.png' in smoke and '13000 &' in smoke, "Use actual held frames on slow emulator"
 assert smoke.index('FAB_HOLD_POINT=') > smoke.index('PASS: native long drag selected analytics'), "FAB long-press proof must run on healthy screen, never inside crash handling"
