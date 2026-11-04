@@ -314,6 +314,10 @@ if ! grep -q "UP_TARGET tab=3" "$OUT/nav-after-drag-probe.log"; then
   echo "FAIL: analytics changed without the tab-owning hold-drag handler"
   exit 1
 fi
+if ! grep -q 'NAV_LIQUID_STRETCH_ACTIVE' "$OUT/nav-after-drag-probe.log"; then
+  echo "FAIL: native navigation drag never entered liquid stretch state"
+  exit 1
+fi
 echo "PASS: real tab received hold-drag event through raised glass"
 adb shell screencap -p /sdcard/wen-after-drag.png
 adb pull /sdcard/wen-after-drag.png "$OUT/analytics-after-hold-drag.png"
