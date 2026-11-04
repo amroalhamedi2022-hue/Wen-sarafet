@@ -95,6 +95,8 @@ assert "glass.setScaleX(1f + .025f * t + .088f * strain)" in sandbox
 assert "glass.setScaleY(1f + .016f * t - .041f * strain)" in sandbox
 assert "motionReduced()" in sandbox, "Reduced-motion disables directional stretch"
 assert "materialBridge.follow(view.getLeft()+event.getX());" in engine
+assert "materialProgress = 0f;" in engine, "Each fresh DOWN must reset stale stretch"
+assert "materialBridge.reset();" in engine, "Repeated touches cannot inherit drag direction"
 assert "lens.getTranslationX()) * .78f" in engine, "Viscous tracking is finite and bounded"
 assert ".setDuration(190).setInterpolator(NAV_SPRING).start();" in engine, "Release uses a damped spring"
 assert "public static boolean attachFab(FrameLayout host, FrameLayout root, TextView fab)" in sandbox
