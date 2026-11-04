@@ -279,7 +279,10 @@ def center(name):
     m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",items[0].attrib.get("bounds",""))
     if not m: raise SystemExit("Invalid nav bounds")
     a,b,c,d=map(int,m.groups())
-    return (a+c)//2,(b+d)//2
+    # Android 3-button/gesture navigation may reserve the bottom section
+    # for the OS app-switch swipe. Use the upper icon zone within the same
+    # accessible tab rectangle rather than the system-edge zone.
+    return (a+c)//2, b + max(10, (d-b)//5)
 print(*center("الرئيسية"),*center("التحليل"))
 PY
 )"
