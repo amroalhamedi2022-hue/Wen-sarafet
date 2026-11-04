@@ -85,8 +85,8 @@ track=(p/"glass-engine/src/main/java/app/wensarafet/glass/WenNavigationTrack.jav
 assert "GlassGestureBridge" in track and "getGlassGestureBridge()" in track
 sandbox=(p/"app/src/sandbox/java/app/wensarafet/tracker/SandboxOpticalGlass.java").read_text(encoding="utf-8")
 assert "MIT_VIEW_GLASS_PRESS_ACTIVE" in sandbox
-assert "glass.setRefractionHeight((9.5f + 14f * t) * d)" in sandbox, "Active optical material must deepen on hold"
-assert "glass.setBevelWidth((9.5f + 1.7f * t) * d)" in sandbox
+assert "glass.setRefractionHeight((6.0f + 10f * t) * d)" in sandbox, "Active refraction grows on hold without blurring labels"
+assert "glass.setBevelWidth((7.5f + 1.6f * t) * d)" in sandbox
 assert "glass.setDispersionStrength(0f);" in sandbox and "setEnableChromaticAberration(true)" not in sandbox, "The material must have neutral, non-rainbow edges"
 assert "public static boolean attachFab(FrameLayout host, FrameLayout root, TextView fab)" in sandbox
 assert "MIT_FAB_BACKDROP_BOUND" in sandbox and "MIT_FAB_GLASS_ATTACHED" in sandbox
@@ -95,6 +95,8 @@ assert "if (view instanceof ScrollView) return view;" in sandbox
 assert "glass.setBackdropSource(source != null ? source : container);" in sandbox, "Backdrop has guarded fallback"
 assert "glass.setBackdropSource(tabContent);" in sandbox, "The active lens must refract the real tab glyphs"
 assert 'tabs.setTag("wen_glass_tab_content");' in main, "The native sampling source is the tab strip"
+assert "tabs.setBackground(sampledPlate);" in main, "Opaque backdrop avoids black capsules"
+assert "glass.setEnableBackdropBlur(false);" in sandbox, "Sampled tab text cannot be blurred"
 assert "lens.bringToFront();" in main, "Native material must be in front of navigation text"
 assert "MIT_NAV_MATERIAL_ABOVE_GLYPHS" in main
 assert "glass.setBackdropSource(root);" in sandbox, "FAB requires full scene background outside scrolling viewport"
@@ -134,6 +136,8 @@ move = engine.split("class NavigationGesture", 1)[1].split(
     "case MotionEvent.ACTION_MOVE:", 1)[1].split("cancelled=false;", 1)[0]
 assert "returnToSelected();" not in move, "Do not snap home mid-Hold when leaving vertically"
 assert "Only the final UP/CANCEL decides" in engine
+assert "if (!insideVertical(origin.getTop()+event.getY()))" in engine, "Temporary vertical excursions must not veto an inside release"
+assert "UP_TARGET tab=" in engine, "Long drag target must be auditable"
 comparison = main.split("private View comparisonCard(", 1)[1].split(
     "private void showIncomePeriodScreen(", 1)[0]
 assert "SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)" in comparison
