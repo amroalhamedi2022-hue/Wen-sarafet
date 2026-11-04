@@ -75,23 +75,34 @@ public final class SplitRemainderUi {
             EditText next = amountFields.size() >= 2
                     ? amountFields.get(amountFields.size() - 1) : null;
             if (derived != next) {
-                if (derived != null) {
-                    derived.setKeyListener(originalListener);
-                    derived.setFocusable(true);
-                    derived.setFocusableInTouchMode(true);
-                    derived.setCursorVisible(true);
-                    derived.setHint("مبلغ الجزء");
-                    derived.setError(null);
-                }
-                derived = next;
-                originalListener = derived == null ? null : derived.getKeyListener();
-                if (derived != null) {
-                    derived.setKeyListener(null);
-                    derived.setFocusable(false);
-                    derived.setFocusableInTouchMode(false);
-                    derived.setCursorVisible(false);
-                    derived.setHint("المتبقي يُحسب تلقائيًا");
-                    derived.setContentDescription("مبلغ الجزء الأخير يُحسب تلقائيًا من المبلغ المتبقي");
+                // A newly added part turns the previously automatic remainder
+                // into a normal entry. Clear its GENERATED value, so the user
+                // can choose that part without an accidental zero remainder.
+                restoring = true;
+                try {
+                    if (derived != null) {
+                        boolean becameEarlierPart = amountFields.contains(derived);
+                        derived.setKeyListener(originalListener);
+                        derived.setFocusable(true);
+                        derived.setFocusableInTouchMode(true);
+                        derived.setCursorVisible(true);
+                        derived.setHint("مبلغ الجزء");
+                        derived.setContentDescription("مبلغ الجزء");
+                        derived.setError(null);
+                        if (becameEarlierPart) derived.setText("");
+                    }
+                    derived = next;
+                    originalListener = derived == null ? null : derived.getKeyListener();
+                    if (derived != null) {
+                        derived.setKeyListener(null);
+                        derived.setFocusable(false);
+                        derived.setFocusableInTouchMode(false);
+                        derived.setCursorVisible(false);
+                        derived.setHint("المتبقي يُحسب تلقائيًا");
+                        derived.setContentDescription("مبلغ الجزء الأخير يُحسب تلقائيًا من المبلغ المتبقي");
+                    }
+                } finally {
+                    restoring = false;
                 }
             }
             update();
