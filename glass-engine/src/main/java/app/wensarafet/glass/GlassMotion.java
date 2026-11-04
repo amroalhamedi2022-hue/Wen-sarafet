@@ -29,6 +29,10 @@ public final class GlassMotion {
     private static final PathInterpolator COMPRESS = new PathInterpolator(.22f, .78f, .20f, 1f);
     private static final OvershootInterpolator RELEASE = new OvershootInterpolator(.76f);
     private static final OvershootInterpolator NAV_SPRING = new OvershootInterpolator(.40f);
+    // Navigation-only sandbox material. Keep production/fallback tracking unchanged.
+    private static final float LIQUID_FOLLOW = .60f;
+    private static final long LIQUID_RELEASE_MS = 265L;
+    private static final OvershootInterpolator LIQUID_RELEASE = new OvershootInterpolator(.24f);
 
     private GlassMotion() {}
 
@@ -166,14 +170,16 @@ public final class GlassMotion {
         }
 
         private void returnToSelected() {
-            morphTo(0f, 190);
+            morphTo(0f, materialBridge != null ? LIQUID_RELEASE_MS : 190);
             if (lens.getWidth()<=0) return;
             float target=selected>=0 && selected<tabs.length
                     ? tabs[selected].getLeft() : origin.getLeft();
             lens.animate().cancel();
             if (ValueAnimator.areAnimatorsEnabled() && !lowPower(origin.getContext())) {
                 lens.animate().translationX(target).scaleX(1f).scaleY(1f)
-                        .setDuration(190).setInterpolator(NAV_SPRING).start();
+                        .setDuration(materialBridge != null ? LIQUID_RELEASE_MS : 190)
+                        .setInterpolator(materialBridge != null ? LIQUID_RELEASE : NAV_SPRING)
+                        .start();
             } else {
                 lens.setTranslationX(target); lens.setScaleX(1f); lens.setScaleY(1f);
             }
@@ -247,8 +253,11 @@ public final class GlassMotion {
                         // UP pins the final tab, so selection never lags behind.
                         float destination=fingerLensX(x);
                         lens.animate().cancel();
+                        float follow = materialBridge == null ? .78f
+                                : (!ValueAnimator.areAnimatorsEnabled() || lowPower(view.getContext())
+                                    ? 1f : LIQUID_FOLLOW);
                         float fluidX = lens.getTranslationX()
-                                + (destination - lens.getTranslationX()) * .78f;
+                                + (destination - lens.getTranslationX()) * follow;
                         lens.setTranslationX(fluidX);
                         if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
                             lens.setScaleX(1f); lens.setScaleY(1f);
