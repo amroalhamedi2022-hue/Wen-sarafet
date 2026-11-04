@@ -80,24 +80,40 @@ public final class SandboxOpticalGlass {
             track.setGlassGestureBridge(new WenNavigationTrack.GlassGestureBridge() {
                 private boolean reported;
                 private float pointerLast = Float.NaN;
+                private float dragAnchor = Float.NaN;
                 private float dragDirection;
+                private float dragEnergy;
                 private float amount;
+                // Power-saving and disabled system animations never get a
+                // high-intensity deformation, even on a rapid finger drag.
+                private final android.os.PowerManager power =
+                        (android.os.PowerManager) lens.getContext().getSystemService(
+                                android.content.Context.POWER_SERVICE);
+                private boolean motionReduced() {
+                    return !ValueAnimator.areAnimatorsEnabled()
+                            || (power != null && power.isPowerSaveMode());
+                }
+                private void applyLiquidMaterial() {
+                    final float t = amount;
+                    final float strain = motionReduced() ? 0f : dragEnergy * t;
+                    // Elastic capsule: follows the finger like a cohesive
+                    // substance; never an independent halo or second bubble.
+                    glass.setBevelWidth((7.5f + 1.6f * t + 1.25f * strain) * d);
+                    glass.setRefractionHeight((6.0f + 10f * t + 4.4f * strain) * d);
+                    glass.setDisplacementScale(14f + 42f * t + 11f * strain);
+                    glass.setGlassTint(Color.WHITE, .045f + .022f * t);
+                    glass.setScaleX(1f + .025f * t + .088f * strain);
+                    glass.setScaleY(1f + .016f * t - .041f * strain);
+                    sheen.setMotion(t, dragDirection * strain);
+                    glass.invalidate();
+                    track.postInvalidateOnAnimation();
+                }
                 @Override public void morph(float fraction) {
                     float t = Math.max(0f, Math.min(1f, fraction));
                     amount = t;
-                    track.postInvalidateOnAnimation();
-                    // Dynamic lens profile. The middle remains quiet; only
-                    // the bevel gains thickness, light and dispersion on hold.
-                    glass.setBevelWidth((7.5f + 1.6f * t) * d);
-                    glass.setRefractionHeight((6.0f + 10f * t) * d);
-                    // No RGB wavelength splitting: only geometric refraction changes on hold.
-                    glass.setDisplacementScale(14f + 42f * t);
-                    // Chromatic aberration stays disabled at every press progress.
-                    glass.setGlassTint(Color.WHITE, .045f + .022f * t);
-                    glass.setScaleX(1f + (.047f + .018f * Math.abs(dragDirection)) * t);
-                    glass.setScaleY(1f + .027f * t);
-                    sheen.setMotion(t, dragDirection);
-                    glass.invalidate();
+                    // The finite press animator drives both frosted refraction
+                    // and release-time elastic recovery, without extra timers.
+                    applyLiquidMaterial();
                     if (t >= .8f && !reported) {
                         reported = true;
                         android.util.Log.i("WenGlassProbe",
@@ -106,20 +122,26 @@ public final class SandboxOpticalGlass {
                     if (t <= .01f) reported = false;
                 }
                 @Override public void follow(float pointerX) {
+                    if (Float.isNaN(dragAnchor)) dragAnchor = pointerX;
                     if (!Float.isNaN(pointerLast)) {
                         float delta = pointerX - pointerLast;
-                        dragDirection = Math.max(-1f, Math.min(1f, delta / (16f * d)));
+                        float pull = pointerX - dragAnchor;
+                        dragDirection = Math.signum(pull);
+                        // Displacement supplies the lasting tug; per-event
+                        // velocity only adds a brief responsive stretch.
+                        float travelled = Math.min(1f,
+                                Math.abs(pull) / Math.max(1f, track.getWidth() * .55f));
+                        float impulse = Math.min(1f, Math.abs(delta) / (25f * d));
+                        dragEnergy = Math.min(1f, travelled * .75f + impulse * .25f);
                     }
                     pointerLast = pointerX;
-                    track.postInvalidateOnAnimation();
-                    sheen.setMotion(1f, dragDirection);
-                    // Gesture owner repositions the lens. A fresh frame
-                    // samples the content at that location, not stale glyphs.
-                    glass.invalidate();
+                    applyLiquidMaterial();
                 }
                 @Override public void reset() {
                     pointerLast = Float.NaN;
+                    dragAnchor = Float.NaN;
                     dragDirection = 0f;
+                    dragEnergy = 0f;
                     morph(0f);
                 }
                 @Override public void drawForeground(Canvas canvas) {
@@ -130,7 +152,7 @@ public final class SandboxOpticalGlass {
                     // AFTER their text/emoji, not under their display lists.
                     canvas.translate(lens.getX(), lens.getY());
                     crown.paint(canvas, lens.getWidth(), lens.getHeight(),
-                            amount, dragDirection);
+                            amount, dragDirection * dragEnergy);
                     canvas.restoreToCount(saved);
                 }
             });
