@@ -24,52 +24,7 @@ capture() {
  sleep 5
  if ! adb shell pidof "$PACKAGE" >/dev/null 2>&1; then
    echo "FAIL: full sandbox app crashed at $name"
-   # The old CI only clicked FAB. A beautiful but inactive FAB front shader
-# would still pass. Hold it ON SCREEN and prove its above-glyph paint changed.
-adb shell am force-stop "$PACKAGE" || true
-adb shell am start -W -n "$COMPONENT" >/dev/null
-sleep 3
-nav_dump "$OUT/fab-optics-home.xml"
-FAB_HOLD_POINT="$(python3 - "$OUT/fab-optics-home.xml" <<'PY'
-import re,sys,xml.etree.ElementTree as ET
-nodes=[x for x in ET.parse(sys.argv[1]).getroot().iter("node")
-       if x.attrib.get("content-desc")=="إضافة عملية"]
-if len(nodes)!=1: raise SystemExit("FAIL: FAB inaccessible before optical press QA")
-m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
-               nodes[0].attrib.get("bounds",""))
-if not m: raise SystemExit("FAIL: FAB press target has no bounds")
-a,b,c,d=map(int,m.groups())
-print((a+c)//2,(b+d)//2)
-PY
-)"
-read -r FXH FYH <<< "$FAB_HOLD_POINT"
-adb exec-out screencap -p > "$OUT/fab-before-hold.png"
-adb shell input swipe "$FXH" "$FYH" "$FXH" "$FYH" 13000 &
-fab_hold_pid=$!
-sleep 1.4
-adb exec-out screencap -p > "$OUT/fab-during-hold.png"
-sleep 1.2
-adb exec-out screencap -p > "$OUT/fab-during-hold-second.png"
-if ! kill -0 "$fab_hold_pid" 2>/dev/null; then
-  echo "FAIL: FAB screenshot overran actual touch"
-  wait "$fab_hold_pid" || true
-  exit 1
-fi
-wait "$fab_hold_pid"
-if ! python3 tools/check_nav_lens_pixels.py \
- "$OUT/fab-before-hold.png" "$OUT/fab-during-hold.png" "$FXH" "$FYH"; then
-  python3 tools/check_nav_lens_pixels.py \
-   "$OUT/fab-before-hold.png" "$OUT/fab-during-hold-second.png" "$FXH" "$FYH"
-fi
-adb logcat -d -v time -s WenGlassProbe:I > "$OUT/over-glyph-optics.log"
-if ! grep -q 'MIT_NAV_FRONT_ABOVE_GLYPHS' "$OUT/over-glyph-optics.log" ||
-   ! grep -q 'MIT_FAB_FRONT_PRESS_DRAWN' "$OUT/over-glyph-optics.log"; then
-  echo "FAIL: optical surface did not composite above nav glyphs and active FAB"
-  exit 1
-fi
-echo "PASS: nav optics drawn after labels; FAB front lens visible during actual hold"
-
-adb logcat -d -v time -s AndroidRuntime:E > "$OUT/android-runtime.log" || true
+   adb logcat -d -v time -s AndroidRuntime:E > "$OUT/android-runtime.log" || true
    tail -100 "$OUT/android-runtime.log"
    exit 1
  fi
@@ -342,6 +297,51 @@ print("PASS: native long drag selected analytics")
 PY
 adb shell screencap -p /sdcard/wen-after-drag.png
 adb pull /sdcard/wen-after-drag.png "$OUT/analytics-after-hold-drag.png"
+
+# The old CI only clicked FAB. A beautiful but inactive FAB front shader
+# would still pass. Hold it ON SCREEN and prove its above-glyph paint changed.
+adb shell am force-stop "$PACKAGE" || true
+adb shell am start -W -n "$COMPONENT" >/dev/null
+sleep 3
+nav_dump "$OUT/fab-optics-home.xml"
+FAB_HOLD_POINT="$(python3 - "$OUT/fab-optics-home.xml" <<'PY'
+import re,sys,xml.etree.ElementTree as ET
+nodes=[x for x in ET.parse(sys.argv[1]).getroot().iter("node")
+       if x.attrib.get("content-desc")=="إضافة عملية"]
+if len(nodes)!=1: raise SystemExit("FAIL: FAB inaccessible before optical press QA")
+m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+               nodes[0].attrib.get("bounds",""))
+if not m: raise SystemExit("FAIL: FAB press target has no bounds")
+a,b,c,d=map(int,m.groups())
+print((a+c)//2,(b+d)//2)
+PY
+)"
+read -r FXH FYH <<< "$FAB_HOLD_POINT"
+adb exec-out screencap -p > "$OUT/fab-before-hold.png"
+adb shell input swipe "$FXH" "$FYH" "$FXH" "$FYH" 13000 &
+fab_hold_pid=$!
+sleep 1.4
+adb exec-out screencap -p > "$OUT/fab-during-hold.png"
+sleep 1.2
+adb exec-out screencap -p > "$OUT/fab-during-hold-second.png"
+if ! kill -0 "$fab_hold_pid" 2>/dev/null; then
+  echo "FAIL: FAB screenshot overran actual touch"
+  wait "$fab_hold_pid" || true
+  exit 1
+fi
+wait "$fab_hold_pid"
+if ! python3 tools/check_nav_lens_pixels.py \
+ "$OUT/fab-before-hold.png" "$OUT/fab-during-hold.png" "$FXH" "$FYH"; then
+  python3 tools/check_nav_lens_pixels.py \
+   "$OUT/fab-before-hold.png" "$OUT/fab-during-hold-second.png" "$FXH" "$FYH"
+fi
+adb logcat -d -v time -s WenGlassProbe:I > "$OUT/over-glyph-optics.log"
+if ! grep -q 'MIT_NAV_FRONT_ABOVE_GLYPHS' "$OUT/over-glyph-optics.log" ||
+   ! grep -q 'MIT_FAB_FRONT_PRESS_DRAWN' "$OUT/over-glyph-optics.log"; then
+  echo "FAIL: optical surface did not composite above nav glyphs and active FAB"
+  exit 1
+fi
+echo "PASS: nav optics drawn after labels; FAB front lens visible during actual hold"
 
 adb logcat -d -v time -s AndroidRuntime:E > "$OUT/android-runtime.log" || true
 adb shell dumpsys gfxinfo "$PACKAGE" > "$OUT/gfxinfo.txt" || true
