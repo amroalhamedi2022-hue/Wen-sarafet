@@ -326,7 +326,7 @@ if ! adb exec-out screencap -p > "$OUT/analytics-after-hold-drag.png" ||
    ! python3 - "$OUT/analytics-after-hold-drag.png" <<'PY'
 import sys, pathlib
 p=pathlib.Path(sys.argv[1])
-assert p.stat().st_size > 1024 and p.read_bytes()[:8] == b"\\x89PNG\\r\\n\\x1a\\n"
+assert p.stat().st_size > 1024 and p.read_bytes()[:8] == bytes.fromhex("89504e470d0a1a0a")
 PY
 then
   if [ -s "$OUT/nav-after-drag-debug.png" ]; then
