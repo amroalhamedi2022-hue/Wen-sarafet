@@ -79,10 +79,10 @@ public final class WenOpticalNavigationOverlay extends View {
         rim.setColor(dark ? 0xD8F2F3FF : 0xEEFFFFFF);
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(density * 1.6f);
-        innerRim.setColor(dark ? 0x8FB5BAFF : 0xC0B6CCFF);
+        innerRim.setColor(dark ? 0x8FFFFFFF : 0xC0FFFFFF);
         innerRim.setStyle(Paint.Style.STROKE);
         innerRim.setStrokeWidth(density * .85f);
-        glow.setColor(dark ? 0x48B8B2FF : 0x70FFFFFF);
+        glow.setColor(dark ? 0x48FFFFFF : 0x70FFFFFF);
         glow.setStyle(Paint.Style.STROKE);
         glow.setStrokeWidth(density * 3f);
         setVisibility(INVISIBLE);
@@ -92,15 +92,15 @@ public final class WenOpticalNavigationOverlay extends View {
         super.onSizeChanged(w, h, oldw, oldh);
         // One prismatic, position-stable highlight shader per resize, never per frame.
         spectrum.setShader(new LinearGradient(0f, 0f, Math.max(1, w), 0f,
-                new int[]{0x99AEF2FF, 0xFF8BA2FF, 0xFFDCC8FF,
-                          0xFFFFECAD, 0xFF91EAF4, 0xFF9A9FFC},
+                new int[]{0x52FFFFFF, 0x9AFFFFFF, 0x68FFFFFF,
+                          0xA1FFFFFF, 0x57FFFFFF, 0x83FFFFFF},
                 new float[]{0f, .19f, .39f, .58f, .78f, 1f},
                 Shader.TileMode.CLAMP));
         specular.setShader(new LinearGradient(0f, 0f, 0f, Math.max(1, h),
                 0xECFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
         reflectedLight.setShader(new LinearGradient(0f, 0f,
                 Math.max(1, w), Math.max(1, h),
-                new int[]{0x22FFFFFF, 0xCCFFFFFF, 0x2CFFFFFF, 0xC4E8FCFF,
+                new int[]{0x22FFFFFF, 0xCCFFFFFF, 0x2CFFFFFF, 0xC4FFFFFF,
                         0x28FFFFFF, 0xA0FFFFFF}, null, Shader.TileMode.CLAMP));
     }
 
@@ -302,7 +302,7 @@ public final class WenOpticalNavigationOverlay extends View {
         canvas.drawRoundRect(highlightBounds, radius, radius, shadowLine);
         caustic.setAlpha((int) (158f * strength));
         canvas.drawRoundRect(droplet, radius, radius, caustic);
-        // Keep the rainbow physically attached to the moving lens; the
+        // Keep the colourless edge reflection attached to the moving lens; the
         // underlying shader is created only at resize, never per touch frame.
         spectrumMatrix.reset();
         spectrumMatrix.setScale(droplet.width() / Math.max(1f, getWidth()), 1f);
