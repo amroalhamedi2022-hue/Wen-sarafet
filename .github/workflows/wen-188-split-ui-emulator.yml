@@ -51,22 +51,10 @@ jobs:
           heap-size: 512M
           disable-animations: true
           emulator-boot-timeout: 600
-          script: |
-            # sys.boot_completed can become 1 before PackageManager is ready.
-            # Fail explicitly rather than reporting zero UI tests as a code regression.
-            ready=0
-            for attempt in $(seq 1 60); do
-              if adb shell cmd package path android 2>/dev/null | grep -q '^package:'; then
-                ready=1
-                break
-              fi
-              sleep 5
-            done
-            if [ "$ready" != "1" ]; then
-              echo 'Android package service did not start; refusing to run instrumentation'
-              exit 1
-            fi
-            gradle :app:connectedDebugAndroidTest --no-daemon --console=plain
+          # The emulator action executes each newline as a separate /bin/sh -c call.
+          # Keep the package-readiness retry loop on ONE shell command line.
+          script: >-
+            bash -lc 'for attempt in $(seq 1 60); do if adb shell cmd package path android 2>/dev/null | grep -q "^package:"; then exec gradle :app:connectedDebugAndroidTest --no-daemon --console=plain; fi; sleep 5; done; echo "Android package service unavailable" >&2; exit 1'
       - name: Preserve emulator test reports
         if: always()
         uses: actions/upload-artifact@v4
