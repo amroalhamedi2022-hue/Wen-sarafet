@@ -41,7 +41,7 @@ public final class WenFabBubbleDrawable extends Drawable {
         rim.setColor(Color.argb(dark?200:240,255,255,255));
         halo.setStyle(Paint.Style.STROKE);
         halo.setStrokeWidth(density*3.4f);
-        halo.setColor(dark?0x80D5D8FF:0xD1F5F7FF);
+        halo.setColor(dark?0x7AFFFFFF:0xC3FFFFFF);
         inner.setStyle(Paint.Style.STROKE);
         inner.setStrokeWidth(density*.95f);
         inner.setColor(dark?0x88FFFFFF:0xB5FFFFFF);
@@ -78,11 +78,11 @@ public final class WenFabBubbleDrawable extends Drawable {
                 new float[]{0f, .38f, 1f}, Shader.TileMode.CLAMP));
         caustic.setShader(new LinearGradient(circle.left, circle.top,
                 circle.right, circle.bottom,
-                new int[]{0xF3FFFFFF, 0x85B4FCFF, 0xA2FFFFFF,
-                        0x96F0D7FF, 0xE8FFFFFF}, null, Shader.TileMode.CLAMP));
+                new int[]{0xF3FFFFFF, 0x85FFFFFF, 0xA2FFFFFF,
+                        0x96FFFFFF, 0xE8FFFFFF}, null, Shader.TileMode.CLAMP));
         rainbow.setShader(new LinearGradient(circle.left, circle.top,
                 circle.right, circle.bottom,
-                new int[]{0xFF8CEBFF, 0xFFD8CBFF, 0xFFFFF0BD, 0xFFB0F6FA, 0xFFACB4FF},
+                new int[]{0x8BFFFFFF, 0xB6FFFFFF, 0xA0FFFFFF, 0x92FFFFFF, 0xACFFFFFF},
                 null, Shader.TileMode.CLAMP));
     }
 
