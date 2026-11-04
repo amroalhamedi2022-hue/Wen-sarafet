@@ -35,6 +35,11 @@ jobs:
           sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          # GitHub-hosted runner can expose /dev/kvm without adding runner to the kvm group.
+          # The emulator runner silently falls back to an unstable 12-minute TCG boot otherwise.
+          test -e /dev/kvm
+          sudo chmod 0666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
       - name: Run real Android TextWatcher/EditText split UI tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -46,7 +51,22 @@ jobs:
           heap-size: 512M
           disable-animations: true
           emulator-boot-timeout: 600
-          script: gradle :app:connectedDebugAndroidTest --no-daemon --console=plain
+          script: |
+            # sys.boot_completed can become 1 before PackageManager is ready.
+            # Fail explicitly rather than reporting zero UI tests as a code regression.
+            ready=0
+            for attempt in $(seq 1 60); do
+              if adb shell cmd package path android 2>/dev/null | grep -q '^package:'; then
+                ready=1
+                break
+              fi
+              sleep 5
+            done
+            if [ "$ready" != "1" ]; then
+              echo 'Android package service did not start; refusing to run instrumentation'
+              exit 1
+            fi
+            gradle :app:connectedDebugAndroidTest --no-daemon --console=plain
       - name: Preserve emulator test reports
         if: always()
         uses: actions/upload-artifact@v4
