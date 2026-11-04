@@ -12,6 +12,19 @@ public final class ArabicSmsParserPilotTest {
         ok("ILS".equals(candidate.currency), "ILS currency: "+message);
         ok(type.equals(candidate.type), "direction: "+message);
     }
+    private static void receipt(String label,String message,long amountMinor,long balanceMinor,
+                                String expectedType) {
+        ArabicSmsParserPilot.Candidate result=ArabicSmsParserPilot.analyse(message);
+        ok(result.requiresReview,label+": must stay read-only and require review");
+        ok(!result.verification,label+": not an OTP");
+        ok(result.amountMinor!=null && result.amountMinor==amountMinor,
+                label+": amount expected "+amountMinor+", got "+result.amountMinor);
+        ok(result.balanceMinor!=null && result.balanceMinor==balanceMinor,
+                label+": balance expected "+balanceMinor+", got "+result.balanceMinor);
+        ok("ILS".equals(result.currency),label+": currency expected ILS");
+        ok(expectedType.equals(result.type),label+": type expected "+expectedType+", got "+result.type);
+    }
+
     public static void main(String[] args) {
         amount(12345L,"تم خصم مبلغ ١٢٣٫٤٥ شيكل من حسابك. الرصيد المتاح ٨٧٦٫٥٥ شيكل",
                 FinanceRules.EXPENSE);
@@ -41,8 +54,47 @@ public final class ArabicSmsParserPilotTest {
                 "رمز التحقق هو ١٢٣٤٥٦");
         ok(verification.verification && verification.amountMinor==null && verification.type==null,
                 "OTP must never be treated as a financial transaction");
+        // Redacted fixtures with the same STRUCTURE as the six shared examples.
+        // All personal names, phone numbers, times and security codes are fictitious.
+        String debitToPhone = "تم تحويل مبلغ الى 0595000000 بقيمة ILS 300 بتاريخ " +
+                "01-01-2026 05:21:16 PM. الرصيد المتوفر: ILS 843.50.";
+        String creditFromPhone = "استلمت مبلغ ILS 300.00 من 00970590000000 " +
+                "رصيدك الحالي ILS 1143.50";
+        String debitToName = "تم تحويل ILS 5.00 الى شخص تجريبي " +
+                "رصيدك الحالي ILS 843.50";
+        String merchantPayment = "تم دفع ILS 1.50 ل متجر تجريبي " +
+                "رصيدك الحالي ILS 27.50";
+        String receivedPerson = "Test Person قام بتحويل مبلغ ILS 30.00 لحسابك بتاريخ " +
+                "29-01-2026 05:44:31 PM. الرصيد المتوفر ILS 59.00.";
+        String confirmationNotPayment = "Code: 99999 لحركة:p2m " +
+                "لقيمة أقصاها: 1.50ILS الرمز يؤكد ملكيتك للحساب";
+
+        receipt("outgoing to phone",debitToPhone,30000,84350,FinanceRules.EXPENSE);
+        receipt("incoming from phone",creditFromPhone,30000,114350,FinanceRules.INCOME);
+        receipt("outgoing to name",debitToName,500,84350,FinanceRules.EXPENSE);
+        receipt("merchant payment",merchantPayment,150,2750,FinanceRules.EXPENSE);
+        receipt("incoming from named person",receivedPerson,3000,5900,FinanceRules.INCOME);
+
+        ArabicSmsParserPilot.Candidate code=ArabicSmsParserPilot.analyse(confirmationNotPayment);
+        ok(code.verification,"mixed English/Arabic Code notification must be verification");
+        ok(code.requiresReview && code.amountMinor==null && code.type==null,
+                "OTP 1.50ILS maximum is NOT a 1.50 payment");
+        ok(code.balanceMinor==null,"confirmation code has no real account balance");
+        ArabicSmsParserPilot.Candidate repeated=ArabicSmsParserPilot.analyse(debitToPhone);
+        ok(repeated.amountMinor==30000 && repeated.balanceMinor==84350 &&
+                repeated.type.equals(FinanceRules.EXPENSE) && repeated.requiresReview,
+                "repeated fixture must still be a pure, non-posting candidate");
+
+        ArabicSmsParserPilot.Candidate twoAmounts=ArabicSmsParserPilot.analyse(
+                "تم دفع ILS 20.00 مع رسوم ILS 1.00 الرصيد الحالي ILS 300.00");
+        ok(twoAmounts.amountMinor==null && twoAmounts.type==null && twoAmounts.requiresReview,
+                "amount plus fee cannot be silently confused with one transaction");
+        ArabicSmsParserPilot.Candidate uncertainWallet=ArabicSmsParserPilot.analyse(
+                "تم تحويل ٥٠ شيكل إلى المحفظة");
+        ok(uncertainWallet.amountMinor==5000 && uncertainWallet.type==null,
+                "transfer to ambiguous own wallet should require review");
         ArabicSmsParserPilot.Candidate garbage=ArabicSmsParserPilot.analyse(null);
         ok(garbage.amountMinor==null && garbage.requiresReview,"null SMS");
-        System.out.println("ArabicSmsParserPilotTest PASS: Arabic/Persian digits, currencies, balance separation, ambiguity and OTP; always review-only");
+        System.out.println("ArabicSmsParserPilotTest PASS: five anonymized bilingual real-world templates, OTP safe, balance/amount split, repeat, fee ambiguity; review-only");
     }
 }

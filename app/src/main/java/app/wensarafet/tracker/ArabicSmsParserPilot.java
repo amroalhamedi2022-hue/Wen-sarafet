@@ -33,12 +33,20 @@ public final class ArabicSmsParserPilot {
             "(?i)" + CURRENCY + "\\s*" + NUMBER);
 
     private static final Pattern OUT = Pattern.compile(
-            "حوالة\\s+صادرة|تم\\s+(?:خصم|سحب|دفع|تسديد)|عملية\\s+شراء|دفعت\\s+مبلغ|تم\\s+ارسال\\s+مبلغ");
+            "حوالة\\s+صادرة|تم\\s+(?:خصم|سحب|دفع|تسديد)|عملية\\s+شراء|دفعت\\s+مبلغ|تم\\s+ارسال\\s+مبلغ" +
+            "|تم\\s+تحويل\\s+مبلغ\\s+(?:الى|الي)\\s+" +
+            "|تم\\s+تحويل\\s+[^\\r\\n]{0,100}?\\s+(?:الى|الي)\\s+");
     private static final Pattern IN = Pattern.compile(
-            "حوالة\\s+واردة|تم\\s+(?:ايداع|استلام)\\s+مبلغ|تم\\s+ايداع|استلمت\\s+مبلغ|تم\\s+استلام");
+            "حوالة\\s+واردة|تم\\s+(?:ايداع|استلام)\\s+مبلغ|تم\\s+ايداع|استلمت\\s+مبلغ|تم\\s+استلام" +
+            "|(?:قام|قامت)\\s+بتحويل\\s+مبلغ\\s+[^\\r\\n]{0,100}?\\s+(?:لحسابك|الى\\s+حسابك|الي\\s+حسابك)");
+    private static final Pattern SELF_DESTINATION = Pattern.compile(
+            "(?:الى|الي)\\s+(?:محفظتك|المحفظة|حسابك|حساباتي)(?:\\s|$)");
     private static final Pattern BALANCE_LABEL = Pattern.compile(
-            "(?:الرصيد\\s+(?:المتاح|الحالي|المتبقي|الجديد|بعد\\s+العملية)|رصيد(?:ك|كم)\\s+(?:المتاح|الحالي|المتوفر))\\s*[:：-]?");
-
+            "(?:الرصيد\\s+(?:المتاح|المتوفر|الحالي|المتبقي|الجديد|بعد\\s+العملية)|رصيد(?:ك|كم)\\s+(?:المتاح|الحالي|المتوفر))\\s*[:：-]?");
+    private static final Pattern CODE_OR_AUTHORIZATION = Pattern.compile(
+            "(?i)(?:\\b(?:code|otp|pin)\\s*[:：-]\\s*[0-9]{4,8}\\b|\\b(?:verification|security|confirmation)\\s+code\\b" +
+            "|(?:الرمز|الكود)\\s+(?:يؤكد|لتأكيد)\\s+ملكيتك|(?:رمز|كود)\\s+(?:ال)?(?:التحقق|التاكيد|دخول|امان)" +
+            "|لقيمة\\s+اقصاها|الحد\\s+الاقصى)");
     public static Candidate analyse(String raw) {
         Candidate result = new Candidate();
         if (raw == null || raw.trim().isEmpty()) {
@@ -47,7 +55,8 @@ public final class ArabicSmsParserPilot {
         }
         // Numeric glyph normalization is ONLY within the pilot: old parser is not touched.
         String text = normalize(raw);
-        if (TransactionParser.isVerificationMessage(raw)) {
+        if (TransactionParser.isVerificationMessage(raw) ||
+                CODE_OR_AUTHORIZATION.matcher(text).find()) {
             result.verification = true;
             result.reason = "رسالة تحقق؛ لا يجوز تسجيل أي عملية";
             return result;
@@ -68,10 +77,13 @@ public final class ArabicSmsParserPilot {
         }
         boolean outgoing = OUT.matcher(text).find();
         boolean incoming = IN.matcher(text).find();
+        boolean selfDestination = SELF_DESTINATION.matcher(text).find();
         if (outgoing && incoming) {
             result.reason = "تعارض بين الإيداع والخصم؛ لا يجوز التخمين";
         } else if (result.amountMinor == null || result.currency == null) {
-            result.reason = "المبلغ أو العملة غير واضحين";
+            result.reason = "المبلغ أو العملة غير واضحين أو وُجد أكثر من مبلغ؛ لا يجوز التخمين";
+        } else if (outgoing && selfDestination) {
+            result.reason = "التحويل قد يكون بين حسابات الشخص نفسه؛ مراجعة اتجاهه يدويًا";
         } else if (outgoing) {
             result.type = FinanceRules.EXPENSE;
             result.reason = "مصروف محتمل — مراجعة فقط";
@@ -103,25 +115,40 @@ public final class ArabicSmsParserPilot {
     }
 
     private static MoneyToken firstMoney(String fragment, boolean balance) {
-        // Check both currency-before-amount and amount-before-currency.
-        Matcher before = CURRENCY_NUMBER.matcher(fragment);
-        Matcher after = NUMBER_CURRENCY.matcher(fragment);
-        MoneyToken first = null;
-        if (before.find()) first = token(before.group(2), before.group(1), before.start());
-        if (after.find()) {
-            MoneyToken second = token(after.group(1), after.group(2), after.start());
-            if (second != null && (first == null || second.position < first.position)) first = second;
-        }
-        // For balances, digits without explicit currency are accepted only as a
-        // *display hint*; never infer a transaction amount from a bare number.
-        if (first == null && balance) {
-            Matcher numbers = Pattern.compile(NUMBER).matcher(fragment);
-            if (numbers.find()) {
-                Long minor = Money.parseMinor(numbers.group(1));
-                if (minor != null && minor >= 0) first = new MoneyToken(minor, null, numbers.start());
+        // Parse only amounts tied to a real currency marker, never a phone,
+        // transaction date, verification code or bare numeric token.
+        Matcher before=CURRENCY_NUMBER.matcher(fragment);
+        Matcher after=NUMBER_CURRENCY.matcher(fragment);
+        MoneyToken result=null;
+        int count=0;
+        while(before.find()) {
+            MoneyToken token=token(before.group(2),before.group(1),before.start());
+            if(token!=null) {
+                count++;
+                if(result==null || token.position<result.position)result=token;
             }
         }
-        return first;
+        while(after.find()) {
+            MoneyToken token=token(after.group(1),after.group(2),after.start());
+            if(token!=null) {
+                count++;
+                if(result==null || token.position<result.position)result=token;
+            }
+        }
+        // Two different quoted amounts (e.g. payment and fee) are not safe
+        // to classify even for read-only analysis: ask for review.
+        if(count>1) return null;
+        // Balance without a currency is read-only context; transaction amounts
+        // ALWAYS require a currency marker.
+        if(result==null && balance) {
+            Matcher numbers=Pattern.compile(NUMBER).matcher(fragment);
+            if(numbers.find()) {
+                Long minor=Money.parseMinor(numbers.group(1));
+                if(minor!=null && minor>=0)
+                    result=new MoneyToken(minor,null,numbers.start());
+            }
+        }
+        return result;
     }
 
     private static MoneyToken token(String amount, String currency, int position) {
