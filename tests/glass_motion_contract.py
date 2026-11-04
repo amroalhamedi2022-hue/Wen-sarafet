@@ -193,6 +193,9 @@ assert "body.setAlpha((int) (31f * strength));" in optical, "Keep live underlay 
 assert "chromaticRim.setAlpha((int)(alpha * (.29f + .42f * morph)))" in lensSource, "Quiet resting spectral rim"
 smoke=(p/"tools/wen_sandbox_smoke.sh").read_text(encoding="utf-8")
 assert 'nav-during-hold-second.png' in smoke and '13000 &' in smoke, "Use actual held frames on slow emulator"
+assert smoke.index('FAB_HOLD_POINT=') > smoke.index('PASS: native long drag selected analytics'), "FAB long-press proof must run on healthy screen, never inside crash handling"
+assert 'MIT_NAV_FRONT_ABOVE_GLYPHS' in smoke and 'MIT_FAB_FRONT_PRESS_DRAWN' in smoke
+assert 'fab-before-hold.png' in smoke and 'fab-during-hold.png' in smoke
 assert "if (!enabled || shader == null || !canvas.isHardwareAccelerated()) return false;" in gpu
 assert "new " not in gpu.split("boolean draw(Canvas canvas",1)[1].split("void clear()",1)[0]
 assert "postDelayed" not in gpu and "while (true)" not in gpu
