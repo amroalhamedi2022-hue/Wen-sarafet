@@ -10,6 +10,7 @@ APP_GRADLE = "app/build.gradle"
 SETTINGS = "settings.gradle"
 ALLOWED = {
     MAIN, APP_GRADLE, SETTINGS, "gradle.properties", "proguard-rules.pro",
+    "app/src/main/AndroidManifest.xml",
     "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java",
     "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java",
     "glass-engine/src/main/java/app/wensarafet/glass/GlassMotion.java",
@@ -47,6 +48,29 @@ visual_hook = (
 assert current_main.count(visual_hook) == 1, "Expected one visual-only integration hook"
 assert current_main.replace(visual_hook, "") == baseline(MAIN), (
     "SAFE ZONE: MainActivity changed outside its four-tab visual hook"
+)
+
+# The source-only overlay REMOVES (never grants) AndroidX's automatic
+# signature compatibility permission. Reversing this exact removal must
+# recover the 1.8.8 manifest byte-for-byte; the built APK is also audited.
+manifest_path = "app/src/main/AndroidManifest.xml"
+manifest = (ROOT / manifest_path).read_text(encoding="utf-8")
+plain_header = '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n    package="app.wensarafet.tracker">'
+guarded_header = """<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="app.wensarafet.tracker">
+    <!-- Visual dependency adds a compatibility-only internal permission.
+         minSdk 33 uses platform receiver flags. Remove that merged permission
+         so the effective 1.8.8 APK permission set remains IDENTICAL. -->
+    <permission
+        android:name="${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        tools:node="remove" />
+    <uses-permission
+        android:name="${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        tools:node="remove" />"""
+assert manifest.count(guarded_header) == 1, "Manifest overlay must only remove the added renderer permission"
+assert manifest.replace(guarded_header, plain_header) == baseline(manifest_path), (
+    "SAFE ZONE: production AndroidManifest changed beyond permission removal"
 )
 
 current_gradle = (ROOT / APP_GRADLE).read_text(encoding="utf-8")
