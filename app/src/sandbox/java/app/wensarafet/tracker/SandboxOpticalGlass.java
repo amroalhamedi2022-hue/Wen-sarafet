@@ -84,6 +84,7 @@ public final class SandboxOpticalGlass {
                 private float dragDirection;
                 private float dragEnergy;
                 private float amount;
+                private boolean strainReported;
                 // Power-saving and disabled system animations never get a
                 // high-intensity deformation, even on a rapid finger drag.
                 private final android.os.PowerManager power =
@@ -96,6 +97,10 @@ public final class SandboxOpticalGlass {
                 private void applyLiquidMaterial() {
                     final float t = amount;
                     final float strain = motionReduced() ? 0f : dragEnergy * t;
+                    if (strain >= .18f && !strainReported) {
+                        strainReported = true;
+                        android.util.Log.i("WenGlassProbe", "NAV_LIQUID_STRETCH_ACTIVE");
+                    }
                     // Elastic capsule: follows the finger like a cohesive
                     // substance; never an independent halo or second bubble.
                     glass.setBevelWidth((7.5f + 1.6f * t + 1.25f * strain) * d);
@@ -142,6 +147,7 @@ public final class SandboxOpticalGlass {
                     dragAnchor = Float.NaN;
                     dragDirection = 0f;
                     dragEnergy = 0f;
+                    strainReported = false;
                     morph(0f);
                 }
                 @Override public void drawForeground(Canvas canvas) {
