@@ -45,7 +45,7 @@ public final class NotificationPreferences {
         for(String type:kinds)NotificationSoundProvider.ensureSound(context,type);
         SharedPreferences.Editor edit=prefs(context).edit();
         for(String type:kinds)edit.putString(type+"_sound_uri",
-                NotificationSoundProvider.uri(type).toString());
+                NotificationSoundProvider.uri(context,type).toString());
         edit.apply();
     }
 
@@ -65,7 +65,7 @@ public final class NotificationPreferences {
             Uri selected = storedUri.isEmpty()
                     ? RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
                     : Uri.parse(storedUri);
-            if(NotificationSoundProvider.isOurSound(selected)) {
+            if(NotificationSoundProvider.isOurSound(context,selected)) {
                 try {
                     NotificationSoundProvider.ensureSound(context,type);
                 } catch(IOException error) {

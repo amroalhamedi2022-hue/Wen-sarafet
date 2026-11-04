@@ -69,16 +69,23 @@ assert "if (!lowPower)" in backdrop
 assert "if (!lowPower) {" in backdrop.split("@Override public void draw(Canvas canvas)",1)[1]
 assert "new " not in backdrop.split("@Override public void draw(Canvas canvas)",1)[1].split("@Override public void setAlpha",1)[0]
 assert "glassScreenBackground(this)" in main
-assert main.count("setBackground(Ui.glassScreenBackground(this))") == 4
+assert main.count("setBackground(Ui.glassScreenBackground(this))") >= 4, "Original four scene backgrounds must remain"
+assert "scroll.setBackground(Ui.glassScreenBackground(this));" in main, "Frosted footer reuses scene background"
 assert "new RadialGradient" in engine
 assert "new LinearGradient" in engine
 assert "innerBorder.set(surface)" in engine
-assert "showLens = strong && w > h * 3.1f && !lowPower;" in engine
-assert "canvas.drawCircle(lensX, lensY, lensRadius, bubble);" in engine
+assert "showLens = false;" in engine, "No unrelated ornament orb may appear on glass cards"
+assert "prismRim.setShader(new LinearGradient" in engine
+assert "crown.setShader(new LinearGradient" in engine
+assert "final int bodyAlpha = strong ? 202 : 221;" in engine, "Glass surfaces must transmit background"
+assert "canvas.drawCircle(lensX, lensY, lensRadius, bubble);" in engine, "Legacy conditional fallback stays safe"
 assert "canvas.drawRect(surface, ambient);" in engine
 assert "if (!lowPower && strong)" in engine
-assert "new android.view.animation.OvershootInterpolator(1.35f)" in ui
-assert "if (isLiquidTheme(v.getContext()))" in ui
+# Liquid press behavior now lives in the reusable engine; legacy themes are untouched.
+motion = (root / "glass-engine/src/main/java/app/wensarafet/glass/GlassMotion.java").read_text(encoding="utf-8")
+assert "GlassMotion.bindPress(view, SKY)" in ui
+assert "new OvershootInterpolator(.76f)" in motion
+assert "ValueAnimator.areAnimatorsEnabled()" in motion
 assert "if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return false;" in ui
 assert "ViewPropertyAnimator" not in engine
 print("PASS: component-wide Liquid glass surfaces are passive; other themes retain fallbacks")

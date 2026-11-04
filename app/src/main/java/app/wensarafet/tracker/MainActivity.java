@@ -22,6 +22,8 @@ import android.text.InputType;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.ViewConfiguration;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -56,6 +58,11 @@ import java.util.TimeZone;
 public final class MainActivity extends Activity {
     private FinanceDbHelper db;
     private boolean transactionsTab;
+    // Visual-only previous tab; no persistence and no financial state dependency.
+    private int lastGlassNavigationTab = -1;
+    private boolean pendingGlassNavigationSwitch;
+    // One finite icon-only entrance on first actual primary screen per Activity launch.
+    private boolean startupIconAnimationPending = true;
     private int currentTab;
     private static final int TAB_HOME = 0;
     private static final int TAB_TRANSACTIONS = 1;
@@ -79,10 +86,283 @@ public final class MainActivity extends Activity {
     private FrameLayout screenHost;
     private View activeScreen;
     private int screenTransitionGeneration;
+    private int pendingPrimarySlide;
+    private boolean pendingFabReveal;
+    private boolean pendingFabReverse;
+    private int fabRevealX, fabRevealY, fabRevealRadius;
+
+    private void returnFromAddWithReverse(boolean showTransactions) {
+        // Apply financial changes exactly where they already occur. Only the
+        // post-save/back navigation gets an opposite-direction visual reveal.
+        pendingFabReverse = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
+                && addScreenVisible && screenHost != null && activeScreen != null;
+        showMain(showTransactions);
+    }
+    private boolean primarySwipeEligible, primarySwipeActive;
+    private float primarySwipeStartX, primarySwipeStartY;
+    // Sandbox-only in-place palette refresh; never affects production financial screens.
+    private boolean pendingPaletteSwitch;
+    private int pendingThemeScrollX = -1;
     private static final int CREATE_BACKUP = 7301;
     private static final int OPEN_BACKUP = 7302;
     private static final int PICK_NOTIFICATION_SOUND = 7303;
     private static final int OPEN_DRIVE_FOLDER = 7304;
+
+    // Tab callbacks keep the exact existing financial routes. In the isolated
+    // Liquid sandbox, let the finger-up / glass paint complete its current
+    // frame before constructing the (sometimes expensive) next screen.
+    private int navigationFrameSequence;
+    private void navigatePrimaryTab(int target) {
+        if (target < TAB_HOME || target > TAB_ANALYTICS) return;
+        if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
+                && screenHost != null && target != currentTab) {
+            final int sequence = ++navigationFrameSequence;
+            final View previous = activeScreen;
+            final int sourceTab = currentTab;
+            screenHost.postOnAnimation(() -> {
+                // Never reopen a stale destination after another screen change.
+                if (sequence == navigationFrameSequence && previous == activeScreen
+                        && currentTab == sourceTab && !subScreenVisible
+                        && !addScreenVisible) performPrimaryTabNavigation(target);
+            });
+        } else performPrimaryTabNavigation(target);
+    }
+
+    private void performPrimaryTabNavigation(int target) {
+        pendingPrimarySlide = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
+                && !subScreenVisible && !addScreenVisible && target != currentTab
+                ? (target > currentTab ? 1 : -1) : 0;
+        switch(target) {
+            case TAB_HOME: showMain(false); break;
+            case TAB_TRANSACTIONS: showMain(true); break;
+            case TAB_DEBTS: showDebtsScreen(FinanceRules.DEBT_RECEIVABLE); break;
+            case TAB_ANALYTICS: showAnalyticsScreen(); break;
+            default: break;
+        }
+    }
+
+    // Horizontal carousels own their gestures; only primary page content can swipe.
+    private boolean touchingHorizontalScroller(View root, float x, float y) {
+        if (root.getVisibility() != View.VISIBLE || root.getWidth() <= 0
+                || root.getHeight() <= 0) return false;
+        // Prune off-screen siblings before traversing the view hierarchy:
+        // large transaction histories must not be scanned on every touch.
+        int[] p = new int[2];
+        root.getLocationOnScreen(p);
+        if (x < p[0] || x > p[0]+root.getWidth()
+                || y < p[1] || y > p[1]+root.getHeight()) return false;
+        if (root instanceof HorizontalScrollView) return true;
+        if (root instanceof ViewGroup) {
+            ViewGroup group=(ViewGroup) root;
+            for(int i=group.getChildCount()-1;i>=0;i--)
+                if(touchingHorizontalScroller(group.getChildAt(i),x,y))return true;
+        }
+        return false;
+    }
+
+    @Override public boolean dispatchTouchEvent(MotionEvent e) {
+        if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)) {
+            final int a = e.getActionMasked();
+            if (a == MotionEvent.ACTION_DOWN || a == MotionEvent.ACTION_UP
+                    || a == MotionEvent.ACTION_CANCEL)
+                android.util.Log.i("WenGlassProbe", "ACTIVITY_INPUT action=" + a
+                        + " x=" + e.getX() + " y=" + e.getY());
+        }
+        switch(e.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                primarySwipeActive=false;
+                primarySwipeStartX=e.getX(); primarySwipeStartY=e.getY();
+                primarySwipeEligible=SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
+                        && screenHost!=null && startupResolved && db!=null && !subScreenVisible
+                        && !addScreenVisible && !lockScreenVisible && !activationScreenVisible
+                        && currentTab>=TAB_HOME && currentTab<=TAB_ANALYTICS
+                        && primarySwipeStartY>Ui.dp(this,128)
+                        && primarySwipeStartY<screenHost.getHeight()-Ui.dp(this,100)
+                        && !touchingHorizontalScroller(screenHost,e.getRawX(),e.getRawY());
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if(primarySwipeEligible || primarySwipeActive) {
+                    float dx=e.getX()-primarySwipeStartX;
+                    float dy=e.getY()-primarySwipeStartY;
+                    if(!primarySwipeActive && Math.abs(dy)>Ui.dp(this,22)
+                            && Math.abs(dy)>Math.abs(dx)) {
+                        primarySwipeEligible=false;
+                    } else if(!primarySwipeActive
+                            && Math.abs(dx)>Math.max(Ui.dp(this,48),
+                                    ViewConfiguration.get(this).getScaledTouchSlop()*3f)
+                            && Math.abs(dx)>Math.abs(dy)*1.65f) {
+                        int target=currentTab+(dx>0f?1:-1);
+                        if(target>=TAB_HOME && target<=TAB_ANALYTICS) {
+                            MotionEvent cancel=MotionEvent.obtain(e);
+                            cancel.setAction(MotionEvent.ACTION_CANCEL);
+                            super.dispatchTouchEvent(cancel); cancel.recycle();
+                            primarySwipeActive=true;
+                        } else primarySwipeEligible=false;
+                    }
+                    if(primarySwipeActive) {
+                        if(activeScreen!=null) {
+                            activeScreen.animate().cancel();
+                            float limit=Ui.dp(this,84);
+                            activeScreen.setTranslationX(Math.max(-limit,Math.min(limit,dx*.26f)));
+                        }
+                        return true;
+                    }
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+                if(primarySwipeActive) {
+                    float dx=e.getX()-primarySwipeStartX;
+                    int target=currentTab+(dx>0f?1:-1);
+                    primarySwipeActive=false; primarySwipeEligible=false;
+                    if(Math.abs(dx)>=Ui.dp(this,70)
+                            && target>=TAB_HOME && target<=TAB_ANALYTICS)
+                        navigatePrimaryTab(target);
+                    else if(activeScreen!=null)
+                        activeScreen.animate().translationX(0f).setDuration(160).start();
+                    return true;
+                }
+                primarySwipeEligible=false; break;
+            case MotionEvent.ACTION_CANCEL:
+            case MotionEvent.ACTION_POINTER_DOWN:
+                if(primarySwipeActive && activeScreen!=null)
+                    activeScreen.animate().translationX(0f).setDuration(160).start();
+                primarySwipeEligible=false;primarySwipeActive=false;break;
+            default: break;
+        }
+        return super.dispatchTouchEvent(e);
+    }
+
+    /** Start the one-shot icon-only entrance after first layout/draw, never during startup DB work. */
+    private void animateStartupIcons(View page) {
+        if (!startupIconAnimationPending || !SandboxMode.isSandbox(this)
+                || !Ui.isLiquidTheme(this)) return;
+        if (page.findViewWithTag("wen_intro_nav_0") == null) return;
+        startupIconAnimationPending = false;
+        if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
+        final String[] ids = {
+                "wen_intro_header_accounts", "wen_intro_header_settings",
+                "wen_intro_nav_0", "wen_intro_nav_1",
+                "wen_intro_nav_2", "wen_intro_nav_3", "wen_intro_fab"
+        };
+        final java.util.ArrayList<View> icons = new java.util.ArrayList<>();
+        for (String id : ids) {
+            View icon = page.findViewWithTag(id);
+            if (icon == null) continue;
+            icon.animate().cancel();
+            // Keep every action legible even if hardware compositor delays
+            // the first animation frame on a slow device/emulator.
+            icon.setAlpha(.88f);
+            icon.setScaleX(.95f); icon.setScaleY(.95f);
+            icon.setTranslationY(Ui.dp(this, 3));
+            icons.add(icon);
+        }
+        page.getViewTreeObserver().addOnPreDrawListener(
+                new android.view.ViewTreeObserver.OnPreDrawListener() {
+            private boolean fired;
+            @Override public boolean onPreDraw() {
+                if (fired) return true;
+                fired = true;
+                if (page.getViewTreeObserver().isAlive())
+                    page.getViewTreeObserver().removeOnPreDrawListener(this);
+                page.postOnAnimation(() -> {
+                    if (!page.isAttachedToWindow()) return;
+                    android.util.Log.i("WenGlassProbe","ICON_ENTRANCE_STARTED count="+icons.size());
+                    for (int i=0; i<icons.size(); i++) {
+                        View icon=icons.get(i);
+                        icon.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                                .translationY(0f).setStartDelay(i*22L)
+                                .setDuration(290L)
+                                .setInterpolator(new android.view.animation.OvershootInterpolator(.22f))
+                                .start();
+                    }
+                });
+                return true;
+            }
+        });
+    }
+
+    /** Press and long-hold animate a persistent bubble; release restores the sphere. */
+    private void bindGlassFab(TextView fab) {
+        if (!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this)) {
+            Ui.pressAnimation(fab);
+            return;
+        }
+        final app.wensarafet.glass.WenFabBubbleDrawable bubble =
+                new app.wensarafet.glass.WenFabBubbleDrawable(this, Ui.SKY, Ui.DARK);
+        fab.setBackground(bubble);
+        // The old 8dp View shadow used Android's rectangular fallback outline,
+        // so the circular FAB appeared to sit inside a faint square in recordings.
+        // Keep its actual hit target and OnClick unchanged; only mask/elevation.
+        fab.setForeground(null);
+        fab.setStateListAnimator(null);
+        fab.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override public void getOutline(View view, android.graphics.Outline outline) {
+                int side = Math.min(view.getWidth(), view.getHeight());
+                if (side > 0) {
+                    int left = (view.getWidth() - side) / 2;
+                    int top = (view.getHeight() - side) / 2;
+                    outline.setOval(left, top, left + side, top + side);
+                } else outline.setOval(0, 0, 1, 1);
+            }
+        });
+        fab.setClipToOutline(true);
+        fab.setElevation(Ui.dp(this, 6));
+        fab.setContentDescription("إضافة عملية");
+        final android.animation.ValueAnimator[] morph = {null};
+        fab.setOnTouchListener((v, event) -> {
+            int action=event.getActionMasked();
+            if (action==MotionEvent.ACTION_DOWN || action==MotionEvent.ACTION_UP
+                    || action==MotionEvent.ACTION_CANCEL || action==MotionEvent.ACTION_MOVE) {
+                boolean outside=event.getX()<0 || event.getY()<0
+                        || event.getX()>v.getWidth() || event.getY()>v.getHeight();
+                if (action==MotionEvent.ACTION_MOVE && !outside) return false;
+                float target=action==MotionEvent.ACTION_DOWN ? 1f : 0f;
+                if (morph[0]!=null) morph[0].cancel();
+                if (android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                    morph[0]=android.animation.ValueAnimator.ofFloat(bubble.getPress(),target);
+                    morph[0].setDuration(target>0f ? 210L : 270L);
+                    morph[0].setInterpolator(new android.view.animation.PathInterpolator(.22f,.8f,.2f,1f));
+                    morph[0].addUpdateListener(anim -> bubble.setPress((Float)anim.getAnimatedValue()));
+                    morph[0].start();
+                    v.animate().cancel();
+                    v.animate().scaleX(target>0f?.94f:1f).scaleY(target>0f?.94f:1f)
+                            .setDuration(target>0f?145L:265L)
+                            .setInterpolator(new android.view.animation.OvershootInterpolator(.45f))
+                            .start();
+                } else {
+                    bubble.setPress(target);
+                    v.setScaleX(target>0f?.94f:1f);
+                    v.setScaleY(target>0f?.94f:1f);
+                }
+            }
+            // Returning false preserves the platform click action and accessibility.
+            return false;
+        });
+        fab.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override public void onViewAttachedToWindow(View v) {}
+            @Override public void onViewDetachedFromWindow(View v) {
+                if (morph[0]!=null) morph[0].cancel();
+                bubble.setPress(0f);
+                v.animate().cancel();
+            }
+        });
+    }
+
+    private void animateGlassTopBar(View page) {
+        if(!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this)
+                || !android.animation.ValueAnimator.areAnimatorsEnabled())return;
+        // At startup the requested entrance is only for icons, not the full header.
+        if (startupIconAnimationPending && page.findViewWithTag("wen_intro_nav_0") != null) return;
+        // Primary sliding already moves the whole page. Animating its top bar
+        // separately makes a second moving layer and exaggerates frame drops.
+        if (pendingPrimarySlide != 0) return;
+        View bar=page.findViewWithTag("wen_top_chrome");
+        if(bar==null)return;
+        bar.animate().cancel();
+        bar.setAlpha(.86f);bar.setTranslationY(-Ui.dp(this,10));
+        bar.animate().alpha(1f).translationY(0f).setDuration(240)
+                .setInterpolator(new android.view.animation.PathInterpolator(.2f,.8f,.2f,1f)).start();
+    }
 
     /**
      * Keeps one stable Activity content host and transitions screens inside it.
@@ -97,12 +377,46 @@ public final class MainActivity extends Activity {
         if (screenHost == null) {
             screenHost = new FrameLayout(this);
             screenHost.setBackgroundColor(Ui.BACKGROUND);
+            if (SandboxMode.isSandbox(this)) {
+                // Android 15 edge-to-edge safe area for visual parity on tablets.
+                // Keep the production app's window behavior unchanged.
+                screenHost.setOnApplyWindowInsetsListener((v, insets) -> {
+                    android.graphics.Insets system = insets.getInsets(
+                            android.view.WindowInsets.Type.systemBars());
+                    v.setPadding(0, system.top, 0, system.bottom);
+                    return insets;
+                });
+            }
             super.setContentView(screenHost);
+            if (SandboxMode.isSandbox(this)) {
+                // Android 15 icon contrast after decor attachment; OEM-safe fallback.
+                screenHost.post(() -> {
+                    try {
+                        android.view.WindowInsetsController control = getWindow().getInsetsController();
+                        if (control != null) {
+                            int flags = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                                    | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                            control.setSystemBarsAppearance(Ui.DARK ? 0 : flags, flags);
+                        }
+                    } catch (RuntimeException ignored) {
+                        // Production and OEM fallback continue to use the existing decor flags.
+                    }
+                });
+            }
             screenHost.addView(next, match);
             activeScreen = next;
-            // A disabled system animator scale must never leave the first screen
-            // transparent. In that mode, show the view without a transition.
-            if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
+            boolean introIconsOnly = startupIconAnimationPending
+                    && next.findViewWithTag("wen_intro_nav_0") != null;
+            animateGlassTopBar(next);
+            animateStartupIcons(next);
+            // On a direct home launch the icons are the ONLY animated content.
+            // The old first-screen branch still faded/slid the whole page.
+            if (introIconsOnly || !android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                next.setAlpha(1f);
+                next.setTranslationX(0f);
+                next.setTranslationY(0f);
+                return;
+            }
             next.setAlpha(0f);
             next.setTranslationX(Ui.dp(this, 14));
             next.animate().alpha(1f).translationX(0f).setDuration(260)
@@ -112,18 +426,158 @@ public final class MainActivity extends Activity {
         if (activeScreen == next) return;
         final int generation = ++screenTransitionGeneration;
         final View previous = activeScreen;
+        final boolean reverseFab = pendingFabReverse
+                && SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
+        pendingFabReverse = false;
         for (int i = screenHost.getChildCount() - 1; i >= 0; i--) {
             View child = screenHost.getChildAt(i);
             if (child != previous) screenHost.removeViewAt(i);
         }
-        screenHost.addView(next, match);
+        if (reverseFab) screenHost.addView(next, 0, match);
+        else screenHost.addView(next, match);
         activeScreen = next;
+        // The FIRST primary screen must animate icons only; never fade/slide
+        // all financial cards on launch just to decorate the entrance.
+        final boolean iconOnlyLaunch = startupIconAnimationPending
+                && next.findViewWithTag("wen_intro_nav_0") != null;
+        animateGlassTopBar(next);
+        animateStartupIcons(next);
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            pendingPrimarySlide = 0;
             next.setAlpha(1f);
             next.setTranslationX(0f);
             if (previous != null && previous.getParent() == screenHost) {
                 previous.animate().cancel();
                 screenHost.removeView(previous);
+            }
+            return;
+        }
+        if (reverseFab && previous != null) {
+            // Draw the refreshed home/transactions screen *behind* the add
+            // form. Shrink the SAME circular reveal back into the origin FAB;
+            // do not fade the page, touch accounting or bypass Save/Back.
+            pendingPrimarySlide=0;
+            pendingGlassNavigationSwitch=false;
+            next.setAlpha(1f);
+            next.setTranslationX(0f);
+            next.setTranslationY(0f);
+            final View outgoing=previous;
+            outgoing.post(() -> {
+                if (outgoing.getParent()!=screenHost) return;
+                int cx=Math.max(0,Math.min(outgoing.getWidth(),fabRevealX));
+                int cy=Math.max(0,Math.min(outgoing.getHeight(),fabRevealY));
+                float dx=Math.max(cx,outgoing.getWidth()-cx);
+                float dy=Math.max(cy,outgoing.getHeight()-cy);
+                float startRadius=(float)Math.hypot(dx,dy);
+                if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                    if (outgoing.getParent()==screenHost) screenHost.removeView(outgoing);
+                    return;
+                }
+                android.animation.Animator reverse=android.view.ViewAnimationUtils.createCircularReveal(
+                        outgoing,cx,cy,startRadius,Math.max(1f,fabRevealRadius));
+                reverse.setDuration(360);
+                reverse.setInterpolator(new android.view.animation.PathInterpolator(.18f,.72f,.20f,1f));
+                reverse.addListener(new android.animation.AnimatorListenerAdapter() {
+                    @Override public void onAnimationEnd(android.animation.Animator anim) {
+                        if (generation==screenTransitionGeneration
+                                && outgoing.getParent()==screenHost)
+                            screenHost.removeView(outgoing);
+                    }
+                });
+                reverse.start();
+            });
+            return;
+        }
+        // Only when opening Add Transaction from the glass FAB: reveal the
+        // destination FROM the bubble rather than a generic full-screen fade.
+        if (pendingFabReveal && SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)) {
+            pendingFabReveal=false;
+            pendingPrimarySlide=0;
+            pendingGlassNavigationSwitch=false;
+            final View oldPage=previous;
+            final int originX=fabRevealX, originY=fabRevealY;
+            final float startRadius=Math.max(1f,fabRevealRadius);
+            next.setAlpha(1f);
+            next.setVisibility(View.INVISIBLE);
+            next.post(() -> {
+                if (next.getParent()!=screenHost) return;
+                int cx=Math.max(0,Math.min(next.getWidth(),originX));
+                int cy=Math.max(0,Math.min(next.getHeight(),originY));
+                float maxX=Math.max(cx,next.getWidth()-cx);
+                float maxY=Math.max(cy,next.getHeight()-cy);
+                float endRadius=(float)Math.hypot(maxX,maxY);
+                if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                    next.setVisibility(View.VISIBLE);
+                    if(oldPage!=null && oldPage.getParent()==screenHost)
+                        screenHost.removeView(oldPage);
+                    return;
+                }
+                android.animation.Animator reveal=android.view.ViewAnimationUtils.createCircularReveal(
+                        next,cx,cy,startRadius,endRadius);
+                reveal.setDuration(360);
+                reveal.setInterpolator(new android.view.animation.PathInterpolator(.18f,.72f,.20f,1f));
+                reveal.addListener(new android.animation.AnimatorListenerAdapter() {
+                    @Override public void onAnimationEnd(android.animation.Animator animation) {
+                        if(generation==screenTransitionGeneration
+                                && oldPage!=null && oldPage.getParent()==screenHost)
+                            screenHost.removeView(oldPage);
+                    }
+                });
+                next.setVisibility(View.VISIBLE);
+                reveal.start();
+            });
+            return;
+        }
+        // No dual full-screen compositing on glass sandbox: it used to draw
+        // two complete financial pages simultaneously on every tab change.
+        // This affects VIEW presentation only, not DB reads or finance callbacks.
+        boolean paletteSwitch = pendingPaletteSwitch;
+        pendingPaletteSwitch = false;
+        boolean fastLiquid = SandboxMode.isSandbox(this) && (Ui.isLiquidTheme(this) || paletteSwitch);
+        int slideDirection = fastLiquid && !paletteSwitch ? pendingPrimarySlide : 0;
+        pendingPrimarySlide = 0;
+        boolean fromNavGesture = pendingGlassNavigationSwitch;
+        pendingGlassNavigationSwitch = false;
+        if (fastLiquid) {
+            if (iconOnlyLaunch) {
+                if (previous != null && previous.getParent() == screenHost) {
+                    previous.animate().cancel();
+                    screenHost.removeView(previous);
+                }
+                next.setAlpha(1f);
+                next.setTranslationX(0f);
+                next.setTranslationY(0f);
+                return;
+            }
+            if (slideDirection != 0 && previous != null) {
+                // Heavy full-screen double drawing caused visible overlap/jank
+                // on repeated swipes. Release the previous hierarchy in the
+                // same frame and translate only the incoming screen.
+                previous.animate().cancel();
+                screenHost.removeView(previous);
+                next.setAlpha(1f);
+                next.setTranslationY(0f);
+                next.setTranslationX(-slideDirection * Ui.dp(this, 46));
+                next.animate().translationX(0f).setDuration(190)
+                        .setInterpolator(new android.view.animation.PathInterpolator(
+                                .16f, .8f, .24f, 1f)).start();
+                return;
+            }
+            if (previous != null && previous.getParent() == screenHost) {
+                previous.animate().cancel();
+                screenHost.removeView(previous);
+            }
+            next.setTranslationX(0f);
+            if (fromNavGesture || paletteSwitch) {
+                // Show the new bottom bar immediately; its lens now slides on
+                // top of visible content instead of being hidden by alpha=0.
+                next.setAlpha(1f);
+            } else {
+                next.setAlpha(.94f);
+                next.setTranslationY(Ui.dp(this, 3));
+                next.animate().alpha(1f).translationY(0f).setDuration(115)
+                        .setInterpolator(new android.view.animation.PathInterpolator(.2f, .8f, .2f, 1f))
+                        .start();
             }
             return;
         }
@@ -143,6 +597,13 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onCreate(Bundle savedInstanceState) {
+        if (SandboxMode.isSandbox(this)) {
+            // Start the isolated finance trial on the approved blue Liquid theme.
+            // Respect any later palette choice saved by the sandbox tester.
+            android.content.SharedPreferences appearance =
+                    getSharedPreferences("appearance", MODE_PRIVATE);
+            if (!appearance.contains("theme")) appearance.edit().putInt("theme", 18).apply();
+        }
         Ui.applyTheme(this);
         if (Ui.DARK) setTheme(android.R.style.Theme_Material_NoActionBar);
         super.onCreate(savedInstanceState);
@@ -188,9 +649,9 @@ public final class MainActivity extends Activity {
             String securityLabel = null;
             String failure = null;
             try {
-                trusted = AppIntegrity.isTrusted(this);
+                trusted = SandboxMode.isSandbox(this) || AppIntegrity.isTrusted(this);
                 if (trusted) {
-                    activated = LicenseManager.isActivated(this);
+                    activated = SandboxMode.canRun(this);
                     if (!activated) {
                         securityLabel = LicenseManager.identitySecurityLabel(this);
                         request = LicenseManager.requestCode(this);
@@ -242,16 +703,16 @@ public final class MainActivity extends Activity {
         db = new FinanceDbHelper(this);
         db.getAccounts();
         chartLineMode = getSharedPreferences("appearance", MODE_PRIVATE).getBoolean("chart_line", true);
-        authenticated = !AppLockManager.enabled(this);
+        authenticated = !(!SandboxMode.isSandbox(this) && AppLockManager.enabled(this));
         if (authenticated) openInitialScreen(); else showLockScreen();
     }
 
     @Override protected void onStart() {
         super.onStart();
         if (startupCheckRunning || !startupResolved || activationScreenVisible) return;
-        if (!LicenseManager.isActivated(this)) { showActivationScreen(); return; }
+        if (!SandboxMode.canRun(this)) { showActivationScreen(); return; }
         if (!hasStarted) { hasStarted = true; return; }
-        if (AppLockManager.enabled(this) && backgroundAt > 0 && System.currentTimeMillis() - backgroundAt > 30_000L) {
+        if ((!SandboxMode.isSandbox(this) && AppLockManager.enabled(this)) && backgroundAt > 0 && System.currentTimeMillis() - backgroundAt > 30_000L) {
             authenticated = false; showLockScreen();
         }
     }
@@ -266,9 +727,9 @@ public final class MainActivity extends Activity {
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent); setIntent(intent);
         if (startupCheckRunning || !startupResolved) return;
-        if (!LicenseManager.isActivated(this)) { showActivationScreen(); return; }
+        if (!SandboxMode.canRun(this)) { showActivationScreen(); return; }
         if (db == null) { initializeApp(); return; }
-        if (AppLockManager.enabled(this) && backgroundAt > 0 && System.currentTimeMillis() - backgroundAt > 30_000L) authenticated = false;
+        if ((!SandboxMode.isSandbox(this) && AppLockManager.enabled(this)) && backgroundAt > 0 && System.currentTimeMillis() - backgroundAt > 30_000L) authenticated = false;
         if (authenticated) openInitialScreen(); else showLockScreen();
     }
 
@@ -393,7 +854,7 @@ public final class MainActivity extends Activity {
                 BackupFileManager.restore(this, input, secret);
                 db = new FinanceDbHelper(this); db.getAccounts(); ReminderScheduler.scheduleDaily(this);
                 dialog.dismiss(); Toast.makeText(this, "تمت استعادة النسخة بنجاح", Toast.LENGTH_LONG).show();
-                if (LicenseManager.isActivated(this)) recreate(); else showActivationScreen();
+                if (SandboxMode.canRun(this)) recreate(); else showActivationScreen();
             } catch (Exception error) {
                 db = new FinanceDbHelper(this); db.getAccounts();
                 Toast.makeText(this, "فشلت الاستعادة: تأكد من الملف وكلمة السر", Toast.LENGTH_LONG).show();
@@ -402,11 +863,15 @@ public final class MainActivity extends Activity {
     }
 
     @Override public void onBackPressed() {
-        if (AppLockManager.enabled(this) && !authenticated) {
+        if ((!SandboxMode.isSandbox(this) && AppLockManager.enabled(this)) && !authenticated) {
             moveTaskToBack(true);
             return;
         }
-        if (addScreenVisible || subScreenVisible || currentTab != TAB_HOME) {
+        if (addScreenVisible) {
+            returnFromAddWithReverse(false);
+            return;
+        }
+        if (subScreenVisible || currentTab != TAB_HOME) {
             showMain(false);
             return;
         }
@@ -414,7 +879,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showMain(boolean showTransactions) {
-        if (AppLockManager.enabled(this) && !authenticated) { showLockScreen(); return; }
+        if ((!SandboxMode.isSandbox(this) && AppLockManager.enabled(this)) && !authenticated) { showLockScreen(); return; }
         // Recheck after saving, editing, recategorizing or deleting expenses and on
         // reopening the dashboard. A monthly alert is still emitted only once.
         if (BudgetAlertManager.enabled(this,"ILS") || BudgetAlertManager.enabled(this,"USD") ||
@@ -431,13 +896,44 @@ public final class MainActivity extends Activity {
         LinearLayout shell = Ui.column(this);
         root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         View topBar = mainTopBar();
-        shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
+        final boolean overlayGlassHeader=SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
+        if (!overlayGlassHeader)
+            shell.addView(topBar, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
+        if (SandboxMode.isSandbox(this) && !overlayGlassHeader) {
+            TextView trial = Ui.text(this, "🧪 نسخة اختبار مستقلة — بلا تفعيل أو قفل دخول", 12, Ui.TEXT, true);
+            trial.setGravity(Gravity.CENTER);
+            trial.setBackground(Ui.rounded(Ui.BRAND_SOFT, 12, this));
+            shell.addView(trial, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 34)));
+        }
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
+        if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)) {
+            // Keep actual content available under the optical nav. A blank
+            // padded footer killed visible refraction during Hold even while
+            // the gesture/morph callbacks ran. Legibility is now handled by
+            // the optical centre frost and neutral nav backing, not clipping
+            // away all image detail behind the lens.
+            scroll.setBackground(Ui.glassScreenBackground(this));
+        }
         LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();
+        if (overlayGlassHeader) {
+            content.setPadding(content.getPaddingLeft(),
+                    content.getPaddingTop()+Ui.dp(this, 112),
+                    content.getPaddingRight(),content.getPaddingBottom());
+            TextView trial=Ui.text(this, "🧪 نسخة اختبار مستقلة — بلا تفعيل أو قفل دخول", 12, Ui.TEXT, true);
+            trial.setGravity(Gravity.CENTER);
+            trial.setBackground(Ui.rounded(Ui.BRAND_SOFT, 12, this));
+            content.addView(trial,0,new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,34)));
+        }
         scroll.addView(content, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         shell.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        if (overlayGlassHeader)
+            root.addView(topBar, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112),Gravity.TOP));
         View bottomNav = bottomNavigation(currentTab);
         FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72), Gravity.BOTTOM);
         // Floating glass navigation is visual-only; the underlying tabs stay unchanged.
@@ -451,10 +947,50 @@ public final class MainActivity extends Activity {
         fab.setBackground(Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
                 : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this));
         fab.setElevation(Ui.dp(this, 8));
-        fab.setOnClickListener(v -> showAddTransaction());
+        fab.setTag("wen_intro_fab");
+        // Accessibility is a functional requirement of the FAB itself, not
+        // a side effect of whichever material renderer is currently active.
+        fab.setContentDescription("إضافة عملية");
+        fab.setOnClickListener(v -> {
+            if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) && screenHost != null) {
+                int[] pos=new int[2], host=new int[2];
+                v.getLocationOnScreen(pos);
+                screenHost.getLocationOnScreen(host);
+                fabRevealX=pos[0]-host[0]+v.getWidth()/2;
+                fabRevealY=pos[1]-host[1]+v.getHeight()/2;
+                fabRevealRadius=Math.max(1,v.getWidth()/2);
+                pendingFabReveal=true;
+            }
+            // Give the tapped sphere one composited frame before the form builds.
+            if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this))
+                v.postOnAnimation(() -> { if (v.isAttachedToWindow()) showAddTransaction(); });
+            else showAddTransaction();
+        });
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));
         fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18), Ui.dp(this, 88));
-        root.addView(fab, fabParams);
+        final FrameLayout fabGlassHost;
+        final View movingFab;
+        if (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)) {
+            // One container owns both the true circular material and the
+            // ORIGINAL click target. Scrolling must move them together.
+            FrameLayout wrapper = new FrameLayout(this);
+            wrapper.setClipChildren(false);
+            wrapper.setClipToPadding(false);
+            fabGlassHost = new FrameLayout(this);
+            fabGlassHost.setClipChildren(false);
+            wrapper.addView(fabGlassHost, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+            wrapper.addView(fab, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+            root.addView(wrapper, fabParams);
+            movingFab = wrapper;
+        } else {
+            fabGlassHost = null;
+            root.addView(fab, fabParams);
+            movingFab = fab;
+        }
         final boolean[] chromeHidden = {false};
         final int[] upwardTravel = {0};
         final View topBarBackground = topBar.findViewWithTag("main_header_background");
@@ -462,7 +998,7 @@ public final class MainActivity extends Activity {
             int delta = scrollY - oldScrollY;
             if (topBarBackground != null) {
                 float progress = Math.min(1f, scrollY / (float) Ui.dp(this, 72));
-                topBarBackground.setAlpha(1f - progress * .84f);
+                topBarBackground.setAlpha(1f - progress * (SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) ? .82f : .84f));
                 topBarBackground.setElevation(progress > .02f ? 0f : Ui.dp(this, 7));
             }
             if (delta < 0) upwardTravel[0] += -delta; else if (delta > 0) upwardTravel[0] = 0;
@@ -476,12 +1012,12 @@ public final class MainActivity extends Activity {
                     bottomNav.setTranslationY(Ui.dp(this, 76));
                     bottomNav.setAlpha(0f);
                     bottomNav.setVisibility(View.INVISIBLE);
-                    fab.animate().cancel();
-                    fab.setTranslationY(Ui.dp(this, 70));
+                    movingFab.animate().cancel();
+                    movingFab.setTranslationY(Ui.dp(this, 70));
                 } else {
                     bottomNav.animate().translationY(Ui.dp(this, 76)).alpha(0f).setDuration(220)
                             .withEndAction(() -> { if (chromeHidden[0]) bottomNav.setVisibility(View.INVISIBLE); }).start();
-                    fab.animate().translationY(Ui.dp(this, 70)).setDuration(220).start();
+                    movingFab.animate().translationY(Ui.dp(this, 70)).setDuration(220).start();
                 }
             } else if ((showAtTop || showWhileAscending) && chromeHidden[0]) {
                 chromeHidden[0] = false;
@@ -491,24 +1027,43 @@ public final class MainActivity extends Activity {
                     bottomNav.animate().cancel();
                     bottomNav.setAlpha(1f);
                     bottomNav.setTranslationY(0f);
-                    fab.animate().cancel();
-                    fab.setTranslationY(0f);
+                    movingFab.animate().cancel();
+                    movingFab.setTranslationY(0f);
                 } else {
                     bottomNav.setAlpha(0f);
                     bottomNav.setTranslationY(Ui.dp(this, 76));
                     bottomNav.animate().translationY(0f).alpha(1f).setDuration(220).start();
-                    fab.animate().translationY(0f).setDuration(220).start();
+                    movingFab.animate().translationY(0f).setDuration(220).start();
                 }
             }
         });
         setContentView(root);
-        Ui.pressAnimation(fab);
+        boolean externalFabMaterial = false;
+        if (fabGlassHost != null) {
+            try {
+                Class<?> provider = Class.forName(
+                        "app.wensarafet.tracker.SandboxOpticalGlass");
+                java.lang.reflect.Method attach = provider.getMethod("attachFab",
+                        FrameLayout.class, FrameLayout.class, TextView.class);
+                externalFabMaterial = Boolean.TRUE.equals(
+                        attach.invoke(null, fabGlassHost, root, fab));
+            } catch (ReflectiveOperationException | LinkageError failure) {
+                android.util.Log.w("WenGlassProbe",
+                        "SANDBOX_FAB_MATERIAL_UNAVAILABLE", failure);
+            }
+        }
+        if (!externalFabMaterial) bindGlassFab(fab);
         Ui.animateScreen(root);
-        content.post(() -> Ui.animateChildren(content));
+        // The primary Liquid screen already slides. Staggering financial cards
+        // on top of it previously caused multiple simultaneous alpha/translation
+        // animators during repeated swipes.
+        if (!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this))
+            content.post(() -> Ui.animateChildren(content));
     }
 
     private View mainTopBar() {
         LinearLayout wrapper = Ui.column(this);
+        wrapper.setTag("wen_top_chrome");
         wrapper.setPadding(Ui.dp(this, 14), Ui.dp(this, 10), Ui.dp(this, 14), Ui.dp(this, 10));
         FrameLayout layers = new FrameLayout(this);
         View background = new View(this);
@@ -521,8 +1076,16 @@ public final class MainActivity extends Activity {
         bar.setElevation(Ui.dp(this, 8));
 
         LinearLayout titles = Ui.column(this);
-        TextView title = Ui.text(this, "وين صرفت؟", 25, Color.WHITE, true);
-        TextView subtitle = Ui.text(this, "أموالك واضحة، وخصوصيتك محفوظة", 11, Color.rgb(225, 239, 235), false);
+        String headerTitle;
+        String headerSubtitle;
+        switch (currentTab) {
+            case TAB_TRANSACTIONS: headerTitle="كل العمليات"; headerSubtitle="سجل المصروفات والدخل والتحويلات"; break;
+            case TAB_DEBTS: headerTitle="الديون"; headerSubtitle="الأرصدة المستحقة وسجل السداد"; break;
+            case TAB_ANALYTICS: headerTitle="التحليلات"; headerSubtitle="تقارير الإنفاق والميزانيات"; break;
+            default: headerTitle="الرئيسية"; headerSubtitle="ملخص الحسابات والمصروفات"; break;
+        }
+        TextView title = Ui.text(this, headerTitle, 25, Color.WHITE, true);
+        TextView subtitle = Ui.text(this, headerSubtitle, 11, Color.rgb(225, 239, 235), false);
         // Keep labels and controls inside the fixed header on compact RTL screens.
         title.setSingleLine(true);
         subtitle.setSingleLine(true);
@@ -540,11 +1103,13 @@ public final class MainActivity extends Activity {
         TextView addAccount = Ui.text(this, "▦", headerIconText, Color.WHITE, true);
         addAccount.setGravity(Gravity.CENTER);
         addAccount.setContentDescription("إدارة الحسابات");
+        addAccount.setTag("wen_intro_header_accounts");
         addAccount.setBackground(Ui.rounded(Color.argb(42, 255, 255, 255), 20, this));
         addAccount.setOnClickListener(v -> showAccountManagement());
         TextView settings = Ui.text(this, "⚙", headerIconText, Color.WHITE, true);
         settings.setGravity(Gravity.CENTER);
         settings.setContentDescription("الإعدادات");
+        settings.setTag("wen_intro_header_settings");
         settings.setBackground(Ui.rounded(Color.argb(42, 255, 255, 255), 20, this));
         settings.setOnClickListener(v -> showSettings());
         LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(headerIconSize, headerIconSize);
@@ -570,19 +1135,149 @@ public final class MainActivity extends Activity {
         nav.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 8));
         nav.setBackground(Ui.glassNavigationBackground(this, 26));
         nav.setElevation(Ui.dp(this, 12));
+        final boolean liquid = Ui.isLiquidTheme(this);
+        if (liquid && SandboxMode.isSandbox(this)) {
+            // An opaque blue shell hides the sampled underlay. Keep this bar
+            // nearly neutral; the moving native lens supplies actual optics.
+            android.graphics.drawable.GradientDrawable quietChrome =
+                    new android.graphics.drawable.GradientDrawable(
+                            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                            Ui.DARK ? new int[]{0xF1434D67, 0xE936405A}
+                                    : new int[]{0xFCFAFDFF, 0xF8F3F9FF});
+            quietChrome.setCornerRadius(Ui.dp(this, 26));
+            quietChrome.setStroke(Math.max(1, Ui.dp(this, 1)),
+                    Ui.DARK ? 0x4DE7F4FF : 0x80FFFFFF);
+            nav.setBackground(quietChrome);
+        }
 
         TextView home = navButton("🏠\nالرئيسية", selectedTab == TAB_HOME);
         TextView tx = navButton("📋\nالعمليات", selectedTab == TAB_TRANSACTIONS);
         TextView debts = navButton("🤝\nالديون", selectedTab == TAB_DEBTS);
         TextView analytics = navButton("📊\nالتحليل", selectedTab == TAB_ANALYTICS);
-        home.setOnClickListener(v -> showMain(false));
-        tx.setOnClickListener(v -> showMain(true));
-        debts.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_RECEIVABLE));
-        analytics.setOnClickListener(v -> showAnalyticsScreen());
-        for(TextView item:new TextView[]{home,tx,debts,analytics}) {
-            LinearLayout.LayoutParams navParams=new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1);
-            navParams.setMargins(Ui.dp(this,4),0,Ui.dp(this,4),0);
-            nav.addView(item,navParams);
+        // Explicit accessibility names also allow deterministic QA without coordinates.
+        home.setContentDescription("تبويب الرئيسية");
+        tx.setContentDescription("تبويب العمليات");
+        debts.setContentDescription("تبويب الديون");
+        analytics.setContentDescription("تبويب التحليل");
+        home.setOnClickListener(v -> navigatePrimaryTab(TAB_HOME));
+        tx.setOnClickListener(v -> navigatePrimaryTab(TAB_TRANSACTIONS));
+        debts.setOnClickListener(v -> navigatePrimaryTab(TAB_DEBTS));
+        analytics.setOnClickListener(v -> navigatePrimaryTab(TAB_ANALYTICS));
+
+        TextView[] items = new TextView[]{home, tx, debts, analytics};
+        LinearLayout tabs = liquid ? Ui.row(this) : nav;
+        if (liquid) {
+            tabs.setTag("wen_glass_tab_content");
+            if (SandboxMode.isSandbox(this)) {
+                // The native refractor samples THIS tab strip. A transparent
+                // backdrop turns its ARGB texture into a black glass capsule.
+                // Make the sampled plate opaque and quietly match nav chrome.
+                android.graphics.drawable.GradientDrawable sampledPlate =
+                        new android.graphics.drawable.GradientDrawable();
+                sampledPlate.setColor(Ui.DARK ? 0xFF30394C : 0xFFF8FBFF);
+                sampledPlate.setCornerRadius(Ui.dp(this, 26));
+                tabs.setBackground(sampledPlate);
+            }
+        }
+        for (int i = 0; i < items.length; i++) {
+            TextView item = items[i];
+            item.setTag("wen_intro_nav_" + i);
+            LinearLayout.LayoutParams navParams = new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+            navParams.setMargins(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
+            tabs.addView(item, navParams);
+        }
+        if (liquid) {
+            // One optical pill behind all four labels, never four independent pills.
+            app.wensarafet.glass.WenNavigationTrack track =
+                    new app.wensarafet.glass.WenNavigationTrack(this, Ui.DARK);
+            // The glass must be visually in FRONT of the tab labels while
+            // remaining completely transparent to input. A non-clickable
+            // FrameLayout still dispatches DOWN to its native material child,
+            // swallowing horizontal drags before the real tab TextViews.
+            FrameLayout lens = SandboxMode.isSandbox(this)
+                    ? new FrameLayout(this) {
+                        @Override public boolean dispatchTouchEvent(MotionEvent event) {
+                            return false; // never steal the original tab gesture
+                        }
+                    }
+                    : new FrameLayout(this);
+            lens.setBackground(Ui.glassSlidingNavigationLens(this));
+            // The built-in lens stays below labels; the sandbox's native lens
+            // is raised over them after the real tab hit targets are mounted.
+            FrameLayout.LayoutParams lensParams = new FrameLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.TOP | Gravity.LEFT);
+            track.addView(lens, lensParams);
+            // The optional advanced optical View exists ONLY in the sandbox
+            // source set. Production APKs never contain the third-party engine.
+            // Reflection avoids a release dependency on sandbox-only classes.
+            if (SandboxMode.isSandbox(this)) {
+                try {
+                    Class<?> provider = Class.forName(
+                            "app.wensarafet.tracker.SandboxOpticalGlass");
+                    java.lang.reflect.Method attach = provider.getMethod("attach",
+                            FrameLayout.class, app.wensarafet.glass.WenNavigationTrack.class);
+                    if (Boolean.TRUE.equals(attach.invoke(null, lens, track))) {
+                        // A single material, not two stacked lenses and rims.
+                        lens.setBackground(null);
+                        track.setExternalGlassActive(true);
+                    }
+                } catch (ReflectiveOperationException | LinkageError problem) {
+                    android.util.Log.w("WenGlassProbe",
+                            "SANDBOX_LIBRARY_UNAVAILABLE: keeping built-in optics", problem);
+                }
+            }
+            track.addView(tabs, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            if (track.getGlassGestureBridge() != null) {
+                // The native refractive material must be composited AFTER glyphs,
+                // not just a decorative rim above otherwise undistorted labels.
+                // It is passive: original TextViews still own click / drag / a11y.
+                lens.setClickable(false);
+                lens.setFocusable(false);
+                lens.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                lens.bringToFront();
+                android.util.Log.i("WenGlassProbe", "MIT_NAV_MATERIAL_ABOVE_GLYPHS");
+            }
+            // Hardware-composited passive optical layer must be ABOVE the glyphs.
+            // It never takes click/hold ownership away from any real tab.
+            if (track.getOptic() != null) track.getOptic().bringToFront();
+            // WenNavigationTrack paints magnification after the tab children
+            // in one hardware canvas pass; no overlay child can disappear
+            // behind a separate Surface or hardware-composition layer.
+            for (int i = 0; i < items.length; i++) {
+                app.wensarafet.glass.GlassMotion.bindNavigationTab(
+                        items[i], track, lens, items, selectedTab, i, Ui.SKY,
+                        () -> pendingGlassNavigationSwitch = true);
+            }
+            nav.addView(track, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            if (SandboxMode.isSandbox(this) && android.os.Build.VERSION.SDK_INT >= 29) {
+                // Explicitly protect the small floating tab strip against
+                // Android back/quick-switch edge gesture capture. Never touch
+                // the production app or intercept system gestures elsewhere.
+                track.post(() -> {
+                    if (!track.isAttachedToWindow() || track.getWidth() <= 0
+                            || track.getHeight() <= 0) return;
+                    track.setSystemGestureExclusionRects(
+                            java.util.Collections.singletonList(new android.graphics.Rect(
+                                    0, 0, track.getWidth(), track.getHeight())));
+                    android.util.Log.i("WenGlassProbe", "NAV_SYSTEM_GESTURE_EXCLUSION_BOUND");
+                });
+            }
+            // During Hold+Drag (or a direct touch), the previous lens is
+            // already under the released finger. Do not restart the new screen's
+            // lens at the old selected tab: that caused a visible snap-back.
+            // Accessibility/programmatic tab clicks still get the normal slide.
+            int lensStart = pendingGlassNavigationSwitch ? selectedTab : lastGlassNavigationTab;
+            app.wensarafet.glass.GlassMotion.slideLens(
+                    track, lens, items, lensStart, selectedTab);
+            if (pendingGlassNavigationSwitch) {
+                // The newly built strip inherits the finger's optical droplet,
+                // then settles at the target without jumping back first.
+                app.wensarafet.glass.GlassMotion.finishNavigationLensHandoff(track, lens);
+            }
+            lastGlassNavigationTab = selectedTab;
         }
         return nav;
     }
@@ -596,7 +1291,7 @@ public final class MainActivity extends Activity {
             int delta=y-oldY;
             if(background!=null) {
                 float fade=Math.min(1f,y/(float)Ui.dp(this,72));
-                background.setAlpha(1f-fade*.84f);
+                background.setAlpha(1f-fade*(SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) ? .82f : .84f));
                 background.setElevation(fade>.02f?0f:Ui.dp(this,7));
             }
             if(delta<0)upwardTravel[0]+=-delta;
@@ -635,9 +1330,16 @@ public final class MainActivity extends Activity {
                 selected ? (Ui.isLiquidTheme(this) && !Ui.DARK ? Ui.BRAND_DARK : Ui.BRAND) : Ui.MUTED, selected);
         view.setGravity(Gravity.CENTER);
         view.setLineSpacing(Ui.dp(this,2),1f);
+        if (Ui.isLiquidTheme(this)) {
+            view.setTextColor(selected
+                    ? (Ui.DARK ? Color.WHITE : Ui.BRAND_DARK) : Ui.MUTED);
+        }
         view.setPadding(Ui.dp(this,4),Ui.dp(this,3),Ui.dp(this,4),Ui.dp(this,3));
         view.setMaxLines(2);
-        if (selected) view.setBackground(Ui.glassSelectedNavigationBackground(this, 18));
+        view.setSelected(selected); // Accessibility exposes the current tab.
+        if (selected && !Ui.isLiquidTheme(this)) {
+            view.setBackground(Ui.glassSelectedNavigationBackground(this, 18));
+        }
         return view;
     }
 
@@ -768,7 +1470,12 @@ public final class MainActivity extends Activity {
 
         LinearLayout results=Ui.column(this);
         content.addView(results);
-        final int pageSize=Math.max(20,Math.min(75,limit));
+        // Keep every historical transaction reachable via the existing
+        // "load more" paging. Only the initial UI batch gets smaller in the
+        // isolated Liquid sandbox: constructing 75 decorated rows before the
+        // next frame was a major source of tab-switch hitching.
+        final int initialCap = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this) ? 24 : 75;
+        final int pageSize=Math.max(20,Math.min(initialCap,limit));
         final int[] offset={0};
         final Runnable[] loadNext={null};
         loadNext[0]=()->{
@@ -1680,6 +2387,7 @@ public final class MainActivity extends Activity {
 
     private View pageHeader(String titleValue, Runnable backAction) {
         LinearLayout wrapper=Ui.column(this);
+        wrapper.setTag("wen_top_chrome");
         wrapper.setPadding(Ui.dp(this,14),Ui.dp(this,5),
                 Ui.dp(this,14),Ui.dp(this,5));
         LinearLayout bar=Ui.row(this);
@@ -1691,6 +2399,7 @@ public final class MainActivity extends Activity {
         back.setContentDescription("رجوع");
         back.setBackground(Ui.rounded(Color.argb(40,255,255,255),12,this));
         back.setOnClickListener(v->backAction.run());
+        Ui.pressAnimation(back);
         bar.addView(back,new LinearLayout.LayoutParams(Ui.dp(this,46),Ui.dp(this,46)));
         TextView title=Ui.text(this,titleValue,22,Color.WHITE,true);
         title.setSingleLine(true);
@@ -1720,10 +2429,37 @@ public final class MainActivity extends Activity {
             LinearLayout card = Ui.column(this); card.setGravity(Gravity.CENTER);
             card.setBackground(new AuroraDrawable(Ui.themePreviewColors(i), Ui.dp(this, 20)));
             TextView name = Ui.text(this, (i == currentTheme ? "✓ " : "") + Ui.THEME_NAMES[i], 14, Color.WHITE, true); name.setGravity(Gravity.CENTER);
-            card.addView(name); card.setOnClickListener(v -> { Ui.saveTheme(this, index); recreate(); }); Ui.pressAnimation(card);
+            card.addView(name); card.setOnClickListener(v -> {
+                if (index == Ui.themeIndex(this)) return;
+                boolean previousDark = Ui.DARK;
+                Ui.saveTheme(this, index);
+                // Only the isolated preview can switch palettes in place. The original
+                // application retains its previous recreate() and lifecycle behavior.
+                if (!SandboxMode.isSandbox(this) || previousDark != Ui.DARK) {
+                    recreate();
+                    return;
+                }
+                // Keep the existing Activity and DB instance; no startup splash, empty
+                // window, or lost horizontal carousel position after a colour change.
+                pendingThemeScrollX = themeScroll.getScrollX();
+                pendingPaletteSwitch = true;
+                lastGlassNavigationTab = -1;
+                if (screenHost != null) screenHost.setBackgroundColor(Ui.BACKGROUND);
+                getWindow().setStatusBarColor(Ui.BRAND_DARK);
+                getWindow().setNavigationBarColor(Ui.SURFACE);
+                int lightBars = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                        | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                getWindow().getDecorView().setSystemUiVisibility(Ui.DARK ? 0 : lightBars);
+                showSettings();
+            }); Ui.pressAnimation(card);
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(Ui.dp(this, 132), Ui.dp(this, 82)); p.setMargins(Ui.dp(this, 5), 0, Ui.dp(this, 5), 0); themeRow.addView(card, p);
         }
         themeScroll.addView(themeRow); content.addView(themeScroll);
+        if (SandboxMode.isSandbox(this) && pendingThemeScrollX >= 0) {
+            final int restoreX = pendingThemeScrollX;
+            pendingThemeScrollX = -1;
+            themeScroll.post(() -> themeScroll.scrollTo(restoreX, 0));
+        }
 
         content.addView(sectionTitle("تخصيص الواجهة", "مكان واحد ومنظّم لإعدادات الصفحة الرئيسية"));
         LinearLayout layoutCard = Ui.row(this); layoutCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
@@ -1740,10 +2476,10 @@ public final class MainActivity extends Activity {
         journal.setOnClickListener(v->showAuditHistory());content.addView(journal,fieldParams());
         Button manageCategories=actionButton("🏷️ إدارة التصنيفات والرموز",false);
         manageCategories.setOnClickListener(v->showCategoryManagement());content.addView(manageCategories,fieldParams());
-        content.addView(sectionTitle("حماية التطبيق", AppLockManager.enabled(this) ? "مفعّلة" : "اختيارية"));
+        content.addView(sectionTitle("حماية التطبيق", (!SandboxMode.isSandbox(this) && AppLockManager.enabled(this)) ? "مفعّلة" : "اختيارية"));
         LinearLayout lockCard = Ui.row(this); lockCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12)); lockCard.setBackground(Ui.glassListBackground(this, 20)); lockCard.setElevation(Ui.dp(this, 3));
         LinearLayout lockText = Ui.column(this); lockText.addView(Ui.text(this, "رمز دخول وبصمة", 15, Ui.TEXT, true)); lockText.addView(Ui.text(this, "احمِ الأرصدة والعمليات عند فتح التطبيق", 11, Ui.MUTED, false)); lockCard.addView(lockText, new LinearLayout.LayoutParams(0, Ui.dp(this, 52), 1));
-        Button lockSetup = actionButton(AppLockManager.enabled(this) ? "تعديل" : "تفعيل", false); lockSetup.setOnClickListener(v -> showAppLockDialog()); lockCard.addView(lockSetup, new LinearLayout.LayoutParams(Ui.dp(this, 92), Ui.dp(this, 48))); content.addView(lockCard);
+        Button lockSetup = actionButton((!SandboxMode.isSandbox(this) && AppLockManager.enabled(this)) ? "تعديل" : "تفعيل", false); lockSetup.setOnClickListener(v -> showAppLockDialog()); lockCard.addView(lockSetup, new LinearLayout.LayoutParams(Ui.dp(this, 92), Ui.dp(this, 48))); content.addView(lockCard);
 
         content.addView(sectionTitle("تذكير المصاريف", "اختياري"));
         LinearLayout reminderCard = Ui.column(this); reminderCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
@@ -1966,7 +2702,7 @@ public final class MainActivity extends Activity {
     private String notificationSoundLabel(String type) {
         String stored = NotificationPreferences.soundUri(this, type);
         if (stored.isEmpty()) return "اختيار صوت — الافتراضي";
-        if(NotificationSoundProvider.isOurSound(Uri.parse(stored)))
+        if(NotificationSoundProvider.isOurSound(this,Uri.parse(stored)))
             return "🔊 الصوت المميز — "+type;
         try {
             Ringtone ringtone = RingtoneManager.getRingtone(this, Uri.parse(stored));
@@ -1998,7 +2734,11 @@ public final class MainActivity extends Activity {
     }
 
     private void showAppLockDialog() {
-        boolean active = AppLockManager.enabled(this);
+        if (SandboxMode.isSandbox(this)) {
+            Toast.makeText(this, "نسخة التجربة بلا قفل دخول", Toast.LENGTH_LONG).show();
+            return;
+        }
+        boolean active = (!SandboxMode.isSandbox(this) && AppLockManager.enabled(this));
         LinearLayout form = Ui.column(this); form.setPadding(Ui.dp(this, 20), 0, Ui.dp(this, 20), 0);
         CheckBox enabled = new CheckBox(this); enabled.setText("طلب رمز عند فتح التطبيق"); enabled.setTextColor(Ui.TEXT); enabled.setChecked(active); form.addView(enabled, fieldParams());
         EditText current = pinField("الرمز الحالي"); current.setVisibility(active ? View.VISIBLE : View.GONE); form.addView(current, fieldParams());
@@ -2072,9 +2812,11 @@ public final class MainActivity extends Activity {
         LinearLayout page=Ui.column(this);
         primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View debtTopBar=mainTopBar();
-        page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
+        boolean debtGlassOverlay=SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
+        if (!debtGlassOverlay)
+            page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
         ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this);
-        content.setPadding(Ui.dp(this, 16), Ui.dp(this, 10), Ui.dp(this, 16), Ui.dp(this, 110));
+        content.setPadding(Ui.dp(this, 16), Ui.dp(this, debtGlassOverlay?122:10), Ui.dp(this, 16), Ui.dp(this, 110));
         content.addView(sectionTitle("دفتر الديون","أرصدة الديون وحركاتها"));
 
         LinearLayout actions = Ui.row(this);
@@ -2113,13 +2855,18 @@ public final class MainActivity extends Activity {
         content.addView(sectionTitle("المسددة والمغلقة", closed.isEmpty() ? "لا يوجد سجل بعد" : closedPeople.size() + " أشخاص"));
         for (List<Models.DebtSummary> personDebts : closedPeople.values()) content.addView(debtPersonCard(personDebts, true));
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        if (debtGlassOverlay)
+            primaryRoot.addView(debtTopBar, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112),Gravity.TOP));
         View debtNav=bottomNavigation(TAB_DEBTS);
         FrameLayout.LayoutParams debtNavParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM);
         if (Ui.isLiquidTheme(this)) debtNavParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));
         primaryRoot.addView(debtNav,debtNavParams);
         bindPrimaryNavigationScroll(scroll,debtTopBar,debtNav);
-        setContentView(primaryRoot); Ui.animateScreen(primaryRoot); content.post(() -> Ui.animateChildren(content));
+        setContentView(primaryRoot); Ui.animateScreen(primaryRoot);
+        if (!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this))
+            content.post(() -> Ui.animateChildren(content));
     }
 
     private LinkedHashMap<Long,List<Models.DebtSummary>> groupDebtsByPerson(List<Models.DebtSummary> debts) {
@@ -2474,8 +3221,12 @@ public final class MainActivity extends Activity {
         LinearLayout page=Ui.column(this);
         primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View analyticsTopBar=mainTopBar();
-        page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112)));
-        ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 110));
+        boolean analyticsGlassOverlay=SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
+        if (!analyticsGlassOverlay)
+            page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112)));
+        ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this);
+        content.setPadding(Ui.dp(this, 16), Ui.dp(this, analyticsGlassOverlay?124:12),
+                Ui.dp(this, 16), Ui.dp(this, 110));
         content.addView(sectionTitle("تحليل المصروفات","تقاريرك حسب العملة"));
         content.addView(Ui.text(this, "اختر عملة التحليل", 14, Ui.TEXT, true));
         LinearLayout currencyRow = Ui.row(this);
@@ -2568,6 +3319,9 @@ public final class MainActivity extends Activity {
             content.addView(categoryAnalysisRow(empty,max,monthStart.getTimeInMillis(),now));
         }
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        if (analyticsGlassOverlay)
+            primaryRoot.addView(analyticsTopBar,new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112),Gravity.TOP));
         View analyticsNav=bottomNavigation(TAB_ANALYTICS);
         FrameLayout.LayoutParams analyticsNavParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM);
@@ -2681,12 +3435,46 @@ public final class MainActivity extends Activity {
     }
 
     private View comparisonCard(String title, long current, long previous) {
-        LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this, 12), Ui.dp(this, 12), Ui.dp(this, 12), Ui.dp(this, 10));
-        card.setBackground(Ui.layeredBackground(this, 20)); card.setElevation(Ui.dp(this, 4));
-        card.addView(Ui.text(this, title, 12, Color.WHITE, false)); card.addView(Ui.text(this, Money.format(current, dashboardCurrency), 17, Color.WHITE, true));
-        String change; if (previous < 0) change = "اضغط لعرض التفاصيل"; else if (previous == 0) change = current == 0 ? "لا تغيير" : "لا توجد مقارنة سابقة"; else { double percent = (current - previous) * 100.0 / previous; change = (percent >= 0 ? "↑ " : "↓ ") + String.format(Locale.ROOT, "%.1f%%", Math.abs(percent)) + " عن السابق"; }
-        card.addView(Ui.text(this, change, 11, Color.rgb(232, 239, 255), false));
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, Ui.dp(this, 116), 1); p.setMargins(Ui.dp(this, 3), Ui.dp(this, 6), Ui.dp(this, 3), Ui.dp(this, 6)); card.setLayoutParams(p); return card;
+        // More legible analytics on the isolated glass trial only: the previous
+        // pale-on-pale card text became cramped in two-column phone layouts.
+        // No expense calculation, data access, or production style is changed.
+        boolean trialGlass = SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this);
+        LinearLayout card = Ui.column(this);
+        card.setPadding(Ui.dp(this, trialGlass ? 15 : 12),
+                Ui.dp(this, trialGlass ? 15 : 12),
+                Ui.dp(this, trialGlass ? 15 : 12), Ui.dp(this, trialGlass ? 12 : 10));
+        card.setBackground(trialGlass ? Ui.glassBalanceBackground(this, 20)
+                : Ui.layeredBackground(this, 20));
+        card.setElevation(Ui.dp(this, trialGlass ? 3 : 4));
+        card.addView(Ui.text(this, title, trialGlass ? 13.5f : 12f,
+                trialGlass ? Ui.TEXT : Color.WHITE, true));
+        TextView amountText = Ui.text(this, Money.format(current, dashboardCurrency),
+                trialGlass ? 18f : 17f, trialGlass ? Ui.TEXT : Color.WHITE, true);
+        if (trialGlass) {
+            // Keep the complete amount on one line for narrow phones.
+            amountText.setSingleLine(true);
+            amountText.setAutoSizeTextTypeUniformWithConfiguration(13, 18, 1,
+                    android.util.TypedValue.COMPLEX_UNIT_SP);
+        }
+        card.addView(amountText);
+        String change;
+        if (previous < 0) change = "اضغط لعرض التفاصيل";
+        else if (previous == 0) change = current == 0 ? "لا تغيير" : "لا توجد مقارنة سابقة";
+        else {
+            double percent = (current - previous) * 100.0 / previous;
+            change = (percent >= 0 ? "↑ " : "↓ ") +
+                    String.format(Locale.ROOT, "%.1f%%", Math.abs(percent)) + " عن السابق";
+        }
+        TextView description = Ui.text(this, change, trialGlass ? 12f : 11f,
+                trialGlass ? Ui.MUTED : Color.rgb(232, 239, 255), false);
+        if (trialGlass) description.setMaxLines(2);
+        card.addView(description);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
+                0, Ui.dp(this, trialGlass ? 136 : 116), 1);
+        p.setMargins(Ui.dp(this, trialGlass ? 5 : 3), Ui.dp(this, 6),
+                Ui.dp(this, trialGlass ? 5 : 3), Ui.dp(this, 6));
+        card.setLayoutParams(p);
+        return card;
     }
 
     /** C7: income and received remittances are separate analytical flows,
@@ -2726,7 +3514,8 @@ public final class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         setContentView(page);
         Ui.animateScreen(page);
-        content.post(() -> Ui.animateChildren(content));
+        if (!SandboxMode.isSandbox(this) || !Ui.isLiquidTheme(this))
+            content.post(() -> Ui.animateChildren(content));
     }
 
     private void showExpensePeriodScreen(String title, String currency, long startInclusive, long endExclusive) {
@@ -3318,13 +4107,16 @@ public final class MainActivity extends Activity {
         final List<SplitRowRef> splitRows = new ArrayList<>();
 
         LinearLayout page = Ui.column(this);
-        page.setBackgroundColor(Ui.BACKGROUND);
+        page.setBackground(SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
+                ? Ui.glassScreenBackground(this)
+                : new android.graphics.drawable.ColorDrawable(Ui.BACKGROUND));
         LinearLayout top = Ui.row(this);
         top.setPadding(Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 18), Ui.dp(this, 8));
-        top.setBackground(Ui.layeredBackground(this, 0));
+        top.setBackground(SandboxMode.isSandbox(this) && Ui.isLiquidTheme(this)
+                ? Ui.glassHeaderBackground(this, 24) : Ui.layeredBackground(this, 0));
         TextView back = Ui.text(this, "‹", 34, Color.WHITE, false);
         back.setGravity(Gravity.CENTER);
-        back.setOnClickListener(v -> showMain(transactionsTab));
+        back.setOnClickListener(v -> returnFromAddWithReverse(transactionsTab));
         top.addView(back, new LinearLayout.LayoutParams(Ui.dp(this, 48), Ui.dp(this, 52)));
         top.addView(Ui.text(this, "إضافة عملية", 22, Color.WHITE, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 52), 1));
         page.addView(top, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72)));
@@ -3575,7 +4367,7 @@ public final class MainActivity extends Activity {
                 db.addTransaction(selectedType[0], amountMinor, transactionCurrency, source.id,
                         destinationId, categoryId, note.getText().toString(), splits, affectsBalance.isChecked());
                 Toast.makeText(this, "تم حفظ العملية", Toast.LENGTH_SHORT).show();
-                showMain(false);
+                returnFromAddWithReverse(false);
             } catch (Exception error) {
                 Toast.makeText(this, error.getMessage() == null ? "تعذر حفظ العملية" : error.getMessage(), Toast.LENGTH_LONG).show();
             }

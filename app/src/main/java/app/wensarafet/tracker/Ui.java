@@ -57,7 +57,7 @@ public final class Ui {
             {0xFFB65F3C,0xFF71351F,0xFFF5E0D6,0xFFFCF7F4,0xFFFFFFFF,0xFF39231B,0xFF876F65,0xFFC3433F,0xFF5A8064,0xFFB65F3C,0xFFD18463,0xFFEAB49B},
             {0xFF6857D5,0xFF312D89,0xFFEAE6FD,0xFFF7F8FF,0xFFFFFFFF,0xFF1A2443,0xFF69738F,0xFFC23A62,0xFF148E8C,0xFF6857D5,0xFF2DAFC9,0xFFFFAB8B},
             {0xFF456AD9,0xFF252D82,0xFFE7EBFF,0xFFF7F9FF,0xFFFFFFFF,0xFF1F2550,0xFF687495,0xFFC34465,0xFF2F9A91,0xFF456AD9,0xFF9A5DE1,0xFFF5A26D},
-            {0xFF2965E5,0xFF1B3690,0xFFDDEBFF,0xFFF5F9FF,0xFFFFFFFF,0xFF152A4C,0xFF667A99,0xFFC74664,0xFF0C9280,0xFF2965E5,0xFF6D8CF0,0xFF9DDBFF},
+            {0xFF2965E5,0xFF1B3690,0xFFDDEBFF,0xFFE9F3FF,0xFFFFFFFF,0xFF152A4C,0xFF667A99,0xFFC74664,0xFF0C9280,0xFF2965E5,0xFF6D8CF0,0xFF9DDBFF},
             {0xFF07A7BA,0xFF00677B,0xFFDFF9F8,0xFFF4FEFD,0xFFFFFFFF,0xFF17383C,0xFF628D90,0xFFC54862,0xFF078C73,0xFF2294BD,0xFF54D8D9,0xFFC5FFF3},
             {0xFF7F73FF,0xFF31255D,0xFF252746,0xFF101429,0xFF171B30,0xFFF6F7FF,0xFFACB4D1,0xFFFF758A,0xFF64D5AF,0xFFA58AFF,0xFFD58BFF,0xFF7CCBFF},
             {0xFF7888CD,0xFF414B80,0xFFF0F0FD,0xFFFAFBFF,0xFFFFFFFF,0xFF252943,0xFF7B8198,0xFFC25570,0xFF348B83,0xFF9794D6,0xFFBCABD5,0xFFDFE9FF}
@@ -168,6 +168,15 @@ public final class Ui {
         int second = DARK ? mix(SURFACE, SKY, .12f) : mix(SURFACE, SKY, .18f);
         return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
                 first, second, SKY, false);
+    }
+
+    /** One quiet pearly lens for the bottom tabs; no content capture or idle redraw. */
+    public static android.graphics.drawable.Drawable glassSlidingNavigationLens(Context context) {
+        if (!isLiquidTheme(context)) return rounded(BRAND_SOFT, 18, context);
+        int upper = DARK ? mix(SURFACE, BRAND_SOFT, .28f) : mix(BRAND_SOFT, SURFACE, .45f);
+        int lower = DARK ? mix(SURFACE, SKY, .18f) : mix(BRAND_SOFT, SKY, .12f);
+        return new app.wensarafet.glass.WenNavigationLensDrawable(
+                context, upper, lower, SKY, DARK);
     }
 
     public static android.graphics.drawable.Drawable glassSelectedNavigationBackground(Context context, int radiusDp) {
@@ -366,31 +375,32 @@ public final class Ui {
 
     public static void animateChildren(ViewGroup group) {
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
-        int count = Math.min(group.getChildCount(), 10);
+        boolean liquid = isLiquidTheme(group.getContext());
+        // Prevent 10 staggered 300ms animations from making screen changes
+        // appear slow. All content remains present; only 4 lead elements move.
+        int count = Math.min(group.getChildCount(), liquid ? 2 : 10);
         for (int i = 0; i < count; i++) {
-            View child = group.getChildAt(i); child.setAlpha(0f); child.setTranslationY(dp(group.getContext(), 10));
-            child.animate().alpha(1f).translationY(0).setStartDelay(45L + i * 28L).setDuration(300)
-                    .setInterpolator(new PathInterpolator(0.2f, 0.75f, 0.25f, 1f)).start();
+            View child = group.getChildAt(i);
+            child.animate().cancel();
+            child.setAlpha(0f);
+            child.setTranslationY(dp(group.getContext(), liquid ? 6 : 10));
+            child.animate().alpha(1f).translationY(0)
+                    .setStartDelay(liquid ? 0L + i * 10L : 45L + i * 28L)
+                    .setDuration(liquid ? 125 : 300)
+                    .setInterpolator(new PathInterpolator(.2f, .75f, .25f, 1f)).start();
         }
     }
 
     public static void pressAnimation(View view) {
+        if (isLiquidTheme(view.getContext())) {
+            app.wensarafet.glass.GlassMotion.bindPress(view, SKY);
+            return;
+        }
         view.setOnTouchListener((v, event) -> {
             if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return false;
             if (isLiquidTheme(v.getContext())) {
-                // Liquid-bubble feedback is interaction-only. No idle clock or looping frame callback.
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    v.animate().cancel();
-                    v.animate().scaleX(.955f).scaleY(.955f).setDuration(90)
-                            .setInterpolator(new PathInterpolator(.2f, .8f, .2f, 1f)).start();
-                } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                    v.animate().cancel();
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(230)
-                            .setInterpolator(new android.view.animation.OvershootInterpolator(1.35f)).start();
-                } else if (event.getAction() == MotionEvent.ACTION_CANCEL) {
-                    v.animate().cancel();
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(90).start();
-                }
+                // Liquid gestures are owned by the reusable Motion Engine below.
+                return false;
             } else {
                 // Preserve exact existing touch behavior for the 16 original themes.
                 if (event.getAction() == MotionEvent.ACTION_DOWN)

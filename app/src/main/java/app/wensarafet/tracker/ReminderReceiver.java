@@ -11,7 +11,7 @@ import android.graphics.Color;
 
 public final class ReminderReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context, Intent intent) {
-        if (!LicenseManager.isActivated(context)
+        if (!SandboxMode.canRun(context)
                 || !ReminderScheduler.prefs(context).getBoolean("enabled", false)) {
             ReminderScheduler.cancel(context);
             return;

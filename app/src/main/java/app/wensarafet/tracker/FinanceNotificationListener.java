@@ -7,7 +7,7 @@ import android.service.notification.StatusBarNotification;
 
 public final class FinanceNotificationListener extends NotificationListenerService {
     @Override public void onNotificationPosted(StatusBarNotification sbn) {
-        if (!LicenseManager.isActivated(this)) return;
+        if (!SandboxMode.canRun(this)) return;
         String pkg = sbn.getPackageName();
         String provider;
         if ("com.pcnc.bop".equals(pkg)) provider = "BOP";

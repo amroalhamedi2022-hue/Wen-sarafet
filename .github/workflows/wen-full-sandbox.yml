@@ -1,0 +1,46 @@
+name: Wen Sarafet isolated full-function sandbox APK
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'glass-engine/**'
+      - 'tests/wen_full_sandbox_contract.py'
+      - '.github/workflows/wen-full-sandbox.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: SDK platform
+        run: |
+          test -n "$ANDROID_HOME"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Check exact sandbox identity and unchanged security/finance core
+        run: python3 tests/wen_full_sandbox_contract.py
+      - name: Build and lint isolated production-feature trial
+        run: gradle :app:assembleSandbox :app:lintSandbox --no-daemon --console=plain
+      - name: Check package ID and APK
+        run: |
+          test -s app/build/outputs/apk/sandbox/app-sandbox.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging app/build/outputs/apk/sandbox/app-sandbox.apk | grep "package: name='app.wensarafet.tracker.sandbox'"
+          sha256sum app/build/outputs/apk/sandbox/app-sandbox.apk
+      - name: Upload full app sandbox APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: wen-full-app-unlocked-sandbox-apk
+          path: app/build/outputs/apk/sandbox/app-sandbox.apk
+          retention-days: 14
+          if-no-files-found: error

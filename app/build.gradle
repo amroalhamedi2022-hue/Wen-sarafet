@@ -33,6 +33,22 @@ android {
             if (signingConfigs.findByName("release")) signingConfig signingConfigs.release
         }
         debug { applicationIdSuffix ".recovered.debug" }
+        sandbox {
+            initWith debug
+            applicationIdSuffix ".sandbox"
+            versionNameSuffix "-sandbox"
+            matchingFallbacks = ["debug"]
+            debuggable true
+        }
+    }
+
+    // CI emulator only: QWEA0 publishes ARM native acceleration, but the
+    // Android automated-test-device runs x86_64. Run AGSL GPU optics without
+    // optional JNI in CI; never remove ARM native libraries from phone APKs.
+    if (project.hasProperty("wenEmulatorNoNative")) {
+        packagingOptions {
+            jniLibs { excludes += ["**/*.so"] }
+        }
     }
 
     compileOptions {
@@ -44,4 +60,7 @@ android {
 dependencies {
     // Android-only visual module: no repository access or finance logic.
     implementation project(":glass-engine")
+    // Experiment ONLY: proven Android Views optical library; never ship in production.
+    // MIT: https://github.com/QWEA0/Liquid-Glass-Android/blob/v2.0.11/LICENSE
+    sandboxImplementation "com.github.QWEA0:liquidglass:v2.0.11"
 }

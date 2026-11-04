@@ -10,8 +10,11 @@ main = (Path(__file__).resolve().parents[1]
 screen = main.split("@Override public void setContentView(View next) {", 1)[1].split(
     "@Override protected void onCreate(", 1)[0]
 initial = screen.split("if (screenHost == null) {", 1)[1].split("if (activeScreen == next)", 1)[0]
-assert initial.index("if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;") < initial.index(
+assert initial.index("if (introIconsOnly || !android.animation.ValueAnimator.areAnimatorsEnabled()) {") < initial.index(
     "next.setAlpha(0f);")
+assert "next.setAlpha(1f);" in initial
+assert "next.setTranslationX(0f);" in initial
+assert "next.setTranslationY(0f);" in initial
 subsequent = screen.split("screenHost.addView(next, match);", 2)[-1]
 assert subsequent.index("if (!android.animation.ValueAnimator.areAnimatorsEnabled())") < subsequent.index(
     "next.setAlpha(0f);")
