@@ -114,6 +114,9 @@ public final class ArabicSmsParserPilot {
         return out.toString().replaceAll("\\s+", " ").trim().toLowerCase(Locale.ROOT);
     }
 
+    /** Only for the separate SMS lab's cheap currency/financial phrase filter. */
+    public static String normalizeForLab(String raw) { return normalize(raw); }
+
     private static MoneyToken firstMoney(String fragment, boolean balance) {
         // Parse only amounts tied to a real currency marker, never a phone,
         // transaction date, verification code or bare numeric token.

@@ -1,0 +1,74 @@
+name: Isolated Arabic SMS Lab — separate installable Android test
+
+on:
+  pull_request:
+    paths:
+      - 'sms-lab/**'
+      - 'app/src/main/java/app/wensarafet/tracker/ArabicSmsParserPilot.java'
+      - 'app/src/main/java/app/wensarafet/tracker/TransactionParser.java'
+      - 'app/src/main/java/app/wensarafet/tracker/Money.java'
+      - 'settings.gradle'
+      - '.github/workflows/sms-lab-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arabic-sms-lab-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-isolated-sms-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure Android 35 SDK
+        run: |
+          test -n "$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Compile separate non-debuggable SMS Lab release and Lint
+        run: gradle :sms-lab:assembleRelease :sms-lab:lintRelease --no-daemon --console=plain
+      - name: Verify isolated install identity and no production app signature
+        run: |
+          set -euo pipefail
+          INPUT=sms-lab/build/outputs/apk/release/sms-lab-release-unsigned.apk
+          OUTPUT=build/arabic-sms-lab/Wen-Sarafet-Arabic-SMS-Lab-UNSIGNED.apk
+          test -s "$INPUT"
+          mkdir -p build/arabic-sms-lab
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -P 16 4 "$INPUT" "$OUTPUT"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$OUTPUT"
+          BADGING="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$OUTPUT")"
+          grep -Fq "package: name='app.wensarafet.smslab' versionCode='1' versionName='0.1'" <<< "$BADGING"
+          if "$ANDROID_HOME/build-tools/35.0.0/aapt" dump xmltree "$OUTPUT" AndroidManifest.xml | grep -Eq 'android:debuggable.*0xffffffff'; then
+            echo 'ERROR: SMS Lab release must not be debuggable' >&2
+            exit 1
+          fi
+          if "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$OUTPUT" | grep -Eq 'android.permission.(INTERNET|READ_SMS|READ_CONTACTS|READ_EXTERNAL_STORAGE)'; then
+            echo "ERROR: SMS Lab must not have Internet or read history permissions" >&2
+            exit 1
+          fi
+          echo "PASS: separate lab package, no INTERNET or historical SMS access, aligned non-debuggable release"
+          sha256sum "$OUTPUT"
+      - name: Stage SDK public signing/verifier utility
+        run: |
+          mkdir -p build/arabic-sms-lab
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" build/arabic-sms-lab/apksigner.jar
+      - name: Upload isolated lab unsigned release for local private test signing
+        uses: actions/upload-artifact@v4
+        with:
+          name: wen-sarafet-arabic-sms-lab-unsigned
+          path: |
+            build/arabic-sms-lab/Wen-Sarafet-Arabic-SMS-Lab-UNSIGNED.apk
+            build/arabic-sms-lab/apksigner.jar
+          retention-days: 3
+          if-no-files-found: error
