@@ -284,8 +284,14 @@ print(*center("الرئيسية"),*center("التحليل"))
 PY
 )"
 read -r DX1 DY1 DX2 DY2 <<< "$DRAG_POINTS"
+# Keep a dedicated AFTER-drag trace, including cancelled child gestures and
+# activity-level swipe interception. This was previously lost on QA failure.
+adb logcat -c || true
+echo "QA: drag HOME ($DX1,$DY1) -> ANALYTICS ($DX2,$DY2)"
 adb shell input swipe "$DX1" "$DY1" "$DX2" "$DY2" 750
 sleep 2
+adb logcat -d -v time -s WenGlassProbe:I > "$OUT/nav-after-drag-probe.log" || true
+adb exec-out screencap -p > "$OUT/nav-after-drag-debug.png" || true
 adb shell uiautomator dump /sdcard/wen-after-drag.xml >/dev/null
 adb pull /sdcard/wen-after-drag.xml "$OUT/wen-after-drag.xml" >/dev/null
 python3 - "$OUT/wen-after-drag.xml" <<'PY'
@@ -293,7 +299,7 @@ import sys,xml.etree.ElementTree as ET
 nodes=list(ET.parse(sys.argv[1]).getroot().iter("node"))
 selected=[n for n in nodes if n.attrib.get("content-desc")=="تبويب التحليل"
           and n.attrib.get("selected")=="true"]
-if len(selected)!=1: raise SystemExit("FAIL: hold-drag did not select analytics")
+if len(selected)!=1: raise SystemExit("FAIL: hold-drag did not select analytics (see nav-after-drag-probe.log and screenshot)")
 print("PASS: native long drag selected analytics")
 PY
 adb shell screencap -p /sdcard/wen-after-drag.png
