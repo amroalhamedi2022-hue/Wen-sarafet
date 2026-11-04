@@ -294,6 +294,11 @@ echo "QA: drag HOME ($DX1,$DY1) -> ANALYTICS ($DX2,$DY2)"
 adb shell input swipe "$DX1" "$DY1" "$DX2" "$DY2" 750
 sleep 2
 adb logcat -d -v time -s WenGlassProbe:I > "$OUT/nav-after-drag-probe.log" || true
+if [ -s "$OUT/nav-after-drag-probe.log" ]; then
+  grep -E "ACTIVITY_INPUT|NAV_GESTURE_INTERRUPTED|DOWN tab|HOVER tab|UP_TARGET|NAV_SYSTEM_GESTURE" "$OUT/nav-after-drag-probe.log" || true
+else
+  echo "QA: zero app gesture logs after horizontal swipe (possible OS interception)"
+fi
 adb exec-out screencap -p > "$OUT/nav-after-drag-debug.png" || true
 adb shell uiautomator dump /sdcard/wen-after-drag.xml >/dev/null
 adb pull /sdcard/wen-after-drag.xml "$OUT/wen-after-drag.xml" >/dev/null
