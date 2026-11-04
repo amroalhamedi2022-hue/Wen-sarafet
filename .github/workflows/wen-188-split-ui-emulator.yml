@@ -35,6 +35,24 @@ jobs:
         run: |
           python3 tests/wen_188_visual_safezone_contract.py
           python3 tests/financial_safe_zone_guard.py
+      # API33 x86_64 Google APIs image cannot install ARM-only nativegauss.so.
+      # These tests exercise Android EditText and the Java navigation gesture binder;
+      # no native lens is instantiated. Exclude this incompatible binary ONLY in
+      # this ephemeral debug test workspace. The original production build and
+      # its arm64-v8a native renderer remain untouched and fully packaged.
+      - name: Prepare API 33 x86-only instrumentation package
+        if: matrix.api-level == 33
+        run: |
+          cat >> app/build.gradle <<'GRADLE'
+          // CI-only x86_64 instrumentation, never committed into release source.
+          android {
+              packagingOptions {
+                  jniLibs {
+                      excludes += ['**/libnativegauss.so']
+                  }
+              }
+          }
+          GRADLE
       - name: Enable KVM for Android emulator
         run: |
           sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
