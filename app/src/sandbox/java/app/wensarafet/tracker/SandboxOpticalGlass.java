@@ -69,6 +69,7 @@ public final class SandboxOpticalGlass {
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT));
             final OpticalSheen sheen = new OpticalSheen(lens.getContext(), false);
+            final OpticalCrown crown = new OpticalCrown(d, false);
             lens.addView(sheen, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT));
@@ -80,15 +81,18 @@ public final class SandboxOpticalGlass {
                 private boolean reported;
                 private float pointerLast = Float.NaN;
                 private float dragDirection;
+                private float amount;
                 @Override public void morph(float fraction) {
                     float t = Math.max(0f, Math.min(1f, fraction));
+                    amount = t;
+                    track.postInvalidateOnAnimation();
                     // Dynamic lens profile. The middle remains quiet; only
                     // the bevel gains thickness, light and dispersion on hold.
                     glass.setBevelWidth((9.5f + 1.7f * t) * d);
-                    glass.setRefractionHeight((9.5f + 8f * t) * d);
-                    glass.setDispersionStrength(.025f + .04f * t);
-                    glass.setDisplacementScale(35f + 24f * t);
-                    glass.setAberrationIntensity(.38f + .30f * t);
+                    glass.setRefractionHeight((9.5f + 14f * t) * d);
+                    glass.setDispersionStrength(.025f + .11f * t);
+                    glass.setDisplacementScale(35f + 55f * t);
+                    glass.setAberrationIntensity(.38f + .85f * t);
                     glass.setGlassTint(Color.WHITE, .045f + .022f * t);
                     glass.setScaleX(1f + (.047f + .018f * Math.abs(dragDirection)) * t);
                     glass.setScaleY(1f + .027f * t);
@@ -107,6 +111,7 @@ public final class SandboxOpticalGlass {
                         dragDirection = Math.max(-1f, Math.min(1f, delta / (16f * d)));
                     }
                     pointerLast = pointerX;
+                    track.postInvalidateOnAnimation();
                     sheen.setMotion(1f, dragDirection);
                     // Gesture owner repositions the lens. A fresh frame
                     // samples the content at that location, not stale glyphs.
@@ -116,6 +121,17 @@ public final class SandboxOpticalGlass {
                     pointerLast = Float.NaN;
                     dragDirection = 0f;
                     morph(0f);
+                }
+                @Override public void drawForeground(Canvas canvas) {
+                    if (lens.getWidth() <= 0 || lens.getHeight() <= 0) return;
+                    int saved = canvas.save();
+                    // Track-local coordinates, moves with the REAL selected lens
+                    // across all four clickable tabs. This final pass is drawn
+                    // AFTER their text/emoji, not under their display lists.
+                    canvas.translate(lens.getX(), lens.getY());
+                    crown.paint(canvas, lens.getWidth(), lens.getHeight(),
+                            amount, dragDirection);
+                    canvas.restoreToCount(saved);
                 }
             });
 
@@ -200,6 +216,25 @@ public final class SandboxOpticalGlass {
             final OpticalSheen sheen = new OpticalSheen(host.getContext(), true);
             host.addView(sheen, new FrameLayout.LayoutParams(-1, -1));
             final float[] progress = {0f};
+            // A non-clickable last child is the visible optical front surface.
+            // It paints OVER the "+" glyph; the original TextView alone owns
+            // accessibility, touch and the Add Transaction click action.
+            final OpticalCrown fabCrown = new OpticalCrown(d, true);
+            final View frontSurface = new View(host.getContext()) {
+                @Override protected void onDraw(Canvas canvas) {
+                    fabCrown.paint(canvas, getWidth(), getHeight(), progress[0], 0f);
+                }
+            };
+            frontSurface.setWillNotDraw(false);
+            frontSurface.setClickable(false);
+            frontSurface.setFocusable(false);
+            frontSurface.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            if (!(fab.getParent() instanceof FrameLayout)) {
+                throw new IllegalStateException("FAB must have its optical host");
+            }
+            ((FrameLayout) fab.getParent()).addView(frontSurface,
+                    new FrameLayout.LayoutParams(-1, -1));
+            android.util.Log.i("WenGlassProbe", "MIT_FAB_FRONT_ABOVE_GLYPH");
             final ValueAnimator[] animator = {null};
             final boolean[] active = {false};
             fab.setOnTouchListener((v, event) -> {
@@ -219,14 +254,14 @@ public final class SandboxOpticalGlass {
                 if (animator[0] != null) animator[0].cancel();
                 if (!ValueAnimator.areAnimatorsEnabled()) {
                     progress[0] = target;
-                    renderFabMaterial(glass, sheen, d, target);
+                    renderFabMaterial(glass, sheen, frontSurface, d, target);
                 } else {
                     ValueAnimator next = ValueAnimator.ofFloat(progress[0], target);
                     next.setDuration(pressing ? 165L : 250L);
                     next.setInterpolator(new PathInterpolator(.20f, .75f, .23f, 1f));
                     next.addUpdateListener(a -> {
                         progress[0] = (Float) a.getAnimatedValue();
-                        renderFabMaterial(glass, sheen, d, progress[0]);
+                        renderFabMaterial(glass, sheen, frontSurface, d, progress[0]);
                     });
                     animator[0] = next;
                     next.start();
@@ -240,6 +275,7 @@ public final class SandboxOpticalGlass {
                     glass.setScaleX(1f);
                     glass.setScaleY(1f);
                     sheen.setMotion(0f, 0f);
+                    frontSurface.invalidate();
                 }
             });
             host.post(() -> {
@@ -269,14 +305,17 @@ public final class SandboxOpticalGlass {
     }
 
     private static void renderFabMaterial(LiquidGlassView glass,
-                                          OpticalSheen sheen, float density, float t) {
-        glass.setRefractionHeight((8f + 6f * t) * density);
-        glass.setDispersionStrength(.05f + .035f * t);
+                                          OpticalSheen sheen, View frontSurface,
+                                          float density, float t) {
+        glass.setRefractionHeight((8f + 14f * t) * density);
+        glass.setDispersionStrength(.05f + .12f * t);
+        glass.setDisplacementScale(37f + 57f * t);
         glass.setBevelWidth((10.5f + 2.0f * t) * density);
         glass.setGlassTint(Color.WHITE, .16f + .055f * t);
         glass.setScaleX(1f + .037f * t);
         glass.setScaleY(1f - .042f * t);
         sheen.setMotion(t, 0f);
+        frontSurface.postInvalidateOnAnimation();
         glass.invalidate();
     }
 
@@ -357,6 +396,7 @@ public final class SandboxOpticalGlass {
             // Frost is drawn ABOVE the real refractive optical image,
             // deliberately strongest in the centre and lighter on the bevel.
             // The centre can be read while the optical edge still bends light.
+            frost.setAlpha((int)(255f - 88f * pressure));
             if (circle) canvas.drawCircle(w*.5f,h*.5f,
                     Math.min(w,h)*.5f - margin, frost);
             else canvas.drawRoundRect(bounds,radius,radius,frost);
@@ -370,6 +410,84 @@ public final class SandboxOpticalGlass {
             perimeter.setAlpha((int)(29f + 30f * pressure));
             if (circle) canvas.drawCircle(w*.5f, h*.5f, Math.min(w,h)*.5f-margin, perimeter);
             else canvas.drawRoundRect(bounds, radius, radius, perimeter);
+        }
+    }
+
+    /**
+     * The OVER-GLYPH optical surface. The native LiquidGlassView retains
+     * real refraction and backdrop sampling behind labels. This tiny final
+     * caustic/rim is composited above the actual text in the same frame.
+     * Paints and shaders are reused; no idle timers, no touch interception.
+     */
+    private static final class OpticalCrown {
+        private final float d;
+        private final boolean circular;
+        private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint spectrum = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint glint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF bounds = new RectF();
+        private final Matrix shift = new Matrix();
+        private LinearGradient rimShader;
+        private LinearGradient spectrumShader;
+        private LinearGradient glintShader;
+        private int cachedWidth = -1, cachedHeight = -1;
+
+        OpticalCrown(float density, boolean circular) {
+            this.d = density;
+            this.circular = circular;
+            rim.setStyle(Paint.Style.STROKE);
+            spectrum.setStyle(Paint.Style.STROKE);
+        }
+
+        void paint(Canvas canvas, int width, int height, float press, float direction) {
+            if (width <= 0 || height <= 0) return;
+            if (cachedWidth != width || cachedHeight != height) {
+                cachedWidth = width;
+                cachedHeight = height;
+                rimShader = new LinearGradient(0f, 0f, width, height,
+                        new int[]{0xCEFFFFFF, 0x4DE6F8FF, 0xB4FFFFFF, 0x74AFD7FF},
+                        new float[]{0f, .35f, .72f, 1f}, Shader.TileMode.CLAMP);
+                spectrumShader = new LinearGradient(0f, 0f, width, 0f,
+                        new int[]{0x00FFFFFF, 0xDB6BDFFF, 0xD8E6A9FF,
+                                0xE6FFFFFF, 0xDEFFBD88, 0x00FFFFFF},
+                        new float[]{0f, .17f, .36f, .53f, .77f, 1f},
+                        Shader.TileMode.CLAMP);
+                glintShader = new LinearGradient(0f, 0f, width, height * .55f,
+                        new int[]{0x00FFFFFF, 0x99FFFFFF, 0x62D7F5FF,
+                                0x00FFFFFF},
+                        new float[]{0f, .29f, .64f, 1f}, Shader.TileMode.CLAMP);
+                rim.setShader(rimShader);
+                spectrum.setShader(spectrumShader);
+                glint.setShader(glintShader);
+            }
+            float t = Math.max(0f, Math.min(1f, press));
+            float inset = .9f * d;
+            float radius = Math.min(width, height) * .5f - inset;
+            bounds.set(inset, inset, width - inset, height - inset);
+            if (radius <= 0f) return;
+
+            // Subtle physical glass perimeter at rest; during Hold the
+            // spectrally split rim visibly travels over the menu glyphs.
+            rim.setStrokeWidth((.8f + .75f * t) * d);
+            rim.setAlpha((int)(102f + 77f * t));
+            canvas.drawRoundRect(bounds, radius, radius, rim);
+            spectrum.setStrokeWidth((.7f + 1.5f * t) * d);
+            spectrum.setAlpha((int)(24f + 190f * t));
+            shift.reset();
+            shift.setTranslate(width * (.10f * direction + .08f * t), 0f);
+            spectrumShader.setLocalMatrix(shift);
+            canvas.drawRoundRect(bounds, radius, radius, spectrum);
+
+            // Translucent caustic above the icons, not a second copy of text.
+            int save = canvas.save();
+            canvas.clipRect(0f, 0f, width, height * (.32f + .11f * t));
+            glint.setStyle(Paint.Style.FILL);
+            glint.setAlpha((int)(26f + 115f * t));
+            shift.reset();
+            shift.setTranslate(width * (.18f * direction + .05f * t), 0f);
+            glintShader.setLocalMatrix(shift);
+            canvas.drawRoundRect(bounds, radius, radius, glint);
+            canvas.restoreToCount(save);
         }
     }
 }
