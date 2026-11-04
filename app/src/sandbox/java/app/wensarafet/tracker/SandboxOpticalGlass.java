@@ -48,18 +48,18 @@ public final class SandboxOpticalGlass {
             glass.setEnablePressEffect(false); // original tab owns touch
             glass.setEnableBackdropBlur(true);
             glass.setBlurAmount(.018f);
-            glass.setEnableChromaticAberration(true);
+            glass.setEnableChromaticAberration(false);
             glass.setEnableShadow(false);
             glass.setEnableEdgeHighlight(true);
             glass.setCornerRadius(999f);
             glass.setBevelWidth(9.5f * d);
             glass.setRefractionFalloff(1.4f);
-            glass.setDispersionStrength(.025f);
+            glass.setDispersionStrength(0f);
             glass.setDisplacementScale(35f);
             glass.setRefractionHeight(9.5f * d);
             glass.setEdgeSoftness(1.8f * d);
-            glass.setAberrationIntensity(.38f);
-            glass.setSaturation(106f);
+            glass.setAberrationIntensity(0f);
+            glass.setSaturation(100f);
             glass.setGlassTint(Color.WHITE, .045f);
             glass.setEdgeHighlightBorderWidth(.65f * d);
             glass.setEdgeHighlightOpacity(27f);
@@ -90,9 +90,9 @@ public final class SandboxOpticalGlass {
                     // the bevel gains thickness, light and dispersion on hold.
                     glass.setBevelWidth((9.5f + 1.7f * t) * d);
                     glass.setRefractionHeight((9.5f + 14f * t) * d);
-                    glass.setDispersionStrength(.025f + .11f * t);
+                    // No RGB wavelength splitting: only geometric refraction changes on hold.
                     glass.setDisplacementScale(35f + 55f * t);
-                    glass.setAberrationIntensity(.38f + .85f * t);
+                    // Chromatic aberration stays disabled at every press progress.
                     glass.setGlassTint(Color.WHITE, .045f + .022f * t);
                     glass.setScaleX(1f + (.047f + .018f * Math.abs(dragDirection)) * t);
                     glass.setScaleY(1f + .027f * t);
@@ -143,14 +143,21 @@ public final class SandboxOpticalGlass {
                 View nav = (View) track.getParent();
                 if (!(nav.getParent() instanceof ViewGroup)) return;
                 ViewGroup container = (ViewGroup) nav.getParent();
-                // The root contains the navigation glyphs. Capturing it makes
-                // the lens draw a SECOND distorted copy of its own labels.
-                // Capture only the underlying scroll viewport instead.
-                View source = findUnderlay(container);
-                glass.setBackdropSource(source != null ? source : container);
-                android.util.Log.i("WenGlassProbe",
-                        "MIT_VIEW_GLASS_BACKDROP_BOUND source="
-                                + (source != null ? "scroll" : "root-fallback"));
+                // Sample the tab glyphs INSIDE the native foreground material.
+                // Sampling the scroll viewport made unrelated page text appear
+                // under the lens while the actual tab glyphs stayed unwarped.
+                View tabContent = track.findViewWithTag("wen_glass_tab_content");
+                if (tabContent != null && tabContent.getWidth() > 0) {
+                    glass.setBackdropSource(tabContent);
+                    android.util.Log.i("WenGlassProbe",
+                            "MIT_VIEW_GLASS_BACKDROP_BOUND source=tabs");
+                } else {
+                    // Defensive fallback for an unusual mounting order only.
+                    View source = findUnderlay(container);
+                    glass.setBackdropSource(source != null ? source : container);
+                    android.util.Log.w("WenGlassProbe",
+                            "MIT_VIEW_GLASS_BACKDROP_BOUND source=fallback");
+                }
             });
             android.util.Log.i("WenGlassProbe", "MIT_VIEW_GLASS_ATTACHED");
             return true;
@@ -197,21 +204,33 @@ public final class SandboxOpticalGlass {
             glass.setEnableBackdropBlur(true);
             glass.setBlurAmount(.045f);
             glass.setEnableShadow(false);
-            glass.setEnableChromaticAberration(true);
+            glass.setEnableChromaticAberration(false);
             glass.setEnableEdgeHighlight(true);
             glass.setCornerRadius(999f);
             glass.setBevelWidth(10.5f * d);
             glass.setRefractionFalloff(1.35f);
             glass.setRefractionHeight(8f * d);
-            glass.setDispersionStrength(.05f);
+            glass.setDispersionStrength(0f);
             glass.setEdgeSoftness(1.2f * d);
             glass.setEdgeHighlightBorderWidth(.70f * d);
             glass.setEdgeHighlightOpacity(45f);
             glass.setDisplacementScale(37f);
-            glass.setSaturation(107f);
+            glass.setSaturation(100f);
             glass.setGlassTint(Color.WHITE, .16f);
             host.setClipChildren(false);
             host.setClipToPadding(false);
+            // Clip the NATIVE material itself to a true circle, removing the
+            // faint rectangular backing seen around the floating + action.
+            host.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override public void getOutline(View view, android.graphics.Outline outline) {
+                    int side = Math.min(view.getWidth(), view.getHeight());
+                    if (side <= 0) return;
+                    int left = (view.getWidth() - side) / 2;
+                    int top = (view.getHeight() - side) / 2;
+                    outline.setOval(left, top, left + side, top + side);
+                }
+            });
+            host.setClipToOutline(true);
             host.addView(glass, new FrameLayout.LayoutParams(-1, -1));
             final OpticalSheen sheen = new OpticalSheen(host.getContext(), true);
             host.addView(sheen, new FrameLayout.LayoutParams(-1, -1));
@@ -315,7 +334,7 @@ public final class SandboxOpticalGlass {
                                           OpticalSheen sheen, View frontSurface,
                                           float density, float t) {
         glass.setRefractionHeight((8f + 14f * t) * density);
-        glass.setDispersionStrength(.05f + .12f * t);
+        glass.setDispersionStrength(0f);
         glass.setDisplacementScale(37f + 57f * t);
         glass.setBevelWidth((10.5f + 2.0f * t) * density);
         glass.setGlassTint(Color.WHITE, .16f + .055f * t);
@@ -367,17 +386,17 @@ public final class SandboxOpticalGlass {
             super.onSizeChanged(w, h, oldW, oldH);
             float radius = Math.max(1f, Math.max(w, h) * .58f);
             shader = new RadialGradient(0, 0, radius,
-                    new int[]{0x8AFFFFFF, 0x3BAADFF6, 0x0AEDD9FF, 0},
+                    new int[]{0x74FFFFFF, 0x32FFFFFF, 0x0AFFFFFF, 0},
                     new float[]{0f, .17f, .46f, 1f}, Shader.TileMode.CLAMP);
             glint.setShader(shader);
             if (circle) {
                 frost.setShader(new RadialGradient(w*.5f, h*.5f,
                         Math.max(1f, Math.min(w,h)*.51f),
-                        new int[]{0xECFFFFFF,0xDCFFFFFF,0x72FFFFFF},
+                        new int[]{0x55FFFFFF,0x36FFFFFF,0x10FFFFFF},
                         new float[]{0f,.62f,1f}, Shader.TileMode.CLAMP));
             } else {
                 frost.setShader(new LinearGradient(0f,0f,0f,h,
-                        new int[]{0x9AFFFFFF,0xEBFFFFFF,0xE1FFFFFF,0xA9FFFFFF},
+                        new int[]{0x20FFFFFF,0x3AFFFFFF,0x30FFFFFF,0x18FFFFFF},
                         new float[]{0f,.27f,.68f,1f}, Shader.TileMode.CLAMP));
             }
             float margin = d * .85f;
@@ -452,15 +471,15 @@ public final class SandboxOpticalGlass {
                 cachedWidth = width;
                 cachedHeight = height;
                 rimShader = new LinearGradient(0f, 0f, width, height,
-                        new int[]{0xCEFFFFFF, 0x4DE6F8FF, 0xB4FFFFFF, 0x74AFD7FF},
+                        new int[]{0xCEFFFFFF, 0x4DFFFFFF, 0xB4FFFFFF, 0x74FFFFFF},
                         new float[]{0f, .35f, .72f, 1f}, Shader.TileMode.CLAMP);
                 spectrumShader = new LinearGradient(0f, 0f, width, 0f,
-                        new int[]{0x00FFFFFF, 0xDB6BDFFF, 0xD8E6A9FF,
-                                0xE6FFFFFF, 0xDEFFBD88, 0x00FFFFFF},
+                        new int[]{0x00FFFFFF, 0x65FFFFFF, 0x55FFFFFF,
+                                0x7AFFFFFF, 0x45FFFFFF, 0x00FFFFFF},
                         new float[]{0f, .17f, .36f, .53f, .77f, 1f},
                         Shader.TileMode.CLAMP);
                 glintShader = new LinearGradient(0f, 0f, width, height * .55f,
-                        new int[]{0x00FFFFFF, 0x99FFFFFF, 0x62D7F5FF,
+                        new int[]{0x00FFFFFF, 0x99FFFFFF, 0x62FFFFFF,
                                 0x00FFFFFF},
                         new float[]{0f, .29f, .64f, 1f}, Shader.TileMode.CLAMP);
                 rim.setShader(rimShader);
@@ -473,13 +492,13 @@ public final class SandboxOpticalGlass {
             bounds.set(inset, inset, width - inset, height - inset);
             if (radius <= 0f) return;
 
-            // Subtle physical glass perimeter at rest; during Hold the
-            // spectrally split rim visibly travels over the menu glyphs.
+            // Subtle neutral glass perimeter at rest and on Hold;
+            // no RGB-fringed edge or coloured halo.
             rim.setStrokeWidth((.8f + .75f * t) * d);
             rim.setAlpha((int)(102f + 77f * t));
             canvas.drawRoundRect(bounds, radius, radius, rim);
-            spectrum.setStrokeWidth((.7f + 1.5f * t) * d);
-            spectrum.setAlpha((int)(24f + 190f * t));
+            spectrum.setStrokeWidth((.55f + .45f * t) * d);
+            spectrum.setAlpha((int)(14f + 60f * t));
             shift.reset();
             shift.setTranslate(width * (.10f * direction + .08f * t), 0f);
             spectrumShader.setLocalMatrix(shift);
