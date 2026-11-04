@@ -13,6 +13,9 @@ ALLOWED = {
     "app/src/main/AndroidManifest.xml",
     "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java",
     "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java",
+    "app/src/main/java/app/wensarafet/tracker/SplitRemainderUi.java",
+    "app/src/main/java/app/wensarafet/tracker/SplitRemainderRules.java",
+    "tests/SplitRemainderRulesTest.java",
     "glass-engine/src/main/java/app/wensarafet/glass/GlassMotion.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenNavigationTrack.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenNavigationLensDrawable.java",
@@ -46,9 +49,43 @@ visual_hook = (
     "                    new TextView[]{home, tx, debts, analytics}, selectedTab);\n"
 )
 assert current_main.count(visual_hook) == 1, "Expected one visual-only integration hook"
-assert current_main.replace(visual_hook, "") == baseline(MAIN), (
-    "SAFE ZONE: MainActivity changed outside its four-tab visual hook"
+# Exactly ONE approved functionality exception: calculate the final split UI
+# amount. Restore all five additive UI hooks before byte-comparing MainActivity
+# against the original 1.8.8; no DB, Save, ledger, or callback edits allowed.
+split_ui_hooks = [
+    (
+        "        // Auto-calculate ONLY the last split entry; original save logic is unchanged.\\n"
+        "        SplitRemainderUi.bind(rowsBox, () -> tx.amountMinor, null);\\n"
+    ),
+    (
+        "        SplitRemainderUi.bind(splitRowsBox, () -> {\\n"
+        "            Long total = Money.parseMinor(amount.getText().toString());\\n"
+        "            return total == null ? -1L : total;\\n"
+        "        }, amount);\\n"
+    ),
+    "        amount.setTag(SplitRemainderUi.AMOUNT_FIELD_TAG);\\n",
+    "            SplitRemainderUi.refresh(container);\\n",
+    "        SplitRemainderUi.refresh(container);\\n",
+]
+cleaned_main = current_main.replace(visual_hook, "")
+for hook in split_ui_hooks:
+    assert cleaned_main.count(hook) == 1, "Unauthorized/missing split hook: " + repr(hook)
+    cleaned_main = cleaned_main.replace(hook, "", 1)
+assert cleaned_main == baseline(MAIN), (
+    "SAFE ZONE: MainActivity changed outside nav presentation + the five approved split UI hooks"
 )
+split_ui = (ROOT / "app/src/main/java/app/wensarafet/tracker/SplitRemainderUi.java").read_text(encoding="utf-8")
+split_calculation = (ROOT / "app/src/main/java/app/wensarafet/tracker/SplitRemainderRules.java").read_text(encoding="utf-8")
+for forbidden in ["FinanceDbHelper", "SQLiteDatabase", "db.", "insert", "deleteTransaction",
+                  "reclassifyTransaction", "setOnClickListener", "SmsCapture", "AppLockManager"]:
+    assert forbidden not in split_ui + split_calculation, (
+        "SAFE ZONE: split auto-remainder must not mutate financial or security logic: " + forbidden
+    )
+assert "Money.parseMinor" in split_ui
+assert "SplitRemainderRules.lastPart" in split_ui
+assert "Math.addExact" in split_calculation and "Math.subtractExact" in split_calculation
+assert "derived.setKeyListener(null)" in split_ui, "Last split amount must be read-only"
+
 
 # The source-only overlay REMOVES (never grants) AndroidX's automatic
 # signature compatibility permission. Reversing this exact removal must
@@ -140,6 +177,6 @@ assert "NAV_LIQUID_STRETCH_ACTIVE" in native
 # Checksums of every remaining tracked file, including money, SQLite,
 # SMS notifications, protected signing/biometric and all resource files,
 # are guaranteed by the exact allowlist + git diff above.
-print("PASS: 1.8.8 source immutable except a visual hook and reviewed graphics")
+print("PASS: 1.8.8 source immutable except visual hook + five exact split remainder UI hooks")
 print("PASS: existing tab callbacks, package, version, schema and signing config unchanged")
 print("PASS: protected finance, debt, SMS, backup, auth and notification trees untouched")
