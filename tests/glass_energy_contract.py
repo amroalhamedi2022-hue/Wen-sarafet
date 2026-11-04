@@ -9,7 +9,7 @@ main = (root / "app/src/main/java/app/wensarafet/tracker/MainActivity.java").rea
 
 assert "package app.wensarafet.glass;" in engine
 assert 'implementation project(":glass-engine")' in (root / "app/build.gradle").read_text(encoding="utf-8")
-assert 'include(":app", ":license-generator", ":glass-engine")' in (root / "settings.gradle").read_text(encoding="utf-8")
+assert 'include(":app", ":license-generator", ":glass-engine"' in (root / "settings.gradle").read_text(encoding="utf-8")
 assert not (root / "app/src/main/java/app/wensarafet/glass/WenGlassDrawable.java").exists(), "Engine must be sourced only from the reusable module"
 assert "tracker." not in engine, "Engine must remain independent of finance app"
 assert "power.isPowerSaveMode()" in engine
