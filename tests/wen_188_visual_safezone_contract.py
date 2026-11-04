@@ -103,6 +103,9 @@ for forbidden in [
 assert "return false;" in adapter, "The optical layer must stay touch-through"
 assert "GlassMotion.bindNavigationTab" in adapter
 assert "tabs[hovered].performClick();" in motion, "Must reuse original navigation callbacks"
+assert "if (tapEligible && hovered == originIndex)" in motion, "Selected tab tap must preserve 1.8.8 refresh action"
+assert "tapEligible=false;" in motion, "Dragging away and back cannot trigger accidental refresh"
+assert "tabs[hovered].performClick();" in motion.split("if (hovered == selected)", 1)[1].split("} else {",1)[0], "Selected tap no longer invokes original callback"
 assert "NavigationLiquidMaterial.attach(lens, track)" in adapter
 assert "glass.setEnableChromaticAberration(false);" in native
 assert "glass.setDispersionStrength(0f);" in native
