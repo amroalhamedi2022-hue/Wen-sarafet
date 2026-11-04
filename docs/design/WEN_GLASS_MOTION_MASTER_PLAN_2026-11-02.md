@@ -1,5 +1,17 @@
 # وين صرفت — الخطة الرئيسية لمحرك حركات Liquid Glass
 
+## 4 November 2026 — Navigation-only Liquid deformation (Batch 1)
+
+**Scope:** User explicitly limited this iteration to the bottom **navigation bar**. No FAB refactor, transaction/finance, database, background notification, authentication, production signing or main-branch change. This continues the already-approved neutral, touch-through optical lens.
+
+- `GlassMotion.NavigationGesture`: finger-follow is now a bounded 0.78 per-touch viscous interpolation; selected-tab release uses a finite damped spring; the material receives a real pointer anchor on DOWN; each fresh touch resets old drag energy (no stale stretched state).
+- Sandbox-only `SandboxOpticalGlass.attach(...)`: neutral optical refraction/bevel and capsule X/Y deformation adapt to pull and event delta; the exact same finite press animator smoothly returns strain to zero. Power-saver/disabled animations use no directional stretch. The user-approved no-rainbow, above-label, touch-through behavior is preserved.
+- `tests/glass_motion_contract.py` and the real Android emulator smoke enforce source invariants and require `NAV_LIQUID_STRETCH_ACTIVE` while dragging, plus the original real tab navigation to Analytics. Existing FAB behavior and tests remain unchanged.
+- Source/finance safety and sandbox APK build+lint passed for product-code commit `491bd5b3821920ee865131e2e6a5922f0038ddb9`: runs `41797059369` and `41797059188`. Its test APK is `app.wensarafet.tracker.sandbox`, size 13,114,737 bytes, SHA-256 `d96b1cd8c9c4efa9737ebeac0fc3b78afac633ce5c3fe3626a5408ad14f74c10`; extracted from artifact `13305628293` (not a production update).
+- Real Android emulator run `41797059186` confirmed nav hold, readable labels, live liquid stretch and successful Home→Analytics Hold+Drag; it failed **after** success due to a transient `adb pull` screenshot-transfer interruption. The QA transport was hardened in test-only commits `1981a525c86b855f8e843748fc1fa0691f742d66` and `df71dc904cbffe1d5ef0f541d186e4a9f2134332`, and smoke was retriggered as `41797876568`. Do not equate a passed APK compile with a fully green smoke run until that result is checked.
+- Physical tablet/phone parity, motion feel, 60/120 Hz jank, and disabled-motion accessibility still need hands-on verification before merging into the protected production app.
+
+
 
 ## ✅ 4 نوفمبر 2026 — إصلاح العدسة فوق النص من دون اعتراض اللمس (مُثبت بالمحاكي)
 
