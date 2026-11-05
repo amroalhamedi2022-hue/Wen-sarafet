@@ -137,6 +137,19 @@ public final class WenScreenVisualMotion {
         });
     }
 
+    /** Same finite 240ms glass top-bar entrance as the sandbox.
+     * The real header still owns all its original account/settings buttons. */
+    private void revealTopChrome(View page) {
+        if (!animate() || page == null) return;
+        View header = page.findViewWithTag("main_header_background");
+        if (header == null) return;
+        header.animate().cancel();
+        header.setAlpha(.86f);
+        header.setTranslationY(-Ui.dp(context, 10));
+        header.animate().alpha(1f).translationY(0f).setDuration(240L)
+                .setInterpolator(RELEASE).start();
+    }
+
     private void introIcons(View page) {
         if (!firstPrimaryIcons) return;
         firstPrimaryIcons = false;
@@ -203,6 +216,7 @@ public final class WenScreenVisualMotion {
         if (firstPrimaryIcons) {
             lastPrimaryTab = tab;
             showImmediately(host, previous, next);
+            revealTopChrome(next);
             introIcons(next);
             return true;
         }
@@ -212,6 +226,7 @@ public final class WenScreenVisualMotion {
         // Single outgoing page removed immediately: avoid two full-screen
         // finance pages continuously composited by the GPU.
         showImmediately(host, previous, next);
+        revealTopChrome(next);
         if (direction == 0) {
             next.setAlpha(.94f);
             next.setTranslationY(Ui.dp(context,3));
