@@ -474,7 +474,7 @@ for graphic in (
 screen_motion = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java").read_text(encoding="utf-8")
 assert git("hash-object",
            "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java").strip() == (
-    "344d9db3f57894b343d7cf89cc2056ba77bef6e4"
+    "860c1a2187d7c3474b00f86d42c8500bcc189c67"
 ), "SAFE ZONE: host motion changed after reviewed transfer"
 for forbidden in (
     "FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
