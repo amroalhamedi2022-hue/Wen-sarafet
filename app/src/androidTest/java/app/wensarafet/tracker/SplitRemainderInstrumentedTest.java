@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
+import android.database.sqlite.SQLiteDatabase;
 import java.lang.reflect.Field;
 import java.util.Map;
 import android.text.InputType;
@@ -23,6 +24,9 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -367,5 +371,90 @@ public final class SplitRemainderInstrumentedTest {
                 Ui.applyTheme(app);
             }
         });
+    }
+
+    private static Context isolatedDebugFinanceContext() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        assertEquals("Never touch the owner's installed production finance database",
+                "app.wensarafet.tracker.recovered.debug", context.getPackageName());
+        return context;
+    }
+
+    private static Models.Account sampleIlsAccount(FinanceDbHelper db) {
+        for (Models.Account account : db.getAccounts()) {
+            if ("ILS".equals(account.currency)) return account;
+        }
+        throw new AssertionError("Synthetic default ILS account was not created");
+    }
+
+    @Test public void realAndroidSqliteSplitReclassificationDebitsOnlyOnce() {
+        Context context = isolatedDebugFinanceContext();
+        // CI runs on a disposable emulator, under a distinct DEBUG app ID.
+        // No protected finance source, production data or login is modified.
+        context.deleteDatabase("wen_sarafet.db");
+        FinanceDbHelper helper = new FinanceDbHelper(context);
+        try {
+            SQLiteDatabase sqlite = helper.getWritableDatabase();
+            assertEquals("v15 financial database schema", 15, sqlite.getVersion());
+            Models.Account account = sampleIlsAccount(helper);
+            sqlite.execSQL("UPDATE accounts SET balance_minor=? WHERE id=?",
+                    new Object[]{15000L, account.id});
+            List<Models.Category> categories = helper.getCategories(FinanceRules.EXPENSE);
+            assertTrue("Two independent categories are required", categories.size() >= 2);
+            long transactionId = helper.addTransaction(FinanceRules.EXPENSE, 5000L,
+                    "ILS", account.id, null, null, "Synthetic finance regression",
+                    Arrays.asList(new Models.SplitInput(categories.get(0).id, 2000L),
+                            new Models.SplitInput(categories.get(1).id, 3000L)), true);
+            assertEquals("Split source must be debited exactly once",
+                    10000L, helper.getAccount(account.id).balanceMinor);
+            List<Models.SplitDetail> original = helper.getSplitDetails(transactionId);
+            assertEquals(2, original.size());
+            assertEquals(5000L, Math.addExact(original.get(0).amountMinor,
+                    original.get(1).amountMinor));
+            helper.reclassifyTransaction(transactionId, FinanceRules.EXPENSE,
+                    account.id, null, null,
+                    Arrays.asList(new Models.SplitInput(categories.get(0).id, 3500L),
+                            new Models.SplitInput(categories.get(1).id, 1500L)));
+            assertEquals("Editing category split must not double-post cash",
+                    10000L, helper.getAccount(account.id).balanceMinor);
+            List<Models.SplitDetail> after = helper.getSplitDetails(transactionId);
+            assertEquals(2, after.size());
+            assertEquals(5000L, Math.addExact(after.get(0).amountMinor,
+                    after.get(1).amountMinor));
+            assertEquals("Only one real transaction should remain", 1,
+                    helper.getTransactions(10).size());
+        } finally {
+            helper.close();
+            context.deleteDatabase("wen_sarafet.db");
+        }
+    }
+
+    @Test public void realAndroidSqliteInsufficientBalanceRollsBackAtomically() {
+        Context context = isolatedDebugFinanceContext();
+        context.deleteDatabase("wen_sarafet.db");
+        FinanceDbHelper helper = new FinanceDbHelper(context);
+        try {
+            SQLiteDatabase sqlite = helper.getWritableDatabase();
+            Models.Account account = sampleIlsAccount(helper);
+            sqlite.execSQL("UPDATE accounts SET balance_minor=? WHERE id=?",
+                    new Object[]{5000L, account.id});
+            Models.Category category = helper.getCategories(FinanceRules.EXPENSE).get(0);
+            boolean refused = false;
+            try {
+                helper.addTransaction(FinanceRules.EXPENSE, 6000L, "ILS", account.id,
+                        null, category.id, "Synthetic overdraw regression",
+                        Collections.emptyList(), true);
+            } catch (IllegalArgumentException | ArithmeticException expected) {
+                refused = true;
+            }
+            assertTrue("Overdrawn expense must be rejected", refused);
+            assertEquals("Rejected expense must not change the account", 5000L,
+                    helper.getAccount(account.id).balanceMinor);
+            assertTrue("Failed transaction must leave no partial financial record",
+                    helper.getTransactions(10).isEmpty());
+        } finally {
+            helper.close();
+            context.deleteDatabase("wen_sarafet.db");
+        }
     }
 }
