@@ -34,6 +34,7 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
     "docs/design/WEN_190_FIVE_PREMIUM_LIQUID_HANDOFF_20261105.md",
     "docs/releases/WEN_200_PREMIUM_INTEGRATION_HANDOFF_20261105.md",
+    "docs/WEN_SARAFET_REPAIR_AND_DEVELOPMENT_PLAN_2026-10-23.md",
     "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java",
     "docs/licenses/QWEA0_LiquidGlass_MIT.txt",
     "docs/design/WEN_188_VISUAL_REVIEW_EXECUTION_20261104.md",
@@ -61,6 +62,13 @@ def baseline(path):
 changed = set(git("diff", "--name-only", BASE, "HEAD").splitlines())
 unexpected = changed - ALLOWED
 assert not unexpected, f"Safe Zone: unexpected changes: {sorted(unexpected)}"
+# The main-only historical plan predates both visual branches; strictly freeze
+# its contents to official main instead of treating this already-approved doc
+# as an unauthorised source modification.
+MAIN_ONLY_PLAN = "docs/WEN_SARAFET_REPAIR_AND_DEVELOPMENT_PLAN_2026-10-23.md"
+assert (ROOT / MAIN_ONLY_PLAN).read_text(encoding="utf-8") == git(
+    "show", f"283112f4bedaf2e07dd7370e581f84e14959710e:{MAIN_ONLY_PLAN}"
+), "SAFE ZONE: existing official development plan unexpectedly changed"
 required = {MAIN, APP_GRADLE, SETTINGS}
 assert required <= changed, f"Visual adapter incomplete: {sorted(required - changed)}"
 
