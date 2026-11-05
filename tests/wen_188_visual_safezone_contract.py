@@ -36,6 +36,7 @@ ALLOWED = {
     "tests/original_180_upgrade_contract.py",
     "tests/upgrade_gate_contract.py",
     "docs/design/WEN_190_REFERENCE_THEMES_20261105.md",
+    "tests/glass_energy_contract.py",
 }
 
 def git(*args):
@@ -277,6 +278,18 @@ assert "PRISM = 22" in draw_source and "BLOOM = 23" in draw_source
 assert "PowerManager" in draw_source and "isLowRamDevice" in draw_source
 for forbidden in ("FinanceDbHelper", "AppLockManager", "SQLiteDatabase", "OnClickListener", "LicenseManager", "SharedPreferences", "Handler(", "Choreographer.getInstance("):
     assert forbidden not in draw_source, "Theme renderer enters protected logic: " + forbidden
+
+# Preserve the legacy passive-glass assertions while updating ONLY the
+# original FAB opt-in predicate to the new two-theme visual adapter.
+old_energy = baseline("tests/glass_energy_contract.py")
+expected_energy = old_energy.replace(
+    'assert "fab.setBackground(Ui.isLiquidTheme(this) ?" in main',
+    '''assert "fab.setBackground(Ui.isReferenceGlassTheme(this)" in main
+assert "? Ui.glassFloatingAddBackground(this)" in main
+assert ": (Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)" in main''')
+assert (ROOT / "tests/glass_energy_contract.py").read_text(encoding="utf-8") == expected_energy, (
+    "SAFE ZONE: original glass energy regression changed beyond new FAB opt-in"
+)
 
 adapter = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java").read_text(encoding="utf-8")
 native = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java").read_text(encoding="utf-8")
