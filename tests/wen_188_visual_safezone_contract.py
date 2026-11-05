@@ -269,16 +269,35 @@ def palette_rows(text, label):
 old_names = re.findall(r'"([^"]+)"', palette_block(original_ui, "public static final String[] THEME_NAMES"))
 new_names = re.findall(r'"([^"]+)"', palette_block(new_ui, "public static final String[] THEME_NAMES"))
 assert len(old_names) == 22, "Unexpected source baseline for themes"
-assert len(new_names) == 24 and new_names[:22] == old_names, "SAFE ZONE: legacy theme names or indices changed"
+assert len(new_names) == 25 and new_names[:22] == old_names, "SAFE ZONE: legacy theme names or indices changed"
 for name in ("private static final int[][] THEMES", "private static final int[][] THEME_LAYERS"):
     old_rows, new_rows = palette_rows(original_ui, name), palette_rows(new_ui, name)
-    assert len(old_rows) == 22 and len(new_rows) == 24
+    assert len(old_rows) == 22 and len(new_rows) == 25
     assert new_rows[:22] == old_rows, "SAFE ZONE: original theme palette changed: " + name
-assert "Prism Glow" in new_names[22] and "Golden Bloom" in new_names[23]
+assert new_names[22:] == [
+    "Prism Glow • زجاج نيوني",
+    "Golden Bloom • زجاج شمسي",
+    "Royal Gold • الذهب الملكي",
+], "SAFE ZONE: previous two new themes must also remain in place"
+# Keep Prism/Bloom pixel palettes frozen exactly when appending Royal Gold.
+original_reference_rows = {
+    "private static final int[][] THEMES": [
+        "0xFFAD3CDB,0xFF62257F,0xFFF4E3FC,0xFFFAF0FC,0xFFFFFAFF,0xFF291638,0xFF795D87,0xFFC94376,0xFF238D86,0xFF8244DA,0xFFF471B9,0xFF8B88EE",
+        "0xFFCE873E,0xFF87502D,0xFFFFE9C8,0xFFFFF7EA,0xFFFFFDF5,0xFF3D3028,0xFF857367,0xFFCA5060,0xFF54866D,0xFFB993BC,0xFFF8AA67,0xFF95BDA6",
+    ],
+    "private static final int[][] THEME_LAYERS": [
+        "0xFF782A9E,0xFFC435B0,0xFFE64CC2,0xFF7956EE",
+        "0xFFB86E39,0xFFF2AC65,0xFFFBD6A0,0xFF99B9A1",
+    ],
+}
+for key, frozen in original_reference_rows.items():
+    assert [row.strip() for row in palette_rows(new_ui, key)[22:24]] == frozen, (
+        "SAFE ZONE: Prism/Bloom palette changed while adding Royal Gold: " + key
+    )
 assert 'getSharedPreferences("appearance", Context.MODE_PRIVATE)' in new_ui
 assert "isReferenceGlassTheme(context)" in new_ui
 draw_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenReferenceGlassDrawable.java").read_text(encoding="utf-8")
-assert "PRISM = 22" in draw_source and "BLOOM = 23" in draw_source
+assert "PRISM = 22" in draw_source and "BLOOM = 23" in draw_source and "ROYAL = 24" in draw_source
 assert "PowerManager" in draw_source and "isLowRamDevice" in draw_source
 for forbidden in ("FinanceDbHelper", "AppLockManager", "SQLiteDatabase", "OnClickListener", "LicenseManager", "SharedPreferences", "Handler(", "Choreographer.getInstance("):
     assert forbidden not in draw_source, "Theme renderer enters protected logic: " + forbidden
@@ -313,15 +332,15 @@ assert (ROOT / "scripts/build_apk.sh").read_text(encoding="utf-8") == expected_b
 )
 
 # The archived Batch22 suite must still check ALL 22 old IDs in place;
-# only its expected array tail and total length are extended to 24.
+# only its expected array tail and total length are extended to 25.
 old_batch22 = baseline("tests/batch22_category_budget_icon_contract.py")
 expected_batch22 = old_batch22.replace(
     'assert theme_names[18:] == ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"], theme_names',
     'assert theme_names[18:22] == ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"], theme_names\n'
-    'assert theme_names[22:] == ["Prism Glow • زجاج نيوني", "Golden Bloom • زجاج شمسي"], theme_names')
+    'assert theme_names[22:] == ["Prism Glow • زجاج نيوني", "Golden Bloom • زجاج شمسي", "Royal Gold • الذهب الملكي"], theme_names')
 expected_batch22 = expected_batch22.replace(
     'assert len(rows) == len(theme_names) == 22, (name, len(rows))',
-    'assert len(rows) == len(theme_names) == 24, (name, len(rows))')
+    'assert len(rows) == len(theme_names) == 25, (name, len(rows))')
 expected_batch22 = expected_batch22.replace(
     '18 preserved IDs plus four new glass themes passed',
     '22 preserved IDs plus two additional reference glass themes passed')
