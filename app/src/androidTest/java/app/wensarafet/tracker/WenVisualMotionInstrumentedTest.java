@@ -143,6 +143,42 @@ public final class WenVisualMotionInstrumentedTest {
         }));
     }
 
+    @Test public void validLiquidSwipeCancelsTheOldChildOnlyOnce() {
+        ui(() -> theme(16, () -> {
+            Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            WenScreenVisualMotion visual = new WenScreenVisualMotion(context);
+            FrameLayout host = host(context);
+            FrameLayout screen = host(context);
+            host.addView(screen, new FrameLayout.LayoutParams(1080, 1920));
+            screen.layout(0, 0, 1080, 1920);
+            TextView[] tabs = {new TextView(context), new TextView(context),
+                    new TextView(context), new TextView(context)};
+            visual.captureOriginalTabs(tabs[0], tabs[1], tabs[2], tabs[3]);
+            AtomicInteger cancelled = new AtomicInteger();
+            MotionEvent down = touch(MotionEvent.ACTION_DOWN, 390f, 540f);
+            MotionEvent move = touch(MotionEvent.ACTION_MOVE, 780f, 540f);
+            MotionEvent moveAgain = touch(MotionEvent.ACTION_MOVE, 815f, 544f);
+            MotionEvent up = touch(MotionEvent.ACTION_UP, 830f, 545f);
+            try {
+                assertFalse(visual.interceptSwipe(down, host, screen, true, 1,
+                        ignored -> cancelled.incrementAndGet()));
+                assertTrue("Liquid horizontal intent must be recognized",
+                        visual.interceptSwipe(move, host, screen, true, 1,
+                                ignored -> cancelled.incrementAndGet()));
+                assertTrue(visual.interceptSwipe(moveAgain, host, screen, true, 1,
+                        ignored -> cancelled.incrementAndGet()));
+                assertTrue(visual.interceptSwipe(up, host, screen, true, 1,
+                        ignored -> cancelled.incrementAndGet()));
+                assertEquals("No duplicate child cancellation/action", 1, cancelled.get());
+            } finally {
+                down.recycle();
+                move.recycle();
+                moveAgain.recycle();
+                up.recycle();
+            }
+        }));
+    }
+
     @Test public void gesturesOverButtonsOrEditableRowsNeverStealTheirClick() {
         ui(() -> theme(16, () -> {
             Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
