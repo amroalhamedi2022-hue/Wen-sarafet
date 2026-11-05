@@ -203,7 +203,7 @@ assert upgrade == expected_upgrade, "SAFE ZONE: changed signing upgrade checks b
 # signer upgrade from code24; the actual signature and package checker is fixed.
 expected_tests = baseline("tests/upgrade_gate_contract.py")
 expected_tests = expected_tests.replace('assert parsed.stdout == "24|1.8.8", parsed', 'assert parsed.stdout == "26|1.8.10", parsed')
-expected_tests = expected_tests.replace("      *current-187*|*same-as-current*) code=23 ;;", "      *current-187*|*same-as-current*) code=23 ;;\\n      *current-188*) code=24 ;;")
+expected_tests = expected_tests.replace("      *current-187*|*same-as-current*) code=23 ;;", "      *current-187*|*same-as-current*) code=23 ;;\n      *current-188*) code=24 ;;")
 expected_tests = expected_tests.replace("      *) code=24 ;;", "      *) code=26 ;;")
 expected_tests = expected_tests.replace("versionName='1.8.8'", "versionName='1.8.10'")
 expected_tests = expected_tests.replace('    stale = home / "same-as-current.apk"', """    trusted188 = home / "current-188.apk"
