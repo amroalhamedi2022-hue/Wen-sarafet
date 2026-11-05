@@ -19,6 +19,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -224,6 +225,54 @@ public final class SplitRemainderInstrumentedTest {
             assertEquals("59.99", remainder.getText().toString());
             assertNull(remainder.getError());
             assertFalse(remainder.isFocusable());
+        });
+    }
+
+    @Test public void existingStoredMinorUnitsNeverUseFloatingPointDisplay() {
+        runUi(() -> {
+            assertEquals("90071992547409.91", SplitRemainderUi.formatMinor(9007199254740991L));
+            assertEquals("92233720368547758.07", SplitRemainderUi.formatMinor(Long.MAX_VALUE));
+            assertEquals("-92233720368547758.08", SplitRemainderUi.formatMinor(Long.MIN_VALUE));
+            assertEquals("0.01", SplitRemainderUi.formatMinor(1L));
+            assertEquals("33.33", SplitRemainderUi.formatMinor(3333L));
+            assertEquals(Long.valueOf(9007199254740991L),
+                    Money.parseMinor(SplitRemainderUi.formatMinor(9007199254740991L)));
+            assertEquals(Long.valueOf(Long.MAX_VALUE),
+                    Money.parseMinor(SplitRemainderUi.formatMinor(Long.MAX_VALUE)));
+        });
+    }
+
+    @Test public void removedSplitFieldHasNoLiveTextWatcher() {
+        runUi(() -> {
+            Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            LinearLayout rows = new LinearLayout(context);
+            EditText removed = field(context, true);
+            EditText kept = field(context, true);
+            EditText last = field(context, true);
+            LinearLayout removedCard = card(context, removed);
+            rows.addView(removedCard);
+            rows.addView(card(context, kept));
+            rows.addView(card(context, last));
+            AtomicInteger calculations = new AtomicInteger();
+            SplitRemainderUi.bind(rows, () -> {
+                calculations.incrementAndGet();
+                return 10000L;
+            }, null);
+            removed.setText("20.00");
+            kept.setText("30.00");
+            assertEquals("50.00", last.getText().toString());
+            rows.removeView(removedCard);
+            SplitRemainderUi.refresh(rows);
+            assertEquals("70.00", last.getText().toString());
+            int beforeDetachedEdit = calculations.get();
+            // A removed widget may be referenced by the dialog owner until
+            // dismissal; editing it must never trigger the ACTIVE remainder.
+            removed.setText("99.00");
+            assertEquals("A removed field must not trigger a calculation",
+                    beforeDetachedEdit, calculations.get());
+            kept.setText("40.00");
+            assertEquals("60.00", last.getText().toString());
+            assertTrue(calculations.get() > beforeDetachedEdit);
         });
     }
 }
