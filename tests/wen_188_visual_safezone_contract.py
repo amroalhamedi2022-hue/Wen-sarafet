@@ -40,6 +40,7 @@ ALLOWED = {
     "tests/batch22_category_budget_icon_contract.py",
     "scripts/build_apk.sh",
     "scripts/sign_verified_upgrade.sh",
+    "scripts/audit_recovered_source.sh",
 }
 
 def git(*args):
@@ -281,6 +282,17 @@ assert "PRISM = 22" in draw_source and "BLOOM = 23" in draw_source
 assert "PowerManager" in draw_source and "isLowRamDevice" in draw_source
 for forbidden in ("FinanceDbHelper", "AppLockManager", "SQLiteDatabase", "OnClickListener", "LicenseManager", "SharedPreferences", "Handler(", "Choreographer.getInstance("):
     assert forbidden not in draw_source, "Theme renderer enters protected logic: " + forbidden
+
+# The legacy recovery audit may accept v1.9 as a valid next-minor
+# release without disabling any XML, banking, credential or package checks.
+old_recovery = baseline("scripts/audit_recovered_source.sh")
+expected_recovery = old_recovery.replace(
+    '[[ "$version_name" =~ ^1[.]8[.][0-9]+$ ]]',
+    '[[ "$version_name" =~ ^1[.](8[.][0-9]+|9)$ ]]')
+assert expected_recovery != old_recovery, "Original recovery audit version pattern missing"
+assert (ROOT / "scripts/audit_recovered_source.sh").read_text(encoding="utf-8") == expected_recovery, (
+    "SAFE ZONE: recovery audit changed beyond v1.9 acceptance"
+)
 
 # The owner-only signer must also keep the exact keystore, certificate,
 # original security hashes and payload checks. Only its version regex expands.
