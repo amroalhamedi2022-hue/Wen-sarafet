@@ -96,3 +96,19 @@ Implement one scoped PR for each group or a tightly justified set of isolated co
 10. Check app lock cannot be bypassed with Back, biometric/PIN, USSD widgets, database restore, balance sums and offline activation across restart.
 
 **State at plan creation**: repository empty. Neither application implementation nor app runtime verification has occurred. Source import and screenshots must precede any claimed code fix.
+
+
+## 16. Approved clarification (2026-10-24): destination may be a different account and currency
+- Supported example: **BOP USD → Jawwal Pay ILS**, in addition to BOP USD → BOP ILS. Other active account pairs of unlike currencies may be used.
+- Internal transfer debits SOURCE in source currency, credits DESTINATION in destination currency; it must not count as income or expense.
+- Preserve both actual posted amounts, the user's confirmed effective FX rate, explicit rate source and quote time. An indicative market rate is never labelled as BOP buy/sell rate.
+- Manual save is implemented in locally saved Batch 01 source, but **online refresh and daily auto-rate updating remain NOT IMPLEMENTED** pending a verified exchange-rate feed and device tests.
+- Do not touch security code or existing same-currency transfer behavior.
+
+## 17. Actual first development checkpoint (2026-10-24)
+- **Recovered** source of 1.8.0 identified in user's Library; explicitly NOT a byte-identical original Git checkout.
+- Locally modified and preserved in Library: `/Wen-Sarafet/Wen-Sarafet-1.8.0-BATCH01-SAFE-SOURCE.zip`. Sensitive owner-only generator/signing artifacts excluded.
+- Local source tests passed for core finance, category suggestions, FX math, offline license protocol, backup crypto, old debt migration, FX migration, resource XML and recovered-source consistency.
+- Public branch `feature/wen-batch01-recovered-20261024` contains isolated new Java rules and CI tests, **not** the complete Android source. Source-only GitHub Actions run `40077115048` passed.
+- Source-level seven protected security classes matched SHA-256 against original recovered ZIP. This does NOT prove real-device locking, licensing, or signing continuity.
+- No APK has been built, no end-to-end Android migration tested. Do not merge or ship until G0/G2/G3 gates are met.
