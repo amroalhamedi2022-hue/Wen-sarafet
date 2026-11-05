@@ -337,4 +337,35 @@ public final class SplitRemainderInstrumentedTest {
             }
         });
     }
+
+    @Test public void legacyThemeLeavesAllOriginalTabsUntouched() {
+        runUi(() -> {
+            Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            SharedPreferences appearance = app.getSharedPreferences("appearance", Context.MODE_PRIVATE);
+            int oldTheme = appearance.getInt("theme", 0);
+            try {
+                assertTrue(appearance.edit().putInt("theme", 0).commit());
+                Ui.applyTheme(app);
+                LinearLayout originalNav = new LinearLayout(app);
+                TextView[] tabs = new TextView[4];
+                int[] calls = {0};
+                for (int i = 0; i < tabs.length; i++) {
+                    tabs[i] = new TextView(app);
+                    tabs[i].setOnClickListener(v -> calls[0]++);
+                    originalNav.addView(tabs[i]);
+                }
+                NavigationVisualDecorator.install(originalNav, tabs, 2);
+                assertEquals(4, originalNav.getChildCount());
+                for (int i = 0; i < tabs.length; i++) {
+                    assertSame("Non-Liquid legacy layout must be unmodified",
+                            tabs[i], originalNav.getChildAt(i));
+                    tabs[i].performClick();
+                }
+                assertEquals(4, calls[0]);
+            } finally {
+                appearance.edit().putInt("theme", oldTheme).commit();
+                Ui.applyTheme(app);
+            }
+        });
+    }
 }
