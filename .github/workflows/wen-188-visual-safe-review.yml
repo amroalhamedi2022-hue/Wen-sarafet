@@ -1,4 +1,4 @@
-name: Wen 1.8.8 visual-only Safe Zone review
+name: Wen 1.9 Prism & Bloom Safe Zone review
 on:
   pull_request:
     branches:
@@ -55,7 +55,7 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           APK=app/build/outputs/apk/release/app-release-unsigned.apk
           test -s "$APK"
-          "$AAPT" dump badging "$APK" | grep -F "package: name='app.wensarafet.tracker' versionCode='26' versionName='1.8.10'"
+          "$AAPT" dump badging "$APK" | grep -F "package: name='app.wensarafet.tracker' versionCode='27' versionName='1.9'"
           "$AAPT" dump permissions "$APK" > /tmp/wen-188-visual-permissions.txt
           python3 - <<'PY'
           import re
@@ -77,14 +77,14 @@ jobs:
       - name: Upload original-package unsigned visual review
         uses: actions/upload-artifact@v4
         with:
-          name: wen-188-visual-UNSIGNED-not-for-install
+          name: wen-190-reference-glass-UNSIGNED-not-for-install
           path: app/build/outputs/apk/release/app-release-unsigned.apk
           retention-days: 7
           if-no-files-found: error
       - name: Upload isolated test package (never production updater)
         uses: actions/upload-artifact@v4
         with:
-          name: wen-188-visual-DEBUG-only
+          name: wen-190-reference-glass-DEBUG-only
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
           if-no-files-found: error
