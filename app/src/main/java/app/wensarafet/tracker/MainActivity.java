@@ -448,8 +448,12 @@ public final class MainActivity extends Activity {
         int fabSize = Math.max(Ui.dp(this, 46), Math.min(Ui.dp(this, 82), Ui.homeIconDp(this, "fab", 58)));
         TextView fab = Ui.text(this, "+", 32f * fabPercent / 100f, Color.WHITE, false);
         fab.setGravity(Gravity.CENTER);
-        fab.setBackground(Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
-                : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this));
+        // Two new reference themes render a circular optical material here.
+        // The original add callback, size, position and hold feedback are unchanged.
+        fab.setBackground(Ui.isReferenceGlassTheme(this)
+                ? Ui.glassFloatingAddBackground(this)
+                : (Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
+                : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this)));
         fab.setElevation(Ui.dp(this, 8));
         fab.setOnClickListener(v -> showAddTransaction());
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));
