@@ -145,6 +145,10 @@ public final class Ui {
         if (isReferenceGlassTheme(context))
             return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.ACCENT);
         if (themeIndex(context) < 16) return gradient(BRAND_DARK, BRAND, radiusDp, context);
+        // The existing FAB is the only consumer of accent radius 24. Keep
+        // every card, button, and the three newer reference palettes intact.
+        if (themeIndex(context) >= 16 && themeIndex(context) <= 21 && radiusDp == 24)
+            return new app.wensarafet.glass.WenFabBubbleDrawable(context, SKY, DARK);
         return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
                 mix(BRAND_DARK, BRAND, .18f), mix(BRAND, VIOLET, .28f), SKY, true);
     }
@@ -434,10 +438,51 @@ public final class Ui {
 
     public static void pressAnimation(View view) {
         if (isLiquidTheme(view.getContext())) {
-            // Restore the sandbox's pressure-tracking optical bubble. This
-            // existing GlassMotion helper always returns false from touch:
-            // click/long-click/navigation/scroll behavior is untouched.
-            // On detach it cancels its animators and restores the scale.
+            // Restore the sandbox's true circular FAB pressure-morph, only
+            // for the original glass palettes 16–21. Its listener NEVER
+            // consumes input; the exact original click and long-click remain.
+            if (view.getBackground() instanceof app.wensarafet.glass.WenFabBubbleDrawable
+                    && (view.isClickable() || view.isLongClickable())) {
+                final app.wensarafet.glass.WenFabBubbleDrawable bubble =
+                        (app.wensarafet.glass.WenFabBubbleDrawable) view.getBackground();
+                final android.animation.ValueAnimator[] morph = {null};
+                view.setOnTouchListener((v, e) -> {
+                    final int action = e.getActionMasked();
+                    if (action != MotionEvent.ACTION_DOWN
+                            && action != MotionEvent.ACTION_UP
+                            && action != MotionEvent.ACTION_CANCEL) return false;
+                    boolean down = action == MotionEvent.ACTION_DOWN;
+                    if (morph[0] != null) morph[0].cancel();
+                    if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                        bubble.setPress(0f);
+                        return false;
+                    }
+                    morph[0] = android.animation.ValueAnimator.ofFloat(
+                            bubble.getPress(), down ? 1f : 0f);
+                    morph[0].setDuration(down ? 155L : 245L);
+                    morph[0].setInterpolator(new PathInterpolator(.2f, .8f, .2f, 1f));
+                    morph[0].addUpdateListener(
+                            a -> bubble.setPress((Float) a.getAnimatedValue()));
+                    morph[0].start();
+                    v.animate().cancel();
+                    v.animate().scaleX(down ? .94f : 1f).scaleY(down ? .94f : 1f)
+                            .setDuration(down ? 90L : 225L).start();
+                    return false; // Never steal existing FAB click/hold actions.
+                });
+                view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                    @Override public void onViewAttachedToWindow(View v) { }
+                    @Override public void onViewDetachedFromWindow(View v) {
+                        if (morph[0] != null) morph[0].cancel();
+                        bubble.setPress(0f);
+                        v.animate().cancel();
+                        v.setScaleX(1f);
+                        v.setScaleY(1f);
+                    }
+                });
+                return;
+            }
+            // Reference gold/pink themes keep their established material
+            // and use the pre-existing non-consuming Liquid press engine.
             app.wensarafet.glass.GlassMotion.bindPress(view, SKY);
             return;
         }
