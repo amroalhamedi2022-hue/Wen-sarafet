@@ -22,7 +22,7 @@ command = ('set -euo pipefail\nPROJECT_DIR="$1"\n'
            + '\nprintf "%s|%s" "$APP_VERSION_CODE" "$APP_VERSION_NAME"\n')
 parsed = subprocess.run(["bash", "-c", command, "bash", str(root)],
                         capture_output=True, text=True, check=True)
-assert parsed.stdout == "27|1.9", parsed
+assert parsed.stdout == "28|2.0", parsed
 
 cert = "6b8268e5b647b12a2aa055d7a22f7b8ea888e40fb863e74409938aad4ec789c9"
 with tempfile.TemporaryDirectory() as directory:
@@ -48,6 +48,7 @@ case "$2" in
     esac
     case "$3" in
       *original*|*same-version*) code=16 ;;
+      *current-1810*) code=26 ;;
       *current-181*) code=17 ;;
       *current-182*) code=18 ;;
       *current-183*) code=19 ;;
@@ -55,9 +56,11 @@ case "$2" in
       *current-185*) code=21 ;;
       *current-187*|*same-as-current*) code=23 ;;
       *current-188*) code=24 ;;
-      *) code=27 ;;
+      *current-189*) code=25 ;;
+      *current-190*) code=27 ;;
+      *) code=28 ;;
     esac
-    echo "package: name='$pkg' versionCode='$code' versionName='1.9'"
+    echo "package: name='$pkg' versionCode='$code' versionName='2.0'"
     ;;
   xmltree)
     case "$3" in
@@ -95,9 +98,22 @@ esac
         ["bash", str(checker), str(trusted188), str(home / "candidate.apk")],
         env=env, capture_output=True, text=True,
     )
-    assert verified188.returncode == 0 and "24 -> 27" in verified188.stdout, (
+    assert verified188.returncode == 0 and "24 -> 28" in verified188.stdout, (
         verified188.stdout, verified188.stderr
     )
+    # Validate every newer original-signed predecessor without replacing the signer gate.
+    for old_name, old_code in (("current-189.apk", 25),
+                               ("current-1810.apk", 26),
+                               ("current-190.apk", 27)):
+        prior = home / old_name
+        prior.write_bytes(b"fake previously signed owner APK")
+        verified = subprocess.run(
+            ["bash", str(checker), str(prior), str(home / "candidate.apk")],
+            env=env, capture_output=True, text=True,
+        )
+        assert verified.returncode == 0 and f"{old_code} -> 28" in verified.stdout, (
+            old_name, verified.stdout, verified.stderr
+        )
     stale = home / "same-as-current.apk"
     stale.write_bytes(b"old candidate")
     rejected = subprocess.run(

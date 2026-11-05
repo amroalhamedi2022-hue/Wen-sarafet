@@ -1,4 +1,4 @@
-name: Wen 1.9 Prism & Bloom Safe Zone review
+name: Wen 2.0 Premium Liquid Glass Safe Zone review
 on:
   pull_request:
     branches:
@@ -55,7 +55,7 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           APK=app/build/outputs/apk/release/app-release-unsigned.apk
           test -s "$APK"
-          "$AAPT" dump badging "$APK" | grep -F "package: name='app.wensarafet.tracker' versionCode='27' versionName='1.9'"
+          "$AAPT" dump badging "$APK" | grep -F "package: name='app.wensarafet.tracker' versionCode='28' versionName='2.0'"
           "$AAPT" dump permissions "$APK" > /tmp/wen-188-visual-permissions.txt
           python3 - <<'PY'
           import re
