@@ -31,6 +31,8 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenGlassDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenFabOpticalCrownDrawable.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
+    "docs/design/WEN_190_FIVE_PREMIUM_LIQUID_HANDOFF_20261105.md",
     "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java",
     "docs/licenses/QWEA0_LiquidGlass_MIT.txt",
     "docs/design/WEN_188_VISUAL_REVIEW_EXECUTION_20261104.md",
@@ -296,16 +298,33 @@ def palette_rows(text, label):
 old_names = re.findall(r'"([^"]+)"', palette_block(original_ui, "public static final String[] THEME_NAMES"))
 new_names = re.findall(r'"([^"]+)"', palette_block(new_ui, "public static final String[] THEME_NAMES"))
 assert len(old_names) == 22, "Unexpected source baseline for themes"
-assert len(new_names) == 25 and new_names[:22] == old_names, "SAFE ZONE: legacy theme names or indices changed"
+assert len(new_names) == 30 and new_names[:22] == old_names, "SAFE ZONE: legacy theme names or indices changed"
 for name in ("private static final int[][] THEMES", "private static final int[][] THEME_LAYERS"):
     old_rows, new_rows = palette_rows(original_ui, name), palette_rows(new_ui, name)
-    assert len(old_rows) == 22 and len(new_rows) == 25
+    assert len(old_rows) == 22 and len(new_rows) == 30
     assert new_rows[:22] == old_rows, "SAFE ZONE: original theme palette changed: " + name
-assert new_names[22:] == [
+assert new_names[22:25] == [
     "Prism Glow • زجاج نيوني",
     "Golden Bloom • زجاج شمسي",
     "Royal Gold • الذهب الملكي",
-], "SAFE ZONE: previous two new themes must also remain in place"
+], "SAFE ZONE: established reference theme IDs changed"
+assert new_names[25:] == [
+    "Royal Dark Gold • ذهبي ملكي داكن",
+    "Imperial Dark Gold • ذهبي إمبراطوري",
+    "Champagne Gold • شامبانيا ملكي فاتح",
+    "Soft Orange-Green Glass • زجاج برتقالي أخضر",
+    "Purple-Pink Liquid Glass • زجاج بنفسجي وردي",
+], "SAFE ZONE: only the five owner-approved themes may be appended"
+# Entire existing 25-theme selection + both palettes are frozen relative
+# to the exact, already-promoted v1.9 main. Only five tail entries may differ.
+PREMIUM_BASE = "283112f4bedaf2e07dd7370e581f84e14959710e"
+promoted_ui = git("show", f"{PREMIUM_BASE}:app/src/main/java/app/wensarafet/tracker/Ui.java")
+promoted_names = re.findall(r'"([^"]+)"', palette_block(promoted_ui, "public static final String[] THEME_NAMES"))
+assert new_names[:25] == promoted_names, "SAFE ZONE: a promoted theme name/index changed"
+for name in ("private static final int[][] THEMES", "private static final int[][] THEME_LAYERS"):
+    assert palette_rows(new_ui, name)[:25] == palette_rows(promoted_ui, name), (
+        "SAFE ZONE: an established 1.9 palette changed: " + name
+    )
 # Keep Prism/Bloom pixel palettes frozen exactly when appending Royal Gold.
 original_reference_rows = {
     "private static final int[][] THEMES": [
@@ -323,11 +342,15 @@ for key, frozen in original_reference_rows.items():
     )
 assert 'getSharedPreferences("appearance", Context.MODE_PRIVATE)' in new_ui
 assert "isReferenceGlassTheme(context)" in new_ui
+premium_draw_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java").read_text(encoding="utf-8")
 draw_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenReferenceGlassDrawable.java").read_text(encoding="utf-8")
+assert "ROYAL_DARK = 25" in premium_draw_source and "PURPLE_PINK = 29" in premium_draw_source
+assert "WenPremiumLiquidDrawable.supports(selected)" in new_ui
+assert "premium ? 0x99FFFFFF" in (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java").read_text(encoding="utf-8")
 assert "PRISM = 22" in draw_source and "BLOOM = 23" in draw_source and "ROYAL = 24" in draw_source
 assert "PowerManager" in draw_source and "isLowRamDevice" in draw_source
 for forbidden in ("FinanceDbHelper", "AppLockManager", "SQLiteDatabase", "OnClickListener", "LicenseManager", "SharedPreferences", "Handler(", "Choreographer.getInstance("):
-    assert forbidden not in draw_source, "Theme renderer enters protected logic: " + forbidden
+    assert forbidden not in draw_source + premium_draw_source, "Theme renderer enters protected logic: " + forbidden
 
 # The legacy recovery audit may accept v1.9 as a valid next-minor
 # release without disabling any XML, banking, credential or package checks.
@@ -364,13 +387,14 @@ old_batch22 = baseline("tests/batch22_category_budget_icon_contract.py")
 expected_batch22 = old_batch22.replace(
     'assert theme_names[18:] == ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"], theme_names',
     'assert theme_names[18:22] == ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"], theme_names\n'
-    'assert theme_names[22:] == ["Prism Glow • زجاج نيوني", "Golden Bloom • زجاج شمسي", "Royal Gold • الذهب الملكي"], theme_names')
+    'assert theme_names[22:25] == ["Prism Glow • زجاج نيوني", "Golden Bloom • زجاج شمسي", "Royal Gold • الذهب الملكي"], theme_names\n'
+    'assert theme_names[25:] == ["Royal Dark Gold • ذهبي ملكي داكن", "Imperial Dark Gold • ذهبي إمبراطوري", "Champagne Gold • شامبانيا ملكي فاتح", "Soft Orange-Green Glass • زجاج برتقالي أخضر", "Purple-Pink Liquid Glass • زجاج بنفسجي وردي"], theme_names')
 expected_batch22 = expected_batch22.replace(
     'assert len(rows) == len(theme_names) == 22, (name, len(rows))',
-    'assert len(rows) == len(theme_names) == 25, (name, len(rows))')
+    'assert len(rows) == len(theme_names) == 30, (name, len(rows))')
 expected_batch22 = expected_batch22.replace(
     '18 preserved IDs plus four new glass themes passed',
-    '22 preserved IDs plus two additional reference glass themes passed')
+    '22 preserved IDs plus eight opt-in reference/premium themes passed')
 assert (ROOT / "tests/batch22_category_budget_icon_contract.py").read_text(encoding="utf-8") == expected_batch22, (
     "SAFE ZONE: original category and layout contracts changed beyond two new theme indices"
 )
@@ -418,7 +442,10 @@ assert (ROOT / "tests/glass_energy_contract.py").read_text(encoding="utf-8") == 
 # commit, not just fragile line grep patterns.
 SANDBOX_SOURCE = "b57dcd3c71df7273acf5cd316687472f60c11d80"
 ui_path = "app/src/main/java/app/wensarafet/tracker/Ui.java"
-original_190_ui = git("show", f"{SOURCE_190}:{ui_path}")
+# Compare against independently approved 30-theme code, not the old palette.
+# Only four precisely enumerated sandbox visual methods can vary.
+PREMIUM_SOURCE = "ea61bb7a266652751fe9c08f321e0721350df1ea"
+original_190_ui = git("show", f"{PREMIUM_SOURCE}:{ui_path}")
 visual_only_methods = (
     "glassAccentBackground", "animateScreen", "animateChildren", "pressAnimation",
 )

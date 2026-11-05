@@ -36,7 +36,12 @@ public final class Ui {
             "Liquid Aurora", "Liquid Fusion",
             "زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد",
             "Prism Glow • زجاج نيوني", "Golden Bloom • زجاج شمسي",
-            "Royal Gold • الذهب الملكي"
+            "Royal Gold • الذهب الملكي",
+            "Royal Dark Gold • ذهبي ملكي داكن",
+            "Imperial Dark Gold • ذهبي إمبراطوري",
+            "Champagne Gold • شامبانيا ملكي فاتح",
+            "Soft Orange-Green Glass • زجاج برتقالي أخضر",
+            "Purple-Pink Liquid Glass • زجاج بنفسجي وردي"
     };
 
     // brand, dark, soft, background, surface, text, muted, expense, income, accent1, accent2, accent3
@@ -66,7 +71,13 @@ public final class Ui {
             {0xFFAD3CDB,0xFF62257F,0xFFF4E3FC,0xFFFAF0FC,0xFFFFFAFF,0xFF291638,0xFF795D87,0xFFC94376,0xFF238D86,0xFF8244DA,0xFFF471B9,0xFF8B88EE},
             {0xFFCE873E,0xFF87502D,0xFFFFE9C8,0xFFFFF7EA,0xFFFFFDF5,0xFF3D3028,0xFF857367,0xFFCA5060,0xFF54866D,0xFFB993BC,0xFFF8AA67,0xFF95BDA6},
             // Royal Gold: deep obsidian and champagne-metallic accents.
-            {0xFFDCB56D,0xFF8C632D,0xFF3B3020,0xFF121418,0xFF23252A,0xFFFAEFCF,0xFFC0AD85,0xFFEF6A69,0xFF7CC6A1,0xFFEAD097,0xFFF4C773,0xFFA98440}
+            {0xFFDCB56D,0xFF8C632D,0xFF3B3020,0xFF121418,0xFF23252A,0xFFFAEFCF,0xFFC0AD85,0xFFEF6A69,0xFF7CC6A1,0xFFEAD097,0xFFF4C773,0xFFA98440},
+            // Five owner-approved additions only: indices 0-24 remain byte-identical.
+            {0xFFE5BF77,0xFF907040,0xFF3E372D,0xFF0C1119,0xFF252B32,0xFFFFF3D7,0xFFD0BF9E,0xFFE97075,0xFF77BEA3,0xFFF2D59B,0xFFE6BC79,0xFFB08B50},
+            {0xFFD6BE9A,0xFF80725E,0xFF3E3D3B,0xFF10151F,0xFF272F3B,0xFFF7EBDD,0xFFC9BEAB,0xFFEB747B,0xFF78BFA7,0xFFE9D4B3,0xFFD1B48B,0xFF9C8D7A},
+            {0xFFB99058,0xFF8E683E,0xFFFFF0D6,0xFFF8F6F0,0xFFFFFFFF,0xFF41372D,0xFF847766,0xFFD15C65,0xFF4B8971,0xFFB99058,0xFFE3C691,0xFFFFE8BA},
+            {0xFFD48C61,0xFF9D6449,0xFFFFE6D3,0xFFFFF5EF,0xFFFFFFFF,0xFF403831,0xFF7B766D,0xFFD06064,0xFF4E9679,0xFFCF9566,0xFFA9CBA9,0xFFF4CBA7},
+            {0xFFB77ACA,0xFF7E509C,0xFFF4DEF6,0xFFF9F2FC,0xFFFFFFFF,0xFF382B47,0xFF7B6C84,0xFFC75C83,0xFF4C8B84,0xFFAC73C2,0xFFF0B8DD,0xFFC9B9F2}
     };
 
     private static final int[][] THEME_LAYERS = {
@@ -94,7 +105,12 @@ public final class Ui {
             {0xFF6A719F,0xFFACB7D8,0xFFE0DFFD,0xFFF8F9FF},
             {0xFF782A9E,0xFFC435B0,0xFFE64CC2,0xFF7956EE},
             {0xFFB86E39,0xFFF2AC65,0xFFFBD6A0,0xFF99B9A1},
-            {0xFF0E121A,0xFF3B3021,0xFF9D7735,0xFFFFDFA1}
+            {0xFF0E121A,0xFF3B3021,0xFF9D7735,0xFFFFDFA1},
+            {0xFF0B1018,0xFF303237,0xFF957443,0xFFF9D99E},
+            {0xFF0D1520,0xFF343E4B,0xFF8C8074,0xFFF2DEC0},
+            {0xFFF5EBDD,0xFFF7F5F0,0xFFE8D0A1,0xFFFFFAED},
+            {0xFFF8DCCB,0xFFFFF1E3,0xFFB9D9BD,0xFFFBECCE},
+            {0xFFE4D3EE,0xFFF9F1FB,0xFFD6B5E8,0xFFFFD5EF}
     };
 
 
@@ -168,7 +184,8 @@ public final class Ui {
         int selected = themeIndex(context);
         return selected == app.wensarafet.glass.WenReferenceGlassDrawable.PRISM
                 || selected == app.wensarafet.glass.WenReferenceGlassDrawable.BLOOM
-                || selected == app.wensarafet.glass.WenReferenceGlassDrawable.ROYAL;
+                || selected == app.wensarafet.glass.WenReferenceGlassDrawable.ROYAL
+                || app.wensarafet.glass.WenPremiumLiquidDrawable.supports(selected);
     }
 
     public static android.graphics.drawable.Drawable glassFloatingAddBackground(Context context) {
@@ -177,8 +194,12 @@ public final class Ui {
 
     private static android.graphics.drawable.Drawable referenceGlass(Context context,
             app.wensarafet.glass.WenReferenceGlassDrawable.Surface surface) {
+        int selected = themeIndex(context);
+        if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(selected))
+            return new app.wensarafet.glass.WenPremiumLiquidDrawable(context,
+                    selected, surface, DARK);
         return new app.wensarafet.glass.WenReferenceGlassDrawable(context,
-                themeIndex(context), surface, DARK);
+                selected, surface, DARK);
     }
 
     /** Liquid designs are opt-in; existing non-Liquid themes are byte-for-byte visual fallbacks. */
@@ -242,8 +263,11 @@ public final class Ui {
         if (theme < 0 || theme >= THEMES.length) theme = 0;
         // Midnight Aurora is intentionally dark even when the device uses light mode.
         // The Activity already derives system-bar contrast and native dialog theme from DARK.
-        DARK = theme == 20 || theme == 24 || (context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
-                == Configuration.UI_MODE_NIGHT_YES;
+        // The three new light palettes remain legible on dark-mode phones;
+        // all prior 25 themes keep their original dark-mode behaviour.
+        DARK = theme == 20 || theme == 24 || theme == 25 || theme == 26
+                || (theme < 25 && (context.getResources().getConfiguration().uiMode
+                        & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES);
         int[] p = THEMES[theme];
         if (DARK) {
             int[] layers = THEME_LAYERS[theme];
