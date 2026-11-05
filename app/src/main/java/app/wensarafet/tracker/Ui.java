@@ -35,7 +35,8 @@ public final class Ui {
             "غابة قاتمة", "فحمي", "لؤلؤي", "نحاسي",
             "Liquid Aurora", "Liquid Fusion",
             "زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد",
-            "Prism Glow • زجاج نيوني", "Golden Bloom • زجاج شمسي"
+            "Prism Glow • زجاج نيوني", "Golden Bloom • زجاج شمسي",
+            "Royal Gold • الذهب الملكي"
     };
 
     // brand, dark, soft, background, surface, text, muted, expense, income, accent1, accent2, accent3
@@ -63,7 +64,9 @@ public final class Ui {
             {0xFF7F73FF,0xFF31255D,0xFF252746,0xFF101429,0xFF171B30,0xFFF6F7FF,0xFFACB4D1,0xFFFF758A,0xFF64D5AF,0xFFA58AFF,0xFFD58BFF,0xFF7CCBFF},
             {0xFF7888CD,0xFF414B80,0xFFF0F0FD,0xFFFAFBFF,0xFFFFFFFF,0xFF252943,0xFF7B8198,0xFFC25570,0xFF348B83,0xFF9794D6,0xFFBCABD5,0xFFDFE9FF},
             {0xFFAD3CDB,0xFF62257F,0xFFF4E3FC,0xFFFAF0FC,0xFFFFFAFF,0xFF291638,0xFF795D87,0xFFC94376,0xFF238D86,0xFF8244DA,0xFFF471B9,0xFF8B88EE},
-            {0xFFCE873E,0xFF87502D,0xFFFFE9C8,0xFFFFF7EA,0xFFFFFDF5,0xFF3D3028,0xFF857367,0xFFCA5060,0xFF54866D,0xFFB993BC,0xFFF8AA67,0xFF95BDA6}
+            {0xFFCE873E,0xFF87502D,0xFFFFE9C8,0xFFFFF7EA,0xFFFFFDF5,0xFF3D3028,0xFF857367,0xFFCA5060,0xFF54866D,0xFFB993BC,0xFFF8AA67,0xFF95BDA6},
+            // Royal Gold: deep obsidian and champagne-metallic accents.
+            {0xFFDCB56D,0xFF8C632D,0xFF3B3020,0xFF121418,0xFF23252A,0xFFFAEFCF,0xFFC0AD85,0xFFEF6A69,0xFF7CC6A1,0xFFEAD097,0xFFF4C773,0xFFA98440}
     };
 
     private static final int[][] THEME_LAYERS = {
@@ -90,7 +93,8 @@ public final class Ui {
             {0xFF080F33,0xFF353281,0xFF6552C8,0xFFAB73EF},
             {0xFF6A719F,0xFFACB7D8,0xFFE0DFFD,0xFFF8F9FF},
             {0xFF782A9E,0xFFC435B0,0xFFE64CC2,0xFF7956EE},
-            {0xFFB86E39,0xFFF2AC65,0xFFFBD6A0,0xFF99B9A1}
+            {0xFFB86E39,0xFFF2AC65,0xFFFBD6A0,0xFF99B9A1},
+            {0xFF0E121A,0xFF3B3021,0xFF9D7735,0xFFFFDFA1}
     };
 
 
@@ -159,7 +163,8 @@ public final class Ui {
     public static boolean isReferenceGlassTheme(Context context) {
         int selected = themeIndex(context);
         return selected == app.wensarafet.glass.WenReferenceGlassDrawable.PRISM
-                || selected == app.wensarafet.glass.WenReferenceGlassDrawable.BLOOM;
+                || selected == app.wensarafet.glass.WenReferenceGlassDrawable.BLOOM
+                || selected == app.wensarafet.glass.WenReferenceGlassDrawable.ROYAL;
     }
 
     public static android.graphics.drawable.Drawable glassFloatingAddBackground(Context context) {
@@ -233,7 +238,7 @@ public final class Ui {
         if (theme < 0 || theme >= THEMES.length) theme = 0;
         // Midnight Aurora is intentionally dark even when the device uses light mode.
         // The Activity already derives system-bar contrast and native dialog theme from DARK.
-        DARK = theme == 20 || (context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+        DARK = theme == 20 || theme == 24 || (context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
                 == Configuration.UI_MODE_NIGHT_YES;
         int[] p = THEMES[theme];
         if (DARK) {
