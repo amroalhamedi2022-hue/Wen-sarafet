@@ -549,11 +549,12 @@ public final class Ui {
         view.setOnTouchListener((v, event) -> {
             if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return false;
             // Preserve exact existing touch behavior for the 16 original themes.
-
-                if (event.getAction() == MotionEvent.ACTION_DOWN)
-                    v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(90).start();
-                else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL)
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(140).start();
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(90).start();
+            } else if (event.getAction() == MotionEvent.ACTION_UP
+                    || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                v.animate().scaleX(1f).scaleY(1f).setDuration(140).start();
+            }
             return false;
         });
     }
