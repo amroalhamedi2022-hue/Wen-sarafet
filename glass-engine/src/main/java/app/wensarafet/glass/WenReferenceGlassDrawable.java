@@ -17,10 +17,11 @@ import android.graphics.drawable.Drawable;
 import android.os.PowerManager;
 
 /**
- * Two opt-in reference palettes, never a replacement for the 22 existing themes.
+ * Three opt-in reference palettes, never a replacement for the 22 existing themes.
  *
  * PRISM (22): luminous magenta, purple and blue, floating violet glass bar.
  * BLOOM (23): peach, sunset amber and soft green with a warm circular glass FAB.
+ * ROYAL (24): obsidian black, champagne-gold, polished metal and a jewel-like FAB.
  *
  * Entirely passive: shaders are rebuilt only on size change, there is no
  * timer, Choreographer, bitmap, blur capture or additional touch listener.
@@ -29,10 +30,12 @@ import android.os.PowerManager;
 public final class WenReferenceGlassDrawable extends Drawable {
     public static final int PRISM = 22;
     public static final int BLOOM = 23;
+    public static final int ROYAL = 24;
 
     public enum Surface { BACKDROP, HEADER, CARD, NAVIGATION, FAB, ACCENT }
 
     private final boolean prism;
+    private final boolean royal;
     private final boolean dark;
     private final boolean lowPower;
     private final Surface surface;
@@ -50,9 +53,10 @@ public final class WenReferenceGlassDrawable extends Drawable {
 
     public WenReferenceGlassDrawable(Context context, int theme, Surface surface,
                                       boolean darkMode) {
-        if (theme != PRISM && theme != BLOOM)
-            throw new IllegalArgumentException("Reference glass requires theme 22 or 23");
+        if (theme != PRISM && theme != BLOOM && theme != ROYAL)
+            throw new IllegalArgumentException("Reference glass requires theme 22, 23 or 24");
         this.prism = theme == PRISM;
+        this.royal = theme == ROYAL;
         this.dark = darkMode;
         this.surface = surface;
         this.density = context.getResources().getDisplayMetrics().density;
@@ -83,6 +87,25 @@ public final class WenReferenceGlassDrawable extends Drawable {
                 default: return dark
                         ? new int[]{0xFF342342, 0xFF2B2447, 0xFF25223C}
                         : new int[]{0xFDFDF3FF, 0xF9FFF5FD, 0xF9F1EAFF};
+            }
+        }
+        if (royal) {
+            // Five polished-metal stops avoid the flat yellow appearance of a
+            // solid gradient. Dark obsidian maintains contrast for Arabic text.
+            // No animation and no changes to the two established palettes.
+            switch (surface) {
+                case BACKDROP: return new int[]{
+                        0xFF121418, 0xFF191715, 0xFF282015, 0xFF17191C, 0xFF0C1018};
+                case HEADER: return new int[]{
+                        0xFF513B21, 0xFFC59B51, 0xFFF3DDA4, 0xFF9E6D29, 0xFF352B1F};
+                case NAVIGATION: return new int[]{
+                        0xEC171B23, 0xEE3A3022, 0xF2A87932, 0xEE30271B, 0xED121824};
+                case FAB: return new int[]{
+                        0xFF86601F, 0xFFE0B963, 0xFFFFF0BE, 0xFFBB8633, 0xFF684516};
+                case ACCENT: return new int[]{
+                        0xFF886122, 0xFFDBB66B, 0xFFFFE9AC, 0xFFC18A37, 0xFF654721};
+                default: return new int[]{
+                        0xF924252A, 0xFC34302D, 0xFB443A28, 0xFD292B31, 0xFA1B2029};
             }
         }
         switch (surface) {
@@ -119,10 +142,11 @@ public final class WenReferenceGlassDrawable extends Drawable {
         int[] c = stops();
         base.setShader(new LinearGradient(bounds.left, bounds.top,
                 bounds.right, bounds.bottom, c,
-                new float[]{0f, .48f, 1f}, Shader.TileMode.CLAMP));
+                royal ? new float[]{0f, .23f, .51f, .76f, 1f}
+                        : new float[]{0f, .48f, 1f}, Shader.TileMode.CLAMP));
         if (!lowPower) {
-            int a = prism ? 0xFFFF36C7 : 0xFFFF9C40;
-            int b = prism ? 0xFF6454F8 : 0xFF9BC5A3;
+            int a = royal ? 0xFFFFDF8D : prism ? 0xFFFF36C7 : 0xFFFF9C40;
+            int b = royal ? 0xFFC28735 : prism ? 0xFF6454F8 : 0xFF9BC5A3;
             float strength = saturated() ? .68f : scene() ? .55f : .19f;
             float span = Math.max(1f, Math.max(w, h) * (scene() ? .68f : .90f));
             lightA.setShader(new RadialGradient(
@@ -141,9 +165,11 @@ public final class WenReferenceGlassDrawable extends Drawable {
         innerBounds.set(bounds.left + inset, bounds.top + inset,
                 bounds.right - inset, bounds.bottom - inset);
         border.setStrokeWidth(Math.max(1f, density * (surface == Surface.FAB ? 1.7f : 1.15f)));
-        border.setColor(scene() ? 0 : saturated() ? 0xA5FFFFFF : 0x88FFFFFF);
+        border.setColor(scene() ? 0 : royal ? 0xBFE4BD71
+                : saturated() ? 0xA5FFFFFF : 0x88FFFFFF);
         innerRim.setStrokeWidth(Math.max(.75f, density * .65f));
-        innerRim.setColor(scene() ? 0 : saturated() ? 0x4DFFFFFF : 0x6FFFFFFF);
+        innerRim.setColor(scene() ? 0 : royal ? 0x8AFFF0C3
+                : saturated() ? 0x4DFFFFFF : 0x6FFFFFFF);
     }
 
     @Override public void draw(Canvas canvas) {
