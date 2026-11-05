@@ -410,6 +410,21 @@ public final class Ui {
 
     public static void animateScreen(View view) {
         if (Boolean.TRUE.equals(view.getTag()) || !android.animation.ValueAnimator.areAnimatorsEnabled()) return;
+        if (isLiquidTheme(view.getContext())) {
+            // Sandbox visual timing: one short, restrained arrival rather
+            // than a second long page-level slide stacked with card motion.
+            // The content is already attached and every control stays live.
+            view.animate().cancel();
+            view.setTranslationX(0f);
+            view.setScaleX(1f);
+            view.setScaleY(1f);
+            view.setAlpha(.86f);
+            view.setTranslationY(dp(view.getContext(), 3));
+            view.animate().alpha(1f).translationY(0f).setDuration(115)
+                    .setInterpolator(new PathInterpolator(.2f, .8f, .2f, 1f)).start();
+            return;
+        }
+        // Exactly the previous 0–15 theme animation.
         view.setAlpha(0f);
         view.setTranslationX(dp(view.getContext(), 18));
         view.setScaleX(0.992f); view.setScaleY(0.992f);
