@@ -8,10 +8,13 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.function.LongSupplier;
 
 /**
@@ -21,6 +24,11 @@ import java.util.function.LongSupplier;
 public final class SplitRemainderUi {
     static final String AMOUNT_FIELD_TAG = "wen_auto_split_amount";
     private SplitRemainderUi() {}
+
+    /** Preserve every stored minor unit when displaying an existing split. */
+    static String formatMinor(long minorUnits) {
+        return BigDecimal.valueOf(minorUnits, 2).toPlainString();
+    }
 
     static void bind(LinearLayout rows, LongSupplier total, EditText editableTotal) {
         if (rows == null || total == null) return;
@@ -65,6 +73,17 @@ public final class SplitRemainderUi {
         void refresh() {
             amountFields.clear();
             collect(rows);
+            // A deleted split row must not keep its old text watcher attached.
+            // Otherwise changing a detached field may update the active remainder,
+            // and repeated add/remove cycles retain every abandoned EditText.
+            Iterator<Map.Entry<EditText, TextWatcher>> old = watched.entrySet().iterator();
+            while (old.hasNext()) {
+                Map.Entry<EditText, TextWatcher> entry = old.next();
+                if (!amountFields.contains(entry.getKey())) {
+                    entry.getKey().removeTextChangedListener(entry.getValue());
+                    old.remove();
+                }
+            }
             for (EditText field : amountFields) {
                 if (!watched.containsKey(field)) {
                     TextWatcher observer = watcher();
