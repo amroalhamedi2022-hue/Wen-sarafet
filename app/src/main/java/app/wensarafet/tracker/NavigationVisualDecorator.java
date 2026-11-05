@@ -47,6 +47,10 @@ public final class NavigationVisualDecorator {
         }
         final NavState navState = state;
         final WenNavigationTrack track = new WenNavigationTrack(context, Ui.DARK);
+        // Visual-only premium selection; all four original callbacks survive.
+        final int premiumIndex = Ui.themeIndex(context);
+        final boolean premium = app.wensarafet.glass.WenPremiumLiquidDrawable
+                .supports(premiumIndex);
 
         // Keep the original four TextViews and, more importantly, their
         // exact unmodified 1.8.8 OnClickListeners. Reparent before attachment.
@@ -58,7 +62,24 @@ public final class NavigationVisualDecorator {
         GradientDrawable sampledPlate = new GradientDrawable();
         sampledPlate.setColor(Ui.DARK ? 0xFF30394C : 0xFFF8FBFF);
         sampledPlate.setCornerRadius(Ui.dp(context, 26));
-        if (Ui.isReferenceGlassTheme(context)) {
+        if (premium) {
+            // Neutral smoked / ivory material, no coloured selected-tab pill.
+            int[] glass = premiumIndex == 25
+                    ? new int[]{0xE31D252E,0xE64A4032,0xE1222932}
+                    : premiumIndex == 26
+                    ? new int[]{0xE21E2A38,0xE5414347,0xE1242D39}
+                    : premiumIndex == 27
+                    ? new int[]{0xECFFF9EF,0xF0FAF3E6,0xEAFDF9F3}
+                    : premiumIndex == 28
+                    ? new int[]{0xECFFF8EF,0xF0F8F6ED,0xEAF4FAF4}
+                    : new int[]{0xECFCF6FF,0xF0FAF2FC,0xEBF6F2FF};
+            GradientDrawable premiumPlate = new GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR, glass);
+            premiumPlate.setCornerRadius(Ui.dp(context, 26));
+            premiumPlate.setStroke(Ui.dp(context, 1),
+                    Ui.DARK ? 0xB9E6D6B6 : 0xCFFFFFFF);
+            tabs.setBackground(premiumPlate);
+        } else if (Ui.isReferenceGlassTheme(context)) {
             // The old opaque #F8FBFF plate would completely conceal both
             // reference palettes under the native refractive lens.
             int reference = Ui.themeIndex(context);
@@ -85,7 +106,19 @@ public final class NavigationVisualDecorator {
             TextView item = originalTabs[i];
             item.setBackground(null); // One shared lens, never stacked pills.
             item.setSelected(i == selected);
-            if (Ui.isReferenceGlassTheme(context)) {
+            if (premium) {
+                // Optical lens remains clear/neutral. Selected text is the
+                // only per-tab colour cue, rather than an opaque colour bubble.
+                int chosen = premiumIndex == 25 ? 0xFFFFE8B4
+                        : premiumIndex == 26 ? 0xFFF6E6C9
+                        : premiumIndex == 27 ? 0xFF644A2F
+                        : premiumIndex == 28 ? 0xFF285A47 : 0xFF693D80;
+                int idle = premiumIndex == 25 ? 0xFFD4C5A9
+                        : premiumIndex == 26 ? 0xFFCBC4BB
+                        : premiumIndex == 27 ? 0xFF756B5B
+                        : premiumIndex == 28 ? 0xFF646D62 : 0xFF78657E;
+                item.setTextColor(i == selected ? chosen : idle);
+            } else if (Ui.isReferenceGlassTheme(context)) {
                 // Only appearance changes; the original navigation actions,
                 // accessibility labels and held-drag lens remain untouched.
                 int style = Ui.themeIndex(context);
@@ -112,8 +145,10 @@ public final class NavigationVisualDecorator {
         lens.setClickable(false);
         lens.setFocusable(false);
         lens.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        lens.setBackground(new WenNavigationLensDrawable(context, Ui.BRAND_SOFT,
-                Ui.SURFACE, Ui.SKY, Ui.DARK));
+        lens.setBackground(new WenNavigationLensDrawable(context,
+                premium ? 0x99FFFFFF : Ui.BRAND_SOFT,
+                premium ? (Ui.DARK ? 0xB83D424A : 0xE5FFFFFF) : Ui.SURFACE,
+                premium ? 0xC5FFFFFF : Ui.SKY, Ui.DARK));
         track.addView(lens, new FrameLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.TOP | Gravity.LEFT));
 

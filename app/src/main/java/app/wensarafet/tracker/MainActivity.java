@@ -22,6 +22,7 @@ import android.text.InputType;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -79,6 +80,8 @@ public final class MainActivity extends Activity {
     private FrameLayout screenHost;
     private View activeScreen;
     private int screenTransitionGeneration;
+    // Strictly visual; financial callbacks/SQLite/authentication remain original.
+    private final WenScreenVisualMotion visualMotion = new WenScreenVisualMotion(this);
     private static final int CREATE_BACKUP = 7301;
     private static final int OPEN_BACKUP = 7302;
     private static final int PICK_NOTIFICATION_SOUND = 7303;
@@ -100,6 +103,11 @@ public final class MainActivity extends Activity {
             super.setContentView(screenHost);
             screenHost.addView(next, match);
             activeScreen = next;
+            if (Ui.isLiquidTheme(this)
+                    && visualMotion.transition(screenHost, null, next,
+                            startupResolved && db != null && !addScreenVisible
+                                    && !subScreenVisible && !lockScreenVisible
+                                    && !activationScreenVisible, currentTab)) return;
             // A disabled system animator scale must never leave the first screen
             // transparent. In that mode, show the view without a transition.
             if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
@@ -118,6 +126,13 @@ public final class MainActivity extends Activity {
         }
         screenHost.addView(next, match);
         activeScreen = next;
+        // Only the VIEW transition is replaced for opt-in Liquid designs.
+        // If disabled or on a protected screen, the original path remains.
+        if (Ui.isLiquidTheme(this)
+                && visualMotion.transition(screenHost, previous, next,
+                        startupResolved && db != null && !addScreenVisible
+                                && !subScreenVisible && !lockScreenVisible
+                                && !activationScreenVisible, currentTab)) return;
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
             next.setAlpha(1f);
             next.setTranslationX(0f);
@@ -140,6 +155,19 @@ public final class MainActivity extends Activity {
                             screenHost.removeView(previous);
                     }).start();
         }
+    }
+
+    // Visual swipe dispatch is opt-in and never handles a financial action.
+    // It routes only through the four ORIGINAL tab TextView click listeners.
+    @Override public boolean dispatchTouchEvent(MotionEvent event) {
+        if (Ui.isLiquidTheme(this)
+                && visualMotion.interceptSwipe(event, screenHost, activeScreen,
+                        startupResolved && db != null && !subScreenVisible
+                                && !addScreenVisible && !lockScreenVisible
+                                && !activationScreenVisible,
+                        currentTab, cancelled -> super.dispatchTouchEvent(cancelled)))
+            return true;
+        return super.dispatchTouchEvent(event);
     }
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -455,7 +483,11 @@ public final class MainActivity extends Activity {
                 : (Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
                 : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this)));
         fab.setElevation(Ui.dp(this, 8));
-        fab.setOnClickListener(v -> showAddTransaction());
+        fab.setTag("wen_intro_fab");
+        fab.setOnClickListener(v -> {
+            if (Ui.isLiquidTheme(this)) visualMotion.markFabTap(v, screenHost);
+            showAddTransaction(); // exact same original action, still immediate
+        });
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));
         fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18), Ui.dp(this, 88));
         root.addView(fab, fabParams);
@@ -544,11 +576,13 @@ public final class MainActivity extends Activity {
         TextView addAccount = Ui.text(this, "▦", headerIconText, Color.WHITE, true);
         addAccount.setGravity(Gravity.CENTER);
         addAccount.setContentDescription("إدارة الحسابات");
+        addAccount.setTag("wen_intro_header_accounts");
         addAccount.setBackground(Ui.rounded(Color.argb(42, 255, 255, 255), 20, this));
         addAccount.setOnClickListener(v -> showAccountManagement());
         TextView settings = Ui.text(this, "⚙", headerIconText, Color.WHITE, true);
         settings.setGravity(Gravity.CENTER);
         settings.setContentDescription("الإعدادات");
+        settings.setTag("wen_intro_header_settings");
         settings.setBackground(Ui.rounded(Color.argb(42, 255, 255, 255), 20, this));
         settings.setOnClickListener(v -> showSettings());
         LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(headerIconSize, headerIconSize);
@@ -583,6 +617,12 @@ public final class MainActivity extends Activity {
         tx.setOnClickListener(v -> showMain(true));
         debts.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_RECEIVABLE));
         analytics.setOnClickListener(v -> showAnalyticsScreen());
+        // Visual metadata only; original OnClick routes above remain intact.
+        home.setTag("wen_intro_nav_0");
+        tx.setTag("wen_intro_nav_1");
+        debts.setTag("wen_intro_nav_2");
+        analytics.setTag("wen_intro_nav_3");
+        visualMotion.captureOriginalTabs(home, tx, debts, analytics);
         for(TextView item:new TextView[]{home,tx,debts,analytics}) {
             LinearLayout.LayoutParams navParams=new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1);
             navParams.setMargins(Ui.dp(this,4),0,Ui.dp(this,4),0);
