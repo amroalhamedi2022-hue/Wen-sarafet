@@ -188,8 +188,10 @@ public final class WenVisualMotionInstrumentedTest {
             host.addView(screen, new FrameLayout.LayoutParams(1080, 1920));
             screen.layout(0, 0, 1080, 1920);
             EditText input = new EditText(context);
-            screen.addView(input, new FrameLayout.LayoutParams(900, 130));
-            input.layout(80, 500, 980, 630);
+            // Full upper input surface has the same local/global hit test
+            // even when the synthetic view is not attached to a Window.
+            screen.addView(input, new FrameLayout.LayoutParams(900, 800));
+            input.layout(0, 0, 900, 800);
             TextView[] tabs = {new TextView(context), new TextView(context),
                     new TextView(context), new TextView(context)};
             visual.captureOriginalTabs(tabs[0], tabs[1], tabs[2], tabs[3]);
