@@ -38,6 +38,7 @@ ALLOWED = {
     "docs/design/WEN_190_REFERENCE_THEMES_20261105.md",
     "tests/glass_energy_contract.py",
     "tests/batch22_category_budget_icon_contract.py",
+    "scripts/build_apk.sh",
 }
 
 def git(*args):
@@ -279,6 +280,15 @@ assert "PRISM = 22" in draw_source and "BLOOM = 23" in draw_source
 assert "PowerManager" in draw_source and "isLowRamDevice" in draw_source
 for forbidden in ("FinanceDbHelper", "AppLockManager", "SQLiteDatabase", "OnClickListener", "LicenseManager", "SharedPreferences", "Handler(", "Choreographer.getInstance("):
     assert forbidden not in draw_source, "Theme renderer enters protected logic: " + forbidden
+
+# The owner's build script must retain its signing, hash, debug and
+# identity checks; only accept the requested next-minor version 1.9.
+old_builder = baseline("scripts/build_apk.sh")
+expected_builder = old_builder.replace(r"^1\.8\.[0-9]+$", r"^1\.(8\.[0-9]+|9)$")
+assert expected_builder != old_builder, "Missing original offline builder version gate"
+assert (ROOT / "scripts/build_apk.sh").read_text(encoding="utf-8") == expected_builder, (
+    "SAFE ZONE: signing/build script changed beyond v1.9 metadata allowance"
+)
 
 # The archived Batch22 suite must still check ALL 22 old IDs in place;
 # only its expected array tail and total length are extended to 24.
