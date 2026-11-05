@@ -58,7 +58,24 @@ public final class NavigationVisualDecorator {
         GradientDrawable sampledPlate = new GradientDrawable();
         sampledPlate.setColor(Ui.DARK ? 0xFF30394C : 0xFFF8FBFF);
         sampledPlate.setCornerRadius(Ui.dp(context, 26));
-        tabs.setBackground(sampledPlate);
+        if (Ui.isReferenceGlassTheme(context)) {
+            // The old opaque #F8FBFF plate would completely conceal both
+            // reference palettes under the native refractive lens.
+            int reference = Ui.themeIndex(context);
+            boolean prism = reference == 22;
+            boolean royal = reference == 24;
+            GradientDrawable palettePlate = new GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR,
+                    prism ? new int[]{0xE24F246F, 0xE16C2E9B, 0xDF793BBA}
+                            : royal ? new int[]{0xF51B1C23, 0xF0493923, 0xF31D2029}
+                            : new int[]{0xF7FFE8CC, 0xF3FFE2BE, 0xF1F9DAC6});
+            palettePlate.setCornerRadius(Ui.dp(context, 26));
+            palettePlate.setStroke(Ui.dp(context, 1),
+                    royal ? 0xC5D4A962 : prism ? 0x88FFFFFF : 0xD8FFFFFF);
+            tabs.setBackground(palettePlate);
+        } else {
+            tabs.setBackground(sampledPlate);
+        }
 
         nav.removeAllViews();
         String[] descriptions = new String[]{
@@ -68,6 +85,16 @@ public final class NavigationVisualDecorator {
             TextView item = originalTabs[i];
             item.setBackground(null); // One shared lens, never stacked pills.
             item.setSelected(i == selected);
+            if (Ui.isReferenceGlassTheme(context)) {
+                // Only appearance changes; the original navigation actions,
+                // accessibility labels and held-drag lens remain untouched.
+                int style = Ui.themeIndex(context);
+                item.setTextColor(style == 22
+                        ? (i == selected ? 0xFFFFFFFF : 0xFFF3DFFB)
+                        : style == 24
+                        ? (i == selected ? 0xFFFFE8B0 : 0xFFD5BF91)
+                        : (i == selected ? 0xFF63391F : 0xFF725749));
+            }
             item.setContentDescription(descriptions[i]);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
