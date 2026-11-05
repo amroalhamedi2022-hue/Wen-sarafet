@@ -2,6 +2,7 @@
 """Hard fail on ANY functional alteration while porting the visual lens onto signed 1.8.8 source."""
 from pathlib import Path
 import subprocess
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "a78ce29603daf3f64efb52f15aca17e17c38a8b9"
@@ -10,6 +11,7 @@ APP_GRADLE = "app/build.gradle"
 SETTINGS = "settings.gradle"
 ALLOWED = {
     MAIN, APP_GRADLE, SETTINGS, "gradle.properties", "proguard-rules.pro",
+    "app/src/main/java/app/wensarafet/tracker/Ui.java",
     "app/src/main/AndroidManifest.xml",
     "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java",
     "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java",
@@ -23,6 +25,8 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenNavigationLensDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenOpticalNavigationOverlay.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenLiquidRuntimeOptics.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenReferenceGlassDrawable.java",
+    "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java",
     "docs/licenses/QWEA0_LiquidGlass_MIT.txt",
     "docs/design/WEN_188_VISUAL_REVIEW_EXECUTION_20261104.md",
     ".github/workflows/wen-188-visual-safe-review.yml",
@@ -31,6 +35,7 @@ ALLOWED = {
     "scripts/verify_upgrade_apk.sh",
     "tests/original_180_upgrade_contract.py",
     "tests/upgrade_gate_contract.py",
+    "docs/design/WEN_190_REFERENCE_THEMES_20261105.md",
 }
 
 def git(*args):
@@ -79,7 +84,18 @@ split_ui_hooks = [
 exact_display = "            row.amount.setText(SplitRemainderUi.formatMinor(split.amountMinor));\n"
 previous_display = '            row.amount.setText(String.format(Locale.ROOT, "%.2f", split.amountMinor / 100.0));\n'
 assert current_main.count(exact_display) == 1, "SAFE ZONE: split edit should display exact stored minor units"
-cleaned_main = current_main.replace(visual_hook, "")
+# The sole production MainActivity presentation change for reference themes:
+# same original FAB click handler, position and dimensions, new drawable only.
+old_fab = """        fab.setBackground(Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
+                : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this));"""
+new_fab = """        // Two new reference themes render a circular optical material here.
+        // The original add callback, size, position and hold feedback are unchanged.
+        fab.setBackground(Ui.isReferenceGlassTheme(this)
+                ? Ui.glassFloatingAddBackground(this)
+                : (Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
+                : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this)));"""
+assert current_main.count(new_fab) == 1, "SAFE ZONE: only add-button appearance is approved"
+cleaned_main = current_main.replace(new_fab, old_fab).replace(visual_hook, "")
 for hook in split_ui_hooks:
     assert cleaned_main.count(hook) == 1, "Unauthorized/missing split hook: " + repr(hook)
     cleaned_main = cleaned_main.replace(hook, "", 1)
@@ -151,9 +167,9 @@ assert current_gradle.count(test_runner) == 1 and current_gradle.count(test_deps
 # Packaging-only release bump: remove exact approved version deltas before
 # comparing the entire Gradle signing/package/dependency configuration.
 restored_gradle = current_gradle.replace(test_runner, "").replace(test_deps, "").replace(dependency, "")
-assert restored_gradle.count('versionCode 26') == 1
-assert restored_gradle.count('versionName "1.8.10"') == 1
-restored_gradle = restored_gradle.replace("versionCode 26", "versionCode 24").replace('versionName "1.8.10"', 'versionName "1.8.8"')
+assert restored_gradle.count('versionCode 27') == 1
+assert restored_gradle.count('versionName "1.9"') == 1
+restored_gradle = restored_gradle.replace("versionCode 27", "versionCode 24").replace('versionName "1.9"', 'versionName "1.8.8"')
 assert restored_gradle == baseline(APP_GRADLE), (
     "SAFE ZONE: unexpected build, package, version, dependency or signing mutation"
 )
@@ -175,7 +191,7 @@ for callback in [
     "analytics.setOnClickListener(v -> showAnalyticsScreen());",
 ]:
     assert callback in current_main, f"SAFE ZONE: changed original callback: {callback}"
-assert 'versionName "1.8.10"' in current_gradle
+assert 'versionName "1.9"' in current_gradle
 rules = (ROOT / "proguard-rules.pro").read_text(encoding="utf-8")
 optional_platform_warnings = (
     "\n# Optional API 36 optical classes in the MIT lens library; guarded at runtime.\n"
@@ -187,18 +203,18 @@ assert rules.count(optional_platform_warnings) == 1
 assert rules.replace(optional_platform_warnings, "") == baseline("proguard-rules.pro"), (
     "SAFE ZONE: ProGuard rules changed beyond the two optional visual APIs"
 )
-assert "versionCode 26" in current_gradle
+assert "versionCode 27" in current_gradle
 assert 'applicationId "app.wensarafet.tracker"' in current_gradle
 
 # Release workflow identity must advance in lockstep with the package.
 release_workflow = (ROOT / ".github/workflows/unsigned-release-candidate.yml").read_text(encoding="utf-8")
 expected_release = baseline(".github/workflows/unsigned-release-candidate.yml")
-expected_release = expected_release.replace("Wen-Sarafet-1.8.8-aligned-UNSIGNED.apk", "Wen-Sarafet-1.8.10-aligned-UNSIGNED.apk")
-expected_release = expected_release.replace("versionCode='24' versionName='1.8.8'", "versionCode='26' versionName='1.8.10'")
-expected_release = expected_release.replace("wen-1-8-8-original-package-unsigned", "wen-1-8-10-original-package-unsigned")
+expected_release = expected_release.replace("Wen-Sarafet-1.8.8-aligned-UNSIGNED.apk", "Wen-Sarafet-1.9-aligned-UNSIGNED.apk")
+expected_release = expected_release.replace("versionCode='24' versionName='1.8.8'", "versionCode='27' versionName='1.9'")
+expected_release = expected_release.replace("wen-1-8-8-original-package-unsigned", "wen-1-9-original-package-unsigned")
 assert release_workflow == expected_release, "SAFE ZONE: unexpected production release workflow mutation"
 review_workflow = (ROOT / ".github/workflows/wen-188-visual-safe-review.yml").read_text(encoding="utf-8")
-assert review_workflow.count("versionCode='26' versionName='1.8.10'") == 1
+assert review_workflow.count("versionCode='27' versionName='1.9'") == 1
 
 # No change to authentication/signing data; only permit predecessor 1.8.8
 # into the existing static signed-APK upgrade checker.
@@ -212,17 +228,17 @@ assert upgrade == expected_upgrade, "SAFE ZONE: changed signing upgrade checks b
 # Permit only the exact test-fixture updates needed for a code26 original
 # signer upgrade from code24; the actual signature and package checker is fixed.
 expected_tests = baseline("tests/upgrade_gate_contract.py")
-expected_tests = expected_tests.replace('assert parsed.stdout == "24|1.8.8", parsed', 'assert parsed.stdout == "26|1.8.10", parsed')
+expected_tests = expected_tests.replace('assert parsed.stdout == "24|1.8.8", parsed', 'assert parsed.stdout == "27|1.9", parsed')
 expected_tests = expected_tests.replace("      *current-187*|*same-as-current*) code=23 ;;", "      *current-187*|*same-as-current*) code=23 ;;\n      *current-188*) code=24 ;;")
-expected_tests = expected_tests.replace("      *) code=24 ;;", "      *) code=26 ;;")
-expected_tests = expected_tests.replace("versionName='1.8.8'", "versionName='1.8.10'")
+expected_tests = expected_tests.replace("      *) code=24 ;;", "      *) code=27 ;;")
+expected_tests = expected_tests.replace("versionName='1.8.8'", "versionName='1.9'")
 expected_tests = expected_tests.replace('    stale = home / "same-as-current.apk"', """    trusted188 = home / "current-188.apk"
     trusted188.write_bytes(b"fake owner original signed version 1.8.8")
     verified188 = subprocess.run(
         ["bash", str(checker), str(trusted188), str(home / "candidate.apk")],
         env=env, capture_output=True, text=True,
     )
-    assert verified188.returncode == 0 and "24 -> 26" in verified188.stdout, (
+    assert verified188.returncode == 0 and "24 -> 27" in verified188.stdout, (
         verified188.stdout, verified188.stderr
     )
     stale = home / "same-as-current.apk" """.rstrip())
@@ -231,10 +247,36 @@ assert (ROOT / "tests/upgrade_gate_contract.py").read_text(encoding="utf-8") == 
 # The trusted upgrade contract may only advance the expected version; it
 # must still validate the ORIGINAL app signer, license and install identity.
 old_guard = baseline("tests/original_180_upgrade_contract.py")
-expected_guard = old_guard.replace('assert re.search(r"versionCode\\s+24\\b", gradle)', 'assert re.search(r"versionCode\\s+26\\b", gradle)')
-expected_guard = expected_guard.replace("""assert 'versionName "1.8.8"' in gradle""", """assert 'versionName "1.8.10"' in gradle""")
-expected_guard = expected_guard.replace("original certificate, package, keystore identity, license and version retained", "original certificate, package, keystore identity and license retained; audited version 1.8.10")
+expected_guard = old_guard.replace('assert re.search(r"versionCode\\s+24\\b", gradle)', 'assert re.search(r"versionCode\\s+27\\b", gradle)')
+expected_guard = expected_guard.replace("""assert 'versionName "1.8.8"' in gradle""", """assert 'versionName "1.9"' in gradle""")
+expected_guard = expected_guard.replace("original certificate, package, keystore identity, license and version retained", "original certificate, package, keystore identity and license retained; audited version 1.9")
 assert (ROOT / "tests/original_180_upgrade_contract.py").read_text(encoding="utf-8") == expected_guard, "SAFE ZONE: unapproved original signing contract change"
+
+# Protect legacy themes and every persisted preference index:
+# only two brand-new palette rows may follow the original 22 names/rows.
+original_ui = baseline("app/src/main/java/app/wensarafet/tracker/Ui.java")
+new_ui = (ROOT / "app/src/main/java/app/wensarafet/tracker/Ui.java").read_text(encoding="utf-8")
+def palette_block(text, label):
+    start = text.index(label)
+    return text[start:].split("};", 1)[0]
+def palette_rows(text, label):
+    return re.findall(r"\{([^{}]+)\}", palette_block(text, label))
+old_names = re.findall(r'"([^"]+)"', palette_block(original_ui, "public static final String[] THEME_NAMES"))
+new_names = re.findall(r'"([^"]+)"', palette_block(new_ui, "public static final String[] THEME_NAMES"))
+assert len(old_names) == 22, "Unexpected source baseline for themes"
+assert len(new_names) == 24 and new_names[:22] == old_names, "SAFE ZONE: legacy theme names or indices changed"
+for name in ("private static final int[][] THEMES", "private static final int[][] THEME_LAYERS"):
+    old_rows, new_rows = palette_rows(original_ui, name), palette_rows(new_ui, name)
+    assert len(old_rows) == 22 and len(new_rows) == 24
+    assert new_rows[:22] == old_rows, "SAFE ZONE: original theme palette changed: " + name
+assert "Prism Glow" in new_names[22] and "Golden Bloom" in new_names[23]
+assert 'getSharedPreferences("appearance", Context.MODE_PRIVATE)' in new_ui
+assert "isReferenceGlassTheme(context)" in new_ui
+draw_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenReferenceGlassDrawable.java").read_text(encoding="utf-8")
+assert "PRISM = 22" in draw_source and "BLOOM = 23" in draw_source
+assert "PowerManager" in draw_source and "isLowRamDevice" in draw_source
+for forbidden in ("FinanceDbHelper", "AppLockManager", "SQLiteDatabase", "OnClickListener", "LicenseManager", "SharedPreferences", "Handler(", "Choreographer"):
+    assert forbidden not in draw_source, "Theme renderer enters protected logic: " + forbidden
 
 adapter = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java").read_text(encoding="utf-8")
 native = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java").read_text(encoding="utf-8")
@@ -262,5 +304,5 @@ assert "NAV_LIQUID_STRETCH_ACTIVE" in native
 # SMS notifications, protected signing/biometric and all resource files,
 # are guaranteed by the exact allowlist + git diff above.
 print("PASS: 1.8.8 source immutable except visual hook + five exact split remainder UI hooks")
-print("PASS: original package, schema and signing unchanged; audited version 1.8.10/code26")
+print("PASS: original package, schema and signing unchanged; audited version 1.9/code27")
 print("PASS: protected finance, debt, SMS, backup, auth and notification trees untouched")
