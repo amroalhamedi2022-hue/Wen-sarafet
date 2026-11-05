@@ -26,6 +26,8 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenOpticalNavigationOverlay.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenLiquidRuntimeOptics.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenReferenceGlassDrawable.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenGlassDrawable.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java",
     "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java",
     "docs/licenses/QWEA0_LiquidGlass_MIT.txt",
     "docs/design/WEN_188_VISUAL_REVIEW_EXECUTION_20261104.md",
@@ -356,9 +358,93 @@ expected_energy = old_energy.replace(
     '''assert "fab.setBackground(Ui.isReferenceGlassTheme(this)" in main
 assert "? Ui.glassFloatingAddBackground(this)" in main
 assert ": (Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)" in main''')
+# Only the previously frozen visual source assertions have changed:
+# orbiting card halo removed, sandbox bevel and pressure optics restored.
+expected_energy = expected_energy.replace(
+    'assert "showLens = strong && w > h * 3.1f && !lowPower;" in engine',
+    '''assert "showLens = false;" in engine, "Sandbox cards must not render unrelated floating orbs"
+assert "prismRim.setShader(new LinearGradient" in engine, "Restore fine optical rim"
+assert "crown.setShader(new LinearGradient" in engine, "Restore pearly crown"
+assert "final int bodyAlpha = strong ? 202 : 221;" in engine, "Keep actual background visible through glass"''')
+expected_energy = expected_energy.replace(
+    'assert "new android.view.animation.OvershootInterpolator(1.35f)" in ui',
+    '''assert "GlassMotion.bindPress(view, SKY)" in ui, "Restore sandbox finite pressure bubble"
+assert "WenFabBubbleDrawable(context, SKY, DARK)" in ui, "Restore circular original-Liquid FAB"
+assert "liquid ? 2 : 10" in ui and "liquid ? 125 : 300" in ui, "Fast staged Liquid entrances"
+assert "setDuration(115)" in ui, "Gentle sandbox-style screen reveal"''')
+expected_energy = expected_energy.replace(
+    'assert "if (isLiquidTheme(v.getContext()))" in ui',
+    'assert "if (isLiquidTheme(view.getContext()))" in ui')
+expected_energy = expected_energy.replace(
+    'print("PASS: component-wide Liquid glass surfaces are passive; other themes retain fallbacks")',
+    '''fab_bubble = (root / "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java").read_text(encoding="utf-8")
+assert "public float getPress()" in fab_bubble and "public void setPress(float fraction)" in fab_bubble
+assert "new RadialGradient" in fab_bubble, "Real pearly FAB depth must be restored"
+assert "Timer" not in fab_bubble and "postDelayed" not in fab_bubble
+assert "return false; // Never steal existing FAB click/hold actions." in ui
+
+print("PASS: component-wide Liquid glass surfaces are passive; other themes retain fallbacks")''')
 assert (ROOT / "tests/glass_energy_contract.py").read_text(encoding="utf-8") == expected_energy, (
     "SAFE ZONE: original glass energy regression changed beyond new FAB opt-in"
 )
+
+# Sandbox visual port is STRICTLY confined to graphics and four Ui helper
+# methods. Compare the fully reconstructed 1.9 file with the pre-port main
+# commit, not just fragile line grep patterns.
+SOURCE_190 = "283112f4bedaf2e07dd7370e581f84e14959710e"
+SANDBOX_SOURCE = "b57dcd3c71df7273acf5cd316687472f60c11d80"
+ui_path = "app/src/main/java/app/wensarafet/tracker/Ui.java"
+original_190_ui = git("show", f"{SOURCE_190}:{ui_path}")
+visual_only_methods = (
+    "glassAccentBackground", "animateScreen", "animateChildren", "pressAnimation",
+)
+
+def omit_visual_method_bodies(java):
+    for name in visual_only_methods:
+        regex = re.compile(
+            r"    public static [^\n]*\b" + re.escape(name)
+            + r"\([^)]*\)\s*\{"
+        )
+        hits = list(regex.finditer(java))
+        assert len(hits) == 1, "SAFE ZONE: expected one UI helper: " + name
+        start = hits[0].start()
+        pos = hits[0].end()
+        depth = 1
+        while pos < len(java) and depth:
+            if java[pos] == "{":
+                depth += 1
+            elif java[pos] == "}":
+                depth -= 1
+            pos += 1
+        assert depth == 0, "SAFE ZONE: unterminated visual UI method: " + name
+        java = java[:start] + "    /* preserved visual helper: " + name + " */" + java[pos:]
+    return java
+
+assert omit_visual_method_bodies(new_ui) == omit_visual_method_bodies(original_190_ui), (
+    "SAFE ZONE: non-visual Ui class or palettes changed during sandbox migration"
+)
+for marker in (
+    "WenFabBubbleDrawable(context, SKY, DARK)",
+    "GlassMotion.bindPress(view, SKY)",
+    "liquid ? 2 : 10",
+    "liquid ? 125 : 300",
+    "setDuration(115)",
+    "return false; // Never steal existing FAB click/hold actions.",
+):
+    assert marker in new_ui, "Missing sandbox visual-only transfer: " + marker
+
+for graphic in (
+    "WenGlassDrawable.java",
+    "WenFabBubbleDrawable.java",
+):
+    location = "glass-engine/src/main/java/app/wensarafet/glass/" + graphic
+    expected = git("show", f"{SANDBOX_SOURCE}:{location}")
+    actual = (ROOT / location).read_text(encoding="utf-8")
+    assert actual == expected, "SAFE ZONE: visual source must match vetted sandbox exactly: " + graphic
+    for protected in ("FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
+                      "LicenseManager", "SmsCaptureReceiver", "SandboxMode",
+                      "setOnClickListener(", "setOnLongClickListener("):
+        assert protected not in actual, "SAFE ZONE: drawing file references protected behaviour"
 
 adapter = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java").read_text(encoding="utf-8")
 native = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java").read_text(encoding="utf-8")
