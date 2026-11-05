@@ -11,6 +11,8 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.util.WeakHashMap;
+
 import app.wensarafet.glass.GlassMotion;
 import app.wensarafet.glass.WenNavigationLensDrawable;
 import app.wensarafet.glass.WenNavigationTrack;
@@ -24,14 +26,26 @@ import app.wensarafet.glass.WenNavigationTrack;
  * database, receipt, permission, security or activation code is referenced.
  */
 public final class NavigationVisualDecorator {
-    private static int priorVisualTab = -1;
-    private static boolean heldNavigation;
+    // A new Activity (including rotation/recreation) starts with its own lens.
+    // Global tab state used to animate across two unrelated Activity windows.
+    // Weak keys avoid retaining an Activity after its views are destroyed.
+    private static final WeakHashMap<Context, NavState> NAV_STATES = new WeakHashMap<>();
+    private static final class NavState {
+        int previous = -1;
+        boolean heldNavigation;
+    }
     private NavigationVisualDecorator() {}
 
     public static void install(LinearLayout nav, TextView[] originalTabs, int selected) {
         if (nav == null || originalTabs == null || originalTabs.length != 4
                 || !Ui.isLiquidTheme(nav.getContext())) return;
         final Context context = nav.getContext();
+        NavState state = NAV_STATES.get(context);
+        if (state == null) {
+            state = new NavState();
+            NAV_STATES.put(context, state);
+        }
+        final NavState navState = state;
         final WenNavigationTrack track = new WenNavigationTrack(context, Ui.DARK);
 
         // Keep the original four TextViews and, more importantly, their
@@ -95,15 +109,15 @@ public final class NavigationVisualDecorator {
             // The pre-existing tab's OnClickListener remains the ONLY
             // navigation action; the Runnable only remembers visual handoff.
             GlassMotion.bindNavigationTab(originalTabs[i], track, lens, originalTabs,
-                    selected, i, Ui.SKY, () -> heldNavigation = true);
+                    selected, i, Ui.SKY, () -> navState.heldNavigation = true);
         }
         nav.addView(track, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        final boolean fromHeldGesture = heldNavigation;
-        final int initial = fromHeldGesture ? selected : priorVisualTab;
-        heldNavigation = false;
+        final boolean fromHeldGesture = navState.heldNavigation;
+        final int initial = fromHeldGesture ? selected : navState.previous;
+        navState.heldNavigation = false;
         GlassMotion.slideLens(track, lens, originalTabs, initial, selected);
         if (fromHeldGesture) GlassMotion.finishNavigationLensHandoff(track, lens);
-        priorVisualTab = selected;
+        navState.previous = selected;
     }
 }
