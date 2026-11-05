@@ -12,6 +12,8 @@ SETTINGS = "settings.gradle"
 ALLOWED = {
     MAIN, APP_GRADLE, SETTINGS, "gradle.properties", "proguard-rules.pro",
     "app/src/main/java/app/wensarafet/tracker/Ui.java",
+    "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java",
+    "app/src/androidTest/java/app/wensarafet/tracker/WenVisualMotionInstrumentedTest.java",
     "app/src/main/AndroidManifest.xml",
     "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java",
     "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java",
@@ -26,6 +28,13 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenOpticalNavigationOverlay.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenLiquidRuntimeOptics.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenReferenceGlassDrawable.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenGlassDrawable.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenFabOpticalCrownDrawable.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
+    "docs/design/WEN_190_FIVE_PREMIUM_LIQUID_HANDOFF_20261105.md",
+    "docs/releases/WEN_200_PREMIUM_INTEGRATION_HANDOFF_20261105.md",
+    "docs/WEN_SARAFET_REPAIR_AND_DEVELOPMENT_PLAN_2026-10-23.md",
     "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java",
     "docs/licenses/QWEA0_LiquidGlass_MIT.txt",
     "docs/design/WEN_188_VISUAL_REVIEW_EXECUTION_20261104.md",
@@ -37,6 +46,7 @@ ALLOWED = {
     "tests/upgrade_gate_contract.py",
     "docs/design/WEN_190_REFERENCE_THEMES_20261105.md",
     "tests/glass_energy_contract.py",
+    "tests/wen_190_visual_motion_contract.py",
     "tests/batch22_category_budget_icon_contract.py",
     "scripts/build_apk.sh",
     "scripts/sign_verified_upgrade.sh",
@@ -52,12 +62,40 @@ def baseline(path):
 changed = set(git("diff", "--name-only", BASE, "HEAD").splitlines())
 unexpected = changed - ALLOWED
 assert not unexpected, f"Safe Zone: unexpected changes: {sorted(unexpected)}"
+# The main-only historical plan predates both visual branches; strictly freeze
+# its contents to official main instead of treating this already-approved doc
+# as an unauthorised source modification.
+MAIN_ONLY_PLAN = "docs/WEN_SARAFET_REPAIR_AND_DEVELOPMENT_PLAN_2026-10-23.md"
+assert (ROOT / MAIN_ONLY_PLAN).read_text(encoding="utf-8") == git(
+    "show", f"283112f4bedaf2e07dd7370e581f84e14959710e:{MAIN_ONLY_PLAN}"
+), "SAFE ZONE: existing official development plan unexpectedly changed"
 required = {MAIN, APP_GRADLE, SETTINGS}
 assert required <= changed, f"Visual adapter incomplete: {sorted(required - changed)}"
 
 # Verify no financial, debt, activation, notification, contact, backup, etc.
 # behavior changed even within the very large MainActivity.java file.
 current_main = (ROOT / MAIN).read_text(encoding="utf-8")
+# Exact source pin: THIS MainActivity was manually compared line-by-line with
+# 1.9 main. Its only 40 new lines are visual host lifecycle, original-tab
+# delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
+# The original protected callbacks/finance methods are not edited. Any future
+# change to MainActivity, including new feature work, must re-audit this SHA.
+APPROVED_VISUAL_HOST_BLOB = "bf6163c8464c8cb99189e962ee35fdbeb1c5f8ae"
+assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
+    "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
+)
+SOURCE_190 = "283112f4bedaf2e07dd7370e581f84e14959710e"
+main_pre_visual_host = git("show", f"{SOURCE_190}:{MAIN}")
+assert main_pre_visual_host != current_main, "Missing staged optical host transfer"
+for original_callback in (
+    "home.setOnClickListener(v -> showMain(false));",
+    "tx.setOnClickListener(v -> showMain(true));",
+    "debts.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_RECEIVABLE));",
+    "analytics.setOnClickListener(v -> showAnalyticsScreen());",
+):
+    assert original_callback in current_main
+assert "showAddTransaction(); // exact same original action, still immediate" in current_main
+
 visual_hook = (
     "        // Visual-only; keep every original 1.8.8 tab callback untouched.\n"
     "        if (Ui.isLiquidTheme(this))\n"
@@ -100,7 +138,7 @@ new_fab = """        // Two new reference themes render a circular optical mater
                 : (Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
                 : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this)));"""
 assert current_main.count(new_fab) == 1, "SAFE ZONE: only add-button appearance is approved"
-cleaned_main = current_main.replace(new_fab, old_fab).replace(visual_hook, "")
+cleaned_main = main_pre_visual_host.replace(new_fab, old_fab).replace(visual_hook, "")
 for hook in split_ui_hooks:
     assert cleaned_main.count(hook) == 1, "Unauthorized/missing split hook: " + repr(hook)
     cleaned_main = cleaned_main.replace(hook, "", 1)
@@ -269,16 +307,33 @@ def palette_rows(text, label):
 old_names = re.findall(r'"([^"]+)"', palette_block(original_ui, "public static final String[] THEME_NAMES"))
 new_names = re.findall(r'"([^"]+)"', palette_block(new_ui, "public static final String[] THEME_NAMES"))
 assert len(old_names) == 22, "Unexpected source baseline for themes"
-assert len(new_names) == 25 and new_names[:22] == old_names, "SAFE ZONE: legacy theme names or indices changed"
+assert len(new_names) == 30 and new_names[:22] == old_names, "SAFE ZONE: legacy theme names or indices changed"
 for name in ("private static final int[][] THEMES", "private static final int[][] THEME_LAYERS"):
     old_rows, new_rows = palette_rows(original_ui, name), palette_rows(new_ui, name)
-    assert len(old_rows) == 22 and len(new_rows) == 25
+    assert len(old_rows) == 22 and len(new_rows) == 30
     assert new_rows[:22] == old_rows, "SAFE ZONE: original theme palette changed: " + name
-assert new_names[22:] == [
+assert new_names[22:25] == [
     "Prism Glow • زجاج نيوني",
     "Golden Bloom • زجاج شمسي",
     "Royal Gold • الذهب الملكي",
-], "SAFE ZONE: previous two new themes must also remain in place"
+], "SAFE ZONE: established reference theme IDs changed"
+assert new_names[25:] == [
+    "Royal Dark Gold • ذهبي ملكي داكن",
+    "Imperial Dark Gold • ذهبي إمبراطوري",
+    "Champagne Gold • شامبانيا ملكي فاتح",
+    "Soft Orange-Green Glass • زجاج برتقالي أخضر",
+    "Purple-Pink Liquid Glass • زجاج بنفسجي وردي",
+], "SAFE ZONE: only the five owner-approved themes may be appended"
+# Entire existing 25-theme selection + both palettes are frozen relative
+# to the exact, already-promoted v1.9 main. Only five tail entries may differ.
+PREMIUM_BASE = "283112f4bedaf2e07dd7370e581f84e14959710e"
+promoted_ui = git("show", f"{PREMIUM_BASE}:app/src/main/java/app/wensarafet/tracker/Ui.java")
+promoted_names = re.findall(r'"([^"]+)"', palette_block(promoted_ui, "public static final String[] THEME_NAMES"))
+assert new_names[:25] == promoted_names, "SAFE ZONE: a promoted theme name/index changed"
+for name in ("private static final int[][] THEMES", "private static final int[][] THEME_LAYERS"):
+    assert palette_rows(new_ui, name)[:25] == palette_rows(promoted_ui, name), (
+        "SAFE ZONE: an established 1.9 palette changed: " + name
+    )
 # Keep Prism/Bloom pixel palettes frozen exactly when appending Royal Gold.
 original_reference_rows = {
     "private static final int[][] THEMES": [
@@ -296,11 +351,15 @@ for key, frozen in original_reference_rows.items():
     )
 assert 'getSharedPreferences("appearance", Context.MODE_PRIVATE)' in new_ui
 assert "isReferenceGlassTheme(context)" in new_ui
+premium_draw_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java").read_text(encoding="utf-8")
 draw_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenReferenceGlassDrawable.java").read_text(encoding="utf-8")
+assert "ROYAL_DARK = 25" in premium_draw_source and "PURPLE_PINK = 29" in premium_draw_source
+assert "WenPremiumLiquidDrawable.supports(selected)" in new_ui
+assert "premium ? 0x99FFFFFF" in (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java").read_text(encoding="utf-8")
 assert "PRISM = 22" in draw_source and "BLOOM = 23" in draw_source and "ROYAL = 24" in draw_source
 assert "PowerManager" in draw_source and "isLowRamDevice" in draw_source
 for forbidden in ("FinanceDbHelper", "AppLockManager", "SQLiteDatabase", "OnClickListener", "LicenseManager", "SharedPreferences", "Handler(", "Choreographer.getInstance("):
-    assert forbidden not in draw_source, "Theme renderer enters protected logic: " + forbidden
+    assert forbidden not in draw_source + premium_draw_source, "Theme renderer enters protected logic: " + forbidden
 
 # The legacy recovery audit may accept v1.9 as a valid next-minor
 # release without disabling any XML, banking, credential or package checks.
@@ -337,13 +396,14 @@ old_batch22 = baseline("tests/batch22_category_budget_icon_contract.py")
 expected_batch22 = old_batch22.replace(
     'assert theme_names[18:] == ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"], theme_names',
     'assert theme_names[18:22] == ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"], theme_names\n'
-    'assert theme_names[22:] == ["Prism Glow • زجاج نيوني", "Golden Bloom • زجاج شمسي", "Royal Gold • الذهب الملكي"], theme_names')
+    'assert theme_names[22:25] == ["Prism Glow • زجاج نيوني", "Golden Bloom • زجاج شمسي", "Royal Gold • الذهب الملكي"], theme_names\n'
+    'assert theme_names[25:] == ["Royal Dark Gold • ذهبي ملكي داكن", "Imperial Dark Gold • ذهبي إمبراطوري", "Champagne Gold • شامبانيا ملكي فاتح", "Soft Orange-Green Glass • زجاج برتقالي أخضر", "Purple-Pink Liquid Glass • زجاج بنفسجي وردي"], theme_names')
 expected_batch22 = expected_batch22.replace(
     'assert len(rows) == len(theme_names) == 22, (name, len(rows))',
-    'assert len(rows) == len(theme_names) == 25, (name, len(rows))')
+    'assert len(rows) == len(theme_names) == 30, (name, len(rows))')
 expected_batch22 = expected_batch22.replace(
     '18 preserved IDs plus four new glass themes passed',
-    '22 preserved IDs plus two additional reference glass themes passed')
+    '22 preserved IDs plus eight opt-in reference/premium themes passed')
 assert (ROOT / "tests/batch22_category_budget_icon_contract.py").read_text(encoding="utf-8") == expected_batch22, (
     "SAFE ZONE: original category and layout contracts changed beyond two new theme indices"
 )
@@ -356,9 +416,128 @@ expected_energy = old_energy.replace(
     '''assert "fab.setBackground(Ui.isReferenceGlassTheme(this)" in main
 assert "? Ui.glassFloatingAddBackground(this)" in main
 assert ": (Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)" in main''')
+# Only the previously frozen visual source assertions have changed:
+# orbiting card halo removed, sandbox bevel and pressure optics restored.
+expected_energy = expected_energy.replace(
+    'assert "showLens = strong && w > h * 3.1f && !lowPower;" in engine',
+    '''assert "showLens = false;" in engine, "Sandbox cards must not render unrelated floating orbs"
+assert "prismRim.setShader(new LinearGradient" in engine, "Restore fine optical rim"
+assert "crown.setShader(new LinearGradient" in engine, "Restore pearly crown"
+assert "final int bodyAlpha = strong ? 202 : 221;" in engine, "Keep actual background visible through glass"''')
+expected_energy = expected_energy.replace(
+    'assert "new android.view.animation.OvershootInterpolator(1.35f)" in ui',
+    '''assert "GlassMotion.bindPress(view, SKY)" in ui, "Restore sandbox finite pressure bubble"
+assert "WenFabBubbleDrawable(context, SKY, DARK)" in ui, "Restore circular original-Liquid FAB"
+assert "liquid ? 2 : 10" in ui and "liquid ? 125 : 300" in ui, "Fast staged Liquid entrances"
+assert "setDuration(115)" in ui, "Gentle sandbox-style screen reveal"''')
+expected_energy = expected_energy.replace(
+    'assert "if (isLiquidTheme(v.getContext()))" in ui',
+    'assert "if (isLiquidTheme(view.getContext()))" in ui')
+expected_energy = expected_energy.replace(
+    'print("PASS: component-wide Liquid glass surfaces are passive; other themes retain fallbacks")',
+    '''fab_bubble = (root / "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java").read_text(encoding="utf-8")
+assert "public float getPress()" in fab_bubble and "public void setPress(float fraction)" in fab_bubble
+assert "new RadialGradient" in fab_bubble, "Real pearly FAB depth must be restored"
+assert "Timer" not in fab_bubble and "postDelayed" not in fab_bubble
+assert "return false; // Never steal existing FAB click/hold actions." in ui
+
+print("PASS: component-wide Liquid glass surfaces are passive; other themes retain fallbacks")''')
 assert (ROOT / "tests/glass_energy_contract.py").read_text(encoding="utf-8") == expected_energy, (
     "SAFE ZONE: original glass energy regression changed beyond new FAB opt-in"
 )
+
+# Sandbox visual port is STRICTLY confined to graphics and four Ui helper
+# methods. Compare the fully reconstructed 1.9 file with the pre-port main
+# commit, not just fragile line grep patterns.
+SANDBOX_SOURCE = "b57dcd3c71df7273acf5cd316687472f60c11d80"
+ui_path = "app/src/main/java/app/wensarafet/tracker/Ui.java"
+# Compare against independently approved 30-theme code, not the old palette.
+# Only four precisely enumerated sandbox visual methods can vary.
+PREMIUM_SOURCE = "ea61bb7a266652751fe9c08f321e0721350df1ea"
+original_190_ui = git("show", f"{PREMIUM_SOURCE}:{ui_path}")
+visual_only_methods = (
+    "glassAccentBackground", "animateScreen", "animateChildren", "pressAnimation",
+)
+
+def omit_visual_method_bodies(java):
+    for name in visual_only_methods:
+        regex = re.compile(
+            r"    public static [^\n]*\b" + re.escape(name)
+            + r"\([^)]*\)\s*\{"
+        )
+        hits = list(regex.finditer(java))
+        assert len(hits) == 1, "SAFE ZONE: expected one UI helper: " + name
+        start = hits[0].start()
+        pos = hits[0].end()
+        depth = 1
+        while pos < len(java) and depth:
+            if java[pos] == "{":
+                depth += 1
+            elif java[pos] == "}":
+                depth -= 1
+            pos += 1
+        assert depth == 0, "SAFE ZONE: unterminated visual UI method: " + name
+        java = java[:start] + "    /* preserved visual helper: " + name + " */" + java[pos:]
+    return java
+
+assert omit_visual_method_bodies(new_ui) == omit_visual_method_bodies(original_190_ui), (
+    "SAFE ZONE: non-visual Ui class or palettes changed during sandbox migration"
+)
+for marker in (
+    "WenFabBubbleDrawable(context, SKY, DARK)",
+    "GlassMotion.bindPress(view, SKY)",
+    "liquid ? 2 : 10",
+    "liquid ? 125 : 300",
+    "setDuration(115)",
+    "return false; // Never steal existing FAB click/hold actions.",
+):
+    assert marker in new_ui, "Missing sandbox visual-only transfer: " + marker
+
+for graphic in (
+    "WenGlassDrawable.java",
+    "WenFabBubbleDrawable.java",
+):
+    location = "glass-engine/src/main/java/app/wensarafet/glass/" + graphic
+    expected = git("show", f"{SANDBOX_SOURCE}:{location}")
+    actual = (ROOT / location).read_text(encoding="utf-8")
+    assert actual == expected, "SAFE ZONE: visual source must match vetted sandbox exactly: " + graphic
+    for protected in ("FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
+                      "LicenseManager", "SmsCaptureReceiver", "SandboxMode",
+                      "setOnClickListener(", "setOnLongClickListener("):
+        assert protected not in actual, "SAFE ZONE: drawing file references protected behaviour"
+
+# Strictly isolate new on-screen transitions from all protected business methods.
+screen_motion = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java").read_text(encoding="utf-8")
+assert git("hash-object",
+           "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java").strip() == (
+    "860c1a2187d7c3474b00f86d42c8500bcc189c67"
+), "SAFE ZONE: host motion changed after reviewed transfer"
+for forbidden in (
+    "FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
+    "BudgetAlertManager", "DebtLedgerRules", "LicenseManager",
+    "SandboxMode", "SmsCaptureReceiver", "setOnClickListener(",
+    "setOnLongClickListener(", "getSharedPreferences(",
+    "showAddTransaction(", "showMain(", "showAnalyticsScreen(",
+    "showDebtsScreen(", "deleteTransaction(", "insert(",
+):
+    assert forbidden not in screen_motion, "SAFE ZONE: screen motion crosses business logic: " + forbidden
+assert "destination.performClick();" in screen_motion
+assert "protectedHorizontalTarget" in screen_motion
+assert "ValueAnimator.areAnimatorsEnabled()" in screen_motion
+assert "power.isPowerSaveMode()" in screen_motion
+assert "ViewAnimationUtils.createCircularReveal" in screen_motion
+assert "private void revealTopChrome(View page)" in screen_motion
+assert "introIcons(next);" in screen_motion
+assert "setOnTouchListener(" not in screen_motion
+assert "postDelayed(" not in screen_motion and "while (true)" not in screen_motion
+crown_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenFabOpticalCrownDrawable.java").read_text(encoding="utf-8")
+for forbidden in ("OnTouchListener", "OnClickListener", "OnLongClickListener",
+                  "FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
+                  "Handler(", "postDelayed(", "Choreographer"):
+    assert forbidden not in crown_source, "FAB crown must remain an inert visual asset"
+assert "view.getOverlay().add(crown);" in new_ui
+assert "v.getOverlay().remove(crown);" in new_ui
+assert "crown.setPress(t);" in new_ui
 
 adapter = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java").read_text(encoding="utf-8")
 native = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java").read_text(encoding="utf-8")
