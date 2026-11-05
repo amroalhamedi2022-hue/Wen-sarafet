@@ -30,6 +30,7 @@ ALLOWED = {
     ".github/workflows/unsigned-release-candidate.yml",
     "scripts/verify_upgrade_apk.sh",
     "tests/original_180_upgrade_contract.py",
+    "tests/upgrade_gate_contract.py",
 }
 
 def git(*args):
@@ -197,6 +198,25 @@ expected_upgrade = expected_upgrade.replace("INSTALLED_1.8.0_TO_1.8.7.apk SIGNED
 expected_upgrade = expected_upgrade.replace('"$old_version" -ne 23 )', '"$old_version" -ne 23 && "$old_version" -ne 24 )')
 expected_upgrade = expected_upgrade.replace("or 1.8.7 (23), and update must have a higher versionCode", "1.8.7 (23), or 1.8.8 (24), and update must have a higher versionCode")
 assert upgrade == expected_upgrade, "SAFE ZONE: changed signing upgrade checks beyond allowed predecessor"
+
+# Permit only the exact test-fixture updates needed for a code26 original
+# signer upgrade from code24; the actual signature and package checker is fixed.
+expected_tests = baseline("tests/upgrade_gate_contract.py")
+expected_tests = expected_tests.replace('assert parsed.stdout == "24|1.8.8", parsed', 'assert parsed.stdout == "26|1.8.10", parsed')
+expected_tests = expected_tests.replace("      *current-187*|*same-as-current*) code=23 ;;", "      *current-187*|*same-as-current*) code=23 ;;\\n      *current-188*) code=24 ;;")
+expected_tests = expected_tests.replace("      *) code=24 ;;", "      *) code=26 ;;")
+expected_tests = expected_tests.replace("versionName='1.8.8'", "versionName='1.8.10'")
+expected_tests = expected_tests.replace('    stale = home / "same-as-current.apk"', """    trusted188 = home / "current-188.apk"
+    trusted188.write_bytes(b"fake owner original signed version 1.8.8")
+    verified188 = subprocess.run(
+        ["bash", str(checker), str(trusted188), str(home / "candidate.apk")],
+        env=env, capture_output=True, text=True,
+    )
+    assert verified188.returncode == 0 and "24 -> 26" in verified188.stdout, (
+        verified188.stdout, verified188.stderr
+    )
+    stale = home / "same-as-current.apk" """.rstrip())
+assert (ROOT / "tests/upgrade_gate_contract.py").read_text(encoding="utf-8") == expected_tests, "SAFE ZONE: release upgrade test changed beyond original-signer and version coverage"
 
 # The trusted upgrade contract may only advance the expected version; it
 # must still validate the ORIGINAL app signer, license and install identity.
