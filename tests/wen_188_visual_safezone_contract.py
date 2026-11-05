@@ -12,6 +12,8 @@ SETTINGS = "settings.gradle"
 ALLOWED = {
     MAIN, APP_GRADLE, SETTINGS, "gradle.properties", "proguard-rules.pro",
     "app/src/main/java/app/wensarafet/tracker/Ui.java",
+    "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java",
+    "app/src/androidTest/java/app/wensarafet/tracker/WenVisualMotionInstrumentedTest.java",
     "app/src/main/AndroidManifest.xml",
     "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java",
     "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java",
@@ -28,6 +30,7 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenReferenceGlassDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenGlassDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenFabOpticalCrownDrawable.java",
     "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java",
     "docs/licenses/QWEA0_LiquidGlass_MIT.txt",
     "docs/design/WEN_188_VISUAL_REVIEW_EXECUTION_20261104.md",
@@ -39,6 +42,7 @@ ALLOWED = {
     "tests/upgrade_gate_contract.py",
     "docs/design/WEN_190_REFERENCE_THEMES_20261105.md",
     "tests/glass_energy_contract.py",
+    "tests/wen_190_visual_motion_contract.py",
     "tests/batch22_category_budget_icon_contract.py",
     "scripts/build_apk.sh",
     "scripts/sign_verified_upgrade.sh",
@@ -60,6 +64,27 @@ assert required <= changed, f"Visual adapter incomplete: {sorted(required - chan
 # Verify no financial, debt, activation, notification, contact, backup, etc.
 # behavior changed even within the very large MainActivity.java file.
 current_main = (ROOT / MAIN).read_text(encoding="utf-8")
+# Exact source pin: THIS MainActivity was manually compared line-by-line with
+# 1.9 main. Its only 40 new lines are visual host lifecycle, original-tab
+# delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
+# The original protected callbacks/finance methods are not edited. Any future
+# change to MainActivity, including new feature work, must re-audit this SHA.
+APPROVED_VISUAL_HOST_BLOB = "bf6163c8464c8cb99189e962ee35fdbeb1c5f8ae"
+assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
+    "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
+)
+SOURCE_190 = "283112f4bedaf2e07dd7370e581f84e14959710e"
+main_pre_visual_host = git("show", f"{SOURCE_190}:{MAIN}")
+assert main_pre_visual_host != current_main, "Missing staged optical host transfer"
+for original_callback in (
+    "home.setOnClickListener(v -> showMain(false));",
+    "tx.setOnClickListener(v -> showMain(true));",
+    "debts.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_RECEIVABLE));",
+    "analytics.setOnClickListener(v -> showAnalyticsScreen());",
+):
+    assert original_callback in current_main
+assert "showAddTransaction(); // exact same original action, still immediate" in current_main
+
 visual_hook = (
     "        // Visual-only; keep every original 1.8.8 tab callback untouched.\n"
     "        if (Ui.isLiquidTheme(this))\n"
@@ -102,7 +127,7 @@ new_fab = """        // Two new reference themes render a circular optical mater
                 : (Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
                 : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this)));"""
 assert current_main.count(new_fab) == 1, "SAFE ZONE: only add-button appearance is approved"
-cleaned_main = current_main.replace(new_fab, old_fab).replace(visual_hook, "")
+cleaned_main = main_pre_visual_host.replace(new_fab, old_fab).replace(visual_hook, "")
 for hook in split_ui_hooks:
     assert cleaned_main.count(hook) == 1, "Unauthorized/missing split hook: " + repr(hook)
     cleaned_main = cleaned_main.replace(hook, "", 1)
@@ -391,7 +416,6 @@ assert (ROOT / "tests/glass_energy_contract.py").read_text(encoding="utf-8") == 
 # Sandbox visual port is STRICTLY confined to graphics and four Ui helper
 # methods. Compare the fully reconstructed 1.9 file with the pre-port main
 # commit, not just fragile line grep patterns.
-SOURCE_190 = "283112f4bedaf2e07dd7370e581f84e14959710e"
 SANDBOX_SOURCE = "b57dcd3c71df7273acf5cd316687472f60c11d80"
 ui_path = "app/src/main/java/app/wensarafet/tracker/Ui.java"
 original_190_ui = git("show", f"{SOURCE_190}:{ui_path}")
@@ -445,6 +469,39 @@ for graphic in (
                       "LicenseManager", "SmsCaptureReceiver", "SandboxMode",
                       "setOnClickListener(", "setOnLongClickListener("):
         assert protected not in actual, "SAFE ZONE: drawing file references protected behaviour"
+
+# Strictly isolate new on-screen transitions from all protected business methods.
+screen_motion = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java").read_text(encoding="utf-8")
+assert git("hash-object",
+           "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java").strip() == (
+    "344d9db3f57894b343d7cf89cc2056ba77bef6e4"
+), "SAFE ZONE: host motion changed after reviewed transfer"
+for forbidden in (
+    "FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
+    "BudgetAlertManager", "DebtLedgerRules", "LicenseManager",
+    "SandboxMode", "SmsCaptureReceiver", "setOnClickListener(",
+    "setOnLongClickListener(", "getSharedPreferences(",
+    "showAddTransaction(", "showMain(", "showAnalyticsScreen(",
+    "showDebtsScreen(", "deleteTransaction(", "insert(",
+):
+    assert forbidden not in screen_motion, "SAFE ZONE: screen motion crosses business logic: " + forbidden
+assert "destination.performClick();" in screen_motion
+assert "protectedHorizontalTarget" in screen_motion
+assert "ValueAnimator.areAnimatorsEnabled()" in screen_motion
+assert "power.isPowerSaveMode()" in screen_motion
+assert "ViewAnimationUtils.createCircularReveal" in screen_motion
+assert "private void revealTopChrome(View page)" in screen_motion
+assert "introIcons(next);" in screen_motion
+assert "setOnTouchListener(" not in screen_motion
+assert "postDelayed(" not in screen_motion and "while (true)" not in screen_motion
+crown_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenFabOpticalCrownDrawable.java").read_text(encoding="utf-8")
+for forbidden in ("OnTouchListener", "OnClickListener", "OnLongClickListener",
+                  "FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
+                  "Handler(", "postDelayed(", "Choreographer"):
+    assert forbidden not in crown_source, "FAB crown must remain an inert visual asset"
+assert "view.getOverlay().add(crown);" in new_ui
+assert "v.getOverlay().remove(crown);" in new_ui
+assert "crown.setPress(t);" in new_ui
 
 adapter = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java").read_text(encoding="utf-8")
 native = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java").read_text(encoding="utf-8")
