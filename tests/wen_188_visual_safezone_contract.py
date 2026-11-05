@@ -202,7 +202,7 @@ assert upgrade == expected_upgrade, "SAFE ZONE: changed signing upgrade checks b
 # must still validate the ORIGINAL app signer, license and install identity.
 old_guard = baseline("tests/original_180_upgrade_contract.py")
 expected_guard = old_guard.replace('assert re.search(r"versionCode\\s+24\\b", gradle)', 'assert re.search(r"versionCode\\s+26\\b", gradle)')
-expected_guard = expected_guard.replace('assert \\'versionName "1.8.8"\\' in gradle', 'assert \\'versionName "1.8.10"\\' in gradle')
+expected_guard = expected_guard.replace("""assert 'versionName "1.8.8"' in gradle""", """assert 'versionName "1.8.10"' in gradle""")
 expected_guard = expected_guard.replace("original certificate, package, keystore identity, license and version retained", "original certificate, package, keystore identity and license retained; audited version 1.8.10")
 assert (ROOT / "tests/original_180_upgrade_contract.py").read_text(encoding="utf-8") == expected_guard, "SAFE ZONE: unapproved original signing contract change"
 
