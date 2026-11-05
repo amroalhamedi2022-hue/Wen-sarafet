@@ -58,7 +58,20 @@ public final class NavigationVisualDecorator {
         GradientDrawable sampledPlate = new GradientDrawable();
         sampledPlate.setColor(Ui.DARK ? 0xFF30394C : 0xFFF8FBFF);
         sampledPlate.setCornerRadius(Ui.dp(context, 26));
-        tabs.setBackground(sampledPlate);
+        if (Ui.isReferenceGlassTheme(context)) {
+            // The old opaque #F8FBFF plate would completely conceal both
+            // reference palettes under the native refractive lens.
+            boolean prism = Ui.themeIndex(context) == 22;
+            GradientDrawable palettePlate = new GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR,
+                    prism ? new int[]{0xE24F246F, 0xE16C2E9B, 0xDF793BBA}
+                            : new int[]{0xF7FFE8CC, 0xF3FFE2BE, 0xF1F9DAC6});
+            palettePlate.setCornerRadius(Ui.dp(context, 26));
+            palettePlate.setStroke(Ui.dp(context, 1), prism ? 0x88FFFFFF : 0xD8FFFFFF);
+            tabs.setBackground(palettePlate);
+        } else {
+            tabs.setBackground(sampledPlate);
+        }
 
         nav.removeAllViews();
         String[] descriptions = new String[]{
@@ -68,6 +81,13 @@ public final class NavigationVisualDecorator {
             TextView item = originalTabs[i];
             item.setBackground(null); // One shared lens, never stacked pills.
             item.setSelected(i == selected);
+            if (Ui.isReferenceGlassTheme(context)) {
+                // White lettering on Prism, warm ink on Golden Bloom.
+                // Only the text colour changes: listeners/semantics stay put.
+                boolean prism = Ui.themeIndex(context) == 22;
+                item.setTextColor(prism ? (i == selected ? 0xFFFFFFFF : 0xFFF3DFFB)
+                        : (i == selected ? 0xFF63391F : 0xFF725749));
+            }
             item.setContentDescription(descriptions[i]);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
