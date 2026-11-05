@@ -37,6 +37,7 @@ ALLOWED = {
     "tests/upgrade_gate_contract.py",
     "docs/design/WEN_190_REFERENCE_THEMES_20261105.md",
     "tests/glass_energy_contract.py",
+    "tests/batch22_category_budget_icon_contract.py",
 }
 
 def git(*args):
@@ -278,6 +279,23 @@ assert "PRISM = 22" in draw_source and "BLOOM = 23" in draw_source
 assert "PowerManager" in draw_source and "isLowRamDevice" in draw_source
 for forbidden in ("FinanceDbHelper", "AppLockManager", "SQLiteDatabase", "OnClickListener", "LicenseManager", "SharedPreferences", "Handler(", "Choreographer.getInstance("):
     assert forbidden not in draw_source, "Theme renderer enters protected logic: " + forbidden
+
+# The archived Batch22 suite must still check ALL 22 old IDs in place;
+# only its expected array tail and total length are extended to 24.
+old_batch22 = baseline("tests/batch22_category_budget_icon_contract.py")
+expected_batch22 = old_batch22.replace(
+    'assert theme_names[18:] == ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"], theme_names',
+    'assert theme_names[18:22] == ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"], theme_names\n'
+    'assert theme_names[22:] == ["Prism Glow • زجاج نيوني", "Golden Bloom • زجاج شمسي"], theme_names')
+expected_batch22 = expected_batch22.replace(
+    'assert len(rows) == len(theme_names) == 22, (name, len(rows))',
+    'assert len(rows) == len(theme_names) == 24, (name, len(rows))')
+expected_batch22 = expected_batch22.replace(
+    '18 preserved IDs plus four new glass themes passed',
+    '22 preserved IDs plus two additional reference glass themes passed')
+assert (ROOT / "tests/batch22_category_budget_icon_contract.py").read_text(encoding="utf-8") == expected_batch22, (
+    "SAFE ZONE: original category and layout contracts changed beyond two new theme indices"
+)
 
 # Preserve the legacy passive-glass assertions while updating ONLY the
 # original FAB opt-in predicate to the new two-theme visual adapter.
