@@ -55,7 +55,7 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           APK=app/build/outputs/apk/release/app-release-unsigned.apk
           test -s "$APK"
-          "$AAPT" dump badging "$APK" | grep -F "package: name='app.wensarafet.tracker' versionCode='24' versionName='1.8.8'"
+          "$AAPT" dump badging "$APK" | grep -F "package: name='app.wensarafet.tracker' versionCode='26' versionName='1.8.10'"
           "$AAPT" dump permissions "$APK" > /tmp/wen-188-visual-permissions.txt
           python3 - <<'PY'
           import re
