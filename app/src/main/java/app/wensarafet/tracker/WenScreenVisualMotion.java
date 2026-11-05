@@ -248,7 +248,9 @@ public final class WenScreenVisualMotion {
         if (rawX < location[0] || rawX > location[0]+child.getWidth()
                 || rawY < location[1] || rawY > location[1]+child.getHeight()) return false;
         if (child instanceof HorizontalScrollView || child instanceof EditText
-                || child instanceof SeekBar) return true;
+                || child instanceof SeekBar
+                || child.canScrollHorizontally(-1) || child.canScrollHorizontally(1)
+                || child.isClickable() || child.isLongClickable()) return true;
         if (!(child instanceof ViewGroup)) return false;
         ViewGroup group = (ViewGroup) child;
         for (int i=group.getChildCount()-1;i>=0;i--)
