@@ -415,38 +415,40 @@ public final class Ui {
 
     public static void animateChildren(ViewGroup group) {
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
-        int count = Math.min(group.getChildCount(), 10);
+        // Sandbox visual parity for Liquid themes only: animate the leading
+        // two cards quickly instead of stacking ten 300ms transitions.
+        // Every child remains present and enabled. Legacy 0–15: unchanged.
+        boolean liquid = isLiquidTheme(group.getContext());
+        int count = Math.min(group.getChildCount(), liquid ? 2 : 10);
         for (int i = 0; i < count; i++) {
-            View child = group.getChildAt(i); child.setAlpha(0f); child.setTranslationY(dp(group.getContext(), 10));
-            child.animate().alpha(1f).translationY(0).setStartDelay(45L + i * 28L).setDuration(300)
-                    .setInterpolator(new PathInterpolator(0.2f, 0.75f, 0.25f, 1f)).start();
+            View child = group.getChildAt(i);
+            child.animate().cancel();
+            child.setAlpha(0f);
+            child.setTranslationY(dp(group.getContext(), liquid ? 6 : 10));
+            child.animate().alpha(1f).translationY(0)
+                    .setStartDelay(liquid ? i * 10L : 45L + i * 28L)
+                    .setDuration(liquid ? 125 : 300)
+                    .setInterpolator(new PathInterpolator(.2f, .75f, .25f, 1f)).start();
         }
     }
 
     public static void pressAnimation(View view) {
+        if (isLiquidTheme(view.getContext())) {
+            // Restore the sandbox's pressure-tracking optical bubble. This
+            // existing GlassMotion helper always returns false from touch:
+            // click/long-click/navigation/scroll behavior is untouched.
+            // On detach it cancels its animators and restores the scale.
+            app.wensarafet.glass.GlassMotion.bindPress(view, SKY);
+            return;
+        }
         view.setOnTouchListener((v, event) -> {
             if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return false;
-            if (isLiquidTheme(v.getContext())) {
-                // Liquid-bubble feedback is interaction-only. No idle clock or looping frame callback.
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    v.animate().cancel();
-                    v.animate().scaleX(.955f).scaleY(.955f).setDuration(90)
-                            .setInterpolator(new PathInterpolator(.2f, .8f, .2f, 1f)).start();
-                } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                    v.animate().cancel();
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(230)
-                            .setInterpolator(new android.view.animation.OvershootInterpolator(1.35f)).start();
-                } else if (event.getAction() == MotionEvent.ACTION_CANCEL) {
-                    v.animate().cancel();
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(90).start();
-                }
-            } else {
-                // Preserve exact existing touch behavior for the 16 original themes.
+            // Preserve exact existing touch behavior for the 16 original themes.
+
                 if (event.getAction() == MotionEvent.ACTION_DOWN)
                     v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(90).start();
                 else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL)
                     v.animate().scaleX(1f).scaleY(1f).setDuration(140).start();
-            }
             return false;
         });
     }
