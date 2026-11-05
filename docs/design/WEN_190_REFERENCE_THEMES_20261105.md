@@ -32,3 +32,29 @@ These are **stylistic references**, not screenshots blindly embedded as app back
 ## Release acceptance
 
 Prepare unsigned original-package 1.9/code27 APK, verify with aapt/aapt2 and zipalign. Sign it locally with the original owner's keystore only, verify SHA256 signer `6B8268E5B647B12A2AA055D7A22F7B8EA888E40FB863E74409938AAD4EC789C9`, run `scripts/verify_upgrade_apk.sh` against the trusted signed 1.8.8, compare signed/unsigned payloads and install over a **backed-up test clone** before using the owner's installed device. Never upload private secrets to GitHub.
+
+
+## 1.8.8-sandbox visual parity staging — NO BUILD
+
+**Status:** source-only staging branch `design/wen-190-sandbox-visual-parity-20261105`, based on signed 1.9's `main@283112f4`. Do **not** merge or run Android Gradle / Actions / APK signing until the owner provides additional theme designs and explicitly requests final assembly. The owner's installed v1.9 APK remains unchanged.
+
+### Reference identity and safe comparisons
+
+The Library's `WenSarafet_LiquidNav_Test_20261104.apk` is an actual **1.8.8-sandbox** variant, matching the supplied App Info screenshot and the separate package `app.wensarafet.tracker.sandbox`. SHA-256: `d96b1cd8c9c4efa9737ebeac0fc3b78afac633ce5c3fe3626a5408ad14f74c10`. Original sandbox source review: `design/wen-full-unlocked-sandbox-20261101@b57dcd3c` (its base build metadata predates the 1.8.8-sandbox APK, so source review does not establish pixel-exact binary equivalence).
+
+- **Retained verbatim:** `WenGlassBackdropDrawable`, `WenLiquidRuntimeOptics`, `WenNavigationLensDrawable`, `WenNavigationTrack`, `WenOpticalNavigationOverlay` and design token file match the sandbox Git blob SHAs exactly. The latest `GlassMotion` is a superset of the sandbox engine: it adds tap eligibility to stop accidental navigation on drag-and-return and retains the native lens, viscous hold, physics and release.
+- **Previously present in 1.9:** the original 22 theme indices (0–21) and three new selectable themes: Prism Glow 22, Golden Bloom 23, Royal Gold 24. They are not renumbered or recoloured.
+- **Now staged in existing drawing code:** copy sandbox `WenGlassDrawable` exactly: more transparent frosted cards, fine pearlescent dispersion rims/crown and no unrelated animated floating orb.
+- **Now staged in a new visual-only asset:** sandbox `WenFabBubbleDrawable` exactly, wired through `Ui.glassAccentBackground(context,24)` **only for existing Liquid indices 16–21**, leaving 0–15 and all three 1.9 reference FAB materials unchanged. Finite 155/245ms bubble pressure morph consumes *no* click or long-click events and resets after view detachment.
+- **Now staged in Ui-only animation helpers:** the sandbox `GlassMotion.bindPress` optical bubble for all other Liquid pressable views; limited 2-item 125ms content entrance and restrained 115ms screen arrival. Legacy non-Liquid behaviours are preserved word-for-word.
+- **No activity or function edit:** `MainActivity`, `QuickActionActivity`, `FinanceDbHelper`, `FinanceRules`, debt ledgers, budget, encryption, PIN, lock, backup, SMS, SQLite schema, application ID, permissions and signing are untouched relative to the verified v1.9 source.
+
+### Strict no-functional-changes proof, no APK build
+
+`tests/wen_188_visual_safezone_contract.py` maintains the original 1.8.8 financial code and callback byte-for-byte baseline. For this staging pass it also pins the complete verified 1.9 `Ui.java` source outside **four** specific appearance-only methods (`glassAccentBackground`, `animateScreen`, `animateChildren`, `pressAnimation`) and requires the two original sandbox graphics classes **byte-for-byte** from trusted sandbox commit `b57dcd3c`. `tests/glass_energy_contract.py` verifies the new pearl rims, lack of idle loops, exact bubble material, finite entrance and non-consuming touch listener. Neither test is disabled.
+
+### Important: what is NOT safely transferable without a host-level integration review
+
+The screenshot gives package/version identity, not a screen recording. The historical sandbox also included host-bound **horizontal page-swipe navigation, FAB-origin forward/reverse full-screen circular reveal, top-bar/icon boot choreography, and a sandbox-specific native FAB AGSL overlay** in `MainActivity` / `SandboxOpticalGlass`. Some page entrance appearance is now covered by the Ui-only 115/125ms helpers and an interactive circular FAB is staged, but the **full host-bound transitions and native FAB above-glyph compositing are not yet wired into 1.9**. Blindly copying these methods would also import sandbox `SandboxMode` and bypass activation logic or alter navigation routing, violating the user's Safe Zone rule. Keep these host transitions explicitly pending for a future *strictly visual, exact-hunk, user-approved* integration after theme collection. Do not claim 100% runtime parity without physical Android QA.
+
+**Final release gate (later, never now):** review these pending host effects without touching protected business flow, run financial/visual/emulator tests, produce one original-package 1.9-or-higher signed update using the privately stored owner keystore, verify certificate and test in-place update on a backed-up clone. Do not produce debug or unsigned APKs for the owner as the final result.
