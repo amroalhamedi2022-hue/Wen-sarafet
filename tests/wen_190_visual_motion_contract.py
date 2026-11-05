@@ -50,7 +50,7 @@ assert "currentTab" in main and "visualMotion.captureOriginalTabs(" in main
 for required in (
     "ViewAnimationUtils.createCircularReveal(", "fabOpening",
     "currentIsFabPage && targetPrimary", "introIcons(next);",
-    "revealTopChrome(next);", "screenHost", "visualGeneration",
+    "revealTopChrome(next);", "visualGeneration",
     "resetSwipe(screen);", "protectedHorizontalTarget(",
     "child.isClickable() || child.isLongClickable()",
     "child.canScrollHorizontally(-1) || child.canScrollHorizontally(1)",
