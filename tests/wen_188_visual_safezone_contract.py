@@ -76,8 +76,8 @@ split_ui_hooks = [
 # Approved split EDIT display fix: cents are never passed through binary double.
 # Restore this one presentation-only line before comparing MainActivity to
 # signed 1.8.8. Persisted values, debt ledger, DB and save handlers stay frozen.
-exact_display = "            row.amount.setText(SplitRemainderUi.formatMinor(split.amountMinor));\\n"
-previous_display = '            row.amount.setText(String.format(Locale.ROOT, "%.2f", split.amountMinor / 100.0));\\n'
+exact_display = "            row.amount.setText(SplitRemainderUi.formatMinor(split.amountMinor));\n"
+previous_display = '            row.amount.setText(String.format(Locale.ROOT, "%.2f", split.amountMinor / 100.0));\n'
 assert current_main.count(exact_display) == 1, "SAFE ZONE: split edit should display exact stored minor units"
 cleaned_main = current_main.replace(visual_hook, "")
 for hook in split_ui_hooks:
