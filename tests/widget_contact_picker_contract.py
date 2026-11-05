@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""No silent contacts permission, no unsafe USSD, and accessible widget picker."""
+from pathlib import Path
+import xml.etree.ElementTree as ET
+root=Path(__file__).resolve().parents[1]
+java=(root/"app/src/main/java/app/wensarafet/tracker/QuickActionActivity.java").read_text(encoding="utf-8")
+widget=(root/"app/src/main/java/app/wensarafet/tracker/QuickActionWidgetProvider.java").read_text(encoding="utf-8")
+manifest=(root/"app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+layout=root/"app/src/main/res/layout/widget_quick_action.xml"
+tree=ET.parse(layout)
+ns="{http://schemas.android.com/apk/res/android}"
+picker=[node for node in tree.iter() if node.attrib.get(ns+"id")=="@+id/widget_choose_contact"]
+assert len(picker)==1
+assert picker[0].attrib.get(ns+"contentDescription")=="اختيار جهة اتصال للتحويل"
+assert "android.permission.READ_CONTACTS" not in manifest
+assert "android.permission.WRITE_CONTACTS" not in manifest
+assert "Intent.ACTION_PICK" in java
+assert "ContactsContract.CommonDataKinds.Phone.CONTENT_URI" in java
+assert "FLAG_GRANT_READ_URI_PERMISSION" in java
+assert "PalestinianMobileNumber.normalize(c.getString(numberIndex))" in java
+assert "ContactsContract.CommonDataKinds.Phone.NUMBER" in java
+assert "ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME" in java
+assert "if(numberIndex<0)" in java
+assert "pendingContactPhone.setText(mobile.substring(2))" in java
+assert 'PalestinianMobileNumber.normalize("05"+tail)' in java
+assert "new Intent(context,QuickActionActivity.class)" in widget
+assert '"pick_contact",true' in widget
+assert "R.id.widget_choose_contact" in widget
+assert '"jawwal_friend".equals(action())' in widget
+assert '"jawwal_merchant".equals(action())' in widget
+assert '"palpay".equals(action())' in widget
+assert "if(canChooseContact)" in widget
+assert "views.setOnClickPendingIntent(R.id.widget_root, pending)" in widget
+assert ET.parse(root/"app/src/main/res/drawable/widget_contact_chip.xml") is not None
+assert "Intent.ACTION_GET_CONTENT" in java
+assert "startActivityForResult(choice,CONTACT_PICK_REQUEST)" in java
+assert "<queries>" in manifest
+assert "vnd.android.cursor.dir/phone_v2" in manifest
+assert "vnd.android.cursor.item/phone_v2" in manifest
+# Debug contact testing must install alongside the original app without provider conflicts.
+debug_manifest_path=root/"app/src/debug/AndroidManifest.xml"
+debug_manifest=ET.parse(debug_manifest_path)
+debug_provider=[p for p in debug_manifest.iter("provider")
+                if p.attrib.get(ns+"name")==".NotificationSoundProvider"]
+assert len(debug_provider)==1
+assert debug_provider[0].attrib.get(ns+"authorities")=="app.wensarafet.tracker.recovered.debug.notification-sounds"
+main_provider=[p for p in ET.fromstring(manifest).iter("provider")
+               if p.attrib.get(ns+"name")==".NotificationSoundProvider"]
+assert len(main_provider)==1
+assert main_provider[0].attrib.get(ns+"authorities")!=debug_provider[0].attrib.get(ns+"authorities")
+assert 'tools:replace="android:authorities"' in debug_manifest_path.read_text(encoding="utf-8")
+# A separate, no-license/no-USSD test launcher uses the same four Android intent forms.
+debug_probe=(root/"app/src/debug/java/app/wensarafet/tracker/ContactPickerSmokeActivity.java").read_text(encoding="utf-8")
+assert "Intent.ACTION_GET_CONTENT" in debug_probe
+assert "ContactsContract.CommonDataKinds.Phone.CONTENT_URI" in debug_probe
+assert "PalestinianMobileNumber.normalize" in debug_probe
+assert "LicenseManager" not in debug_probe
+assert "UssdCodes" not in debug_probe
+assert "ACTION_DIAL" not in debug_probe
+probe=[a for a in debug_manifest.iter("activity")
+       if a.attrib.get(ns+"name")==".ContactPickerSmokeActivity"]
+assert len(probe)==1
+assert probe[0].attrib.get(ns+"exported")=="true"
+print("WidgetContactPickerContract PASS: contact URI picker, permission-safe, small widget button, normalizer")

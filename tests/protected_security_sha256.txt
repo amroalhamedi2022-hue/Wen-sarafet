@@ -1,0 +1,7 @@
+7c723b915bece51a2ab6a2005e59e05a87f73ef8593efb7bf1bc4e411ae915f7  app/src/main/java/app/wensarafet/tracker/AppIntegrity.java
+5ca5ccd2735ae5ce13855f0bcccadc67153d40188d46946f6e9c14e0813b3f8a  app/src/main/java/app/wensarafet/tracker/AppLockManager.java
+1505b8c3f9a719eec30aa24e5159e4e925a5c67ad92645596e07d93dc1f3e886  app/src/main/java/app/wensarafet/tracker/BackupCrypto.java
+4d06e51f0df9c0f4eaa2ac1ba66ac06dfd80ce6b1e6e7144648b06c4ca906e6e  app/src/main/java/app/wensarafet/tracker/LicenseManager.java
+10794b4174681de0ef15f5d6ff5a8124abbb054ad2e238ebc8e9612a019babf5  app/src/main/java/app/wensarafet/tracker/LicenseProtocol.java
+991fd505279d512a5b1b965ef60768c0141330d7fc79d2a18d6dcfb0baac2738  app/src/main/java/app/wensarafet/tracker/InstallationIdentity.java
+be2b3bbb832d79bb1d0c88ef052190f95b4657c1a750b0d176398efd634c3358  app/src/main/java/app/wensarafet/tracker/SecurePinStore.java

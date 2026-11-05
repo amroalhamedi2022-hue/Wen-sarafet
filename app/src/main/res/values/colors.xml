@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand">#0B6B57</color>
+    <color name="brand_dark">#075445</color>
+    <color name="brand_soft">#DDF5EC</color>
+    <color name="background">#F5F8F6</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="text_primary">#18201D</color>
+    <color name="text_secondary">#63706A</color>
+    <color name="expense">#BA1A1A</color>
+    <color name="income">#16815D</color>
+    <color name="widget_jawwal_text">#173019</color>
+    <color name="widget_bop_text">#3B1025</color>
+    <color name="widget_palpay_text">#38283F</color>
+    <color name="widget_quick_title">#17252A</color>
+    <color name="widget_quick_subtitle">#263C43</color>
+</resources>

@@ -1,0 +1,95 @@
+name: Wen 1.8.8 safe split UI emulator
+on:
+  pull_request:
+    branches: [fix/wen-contact-picker-xiaomi-20261101]
+    paths:
+      - 'app/**'
+      - 'tests/wen_188_visual_safezone_contract.py'
+      - '.github/workflows/wen-188-split-ui-emulator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  split-ui-android:
+    name: split-ui-android-api${{ matrix.api-level }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [33, 35]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Verify unmodified original 1.8.8 financial behavior
+        run: |
+          python3 tests/wen_188_visual_safezone_contract.py
+          python3 tests/financial_safe_zone_guard.py
+      # API33 x86_64 Google APIs image cannot install ARM-only nativegauss.so.
+      # These tests exercise Android EditText and the Java navigation gesture binder;
+      # no native lens is instantiated. Exclude this incompatible binary ONLY in
+      # this ephemeral debug test workspace. The original production build and
+      # its arm64-v8a native renderer remain untouched and fully packaged.
+      - name: Prepare API 33 x86-only instrumentation package
+        if: matrix.api-level == 33
+        run: |
+          cat >> app/build.gradle <<'GRADLE'
+          // CI-only x86_64 instrumentation, never committed into release source.
+          android {
+              packagingOptions {
+                  jniLibs {
+                      excludes += ['**/libnativegauss.so']
+                  }
+              }
+          }
+          GRADLE
+      - name: Enable KVM for Android emulator
+        run: |
+          sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          # GitHub-hosted runner can expose /dev/kvm without adding runner to the kvm group.
+          # The emulator runner silently falls back to an unstable 12-minute TCG boot otherwise.
+          test -e /dev/kvm
+          sudo chmod 0666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+      - name: Run real Android TextWatcher/EditText split UI tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 3072M
+          heap-size: 512M
+          # API 33 Google APIs image otherwise tries to allocate a 7.3GB userdata
+          # partition on a runner with only ~3.7GB free, crashing before boot.
+          # These isolated Java UI tests need under 1GB of app data.
+          disk-size: 1536M
+          sdcard-path-or-size: 128M
+          disable-animations: true
+          emulator-boot-timeout: 600
+          # The emulator action executes each newline as a separate /bin/sh -c call.
+          # Keep the package-readiness retry loop on ONE shell command line.
+          script: >-
+            bash -lc 'for attempt in $(seq 1 60); do if adb shell cmd package path android 2>/dev/null | grep -q "^package:"; then exec gradle :app:connectedDebugAndroidTest --no-daemon --console=plain; fi; sleep 5; done; echo "Android package service unavailable" >&2; exit 1'
+      - name: Preserve emulator test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wen-188-split-ui-emulator-results-api${{ matrix.api-level }}
+          path: |
+            app/build/reports/androidTests/connected/
+            app/build/outputs/androidTest-results/
+          if-no-files-found: warn
+          retention-days: 7

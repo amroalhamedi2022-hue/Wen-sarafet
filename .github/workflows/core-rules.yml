@@ -1,0 +1,36 @@
+name: Wen Sarafet source-only finance and safety checks
+on:
+  push:
+    branches:
+      - 'feature/wen-*'
+      - 'automation/wen-*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Run Java business-rule and SQL migration tests (no APK)
+        run: bash scripts/test_core.sh
+      - name: Check protected security file digests remain identical to recovered baseline
+        run: sha256sum -c tests/protected_security_sha256.txt
+      - name: Validate Android XML, manifest permissions and public repository hygiene
+        run: python3 tests/source_repository_guard.py
+      - name: Run recovered-source audit and parse release scripts (no signing secrets)
+        run: |
+          bash -n scripts/audit_recovered_source.sh scripts/audit_release.sh scripts/build_apk.sh scripts/verify_upgrade_apk.sh scripts/sign_verified_upgrade.sh
+          CORE_TESTS_ALREADY_RUN=1 bash scripts/audit_recovered_source.sh
