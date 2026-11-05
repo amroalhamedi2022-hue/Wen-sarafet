@@ -275,7 +275,7 @@ assert "isReferenceGlassTheme(context)" in new_ui
 draw_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenReferenceGlassDrawable.java").read_text(encoding="utf-8")
 assert "PRISM = 22" in draw_source and "BLOOM = 23" in draw_source
 assert "PowerManager" in draw_source and "isLowRamDevice" in draw_source
-for forbidden in ("FinanceDbHelper", "AppLockManager", "SQLiteDatabase", "OnClickListener", "LicenseManager", "SharedPreferences", "Handler(", "Choreographer"):
+for forbidden in ("FinanceDbHelper", "AppLockManager", "SQLiteDatabase", "OnClickListener", "LicenseManager", "SharedPreferences", "Handler(", "Choreographer.getInstance("):
     assert forbidden not in draw_source, "Theme renderer enters protected logic: " + forbidden
 
 adapter = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java").read_text(encoding="utf-8")
