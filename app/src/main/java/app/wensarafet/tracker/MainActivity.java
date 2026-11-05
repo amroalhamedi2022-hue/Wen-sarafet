@@ -1334,7 +1334,7 @@ public final class MainActivity extends Activity {
                     FinanceRules.SPECIAL_DEBT_PAYMENT.equals(split.specialKind) ? 2 : 0);
             if (row.person != null && split.debtPersonId != null) for(int i=0;i<people.size();i++)
                 if (people.get(i).id==split.debtPersonId) { row.person.setSelection(i); break; }
-            row.amount.setText(String.format(Locale.ROOT, "%.2f", split.amountMinor / 100.0));
+            row.amount.setText(SplitRemainderUi.formatMinor(split.amountMinor));
         }
         // Auto-calculate ONLY the last split entry; original save logic is unchanged.
         SplitRemainderUi.bind(rowsBox, () -> tx.amountMinor, null);
