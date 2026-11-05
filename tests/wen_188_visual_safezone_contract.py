@@ -210,9 +210,9 @@ assert current_gradle.count(test_runner) == 1 and current_gradle.count(test_deps
 # Packaging-only release bump: remove exact approved version deltas before
 # comparing the entire Gradle signing/package/dependency configuration.
 restored_gradle = current_gradle.replace(test_runner, "").replace(test_deps, "").replace(dependency, "")
-assert restored_gradle.count('versionCode 27') == 1
-assert restored_gradle.count('versionName "1.9"') == 1
-restored_gradle = restored_gradle.replace("versionCode 27", "versionCode 24").replace('versionName "1.9"', 'versionName "1.8.8"')
+assert restored_gradle.count('versionCode 28') == 1
+assert restored_gradle.count('versionName "2.0"') == 1
+restored_gradle = restored_gradle.replace("versionCode 28", "versionCode 24").replace('versionName "2.0"', 'versionName "1.8.8"')
 assert restored_gradle == baseline(APP_GRADLE), (
     "SAFE ZONE: unexpected build, package, version, dependency or signing mutation"
 )
@@ -234,7 +234,7 @@ for callback in [
     "analytics.setOnClickListener(v -> showAnalyticsScreen());",
 ]:
     assert callback in current_main, f"SAFE ZONE: changed original callback: {callback}"
-assert 'versionName "1.9"' in current_gradle
+assert 'versionName "2.0"' in current_gradle
 rules = (ROOT / "proguard-rules.pro").read_text(encoding="utf-8")
 optional_platform_warnings = (
     "\n# Optional API 36 optical classes in the MIT lens library; guarded at runtime.\n"
@@ -246,53 +246,52 @@ assert rules.count(optional_platform_warnings) == 1
 assert rules.replace(optional_platform_warnings, "") == baseline("proguard-rules.pro"), (
     "SAFE ZONE: ProGuard rules changed beyond the two optional visual APIs"
 )
-assert "versionCode 27" in current_gradle
+assert "versionCode 28" in current_gradle
 assert 'applicationId "app.wensarafet.tracker"' in current_gradle
 
 # Release workflow identity must advance in lockstep with the package.
 release_workflow = (ROOT / ".github/workflows/unsigned-release-candidate.yml").read_text(encoding="utf-8")
 expected_release = baseline(".github/workflows/unsigned-release-candidate.yml")
-expected_release = expected_release.replace("Wen-Sarafet-1.8.8-aligned-UNSIGNED.apk", "Wen-Sarafet-1.9-aligned-UNSIGNED.apk")
-expected_release = expected_release.replace("versionCode='24' versionName='1.8.8'", "versionCode='27' versionName='1.9'")
-expected_release = expected_release.replace("wen-1-8-8-original-package-unsigned", "wen-1-9-original-package-unsigned")
+expected_release = expected_release.replace("Wen-Sarafet-1.8.8-aligned-UNSIGNED.apk", "Wen-Sarafet-2.0-aligned-UNSIGNED.apk")
+expected_release = expected_release.replace("versionCode='24' versionName='1.8.8'", "versionCode='28' versionName='2.0'")
+expected_release = expected_release.replace("wen-1-8-8-original-package-unsigned", "wen-2-0-original-package-unsigned")
 assert release_workflow == expected_release, "SAFE ZONE: unexpected production release workflow mutation"
 review_workflow = (ROOT / ".github/workflows/wen-188-visual-safe-review.yml").read_text(encoding="utf-8")
-assert review_workflow.count("versionCode='27' versionName='1.9'") == 1
+assert review_workflow.count("versionCode='28' versionName='2.0'") == 1
 
 # No change to authentication/signing data; only permit predecessor 1.8.8
 # into the existing static signed-APK upgrade checker.
 upgrade = (ROOT / "scripts/verify_upgrade_apk.sh").read_text(encoding="utf-8")
-expected_upgrade = baseline("scripts/verify_upgrade_apk.sh")
-expected_upgrade = expected_upgrade.replace("INSTALLED_1.8.0_TO_1.8.7.apk SIGNED_CANDIDATE_1.8.8.apk", "INSTALLED_SIGNED_1.8.x.apk NEW_SIGNED_UPDATE.apk")
-expected_upgrade = expected_upgrade.replace('"$old_version" -ne 23 )', '"$old_version" -ne 23 && "$old_version" -ne 24 )')
-expected_upgrade = expected_upgrade.replace("or 1.8.7 (23), and update must have a higher versionCode", "1.8.7 (23), or 1.8.8 (24), and update must have a higher versionCode")
+expected_upgrade = git("show", f"{SOURCE_190}:scripts/verify_upgrade_apk.sh")
+expected_upgrade = expected_upgrade.replace(
+    '"$old_version" -ne 24 )',
+    '"$old_version" -ne 24 && "$old_version" -ne 25 && "$old_version" -ne 26 && "$old_version" -ne 27 )')
+expected_upgrade = expected_upgrade.replace(
+    "or 1.8.8 (24), and update must have a higher versionCode",
+    "or 1.8.8 (24), 1.8.9 (25), 1.8.10 (26), 1.9 (27), and update must have a higher versionCode")
+expected_upgrade = expected_upgrade.replace(
+    "INSTALLED_SIGNED_1.8.x.apk", "INSTALLED_SIGNED_1.8.x_OR_1.9.apk")
 assert upgrade == expected_upgrade, "SAFE ZONE: changed signing upgrade checks beyond allowed predecessor"
 
 # Permit only the exact test-fixture updates needed for a code26 original
 # signer upgrade from code24; the actual signature and package checker is fixed.
-expected_tests = baseline("tests/upgrade_gate_contract.py")
-expected_tests = expected_tests.replace('assert parsed.stdout == "24|1.8.8", parsed', 'assert parsed.stdout == "27|1.9", parsed')
-expected_tests = expected_tests.replace("      *current-187*|*same-as-current*) code=23 ;;", "      *current-187*|*same-as-current*) code=23 ;;\n      *current-188*) code=24 ;;")
-expected_tests = expected_tests.replace("      *) code=24 ;;", "      *) code=27 ;;")
-expected_tests = expected_tests.replace("versionName='1.8.8'", "versionName='1.9'")
-expected_tests = expected_tests.replace('    stale = home / "same-as-current.apk"', """    trusted188 = home / "current-188.apk"
-    trusted188.write_bytes(b"fake owner original signed version 1.8.8")
-    verified188 = subprocess.run(
-        ["bash", str(checker), str(trusted188), str(home / "candidate.apk")],
-        env=env, capture_output=True, text=True,
-    )
-    assert verified188.returncode == 0 and "24 -> 27" in verified188.stdout, (
-        verified188.stdout, verified188.stderr
-    )
-    stale = home / "same-as-current.apk" """.rstrip())
+expected_tests = git("show", f"{SOURCE_190}:tests/upgrade_gate_contract.py")
+expected_tests = expected_tests.replace('assert parsed.stdout == "27|1.9", parsed', 'assert parsed.stdout == "28|2.0", parsed')
+expected_tests = expected_tests.replace("      *current-181*) code=17 ;;", "      *current-1810*) code=26 ;;\n      *current-181*) code=17 ;;")
+expected_tests = expected_tests.replace("      *current-188*) code=24 ;;", "      *current-188*) code=24 ;;\n      *current-189*) code=25 ;;\n      *current-190*) code=27 ;;")
+expected_tests = expected_tests.replace("      *) code=27 ;;", "      *) code=28 ;;")
+expected_tests = expected_tests.replace("versionName='1.9'", "versionName='2.0'")
+expected_tests = expected_tests.replace('"24 -> 27"', '"24 -> 28"')
+expected_tests = expected_tests.replace('    stale = home / "same-as-current.apk"',
+    "    # Validate every newer original-signed predecessor without replacing the signer gate.\n    for old_name, old_code in ((\"current-189.apk\", 25),\n                               (\"current-1810.apk\", 26),\n                               (\"current-190.apk\", 27)):\n        prior = home / old_name\n        prior.write_bytes(b\"fake previously signed owner APK\")\n        verified = subprocess.run(\n            [\"bash\", str(checker), str(prior), str(home / \"candidate.apk\")],\n            env=env, capture_output=True, text=True,\n        )\n        assert verified.returncode == 0 and f\"{old_code} -> 28\" in verified.stdout, (\n            old_name, verified.stdout, verified.stderr\n        )\n" + '    stale = home / "same-as-current.apk"')
 assert (ROOT / "tests/upgrade_gate_contract.py").read_text(encoding="utf-8") == expected_tests, "SAFE ZONE: release upgrade test changed beyond original-signer and version coverage"
 
 # The trusted upgrade contract may only advance the expected version; it
 # must still validate the ORIGINAL app signer, license and install identity.
-old_guard = baseline("tests/original_180_upgrade_contract.py")
-expected_guard = old_guard.replace('assert re.search(r"versionCode\\s+24\\b", gradle)', 'assert re.search(r"versionCode\\s+27\\b", gradle)')
-expected_guard = expected_guard.replace("""assert 'versionName "1.8.8"' in gradle""", """assert 'versionName "1.9"' in gradle""")
-expected_guard = expected_guard.replace("original certificate, package, keystore identity, license and version retained", "original certificate, package, keystore identity and license retained; audited version 1.9")
+old_guard = git("show", f"{SOURCE_190}:tests/original_180_upgrade_contract.py")
+expected_guard = old_guard.replace(r'versionCode\s+27\b', r'versionCode\s+28\b')
+expected_guard = expected_guard.replace('versionName "1.9"', 'versionName "2.0"')
+expected_guard = expected_guard.replace("audited version 1.9", "audited version 2.0")
 assert (ROOT / "tests/original_180_upgrade_contract.py").read_text(encoding="utf-8") == expected_guard, "SAFE ZONE: unapproved original signing contract change"
 
 # Protect legacy themes and every persisted preference index:
@@ -363,29 +362,27 @@ for forbidden in ("FinanceDbHelper", "AppLockManager", "SQLiteDatabase", "OnClic
 
 # The legacy recovery audit may accept v1.9 as a valid next-minor
 # release without disabling any XML, banking, credential or package checks.
-old_recovery = baseline("scripts/audit_recovered_source.sh")
-expected_recovery = old_recovery.replace(
-    '[[ "$version_name" =~ ^1[.]8[.][0-9]+$ ]]',
-    '[[ "$version_name" =~ ^1[.](8[.][0-9]+|9)$ ]]')
-assert expected_recovery != old_recovery, "Original recovery audit version pattern missing"
+old_recovery = git("show", f"{SOURCE_190}:scripts/audit_recovered_source.sh")
+expected_recovery = old_recovery.replace(r'^1[.](8[.][0-9]+|9)$', r'^(1[.](8[.][0-9]+|9)|2[.]0)$')
+assert expected_recovery != old_recovery, "2.0 recovery gate must be explicit"
 assert (ROOT / "scripts/audit_recovered_source.sh").read_text(encoding="utf-8") == expected_recovery, (
     "SAFE ZONE: recovery audit changed beyond v1.9 acceptance"
 )
 
 # The owner-only signer must also keep the exact keystore, certificate,
 # original security hashes and payload checks. Only its version regex expands.
-old_signer = baseline("scripts/sign_verified_upgrade.sh")
-expected_signer = old_signer.replace(r"^1\.8\.[0-9]+$", r"^1\.(8\.[0-9]+|9)$")
-assert expected_signer != old_signer, "Missing original offline signer version gate"
+old_signer = git("show", f"{SOURCE_190}:scripts/sign_verified_upgrade.sh")
+expected_signer = old_signer.replace(r'^1\.(8\.[0-9]+|9)$', r'^(1\.(8\.[0-9]+|9)|2\.0)$')
+assert expected_signer != old_signer, "2.0 original signer gate missing"
 assert (ROOT / "scripts/sign_verified_upgrade.sh").read_text(encoding="utf-8") == expected_signer, (
     "SAFE ZONE: signing helper changed beyond allowing v1.9"
 )
 
 # The owner's build script must retain its signing, hash, debug and
 # identity checks; only accept the requested next-minor version 1.9.
-old_builder = baseline("scripts/build_apk.sh")
-expected_builder = old_builder.replace(r"^1\.8\.[0-9]+$", r"^1\.(8\.[0-9]+|9)$")
-assert expected_builder != old_builder, "Missing original offline builder version gate"
+old_builder = git("show", f"{SOURCE_190}:scripts/build_apk.sh")
+expected_builder = old_builder.replace(r'^1\.(8\.[0-9]+|9)$', r'^(1\.(8\.[0-9]+|9)|2\.0)$')
+assert expected_builder != old_builder, "2.0 owner build gate missing"
 assert (ROOT / "scripts/build_apk.sh").read_text(encoding="utf-8") == expected_builder, (
     "SAFE ZONE: signing/build script changed beyond v1.9 metadata allowance"
 )
@@ -565,5 +562,5 @@ assert "NAV_LIQUID_STRETCH_ACTIVE" in native
 # SMS notifications, protected signing/biometric and all resource files,
 # are guaranteed by the exact allowlist + git diff above.
 print("PASS: 1.8.8 source immutable except visual hook + five exact split remainder UI hooks")
-print("PASS: original package, schema and signing unchanged; audited version 1.9/code27")
+print("PASS: original package, schema and signing unchanged; audited version 2.0/code28")
 print("PASS: protected finance, debt, SMS, backup, auth and notification trees untouched")

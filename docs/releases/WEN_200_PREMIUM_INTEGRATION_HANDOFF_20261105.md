@@ -13,3 +13,7 @@ Theme IDs 0–24 frozen. IDs 25–29 appended. Screen-motion hooks and the exist
 - This merge intentionally retains 1.9/code27 staging metadata. Before actual distribution raise versionCode and update hardened upgrade/version tests, then build a release signed by the original owner certificate.
 - Private owner keystore must never be uploaded to GitHub. No signed APK has been produced by this integration commit.
 - PR #34 friend-only SMS and original unlocked sandbox bypass are excluded.
+
+## Owner-key release preparation: independent v2.0/code28 branch
+- Visual source integrated on PR #41 and tested separately. This v2.0/code28 candidate only extends approved release metadata, strict upgrade predecessor support, and source+test release gates.
+- Original certificate SHA-256 remains mandatory. No owner key found in available GitHub/connected Drive; this branch must not be marked signed or merged without signed upgrade QA. Never use a substitute key or uninstall existing user app.

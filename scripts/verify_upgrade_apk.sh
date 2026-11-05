@@ -2,7 +2,7 @@
 # Local pre-install check only. Never uploads APKs or keystore material.
 set -euo pipefail
 if [[ $# -ne 2 ]]; then
-  echo "Usage: $0 INSTALLED_SIGNED_1.8.x.apk NEW_SIGNED_UPDATE.apk" >&2
+  echo "Usage: $0 INSTALLED_SIGNED_1.8.x_OR_1.9.apk NEW_SIGNED_UPDATE.apk" >&2
   exit 2
 fi
 original="$1"
@@ -51,8 +51,8 @@ if [[ "$old_package" != "$expected_package" || "$new_package" != "$expected_pack
   exit 1
 fi
 if [[ ! "$old_version" =~ ^[0-9]+$ || ! "$new_version" =~ ^[0-9]+$ ||
-      ( "$old_version" -ne 16 && "$old_version" -ne 17 && "$old_version" -ne 18 && "$old_version" -ne 19 && "$old_version" -ne 20 && "$old_version" -ne 21 && "$old_version" -ne 22 && "$old_version" -ne 23 && "$old_version" -ne 24 ) || "$new_version" -le "$old_version" ]]; then
-  echo "BLOCKED: installed version must be 1.8.0 (16), 1.8.1 (17), 1.8.2 (18), 1.8.3 (19), or 1.8.4 (20), 1.8.5 (21), 1.8.6 (22) 1.8.7 (23), or 1.8.8 (24), and update must have a higher versionCode" >&2
+      ( "$old_version" -ne 16 && "$old_version" -ne 17 && "$old_version" -ne 18 && "$old_version" -ne 19 && "$old_version" -ne 20 && "$old_version" -ne 21 && "$old_version" -ne 22 && "$old_version" -ne 23 && "$old_version" -ne 24 && "$old_version" -ne 25 && "$old_version" -ne 26 && "$old_version" -ne 27 ) || "$new_version" -le "$old_version" ]]; then
+  echo "BLOCKED: installed version must be 1.8.0 (16), 1.8.1 (17), 1.8.2 (18), 1.8.3 (19), or 1.8.4 (20), 1.8.5 (21), 1.8.6 (22) 1.8.7 (23), or 1.8.8 (24), 1.8.9 (25), 1.8.10 (26), 1.9 (27), and update must have a higher versionCode" >&2
   exit 1
 fi
 if "$aapt" dump xmltree "$candidate" AndroidManifest.xml |
