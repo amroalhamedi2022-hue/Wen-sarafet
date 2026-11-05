@@ -3,6 +3,10 @@ package app.wensarafet.tracker;
 import static org.junit.Assert.*;
 
 import android.content.Context;
+import android.content.ContextWrapper;
+import android.content.SharedPreferences;
+import java.lang.reflect.Field;
+import java.util.Map;
 import android.text.InputType;
 import android.os.SystemClock;
 import android.view.MotionEvent;
@@ -273,6 +277,64 @@ public final class SplitRemainderInstrumentedTest {
             kept.setText("40.00");
             assertEquals("60.00", last.getText().toString());
             assertTrue(calculations.get() > beforeDetachedEdit);
+        });
+    }
+
+    @Test public void liquidNavigationResetsPreviousTabForNewActivityContext() {
+        runUi(() -> {
+            Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            SharedPreferences appearance = app.getSharedPreferences("appearance", Context.MODE_PRIVATE);
+            int previousTheme = appearance.getInt("theme", 0);
+            try {
+                assertTrue(appearance.edit().putInt("theme", 18).commit());
+                Ui.applyTheme(app);
+                Context firstActivity = new ContextWrapper(app);
+                Context recreatedActivity = new ContextWrapper(app);
+                LinearLayout firstNav = new LinearLayout(firstActivity);
+                LinearLayout secondNav = new LinearLayout(recreatedActivity);
+                int[] clicks = new int[8];
+                TextView[] firstTabs = new TextView[4];
+                TextView[] secondTabs = new TextView[4];
+                for (int index = 0; index < 4; index++) {
+                    final int tab = index;
+                    firstTabs[index] = new TextView(firstActivity);
+                    secondTabs[index] = new TextView(recreatedActivity);
+                    firstTabs[index].setOnClickListener(v -> clicks[tab]++);
+                    secondTabs[index].setOnClickListener(v -> clicks[4 + tab]++);
+                    firstNav.addView(firstTabs[index]);
+                    secondNav.addView(secondTabs[index]);
+                }
+                NavigationVisualDecorator.install(firstNav, firstTabs, 1);
+                NavigationVisualDecorator.install(secondNav, secondTabs, 3);
+                assertEquals(1, firstNav.getChildCount());
+                assertEquals(1, secondNav.getChildCount());
+                assertNotSame(firstNav.getChildAt(0), secondNav.getChildAt(0));
+                assertTrue(firstNav.getChildAt(0) instanceof app.wensarafet.glass.WenNavigationTrack);
+                assertTrue(secondNav.getChildAt(0) instanceof app.wensarafet.glass.WenNavigationTrack);
+                firstTabs[1].performClick();
+                secondTabs[3].performClick();
+                assertEquals("Original first Activity callback survives", 1, clicks[1]);
+                assertEquals("Original recreated Activity callback survives", 1, clicks[7]);
+                Field sessionsField = NavigationVisualDecorator.class.getDeclaredField("NAV_STATES");
+                sessionsField.setAccessible(true);
+                @SuppressWarnings("unchecked")
+                Map<Context, ?> sessions = (Map<Context, ?>) sessionsField.get(null);
+                Object firstState = sessions.get(firstActivity);
+                Object secondState = sessions.get(recreatedActivity);
+                assertNotNull(firstState);
+                assertNotNull(secondState);
+                assertNotSame("Rotation/recreation cannot inherit previous animation state",
+                        firstState, secondState);
+                Field previousField = firstState.getClass().getDeclaredField("previous");
+                previousField.setAccessible(true);
+                assertEquals(1, previousField.getInt(firstState));
+                assertEquals(3, previousField.getInt(secondState));
+            } catch (ReflectiveOperationException issue) {
+                throw new AssertionError("Navigation lifetime state test", issue);
+            } finally {
+                appearance.edit().putInt("theme", previousTheme).commit();
+                Ui.applyTheme(app);
+            }
         });
     }
 }
