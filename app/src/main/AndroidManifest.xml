@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="app.wensarafet.tracker">
+    <!-- Visual dependency adds a compatibility-only internal permission.
+         minSdk 33 uses platform receiver flags. Remove that merged permission
+         so the effective 1.8.8 APK permission set remains IDENTICAL. -->
+    <permission
+        android:name="${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        tools:node="remove" />
+    <uses-permission
+        android:name="${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        tools:node="remove" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -9,6 +19,17 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- SMS capture is optional: the app also runs on Wi-Fi-only tablets without a modem. -->
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <!-- Contacts-app visibility only, not permission to read the address book. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PICK" />
+            <data android:mimeType="vnd.android.cursor.dir/phone_v2" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+            <data android:mimeType="vnd.android.cursor.item/phone_v2" />
+        </intent>
+    </queries>
     <application
         android:allowBackup="true"
         android:usesCleartextTraffic="false"

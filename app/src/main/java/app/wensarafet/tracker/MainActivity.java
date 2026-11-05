@@ -448,8 +448,12 @@ public final class MainActivity extends Activity {
         int fabSize = Math.max(Ui.dp(this, 46), Math.min(Ui.dp(this, 82), Ui.homeIconDp(this, "fab", 58)));
         TextView fab = Ui.text(this, "+", 32f * fabPercent / 100f, Color.WHITE, false);
         fab.setGravity(Gravity.CENTER);
-        fab.setBackground(Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
-                : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this));
+        // Two new reference themes render a circular optical material here.
+        // The original add callback, size, position and hold feedback are unchanged.
+        fab.setBackground(Ui.isReferenceGlassTheme(this)
+                ? Ui.glassFloatingAddBackground(this)
+                : (Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
+                : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this)));
         fab.setElevation(Ui.dp(this, 8));
         fab.setOnClickListener(v -> showAddTransaction());
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));
@@ -584,6 +588,10 @@ public final class MainActivity extends Activity {
             navParams.setMargins(Ui.dp(this,4),0,Ui.dp(this,4),0);
             nav.addView(item,navParams);
         }
+        // Visual-only; keep every original 1.8.8 tab callback untouched.
+        if (Ui.isLiquidTheme(this))
+            NavigationVisualDecorator.install(nav,
+                    new TextView[]{home, tx, debts, analytics}, selectedTab);
         return nav;
     }
 
@@ -1240,7 +1248,9 @@ public final class MainActivity extends Activity {
         if (!FinanceRules.EXPENSE.equals(tx.type) && !FinanceRules.INCOME.equals(tx.type)) {
             Toast.makeText(this, "حوّل العملية أولًا إلى مصروف أو دخل", Toast.LENGTH_LONG).show(); return;
         }
-        String inferredDirection = FinanceRules.INCOME.equals(tx.type) ? FinanceRules.DEBT_RECEIVABLE : FinanceRules.DEBT_PAYABLE;
+        String inferredDirection = FinanceRules.SPECIAL_DEBT.equals(specialKind)
+                ? (FinanceRules.EXPENSE.equals(tx.type) ? FinanceRules.DEBT_RECEIVABLE : FinanceRules.DEBT_PAYABLE)
+                : (FinanceRules.EXPENSE.equals(tx.type) ? FinanceRules.DEBT_PAYABLE : FinanceRules.DEBT_RECEIVABLE);
         List<Models.DebtPerson> people = db.getDebtPeople();
         if (people.isEmpty()) {
             showQuickAddDebtPerson(() -> showDebtClassificationDialog(tx, specialKind)); return;
@@ -1275,10 +1285,10 @@ public final class MainActivity extends Activity {
         RadioButton receivable=new RadioButton(this);receivable.setText("إلي");RadioButton payable=new RadioButton(this);payable.setText("عليّ");directionGroup.addView(receivable);directionGroup.addView(payable);
         if(FinanceRules.DEBT_RECEIVABLE.equals(tx.debtDirection))receivable.setChecked(true);else payable.setChecked(true);
         form.addView(label("اتجاه الدين"));form.addView(directionGroup,fieldParams());
-        form.addView(Ui.text(this,"يمكنك من القائمة التالية تغيير العملية إلى تصنيف عادي؛ وسيعكس التطبيق أثر الدين السابق تلقائيًا.",11,Ui.MUTED,false));
+        form.addView(Ui.text(this,"تغيير التصنيف يفصل العملية عن دفتر الدين، لكنه لا يغيّر المال المدفوع أو المستلم من الحساب. إذا وُجد سداد مرتبط بأصل الدين فلن يُسمح بفك الارتباط حتى تراجعه.",12,Ui.MUTED,false));
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تعديل حركة الدين").setView(form).setNeutralButton("تغيير التصنيف",null).setNegativeButton("إلغاء",null).setPositiveButton("حفظ",null).create();
         dialog.setOnShowListener(x->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{Long value=Money.parseMinor(amount.getText().toString());if(value==null||value<=0)throw new IllegalArgumentException("اكتب مبلغًا صحيحًا");String direction=receivable.isChecked()?FinanceRules.DEBT_RECEIVABLE:FinanceRules.DEBT_PAYABLE;db.updateDebtTransaction(tx.id,value,people.get(person.getSelectedItemPosition()).id,direction);dialog.dismiss();showMain(transactionsTab);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}});
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{dialog.dismiss();String[] options={"مصروف", "دخل", "تحويل بين حساباتي"};new AlertDialog.Builder(this).setTitle("تغيير التصنيف").setItems(options,(d,w)->{if(w==0)showCategoryPicker(tx,FinanceRules.EXPENSE);else if(w==1)showCategoryPicker(tx,FinanceRules.INCOME);else showTransactionTransferDialog(tx);}).show();});});dialog.show();
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{dialog.dismiss();showCategoryPicker(tx,tx.type);});});dialog.show();
     }
 
     private void showCategoryPicker(Models.Transaction tx, String type) {
@@ -1288,8 +1298,11 @@ public final class MainActivity extends Activity {
         String title = FinanceRules.EXPENSE.equals(type) ? "اختر تصنيف المصروف" : "اختر تصنيف الدخل";
         new AlertDialog.Builder(this).setTitle(title).setItems(labels, (d, which) -> {
             try {
-                db.reclassifyTransaction(tx.id, type, tx.accountId, null, categories.get(which).id, new ArrayList<>());
-                Toast.makeText(this, "تم تحديث العملية والرصيد", Toast.LENGTH_SHORT).show(); showMain(transactionsTab);
+                if(tx.specialKind != null)
+                    db.reclassifyDebtTransactionToCategory(tx.id,type,tx.accountId,categories.get(which).id);
+                else
+                    db.reclassifyTransaction(tx.id, type, tx.accountId, null, categories.get(which).id, new ArrayList<>());
+                Toast.makeText(this, "تم تحديث التصنيف والحساب", Toast.LENGTH_SHORT).show(); showMain(transactionsTab);
             } catch (Exception error) { Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show(); }
         }).setNegativeButton("إلغاء", null).show();
     }
@@ -1325,8 +1338,10 @@ public final class MainActivity extends Activity {
                     FinanceRules.SPECIAL_DEBT_PAYMENT.equals(split.specialKind) ? 2 : 0);
             if (row.person != null && split.debtPersonId != null) for(int i=0;i<people.size();i++)
                 if (people.get(i).id==split.debtPersonId) { row.person.setSelection(i); break; }
-            row.amount.setText(String.format(Locale.ROOT, "%.2f", split.amountMinor / 100.0));
+            row.amount.setText(SplitRemainderUi.formatMinor(split.amountMinor));
         }
+        // Auto-calculate ONLY the last split entry; original save logic is unchanged.
+        SplitRemainderUi.bind(rowsBox, () -> tx.amountMinor, null);
         Button add = actionButton("＋ إضافة جزء", false); add.setOnClickListener(v -> addDebtSplitRow(rowsBox, rows, categories, people)); form.addView(add, fieldParams());
         ScrollView scroll = new ScrollView(this); scroll.addView(form);
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("تقسيم العملية")
@@ -2200,15 +2215,23 @@ public final class MainActivity extends Activity {
                 Ui.dp(this,5),Ui.dp(this,5));
         buttons.addView(history,historyParams);
         if (!debt.closed && debt.remainingMinor > 0) {
-            Button partial=actionButton("سداد جزئي",false);
-            partial.setTextSize(14);
+            Button actual=actionButton("سداد فعلي عبر حساب",true);
+            actual.setTextSize(14);
+            LinearLayout.LayoutParams actualParams=new LinearLayout.LayoutParams(
+                    compact?-1:0,Ui.dp(this,50),compact?0:1);
+            actualParams.setMargins(Ui.dp(this,5),Ui.dp(this,5),
+                    Ui.dp(this,5),Ui.dp(this,5));
+            buttons.addView(actual,actualParams);
+            actual.setOnClickListener(v->showAccountLinkedDebtPayment(debt));
+            Button partial=actionButton("سداد في الدفتر فقط",false);
+            partial.setTextSize(12);
             LinearLayout.LayoutParams partialParams=new LinearLayout.LayoutParams(
                     compact?-1:0,Ui.dp(this,50),compact?0:1);
             partialParams.setMargins(Ui.dp(this,5),Ui.dp(this,5),
                     Ui.dp(this,5),Ui.dp(this,5));
             buttons.addView(partial,partialParams);
             partial.setOnClickListener(v->showManualDebtPayment(debt));
-            Button paid=actionButton("✓ تم السداد",true);
+            Button paid=actionButton("✓ إغلاق الدفتر (دون حساب)",false);
             paid.setTextSize(14);
             LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(
                     compact?-1:0,Ui.dp(this,50),compact?0:1);
@@ -2216,7 +2239,7 @@ public final class MainActivity extends Activity {
                     Ui.dp(this,5),Ui.dp(this,5));
             buttons.addView(paid,pp);
             paid.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("تأكيد اكتمال السداد")
-                    .setMessage("سيصبح المتبقي صفرًا ويُنقل الدين إلى قسم المسددة، من دون تغيير أي رصيد حساب.")
+                    .setMessage("تأكيد: هذا تسجيل يدوي في دفتر الدين فقط، ولن تتم إضافة أو خصم أي مبلغ من الحسابات. إذا وصل أو خرج منك مال فعليًا استخدم «سداد فعلي عبر حساب» بدلًا منه.")
                     .setNegativeButton("إلغاء", null).setPositiveButton("تم السداد", (d,w) -> {
                         try { db.markDebtPaid(debt.id);
                             Toast.makeText(this,"تم تسجيل السداد وتحديث المتبقي",Toast.LENGTH_LONG).show();
@@ -2314,6 +2337,58 @@ public final class MainActivity extends Activity {
                 .setTitle("سجل دين "+debt.personName)
                 .setView(scroll).setPositiveButton("إغلاق",null).create();
         historyDialog[0].show();
+    }
+
+    /**
+     * A real repayment must post to the selected account AND close the debt movement
+     * in one SQLite transaction. The existing ledger-only controls remain record-only.
+     */
+    private void showAccountLinkedDebtPayment(Models.DebtSummary debt) {
+        List<Models.Account> choices=new ArrayList<>();
+        for(Models.Account account:db.getAccounts())
+            if(debt.currency.equals(account.currency))choices.add(account);
+        if(choices.isEmpty()) {
+            Toast.makeText(this,"لا يوجد حساب نشط بعملة "+debt.currency+" لاستلام أو دفع السداد",Toast.LENGTH_LONG).show();
+            return;
+        }
+        List<String> accountLabels=new ArrayList<>();
+        for(Models.Account account:choices)
+            accountLabels.add(account.name+" • "+Money.format(account.balanceMinor,account.currency));
+        LinearLayout form=Ui.column(this);
+        form.setPadding(Ui.dp(this,18),Ui.dp(this,6),Ui.dp(this,18),Ui.dp(this,12));
+        boolean incoming=FinanceRules.DEBT_RECEIVABLE.equals(debt.direction);
+        form.addView(Ui.text(this,"المتبقي: "+Money.format(debt.remainingMinor,debt.currency)+
+                (incoming?"\nسيُضاف المبلغ للحساب المختار ويُنقص من الدين إليك.":
+                        "\nسيُخصم المبلغ من الحساب المختار ويُنقص من الدين عليك."),
+                13,Ui.MUTED,false),fieldWrapParams());
+        EditText amount=input("مبلغ السداد");
+        amount.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        form.addView(amount,fieldParams());
+        Spinner account=spinner(accountLabels);
+        form.addView(label(incoming?"استلمت على حساب":"دفعت من حساب"),fieldWrapParams());
+        form.addView(account,fieldParams());
+        EditText note=input("ملاحظة اختيارية");
+        form.addView(note,fieldParams());
+        AlertDialog dialog=new AlertDialog.Builder(this)
+                .setTitle(incoming?"استلام سداد فعلي":"دفع سداد فعلي")
+                .setView(form).setNegativeButton("إلغاء",null)
+                .setPositiveButton("تسجيل السداد",null).create();
+        dialog.setOnShowListener(v->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(w->{
+            try {
+                Long amountMinor=Money.parseMinor(amount.getText().toString());
+                if(amountMinor==null || amountMinor<=0 || amountMinor>debt.remainingMinor)
+                    throw new IllegalArgumentException("المبلغ غير صحيح أو أكبر من المتبقي في الدين");
+                Models.Account selected=choices.get(account.getSelectedItemPosition());
+                // Exact selected debt id: never allocate a repayment to another old debt.
+                db.addDebtPaymentToExactDebt(debt.id,amountMinor,selected.id,note.getText().toString());
+                dialog.dismiss();
+                Toast.makeText(this,"تم تسجيل السداد في الحساب ودفتر الدين معًا",Toast.LENGTH_LONG).show();
+                showDebtPersonDetails(debt.personId,debt.personName,debt.direction);
+            }catch(Exception error) {
+                Toast.makeText(this,error.getMessage()==null?"تعذر تسجيل السداد":error.getMessage(),Toast.LENGTH_LONG).show();
+            }
+        }));
+        dialog.show();
     }
 
     private void showManualDebtPayment(Models.DebtSummary debt){
@@ -3345,6 +3420,10 @@ public final class MainActivity extends Activity {
         Button addPart = actionButton("＋ إضافة جزء", false);
         splitBox.addView(addPart, fieldParams());
         form.addView(splitBox);
+        SplitRemainderUi.bind(splitRowsBox, () -> {
+            Long total = Money.parseMinor(amount.getText().toString());
+            return total == null ? -1L : total;
+        }, amount);
 
         EditText note = input("ملاحظة اختيارية");
         note.setMinLines(2);
@@ -3536,55 +3615,132 @@ public final class MainActivity extends Activity {
     }
 
     private void showAuditHistory(){
+        showAuditHistory(0,"","");
+    }
+
+    /** Filterable and paginated audit ledger. All event views are read-only. */
+    private void showAuditHistory(int pageIndex,String query,String selectedTable){
         addScreenVisible=false;subScreenVisible=true;
-        LinearLayout page=Ui.column(this);page.setBackgroundColor(Ui.BACKGROUND);
+        final int PAGE_SIZE=40;
+        int total=db.countChangeHistory(query,selectedTable);
+        int pageCount=Math.max(1,(total+PAGE_SIZE-1)/PAGE_SIZE);
+        int safePage=Math.max(0,Math.min(pageIndex,pageCount-1));
+        List<FinanceDbHelper.AuditEntry> events=
+                db.getChangeHistoryPage(safePage,PAGE_SIZE,query,selectedTable);
+
+        LinearLayout page=Ui.column(this);
+        page.setBackgroundColor(Ui.BACKGROUND);
         page.addView(pageHeader("سجل التعديلات",this::showSettings),
                 new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,78)));
-        ScrollView scroll=new ScrollView(this);LinearLayout body=Ui.column(this);
-        body.setPadding(Ui.dp(this,16),Ui.dp(this,12),Ui.dp(this,16),Ui.dp(this,32));
-        body.addView(Ui.text(this,"مراجعة واضحة لما أُضيف أو عُدّل أو حُذف. اضغط على أي بطاقة لعرض التفاصيل، ويظهر زر التراجع فقط عندما يكون آمنًا ماليًا.",12,Ui.MUTED,false));
-        List<FinanceDbHelper.AuditEntry> events=db.getChangeHistory(200);
-        Map<Long,String> auditAccounts=new LinkedHashMap<>();
-        Map<Long,String> auditCurrencies=new LinkedHashMap<>();
-        Map<Long,String> auditCategories=new LinkedHashMap<>();
-        // Two small, read-only lookups for the screen; avoid one DB query per audit card.
-        try(android.database.Cursor accounts=db.getReadableDatabase().rawQuery(
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout body=Ui.column(this);
+        body.setPadding(Ui.dp(this,16),Ui.dp(this,10),Ui.dp(this,16),Ui.dp(this,32));
+
+        body.addView(Ui.text(this,"كل تغيير موثّق مع قبل وبعد. التراجع متاح فقط لحالات بسيطة لا تهدد الحسابات أو الديون. الأحداث القديمة التي لم تحفظ تفاصيلها لا يمكن استعادتها بالتخمين.",
+                12,Ui.MUTED,false),fieldWrapParams());
+
+        LinearLayout tools=Ui.row(this);
+        Button search=actionButton(query.isEmpty()?"⌕ بحث في السجل":"⌕ "+query,false);
+        search.setOnClickListener(v->{
+            EditText input=input("بحث بالعملية أو المبلغ أو رقم السجل");
+            input.setSingleLine(true);
+            input.setText(query);
+            new AlertDialog.Builder(this).setTitle("بحث في كل سجل التعديلات")
+                    .setView(input).setNegativeButton("إلغاء",null)
+                    .setNeutralButton("مسح البحث",(d,w)->showAuditHistory(0,"",selectedTable))
+                    .setPositiveButton("بحث",(d,w)->showAuditHistory(0,input.getText().toString().trim(),selectedTable))
+                    .show();
+        });
+        LinearLayout.LayoutParams toolParams=new LinearLayout.LayoutParams(0,Ui.dp(this,48),1);
+        toolParams.setMargins(0,0,Ui.dp(this,6),0);
+        tools.addView(search,toolParams);
+        String[] filters={"الكل","العمليات","حركات الدين","الحسابات","التصنيفات","أجزاء العمليات"};
+        String[] tables={"","transactions","debt_movements","accounts","categories","transaction_splits"};
+        String currentFilter="الكل";
+        for(int i=0;i<tables.length;i++)if(tables[i].equals(selectedTable))currentFilter=filters[i];
+        Button filter=actionButton("≡ "+currentFilter,false);
+        filter.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("فلترة حسب نوع التعديل")
+                .setItems(filters,(d,which)->showAuditHistory(0,query,tables[which]))
+                .setNegativeButton("إلغاء",null).show());
+        tools.addView(filter,new LinearLayout.LayoutParams(0,Ui.dp(this,48),1));
+        body.addView(tools,fieldWrapParams());
+        body.addView(Ui.text(this,total+" حدث • صفحة "+(safePage+1)+" من "+pageCount,
+                12,Ui.MUTED,false),fieldWrapParams());
+
+        Map<Long,String> accounts=new LinkedHashMap<>();
+        Map<Long,String> currencies=new LinkedHashMap<>();
+        Map<Long,String> categories=new LinkedHashMap<>();
+        Map<Long,String> debtNames=new LinkedHashMap<>();
+        Map<Long,String> debtCurrencies=new LinkedHashMap<>();
+        Map<Long,String> personNames=new LinkedHashMap<>();
+        try(android.database.Cursor c=db.getReadableDatabase().rawQuery(
                 "SELECT id,name,currency FROM accounts",null)) {
-            while(accounts.moveToNext()) {
-                auditAccounts.put(accounts.getLong(0),accounts.getString(1));
-                auditCurrencies.put(accounts.getLong(0),accounts.getString(2));
+            while(c.moveToNext()){accounts.put(c.getLong(0),c.getString(1));currencies.put(c.getLong(0),c.getString(2));}
+        }
+        try(android.database.Cursor c=db.getReadableDatabase().rawQuery(
+                "SELECT id,name FROM categories",null)) {
+            while(c.moveToNext())categories.put(c.getLong(0),c.getString(1));
+        }
+        try(android.database.Cursor c=db.getReadableDatabase().rawQuery(
+                "SELECT id,name FROM debt_people",null)) {
+            while(c.moveToNext())personNames.put(c.getLong(0),c.getString(1));
+        }
+        try(android.database.Cursor c=db.getReadableDatabase().rawQuery(
+                "SELECT d.id,p.name,d.direction,d.currency FROM debts d " +
+                "LEFT JOIN debt_people p ON p.id=d.person_id",null)) {
+            while(c.moveToNext()){
+                long debtId=c.getLong(0);
+                String name=c.getString(1)==null?"شخص غير متاح":c.getString(1);
+                String dir="RECEIVABLE".equals(c.getString(2))?"إلي":"عليّ";
+                debtNames.put(debtId,name+" • "+dir);
+                debtCurrencies.put(debtId,c.getString(3));
             }
         }
-        try(android.database.Cursor categories=db.getReadableDatabase().rawQuery(
-                "SELECT id,name FROM categories",null)) {
-            while(categories.moveToNext())
-                auditCategories.put(categories.getLong(0),categories.getString(1));
-        }
+
         if(events.isEmpty())
-            body.addView(Ui.text(this,"لا توجد تعديلات مسجّلة بعد تحديث هذه النسخة.",14,Ui.MUTED,false));
+            body.addView(Ui.text(this,"لا توجد أحداث مطابقة للبحث أو الفلتر الحالي.",
+                    14,Ui.MUTED,false),fieldWrapParams());
+
         for(FinanceDbHelper.AuditEntry entry:events) {
             String title=AuditPresentation.title(entry.action,entry.table,entry.before,entry.after);
             List<String> details=AuditPresentation.details(entry.action,entry.before,entry.after,
-                    auditAccounts,auditCategories,auditCurrencies);
+                    accounts,categories,currencies,debtNames,debtCurrencies,personNames);
             LinearLayout card=Ui.column(this);
-            card.setPadding(Ui.dp(this,14),Ui.dp(this,12),Ui.dp(this,14),Ui.dp(this,12));
-            card.setBackground(Ui.layeredSoftBackground(this,16));
-            card.addView(Ui.text(this,title,16,Ui.TEXT,true));
+            card.setPadding(Ui.dp(this,16),Ui.dp(this,13),Ui.dp(this,16),Ui.dp(this,14));
+            card.setBackground(Ui.glassListBackground(this,18));
+            card.setElevation(Ui.dp(this,1));
+            TextView heading=Ui.text(this,title,15,Ui.TEXT,true);
+            card.addView(heading,fieldWrapParams());
             String when=new SimpleDateFormat("dd/MM/yyyy  hh:mm a",new Locale("ar"))
                     .format(new Date(entry.createdAt));
-            card.addView(Ui.text(this,when+"  •  سجل رقم "+entry.recordId,11,Ui.MUTED,false));
-            int visible=Math.min(2,details.size());
-            for(int i=0;i<visible;i++)
-                card.addView(Ui.text(this,details.get(i),13,Ui.TEXT,false));
-            card.addView(Ui.text(this,"اضغط لعرض تفاصيل هذا التغيير",11,Ui.VIOLET,false));
+            card.addView(Ui.text(this,when+"  •  حدث #"+entry.id+"  •  سجل #"+entry.recordId,
+                    11,Ui.MUTED,false),fieldWrapParams());
+
+            for(int i=0;i<Math.min(2,details.size());i++)
+                card.addView(Ui.text(this,details.get(i),13,Ui.TEXT,false),fieldWrapParams());
+
+            TextView more=Ui.text(this,
+                    details.size()>2?"اضغط لعرض "+(details.size()-2)+" تفاصيل إضافية":
+                            "اضغط لعرض تفاصيل هذا التغيير",
+                    12,Ui.VIOLET,true);
+            card.addView(more,fieldWrapParams());
             card.setOnClickListener(v->{
-                LinearLayout more=Ui.column(this);
-                more.setPadding(Ui.dp(this,20),Ui.dp(this,8),Ui.dp(this,20),Ui.dp(this,14));
-                for(String line:details)more.addView(Ui.text(this,line,14,Ui.TEXT,false),fieldParams());
-                more.addView(Ui.text(this,"رقم العملية/السجل: "+entry.recordId+" — "+when,
-                        12,Ui.MUTED,false),fieldParams());
-                new AlertDialog.Builder(this).setTitle(title).setView(more)
-                        .setPositiveButton("إغلاق",null).show();
+                ScrollView detailScroll=new ScrollView(this);
+                LinearLayout content=Ui.column(this);
+                content.setPadding(Ui.dp(this,16),Ui.dp(this,8),Ui.dp(this,16),Ui.dp(this,20));
+                content.addView(Ui.text(this,"التاريخ: "+when+"\nرقم الحدث: "+entry.id+
+                        "\nرقم السجل: "+entry.recordId,12,Ui.MUTED,false),fieldWrapParams());
+                for(String line:details)
+                    content.addView(Ui.text(this,line,14,Ui.TEXT,false),fieldWrapParams());
+                detailScroll.addView(content);
+                AlertDialog.Builder dialog=new AlertDialog.Builder(this).setTitle(title)
+                        .setView(detailScroll).setNegativeButton("إغلاق",null);
+                if("transactions".equals(entry.table) && db.getTransactionById(entry.recordId)!=null)
+                    dialog.setPositiveButton("عرض العملية",(d,w)->{
+                        Models.Transaction transaction=db.getTransactionById(entry.recordId);
+                        if(transaction!=null)showTransactionDetails(transaction);
+                    });
+                dialog.show();
             });
             Ui.pressAnimation(card);
             if(entry.undoable && "transactions".equals(entry.table)) {
@@ -3592,20 +3748,40 @@ public final class MainActivity extends Activity {
                 Button undo=miniButton(deleted?"↶ استرجاع العملية المحذوفة":"↶ تراجع عن تغيير التصنيف");
                 undo.setOnClickListener(v->new AlertDialog.Builder(this)
                     .setTitle(deleted?"استرجاع العملية المحذوفة؟":"تراجع عن التصنيف؟")
-                    .setMessage(deleted?"سيُعاد سجل العملية اليدوية ورصيد الحساب داخل معاملة واحدة. لن يُسترجع حذف الديون أو التحويلات.":
-                            "سيتم إرجاع التصنيف السابق وإعادة احتساب الرصيد. لا يمكن التراجع عن تعديلات أقدم إذا تغيرت الحركة بعدها.")
+                    .setMessage(deleted?"ستُسترجع العملية اليدوية والرصيد داخل معاملة واحدة؛ لا يشمل الديون والتحويلات.":
+                            "سيُعاد التصنيف السابق بعد فحص عدم تغيّر العملية. لا يوجد تراجع مالي تلقائي عن حركات الدين.")
                     .setNegativeButton("إلغاء",null).setPositiveButton("تراجع",(d,w)->{
                         try{
                             if(deleted)db.undoDeletedSimpleTransaction(entry.id);
                             else db.undoLatestSimpleCategoryChange(entry.id);
-                            showAuditHistory();
-                        }catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}
+                            showAuditHistory(safePage,query,selectedTable);
+                        }catch(Exception error){
+                            Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();
+                        }
                     }).show());
-                card.addView(undo,fieldParams());
+                card.addView(undo,fieldWrapParams());
             }
-            body.addView(card,fieldParams());
+            body.addView(card,fieldWrapParams()); // WRAP_CONTENT: never clip audit details.
         }
-        scroll.addView(body);page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));setContentView(page);Ui.animateScreen(page);
+
+        if(pageCount>1) {
+            LinearLayout pagination=Ui.row(this);
+            if(safePage>0) {
+                Button newer=actionButton("الأحدث",false);
+                newer.setOnClickListener(v->showAuditHistory(safePage-1,query,selectedTable));
+                pagination.addView(newer,new LinearLayout.LayoutParams(0,Ui.dp(this,48),1));
+            }
+            if(safePage<pageCount-1) {
+                Button older=actionButton("الأقدم",false);
+                older.setOnClickListener(v->showAuditHistory(safePage+1,query,selectedTable));
+                pagination.addView(older,new LinearLayout.LayoutParams(0,Ui.dp(this,48),1));
+            }
+            body.addView(pagination,fieldWrapParams());
+        }
+        scroll.addView(body);
+        page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        setContentView(page);
+        Ui.animateScreen(page);
     }
 
     private void showCategoryManagement(){
@@ -3777,6 +3953,7 @@ public final class MainActivity extends Activity {
         category.setAdapter(adapter(labels));
         EditText amount = input("مبلغ الجزء");
         amount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        amount.setTag(SplitRemainderUi.AMOUNT_FIELD_TAG);
         Button remove = actionButton("حذف الجزء", false);
         remove.setTextColor(Ui.EXPENSE);
 
@@ -3792,10 +3969,12 @@ public final class MainActivity extends Activity {
             }
             rows.remove(ref);
             container.removeView(card);
+            SplitRemainderUi.refresh(container);
         });
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.setMargins(0, Ui.dp(this, 6), 0, Ui.dp(this, 6));
         container.addView(card, params);
+        SplitRemainderUi.refresh(container);
     }
 
     private TextView label(String text) {
@@ -3849,6 +4028,13 @@ public final class MainActivity extends Activity {
         button.setBackground(Ui.glassActionBackground(this, 16, primary));
         Ui.pressAnimation(button);
         return button;
+    }
+
+    private LinearLayout.LayoutParams fieldWrapParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0,Ui.dp(this,6),0,Ui.dp(this,6));
+        return params;
     }
 
     private LinearLayout.LayoutParams fieldParams() {

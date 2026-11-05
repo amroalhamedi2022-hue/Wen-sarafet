@@ -8,8 +8,10 @@ android {
         applicationId "app.wensarafet.tracker"
         minSdk 33
         targetSdk 35
-        versionCode 21
-        versionName "1.8.5"
+        versionCode 27
+        versionName "1.9"
+        // Test APK only; the release applicationId, permissions and signing stay identical.
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -44,4 +46,10 @@ android {
 dependencies {
     // Android-only visual module: no repository access or finance logic.
     implementation project(":glass-engine")
+    // MIT-licensed native navigation optics; UI rendering only (no permissions).
+    implementation "com.github.QWEA0:liquidglass:v2.0.11"
+    // Android tests only: none of these dependencies enter the production APK.
+    androidTestImplementation "androidx.test:core:1.6.1"
+    androidTestImplementation "androidx.test:runner:1.6.2"
+    androidTestImplementation "androidx.test.ext:junit:1.2.1"
 }

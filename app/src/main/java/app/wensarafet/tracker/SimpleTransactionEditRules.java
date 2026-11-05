@@ -13,12 +13,21 @@ public final class SimpleTransactionEditRules {
             throw new IllegalArgumentException("مبلغ العملية غير صحيح");
         if (!FinanceRules.EXPENSE.equals(type) && !FinanceRules.INCOME.equals(type))
             throw new IllegalArgumentException("لا يمكن تغيير مبلغ هذا النوع من الحركات");
-        if (!affectsBalance || (FinanceRules.EXPENSE.equals(type) && excludedExpense))
+        if (!affectsBalance)
             return 0L;
         // On an expense, restoring the old debit and applying the new one yields before-after.
         // On income, reversing the previous credit yields after-before.
         return FinanceRules.EXPENSE.equals(type)
                 ? Math.subtractExact(beforeMinor, afterMinor)
                 : Math.subtractExact(afterMinor, beforeMinor);
+    }
+
+    /** Reconcile the persisted posting, not the current category's display status. */
+    public static long postedBalanceDelta(String type, long beforePosted, long afterPosted) {
+        if (!FinanceRules.EXPENSE.equals(type) && !FinanceRules.INCOME.equals(type))
+            throw new IllegalArgumentException("نوع العملية غير صالح");
+        return FinanceRules.EXPENSE.equals(type)
+                ? Math.subtractExact(beforePosted, afterPosted)
+                : Math.subtractExact(afterPosted, beforePosted);
     }
 }

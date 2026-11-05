@@ -30,9 +30,9 @@ public final class FinanceCoreTest {
         if (!FinanceRules.splitsMatch(10_000L, Arrays.asList(6_000L, 3_000L, 1_000L))) fail("valid split rejected");
         if (FinanceRules.splitsMatch(10_000L, Arrays.asList(6_000L, 3_000L))) fail("invalid split accepted");
         if (FinanceRules.splitsMatch(Long.MAX_VALUE, Arrays.asList(Long.MAX_VALUE, 1L))) fail("split overflow accepted");
-        equalsLong(0L, FinanceRules.expenseBalanceImpact(10_000L, true, null), "brother-only expense balance impact");
+        equalsLong(10_000L, FinanceRules.expenseBalanceImpact(10_000L, true, null), "excluded brother payment still debits account");
         equalsLong(10_000L, FinanceRules.expenseBalanceImpact(10_000L, false, null), "normal expense balance impact");
-        equalsLong(6_000L, FinanceRules.expenseBalanceImpact(10_000L, false, Arrays.asList(6_000L)), "split brother expense balance impact");
+        equalsLong(10_000L, FinanceRules.expenseBalanceImpact(10_000L, false, Arrays.asList(6_000L)), "split debt and excluded amounts still debit account");
         equalsLong(6_000L, DebtLedgerRules.remaining(10_000L, 4_000L), "partial debt remaining");
         long[] allocations = DebtLedgerRules.allocatePayment(7_000L, Arrays.asList(5_000L, 4_000L));
         equalsLong(5_000L, allocations[0], "debt payment first balance");

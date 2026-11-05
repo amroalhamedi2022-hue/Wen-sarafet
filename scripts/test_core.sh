@@ -167,6 +167,9 @@ java -cp "$OUT_DIR" NonNegativeBalanceRulesTest
 python3 "$PROJECT_DIR/tests/debt_safe_zone_contract.py"
 
 python3 "$PROJECT_DIR/tests/mixed_currency_transfer_ui_contract.py"
+python3 "$PROJECT_DIR/tests/debt_cashflow_integrity_contract.py"
+python3 "$PROJECT_DIR/tests/debt_audit_history_contract.py"
+python3 "$PROJECT_DIR/tests/captured_import_atomicity_contract.py"
 python3 "$PROJECT_DIR/tests/financial_safe_zone_guard.py"
 
 compile \

@@ -14,7 +14,7 @@ RESTORE = SOURCE.split("public static synchronized void restore(", 1)[1].split(
     "private static Properties collectPreferences", 1
 )[0]
 
-assert "static final int DB_VERSION = 13" in HELPER
+assert "static final int DB_VERSION = 15" in HELPER
 assert "validateSqlite(temp)" in RESTORE
 assert RESTORE.index("validateSqlite(temp)") < RESTORE.index("target.renameTo(old)")
 assert RESTORE.index("checkpointLiveDatabase(target)") < RESTORE.index("target.renameTo(old)")
@@ -60,7 +60,7 @@ assert rollback.index('new File(target.getPath() + "-wal").delete()') < rollback
 assert rollback.index('new File(target.getPath() + "-shm").delete()') < rollback.index("old.renameTo(target)")
 
 
-def make_database(path, version=13, missing_splits=False, orphan=False):
+def make_database(path, version=15, missing_splits=False, orphan=False):
     with sqlite3.connect(path) as db:
         db.executescript("""
             CREATE TABLE accounts(id INTEGER PRIMARY KEY, balance_minor INTEGER NOT NULL);
@@ -80,7 +80,7 @@ def preflight_sql(path):
     # Equivalent SQLite checks to the Android preflight (no replacement performed).
     with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as db:
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        if not 1 <= version <= 13:
+        if not 1 <= version <= 15:
             return False
         if db.execute("PRAGMA integrity_check").fetchall() != [("ok",)]:
             return False
@@ -96,9 +96,11 @@ def preflight_sql(path):
 with tempfile.TemporaryDirectory() as directory:
     folder = Path(directory)
     cases = {
+        "valid-v15": (15, False, False, True),
+        "valid-v14": (14, False, False, True),
         "valid-v13": (13, False, False, True),
         "valid-old-v8": (8, False, False, True),
-        "future-v14": (14, False, False, False),
+        "future-v16": (16, False, False, False),
         "missing-splits": (13, True, False, False),
         "broken-financial-reference": (13, False, True, False),
         "unversioned": (0, False, False, False),

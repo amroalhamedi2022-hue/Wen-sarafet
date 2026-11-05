@@ -31,8 +31,7 @@ public final class SplitDebtRules {
         return sum;
     }
     public static boolean affectsOutgoingBalance(Models.SplitInput part, boolean ordinaryCategoryExcluded) {
-        if (FinanceRules.SPECIAL_DEBT.equals(part.specialKind)) return false;
-        if (FinanceRules.SPECIAL_DEBT_PAYMENT.equals(part.specialKind)) return true;
-        return !ordinaryCategoryExcluded;
+        if (part == null) throw new IllegalArgumentException("جزء العملية غير صالح");
+        return true; // Debt, repayment, and excluded spending are still cash outflows.
     }
 }

@@ -58,6 +58,7 @@ public final class QuickActionActivity extends Activity {
         contactPickerRow.addView(chooseContact,
                 new LinearLayout.LayoutParams(0,Ui.dp(this,42),1));
         selectedContactLabel=Ui.text(this,"",12,Ui.MUTED,false);
+        selectedContactLabel.setVisibility(View.GONE);
         form.addView(phoneRow,params());
         form.addView(contactPickerRow,params());
         form.addView(selectedContactLabel,params());
@@ -86,34 +87,66 @@ public final class QuickActionActivity extends Activity {
     }
 
     private void openContactPicker() {
-        if(pendingContactPhone==null)return;
-        try {
-            Intent picker=new Intent(Intent.ACTION_PICK,
-                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI);
-            picker.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivityForResult(picker,CONTACT_PICK_REQUEST);
-        } catch(Exception error) {
-            Toast.makeText(this,"تعذر فتح جهات الاتصال",Toast.LENGTH_LONG).show();
+        if(pendingContactPhone==null || isFinishing() || isDestroyed())return;
+        Intent[] choices=new Intent[] {
+                new Intent(Intent.ACTION_PICK)
+                        .setType(ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE),
+                new Intent(Intent.ACTION_GET_CONTENT)
+                        .setType(ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE),
+                new Intent(Intent.ACTION_PICK,
+                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI),
+                new Intent(Intent.ACTION_GET_CONTENT)
+                        .setType(ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE)
+        };
+        for(int i=0;i<choices.length;i++) {
+            Intent choice=choices[i];
+            choice.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            try {
+                startActivityForResult(choice,CONTACT_PICK_REQUEST);
+                return;
+            } catch(RuntimeException error) {
+                // Another OEM system picker may support the next method.
+                android.util.Log.w("WenContactPicker",
+                        "Phone picker option "+i+" unavailable: "+error.getClass().getSimpleName());
+            }
         }
+        new AlertDialog.Builder(this)
+                .setTitle("تعذّر فتح جهات الاتصال")
+                .setMessage("هذا الجهاز لا يوفّر حاليًا نافذة متوافقة لاختيار رقم من جهات الاتصال. افتح تطبيق جهات الاتصال أو فعّله ثم جرّب مرة ثانية، أو أدخل الرقم يدويًا. لا يحتاج وين صرفت إلى إذن قراءة كل الأسماء.")
+                .setPositiveButton("حسنًا",null)
+                .show();
     }
 
     @Override protected void onActivityResult(int requestCode,int resultCode,Intent data) {
         super.onActivityResult(requestCode,resultCode,data);
         if(requestCode!=CONTACT_PICK_REQUEST || resultCode!=RESULT_OK ||
                 data==null || data.getData()==null || pendingContactPhone==null)return;
-        try(Cursor c=getContentResolver().query(data.getData(),
-                new String[]{ContactsContract.CommonDataKinds.Phone.NUMBER,
-                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME},
-                null,null,null)) {
-            if(c==null || !c.moveToFirst())throw new IllegalArgumentException("لا يوجد رقم في جهة الاتصال");
-            String mobile=PalestinianMobileNumber.normalize(c.getString(0));
+        try(Cursor c=getContentResolver().query(data.getData(),null,null,null,null)) {
+            if(c==null || !c.moveToFirst())
+                throw new IllegalArgumentException("الجهة المختارة لا تحتوي رقم هاتف");
+            // OEM pickers may omit DISPLAY_NAME or return a different projection.
+            // Query only the ONE URI selected by the user, not their address book.
+            int numberIndex=c.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER);
+            if(numberIndex<0)
+                throw new IllegalArgumentException("لم يرجع تطبيق جهات الاتصال رقمًا");
+            String mobile=PalestinianMobileNumber.normalize(c.getString(numberIndex));
             if(mobile==null)throw new IllegalArgumentException(
                     "الرقم المختار ليس جوالًا فلسطينيًا صالحًا (059 أو 056)");
             pendingContactPhone.setText(mobile.substring(2));
-            if(selectedContactLabel!=null)
-                selectedContactLabel.setText("✓ "+c.getString(1)+"  •  "+mobile);
+            if(selectedContactLabel!=null) {
+                int nameIndex=c.getColumnIndex(
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);
+                String displayName=nameIndex>=0?c.getString(nameIndex):null;
+                selectedContactLabel.setText("✓ "+
+                        (displayName==null || displayName.trim().isEmpty()?
+                                "الجهة المختارة":displayName)+"  •  "+mobile);
+                selectedContactLabel.setVisibility(View.VISIBLE);
+            }
         } catch(Exception error) {
-            Toast.makeText(this,error.getMessage()==null?"تعذر قراءة الرقم":error.getMessage(),
+            android.util.Log.w("WenContactPicker",
+                    "Selected phone could not be read: "+error.getClass().getSimpleName());
+            Toast.makeText(this,error instanceof IllegalArgumentException?
+                            error.getMessage():"تعذّر قراءة الرقم المختار. جرّب جهة اتصال أخرى.",
                     Toast.LENGTH_LONG).show();
         }
     }
