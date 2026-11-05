@@ -73,10 +73,18 @@ split_ui_hooks = [
     "            SplitRemainderUi.refresh(container);\n",
     "        SplitRemainderUi.refresh(container);\n",
 ]
+# Approved split EDIT display fix: cents are never passed through binary double.
+# Restore this one presentation-only line before comparing MainActivity to
+# signed 1.8.8. Persisted values, debt ledger, DB and save handlers stay frozen.
+exact_display = "            row.amount.setText(SplitRemainderUi.formatMinor(split.amountMinor));\\n"
+previous_display = '            row.amount.setText(String.format(Locale.ROOT, "%.2f", split.amountMinor / 100.0));\\n'
+assert current_main.count(exact_display) == 1, "SAFE ZONE: split edit should display exact stored minor units"
 cleaned_main = current_main.replace(visual_hook, "")
 for hook in split_ui_hooks:
     assert cleaned_main.count(hook) == 1, "Unauthorized/missing split hook: " + repr(hook)
     cleaned_main = cleaned_main.replace(hook, "", 1)
+assert cleaned_main.count(exact_display) == 1
+cleaned_main = cleaned_main.replace(exact_display, previous_display, 1)
 assert cleaned_main == baseline(MAIN), (
     "SAFE ZONE: MainActivity changed outside nav presentation + the five approved split UI hooks"
 )
@@ -91,6 +99,8 @@ assert "Money.parseMinor" in split_ui
 assert "SplitRemainderRules.lastPart" in split_ui
 assert "Math.addExact" in split_calculation and "Math.subtractExact" in split_calculation
 assert "derived.setKeyListener(null)" in split_ui, "Last split amount must be read-only"
+assert "BigDecimal.valueOf(minorUnits, 2).toPlainString()" in split_ui, "Exact edit display must avoid doubles"
+assert "entry.getKey().removeTextChangedListener(entry.getValue());" in split_ui, "Removed split fields must detach stale observers"
 assert "if (becameEarlierPart) derived.setText(\"\");" in split_ui, "Former automatic remainder must become a blank editable entry"
 assert "derived.setContentDescription(\"مبلغ الجزء\");" in split_ui, "Accessibility label must be restored after adding a part"
 assert "SplitRemainderUi.refresh(container);" in current_main, "Add/remove must recalculate final amount"
