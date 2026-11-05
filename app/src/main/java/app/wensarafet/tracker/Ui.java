@@ -460,6 +460,16 @@ public final class Ui {
                     && (view.isClickable() || view.isLongClickable())) {
                 final app.wensarafet.glass.WenFabBubbleDrawable bubble =
                         (app.wensarafet.glass.WenFabBubbleDrawable) view.getBackground();
+                // A lightweight over-glyph optical crown from the sandbox.
+                // ViewOverlay is visual-only and cannot receive any touch.
+                final app.wensarafet.glass.WenFabOpticalCrownDrawable crown =
+                        new app.wensarafet.glass.WenFabOpticalCrownDrawable(
+                                view.getResources().getDisplayMetrics().density);
+                crown.setBounds(0, 0, view.getWidth(), view.getHeight());
+                view.getOverlay().add(crown);
+                view.addOnLayoutChangeListener((v, left, top, right, bottom,
+                        oldLeft, oldTop, oldRight, oldBottom) ->
+                        crown.setBounds(0, 0, right - left, bottom - top));
                 final android.animation.ValueAnimator[] morph = {null};
                 view.setOnTouchListener((v, e) -> {
                     final int action = e.getActionMasked();
@@ -470,14 +480,20 @@ public final class Ui {
                     if (morph[0] != null) morph[0].cancel();
                     if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
                         bubble.setPress(0f);
+                        crown.setPress(0f);
+                        v.setScaleX(1f);
+                        v.setScaleY(1f);
                         return false;
                     }
                     morph[0] = android.animation.ValueAnimator.ofFloat(
                             bubble.getPress(), down ? 1f : 0f);
                     morph[0].setDuration(down ? 155L : 245L);
                     morph[0].setInterpolator(new PathInterpolator(.2f, .8f, .2f, 1f));
-                    morph[0].addUpdateListener(
-                            a -> bubble.setPress((Float) a.getAnimatedValue()));
+                    morph[0].addUpdateListener(a -> {
+                        float t = (Float) a.getAnimatedValue();
+                        bubble.setPress(t);
+                        crown.setPress(t);
+                    });
                     morph[0].start();
                     v.animate().cancel();
                     v.animate().scaleX(down ? .94f : 1f).scaleY(down ? .94f : 1f)
@@ -485,10 +501,15 @@ public final class Ui {
                     return false; // Never steal existing FAB click/hold actions.
                 });
                 view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
-                    @Override public void onViewAttachedToWindow(View v) { }
+                    @Override public void onViewAttachedToWindow(View v) {
+                        crown.setBounds(0, 0, v.getWidth(), v.getHeight());
+                        v.getOverlay().add(crown);
+                    }
                     @Override public void onViewDetachedFromWindow(View v) {
                         if (morph[0] != null) morph[0].cancel();
                         bubble.setPress(0f);
+                        crown.setPress(0f);
+                        v.getOverlay().remove(crown);
                         v.animate().cancel();
                         v.setScaleX(1f);
                         v.setScaleY(1f);
