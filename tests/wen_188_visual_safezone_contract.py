@@ -27,6 +27,8 @@ ALLOWED = {
     "docs/design/WEN_188_VISUAL_REVIEW_EXECUTION_20261104.md",
     ".github/workflows/wen-188-visual-safe-review.yml",
     "tests/wen_188_visual_safezone_contract.py",
+    ".github/workflows/unsigned-release-candidate.yml",
+    "scripts/verify_upgrade_apk.sh",
 }
 
 def git(*args):
@@ -134,7 +136,13 @@ test_deps = (
 assert current_gradle.count(test_runner) == 1 and current_gradle.count(test_deps) == 1, (
     "Instrumentation changes must be test APK only"
 )
-assert current_gradle.replace(test_runner, "").replace(test_deps, "").replace(dependency, "") == baseline(APP_GRADLE), (
+# Packaging-only release bump: remove exact approved version deltas before
+# comparing the entire Gradle signing/package/dependency configuration.
+restored_gradle = current_gradle.replace(test_runner, "").replace(test_deps, "").replace(dependency, "")
+assert restored_gradle.count('versionCode 26') == 1
+assert restored_gradle.count('versionName "1.8.10"') == 1
+restored_gradle = restored_gradle.replace("versionCode 26", "versionCode 24").replace('versionName "1.8.10"', 'versionName "1.8.8"')
+assert restored_gradle == baseline(APP_GRADLE), (
     "SAFE ZONE: unexpected build, package, version, dependency or signing mutation"
 )
 settings = (ROOT / SETTINGS).read_text(encoding="utf-8")
@@ -155,7 +163,7 @@ for callback in [
     "analytics.setOnClickListener(v -> showAnalyticsScreen());",
 ]:
     assert callback in current_main, f"SAFE ZONE: changed original callback: {callback}"
-assert 'versionName "1.8.8"' in current_gradle
+assert 'versionName "1.8.10"' in current_gradle
 rules = (ROOT / "proguard-rules.pro").read_text(encoding="utf-8")
 optional_platform_warnings = (
     "\n# Optional API 36 optical classes in the MIT lens library; guarded at runtime.\n"
@@ -167,8 +175,27 @@ assert rules.count(optional_platform_warnings) == 1
 assert rules.replace(optional_platform_warnings, "") == baseline("proguard-rules.pro"), (
     "SAFE ZONE: ProGuard rules changed beyond the two optional visual APIs"
 )
-assert "versionCode 24" in current_gradle
+assert "versionCode 26" in current_gradle
 assert 'applicationId "app.wensarafet.tracker"' in current_gradle
+
+# Release workflow identity must advance in lockstep with the package.
+release_workflow = (ROOT / ".github/workflows/unsigned-release-candidate.yml").read_text(encoding="utf-8")
+expected_release = baseline(".github/workflows/unsigned-release-candidate.yml")
+expected_release = expected_release.replace("Wen-Sarafet-1.8.8-aligned-UNSIGNED.apk", "Wen-Sarafet-1.8.10-aligned-UNSIGNED.apk")
+expected_release = expected_release.replace("versionCode='24' versionName='1.8.8'", "versionCode='26' versionName='1.8.10'")
+expected_release = expected_release.replace("wen-1-8-8-original-package-unsigned", "wen-1-8-10-original-package-unsigned")
+assert release_workflow == expected_release, "SAFE ZONE: unexpected production release workflow mutation"
+review_workflow = (ROOT / ".github/workflows/wen-188-visual-safe-review.yml").read_text(encoding="utf-8")
+assert review_workflow.count("versionCode='26' versionName='1.8.10'") == 1
+
+# No change to authentication/signing data; only permit predecessor 1.8.8
+# into the existing static signed-APK upgrade checker.
+upgrade = (ROOT / "scripts/verify_upgrade_apk.sh").read_text(encoding="utf-8")
+expected_upgrade = baseline("scripts/verify_upgrade_apk.sh")
+expected_upgrade = expected_upgrade.replace("INSTALLED_1.8.0_TO_1.8.7.apk SIGNED_CANDIDATE_1.8.8.apk", "INSTALLED_SIGNED_1.8.x.apk NEW_SIGNED_UPDATE.apk")
+expected_upgrade = expected_upgrade.replace('"$old_version" -ne 23 )', '"$old_version" -ne 23 && "$old_version" -ne 24 )')
+expected_upgrade = expected_upgrade.replace("or 1.8.7 (23), and update must have a higher versionCode", "1.8.7 (23), or 1.8.8 (24), and update must have a higher versionCode")
+assert upgrade == expected_upgrade, "SAFE ZONE: changed signing upgrade checks beyond allowed predecessor"
 
 adapter = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java").read_text(encoding="utf-8")
 native = (ROOT / "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java").read_text(encoding="utf-8")
@@ -196,5 +223,5 @@ assert "NAV_LIQUID_STRETCH_ACTIVE" in native
 # SMS notifications, protected signing/biometric and all resource files,
 # are guaranteed by the exact allowlist + git diff above.
 print("PASS: 1.8.8 source immutable except visual hook + five exact split remainder UI hooks")
-print("PASS: existing tab callbacks, package, version, schema and signing config unchanged")
+print("PASS: original package, schema and signing unchanged; audited version 1.8.10/code26")
 print("PASS: protected finance, debt, SMS, backup, auth and notification trees untouched")
