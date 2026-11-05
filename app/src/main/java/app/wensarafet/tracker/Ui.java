@@ -34,7 +34,8 @@ public final class Ui {
             "مشمشي", "وردي هادئ", "لافندر", "جليدي",
             "غابة قاتمة", "فحمي", "لؤلؤي", "نحاسي",
             "Liquid Aurora", "Liquid Fusion",
-            "زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"
+            "زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد",
+            "Prism Glow • زجاج نيوني", "Golden Bloom • زجاج شمسي"
     };
 
     // brand, dark, soft, background, surface, text, muted, expense, income, accent1, accent2, accent3
@@ -60,7 +61,9 @@ public final class Ui {
             {0xFF2965E5,0xFF1B3690,0xFFDDEBFF,0xFFF5F9FF,0xFFFFFFFF,0xFF152A4C,0xFF667A99,0xFFC74664,0xFF0C9280,0xFF2965E5,0xFF6D8CF0,0xFF9DDBFF},
             {0xFF07A7BA,0xFF00677B,0xFFDFF9F8,0xFFF4FEFD,0xFFFFFFFF,0xFF17383C,0xFF628D90,0xFFC54862,0xFF078C73,0xFF2294BD,0xFF54D8D9,0xFFC5FFF3},
             {0xFF7F73FF,0xFF31255D,0xFF252746,0xFF101429,0xFF171B30,0xFFF6F7FF,0xFFACB4D1,0xFFFF758A,0xFF64D5AF,0xFFA58AFF,0xFFD58BFF,0xFF7CCBFF},
-            {0xFF7888CD,0xFF414B80,0xFFF0F0FD,0xFFFAFBFF,0xFFFFFFFF,0xFF252943,0xFF7B8198,0xFFC25570,0xFF348B83,0xFF9794D6,0xFFBCABD5,0xFFDFE9FF}
+            {0xFF7888CD,0xFF414B80,0xFFF0F0FD,0xFFFAFBFF,0xFFFFFFFF,0xFF252943,0xFF7B8198,0xFFC25570,0xFF348B83,0xFF9794D6,0xFFBCABD5,0xFFDFE9FF},
+            {0xFFAD3CDB,0xFF62257F,0xFFF4E3FC,0xFFFAF0FC,0xFFFFFAFF,0xFF291638,0xFF795D87,0xFFC94376,0xFF238D86,0xFF8244DA,0xFFF471B9,0xFF8B88EE},
+            {0xFFCE873E,0xFF87502D,0xFFFFE9C8,0xFFFFF7EA,0xFFFFFDF5,0xFF3D3028,0xFF857367,0xFFCA5060,0xFF54866D,0xFFB993BC,0xFFF8AA67,0xFF95BDA6}
     };
 
     private static final int[][] THEME_LAYERS = {
@@ -85,7 +88,9 @@ public final class Ui {
             {0xFF1A3C9B,0xFF3269E9,0xFF6CC4F9,0xFFC4E9FF},
             {0xFF005969,0xFF08A5BA,0xFF68E6DE,0xFFC7FEED},
             {0xFF080F33,0xFF353281,0xFF6552C8,0xFFAB73EF},
-            {0xFF6A719F,0xFFACB7D8,0xFFE0DFFD,0xFFF8F9FF}
+            {0xFF6A719F,0xFFACB7D8,0xFFE0DFFD,0xFFF8F9FF},
+            {0xFF782A9E,0xFFC435B0,0xFFE64CC2,0xFF7956EE},
+            {0xFFB86E39,0xFFF2AC65,0xFFFBD6A0,0xFF99B9A1}
     };
 
 
@@ -93,12 +98,16 @@ public final class Ui {
     // No new settings keys, preferences, listeners or financial behavior.
     // The engine is an independent reusable Android graphics component.
     public static android.graphics.drawable.Drawable glassHeaderBackground(Context context, int radiusDp) {
+        if (isReferenceGlassTheme(context))
+            return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.HEADER);
         if (themeIndex(context) < 16) return layeredBackground(context, radiusDp);
         return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
                 mix(BRAND_DARK, BRAND, .12f), BRAND, SKY, true);
     }
 
     public static android.graphics.drawable.Drawable glassSoftBackground(Context context, int radiusDp) {
+        if (isReferenceGlassTheme(context))
+            return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.CARD);
         if (themeIndex(context) < 16) return layeredSoftBackground(context, radiusDp);
         int upper = DARK ? mix(SURFACE, BRAND, .10f) : mix(BRAND_SOFT, SURFACE, .32f);
         int lower = DARK ? mix(SURFACE, SKY, .16f) : mix(BRAND_SOFT, SKY, .08f);
@@ -108,6 +117,8 @@ public final class Ui {
 
     /** Reference-matched frosted balance tiles. Light fill ~#A0BDF6 to ice blue. */
     public static android.graphics.drawable.Drawable glassBalanceBackground(Context context, int radiusDp) {
+        if (isReferenceGlassTheme(context))
+            return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.CARD);
         if (!isLiquidTheme(context)) return layeredSoftBackground(context, radiusDp);
         int top = DARK ? mix(SURFACE, BRAND, .20f) : mix(BRAND_SOFT, BRAND, .34f);
         int bottom = DARK ? mix(SURFACE, SKY, .13f) : mix(BRAND_SOFT, SKY, .05f);
@@ -117,6 +128,8 @@ public final class Ui {
 
     /** Cyan-blue chart atmosphere stays separate from the denser balance tiles. */
     public static android.graphics.drawable.Drawable glassChartBackground(Context context, int radiusDp) {
+        if (isReferenceGlassTheme(context))
+            return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.CARD);
         if (!isLiquidTheme(context)) return layeredSoftBackground(context, radiusDp);
         int top = DARK ? mix(SURFACE, BRAND, .12f) : mix(BRAND_SOFT, BRAND, .22f);
         int bottom = DARK ? mix(SURFACE, SKY, .16f) : mix(BRAND_SOFT, SKY, .20f);
@@ -125,6 +138,8 @@ public final class Ui {
     }
 
     public static android.graphics.drawable.Drawable glassAccentBackground(Context context, int radiusDp) {
+        if (isReferenceGlassTheme(context))
+            return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.ACCENT);
         if (themeIndex(context) < 16) return gradient(BRAND_DARK, BRAND, radiusDp, context);
         return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
                 mix(BRAND_DARK, BRAND, .18f), mix(BRAND, VIOLET, .28f), SKY, true);
@@ -133,9 +148,28 @@ public final class Ui {
 
     /** Passive depth behind primary screens; never rendered per transaction row. */
     public static android.graphics.drawable.Drawable glassScreenBackground(Context context) {
+        if (isReferenceGlassTheme(context))
+            return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.BACKDROP);
         if (!isLiquidTheme(context)) return new android.graphics.drawable.ColorDrawable(BACKGROUND);
         return new app.wensarafet.glass.WenGlassBackdropDrawable(context,
                 BACKGROUND, SKY, BRAND, DARK);
+    }
+
+    /** Append-only themes: indices 0–21 and their persisted preferences are untouched. */
+    public static boolean isReferenceGlassTheme(Context context) {
+        int selected = themeIndex(context);
+        return selected == app.wensarafet.glass.WenReferenceGlassDrawable.PRISM
+                || selected == app.wensarafet.glass.WenReferenceGlassDrawable.BLOOM;
+    }
+
+    public static android.graphics.drawable.Drawable glassFloatingAddBackground(Context context) {
+        return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.FAB);
+    }
+
+    private static android.graphics.drawable.Drawable referenceGlass(Context context,
+            app.wensarafet.glass.WenReferenceGlassDrawable.Surface surface) {
+        return new app.wensarafet.glass.WenReferenceGlassDrawable(context,
+                themeIndex(context), surface, DARK);
     }
 
     /** Liquid designs are opt-in; existing non-Liquid themes are byte-for-byte visual fallbacks. */
@@ -150,6 +184,8 @@ public final class Ui {
      * dozens of transactions can scroll without multiple GPU offscreen passes.
      */
     public static android.graphics.drawable.Drawable glassListBackground(Context context, int radiusDp) {
+        if (isReferenceGlassTheme(context))
+            return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.CARD);
         if (!isLiquidTheme(context)) return rounded(SURFACE, radiusDp, context);
         int first = mix(SURFACE, BRAND_SOFT, DARK ? .10f : .64f);
         int second = mix(SURFACE, SKY, DARK ? .07f : .11f);
@@ -162,6 +198,8 @@ public final class Ui {
     }
 
     public static android.graphics.drawable.Drawable glassNavigationBackground(Context context, int radiusDp) {
+        if (isReferenceGlassTheme(context))
+            return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.NAVIGATION);
         if (!isLiquidTheme(context)) return new android.graphics.drawable.ColorDrawable(SURFACE);
         // Always passive: scroll may translate/fade the bar, but never drives a glass clock.
         int first = DARK ? mix(SURFACE, BRAND, .16f) : mix(SURFACE, BRAND_SOFT, .60f);
@@ -171,12 +209,18 @@ public final class Ui {
     }
 
     public static android.graphics.drawable.Drawable glassSelectedNavigationBackground(Context context, int radiusDp) {
+        if (isReferenceGlassTheme(context))
+            return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.ACCENT);
         if (!isLiquidTheme(context)) return rounded(BRAND_SOFT, radiusDp, context);
         return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
                 BRAND_SOFT, mix(BRAND_SOFT, SKY, DARK ? .12f : .20f), BRAND, false);
     }
 
     public static android.graphics.drawable.Drawable glassActionBackground(Context context, int radiusDp, boolean primary) {
+        if (isReferenceGlassTheme(context))
+            return referenceGlass(context, primary
+                    ? app.wensarafet.glass.WenReferenceGlassDrawable.Surface.ACCENT
+                    : app.wensarafet.glass.WenReferenceGlassDrawable.Surface.CARD);
         if (!isLiquidTheme(context)) return rounded(primary ? BRAND : BRAND_SOFT, radiusDp, context);
         if (!primary) return glassSelectedNavigationBackground(context, radiusDp);
         return glassAccentBackground(context, radiusDp);
