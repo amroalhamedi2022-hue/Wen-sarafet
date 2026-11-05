@@ -22,7 +22,7 @@ command = ('set -euo pipefail\nPROJECT_DIR="$1"\n'
            + '\nprintf "%s|%s" "$APP_VERSION_CODE" "$APP_VERSION_NAME"\n')
 parsed = subprocess.run(["bash", "-c", command, "bash", str(root)],
                         capture_output=True, text=True, check=True)
-assert parsed.stdout == "24|1.8.8", parsed
+assert parsed.stdout == "26|1.8.10", parsed
 
 cert = "6b8268e5b647b12a2aa055d7a22f7b8ea888e40fb863e74409938aad4ec789c9"
 with tempfile.TemporaryDirectory() as directory:
@@ -54,9 +54,10 @@ case "$2" in
       *current-184*) code=20 ;;
       *current-185*) code=21 ;;
       *current-187*|*same-as-current*) code=23 ;;
-      *) code=24 ;;
+      *current-188*) code=24 ;;
+      *) code=26 ;;
     esac
-    echo "package: name='$pkg' versionCode='$code' versionName='1.8.8'"
+    echo "package: name='$pkg' versionCode='$code' versionName='1.8.10'"
     ;;
   xmltree)
     case "$3" in
@@ -88,6 +89,15 @@ esac
         env=env, capture_output=True, text=True,
     )
     assert current_upgrade.returncode == 0 and "PASS" in current_upgrade.stdout, current_upgrade.stderr
+    trusted188 = home / "current-188.apk"
+    trusted188.write_bytes(b"fake owner original signed version 1.8.8")
+    verified188 = subprocess.run(
+        ["bash", str(checker), str(trusted188), str(home / "candidate.apk")],
+        env=env, capture_output=True, text=True,
+    )
+    assert verified188.returncode == 0 and "24 -> 26" in verified188.stdout, (
+        verified188.stdout, verified188.stderr
+    )
     stale = home / "same-as-current.apk"
     stale.write_bytes(b"old candidate")
     rejected = subprocess.run(
