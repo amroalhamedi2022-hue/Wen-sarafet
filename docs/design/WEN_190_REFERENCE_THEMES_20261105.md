@@ -1,4 +1,4 @@
-# وين صرفت — v1.9 — Prism Glow & Golden Bloom
+# وين صرفت — v1.9 — Prism Glow, Golden Bloom & Royal Gold
 
 Date: 5 November 2026. Base: verified v1.8.10 (code 26) at `af0e69a4bf03fb59ecbf73d24a15eac4917a997d`.
 
@@ -14,18 +14,19 @@ These are **stylistic references**, not screenshots blindly embedded as app back
 
 - **Prism Glow (index 22)**: fuchsia/violet blue ambient screen, bright magenta-purple header, translucent deep-violet capsule navigation, light labels, pink/orchid highlights, glass action button.
 - **Golden Bloom (index 23)**: warm peach/sunset/soft-mint ambient backdrop, copper-to-peach header, frosted cream navigation, warm ink labels, circular amber optical FAB with white '+' and clean luminous rim.
-- Both themes are **append-only**. Indices 0–21, all current preference keys, theme order and palettes remain unchanged. Old themes continue with the old drawables.
+- **Royal Gold • الذهب الملكي (index 24)**: premium deep-obsidian atmosphere, five-stop polished champagne-metallic reflections, smoked-glass navigation with fine gold borders and warm legible labels, faceted luminous circular gold FAB. Royal Gold is deliberately dark in system light and dark modes for consistent contrast; all other themes keep their prior mode semantics.
+- All three themes are **append-only**. Indices 0–21, all current preference keys, theme order and palettes remain unchanged. Old themes continue with the old drawables.
 - Passive shader background only draws when Android redraws or bounds change; no bitmap backdrop snapshots, timers or endless animation. Low-RAM / power-saving fallback.
 - Existing native MIT Liquid refraction `NavigationLiquidMaterial` and `GlassMotion` remain **untouched**: hold/drag through real tabs, optical distortions above glyphs, .60 viscosity, 265ms recovery, touch-through lens, and Android API compatibility.
-- The original FAB callback `showAddTransaction()`, preferences for size/position, on-scroll hide/show and press animation are unchanged; only its draw surface changes under theme 22 or 23.
+- The original FAB callback `showAddTransaction()`, preferences for size/position, on-scroll hide/show and press animation are unchanged; only its draw surface changes under theme 22, 23 or 24.
 - App version is **1.9 (versionCode 27)**. The release package is still `app.wensarafet.tracker` and must be signed privately with the original certificate.
 
 ## Hard protection gates
 
-1. `tests/wen_188_visual_safezone_contract.py`: verify original 22 theme names + palettes unchanged, original financial/DB/security source untouched and MainActivity exact baseline after removing approved visual hook.
-2. Real Android drawing and preferences tests on API 33/35 in `ReferenceThemesInstrumentedTest.java`. Existing 10 tests cover SQLite (synthetic debug data), split remainder, and touch navigation.
+1. `tests/wen_188_visual_safezone_contract.py`: verify original 22 theme names + palettes unchanged, Prism/Bloom frozen at 22–23 and Royal Gold appended at 24, original financial/DB/security source untouched and MainActivity exact baseline after removing approved visual hook.
+2. Real Android drawing and preferences tests on API 33/35, including Royal Gold metallic pixels and circular FAB in `ReferenceThemesInstrumentedTest.java`. Existing 10 tests cover SQLite (synthetic debug data), split remainder, and touch navigation.
 3. Original Java/SQLite financial source tests, release compile, lint and exact permissions test.
-4. Owner real tablet visual approval with each of the two themes: Arabic glyph legibility, RTL nav, drag cancel, single callback, plus control, light/dark, scroll hide/show, screen rotation, reduced motion / battery saver.
+4. Owner real tablet visual approval with each of the three themes: Arabic glyph legibility, RTL nav, drag cancel, single callback, plus control, light/dark, scroll hide/show, screen rotation, reduced motion / battery saver.
 5. **No installable update without original private signing key**. Unsigned source artifact or a newly signed certificate would be rejected by Android when upgrading 1.8.8 and could risk app state. Preserve installed app and user data.
 
 ## Release acceptance
