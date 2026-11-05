@@ -33,6 +33,7 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenFabOpticalCrownDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
     "docs/design/WEN_190_FIVE_PREMIUM_LIQUID_HANDOFF_20261105.md",
+    "docs/releases/WEN_200_PREMIUM_INTEGRATION_HANDOFF_20261105.md",
     "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java",
     "docs/licenses/QWEA0_LiquidGlass_MIT.txt",
     "docs/design/WEN_188_VISUAL_REVIEW_EXECUTION_20261104.md",
