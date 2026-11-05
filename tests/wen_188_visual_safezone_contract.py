@@ -39,6 +39,7 @@ ALLOWED = {
     "tests/glass_energy_contract.py",
     "tests/batch22_category_budget_icon_contract.py",
     "scripts/build_apk.sh",
+    "scripts/sign_verified_upgrade.sh",
 }
 
 def git(*args):
@@ -280,6 +281,15 @@ assert "PRISM = 22" in draw_source and "BLOOM = 23" in draw_source
 assert "PowerManager" in draw_source and "isLowRamDevice" in draw_source
 for forbidden in ("FinanceDbHelper", "AppLockManager", "SQLiteDatabase", "OnClickListener", "LicenseManager", "SharedPreferences", "Handler(", "Choreographer.getInstance("):
     assert forbidden not in draw_source, "Theme renderer enters protected logic: " + forbidden
+
+# The owner-only signer must also keep the exact keystore, certificate,
+# original security hashes and payload checks. Only its version regex expands.
+old_signer = baseline("scripts/sign_verified_upgrade.sh")
+expected_signer = old_signer.replace(r"^1\.8\.[0-9]+$", r"^1\.(8\.[0-9]+|9)$")
+assert expected_signer != old_signer, "Missing original offline signer version gate"
+assert (ROOT / "scripts/sign_verified_upgrade.sh").read_text(encoding="utf-8") == expected_signer, (
+    "SAFE ZONE: signing helper changed beyond allowing v1.9"
+)
 
 # The owner's build script must retain its signing, hash, debug and
 # identity checks; only accept the requested next-minor version 1.9.
