@@ -56,7 +56,7 @@ public final class ReferenceThemesInstrumentedTest {
     @Test public void prismGlowHasFloatingVioletBarAndKeepsLiquidInteractions() {
         onUi(() -> underTheme(WenReferenceGlassDrawable.PRISM, () -> {
             Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
-            assertEquals(24, Ui.THEME_NAMES.length);
+            assertEquals(25, Ui.THEME_NAMES.length);
             assertTrue(Ui.THEME_NAMES[22].contains("Prism Glow"));
             assertTrue(Ui.isLiquidTheme(ctx));
             assertTrue(Ui.isReferenceGlassTheme(ctx));
@@ -89,6 +89,39 @@ public final class ReferenceThemesInstrumentedTest {
             assertNotEquals(bg.getPixel(80, 60), bg.getPixel(400, 720));
             circle.recycle();
             bg.recycle();
+        }));
+    }
+
+    @Test public void royalGoldRendersMetallicObsidianWithoutChangingNativeLiquid() {
+        onUi(() -> underTheme(WenReferenceGlassDrawable.ROYAL, () -> {
+            Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            assertEquals(25, Ui.THEME_NAMES.length);
+            assertTrue(Ui.THEME_NAMES[24].contains("Royal Gold"));
+            assertEquals(24, Ui.themeIndex(ctx));
+            assertTrue("Royal Gold must have dark premium contrast", Ui.DARK);
+            assertTrue("Keep the original Liquid engine opt-in", Ui.isLiquidTheme(ctx));
+            assertTrue(Ui.isReferenceGlassTheme(ctx));
+            Bitmap backdrop = draw(Ui.glassScreenBackground(ctx), 480, 800);
+            int darkPixel = backdrop.getPixel(410, 660);
+            assertTrue("Obsidian background cannot be pastel",
+                    Color.red(darkPixel) < 100 && Color.blue(darkPixel) < 100);
+            assertNotEquals("Royal depth requires multiple metallic shadows",
+                    backdrop.getPixel(70, 50), backdrop.getPixel(410, 660));
+            Bitmap nav = draw(Ui.glassNavigationBackground(ctx, 26), 480, 90);
+            assertTrue("Royal nav must stay nontransparent beneath native lens",
+                    Color.alpha(nav.getPixel(240, 45)) > 200);
+            assertNotEquals("A metallic nav requires gold and dark contrast",
+                    nav.getPixel(100, 20), nav.getPixel(380, 65));
+            Bitmap fab = draw(Ui.glassFloatingAddBackground(ctx), 160, 160);
+            assertEquals("Round royal plus remains transparent outside the rim",
+                    0, Color.alpha(fab.getPixel(0, 0)));
+            int gold = fab.getPixel(80, 80);
+            assertEquals(255, Color.alpha(gold));
+            assertTrue("The Royal Gold button should actually look gold",
+                    Color.red(gold) > Color.blue(gold) && Color.green(gold) > Color.blue(gold));
+            backdrop.recycle();
+            nav.recycle();
+            fab.recycle();
         }));
     }
 
