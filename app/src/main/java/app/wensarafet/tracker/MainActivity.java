@@ -505,7 +505,16 @@ public final class MainActivity extends Activity {
             if (Ui.isLiquidTheme(this)) visualMotion.markFabTap(v, screenHost);
             showAddTransaction(); // exact same original action, still immediate
         });
-        FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));
+        // Absolute LEFT/RIGHT is essential on an RTL root: START maps to the
+        // right side, contrary to the user's saved home_fab_right preference.
+        // Five approved premium scenes restore the reference FAB on the LEFT
+        // by default; an explicit user choice of right stays honoured.
+        int fabGravity = app.wensarafet.glass.WenPremiumLiquidDrawable
+                .supports(Ui.themeIndex(this))
+                ? (Ui.homeFabOnRight(this) ? Gravity.RIGHT : Gravity.LEFT)
+                : (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START);
+        FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(
+                fabSize, fabSize, Gravity.BOTTOM | fabGravity);
         fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18), Ui.dp(this, 88));
         root.addView(fab, fabParams);
         final boolean[] chromeHidden = {false};
