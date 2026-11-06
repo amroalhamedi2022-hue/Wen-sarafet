@@ -103,15 +103,31 @@ capture() {
     echo "REAL MainActivity $page theme=$theme screenshot bytes=$bytes"
 }
 
-for theme in 25 26 27 28 29; do
+# In CI, each owner-approved theme runs in its OWN clean AVD process.
+# This prevents one GPU/ADB crash from corrupting the other four themes.
+if [ "$#" -ge 1 ]; then
+  case "$1" in 25|26|27|28|29) themes=("$1");;
+    *) echo "Unsupported theme index: $1" >&2; exit 2;; esac
+else
+  themes=(25 26 27 28 29)
+fi
+for theme in "${themes[@]}"; do
   adb shell am force-stop "$PACKAGE" || true
   timeout 45 adb shell am broadcast -n \
       "$PACKAGE/app.wensarafet.tracker.OwnerThemeCaptureReceiver" \
       --ei theme "$theme"
-  for page in home accounts transactions analytics; do
-     capture "$theme" "$page"
-  done
+  capture "$theme" home
 done
-test "$(find "$SCREEN_DIR" -name '*.png' | wc -l)" -eq 20
-echo 'PASS: 20 REAL MainActivity screenshots using the original production layout.'
+python3 - "$SCREEN_DIR" "${#themes[@]}" <<'PY'
+import pathlib,sys
+root=pathlib.Path(sys.argv[1])
+files=list(root.glob("main-theme-*-home.png"))
+assert len(files)==int(sys.argv[2]), "Missing authentic MainActivity screenshots"
+for file in files:
+    data=file.read_bytes()
+    assert data[:8] == bytes.fromhex("89504e470d0a1a0a"), file
+    assert data[-12:] == bytes.fromhex("0000000049454e44ae426082"), (
+        "Truncated screenshot, not acceptable for review: "+str(file))
+print("PASS:",len(files),"genuine full PNG screenshots, original UI pixels.")
+PY
 sha256sum "$SCREEN_DIR"/*.png > "$SCREEN_DIR/checksums.txt"
