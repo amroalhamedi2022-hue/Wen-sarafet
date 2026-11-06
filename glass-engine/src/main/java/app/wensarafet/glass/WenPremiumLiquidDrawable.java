@@ -68,6 +68,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     private final Paint bloomB = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint reflection = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint caustic = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint rimGlint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final WenPremiumCaustics ownerOptics = new WenPremiumCaustics();
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bevel = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -171,6 +172,27 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         bevel.setColor(backdrop()?Color.TRANSPARENT:alpha(
                 dark && index<=IMPERIAL_DARK ? p[10] : Color.WHITE,
                 dark ? 89 : 128));
+        if (!backdrop()) {
+            // Metallic highlights belong to the curved EDGE, not broad
+            // diagonal plastic ribbons over balances and Arabic text.
+            rim.setShader(new LinearGradient(box.left,box.top,
+                    box.right,box.top+h*.57f,
+                    new int[]{alpha(p[11],52),alpha(p[11],233),
+                            alpha(p[10],87),alpha(p[11],215),alpha(p[11],49)},
+                    new float[]{0f,.20f,.49f,.81f,1f},Shader.TileMode.CLAMP));
+            float hotX=box.left+w*(index==IMPERIAL_DARK?.47f
+                    : index==CHAMPAGNE?.28f:index==ORANGE_GREEN?.72f
+                    : index==PURPLE_PINK?.86f:.78f);
+            float hotY=box.bottom-h*.035f;
+            rimGlint.setShader(new RadialGradient(hotX,hotY,
+                    Math.max(1f,Math.min(w,h)*.87f),
+                    new int[]{alpha(p[11],index==CHAMPAGNE?135:115),
+                            alpha(p[10],22),alpha(p[11],0)},
+                    new float[]{0f,.29f,1f},Shader.TileMode.CLAMP));
+        } else {
+            rim.setShader(null);
+            rimGlint.setShader(null);
+        }
     }
 
     @Override public void draw(Canvas canvas) {
@@ -186,6 +208,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
             // Each of the five scenes has its own refractive, broad sunlight
             // curves; rendered from cached Paths/Shaders without per-frame work.
             ownerOptics.draw(canvas);
+            if (!backdrop()) canvas.drawRect(box,rimGlint);
         }
         canvas.restoreToCount(saved);
         if (!backdrop()) {
@@ -202,6 +225,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         bloomB.setAlpha(opacity);
         reflection.setAlpha(opacity);
         caustic.setAlpha(opacity);
+        rimGlint.setAlpha(opacity);
         rim.setAlpha(opacity);
         bevel.setAlpha(opacity);
         invalidateSelf();
@@ -213,6 +237,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         bloomB.setColorFilter(filter);
         reflection.setColorFilter(filter);
         caustic.setColorFilter(filter);
+        rimGlint.setColorFilter(filter);
         rim.setColorFilter(filter);
         bevel.setColorFilter(filter);
         invalidateSelf();
