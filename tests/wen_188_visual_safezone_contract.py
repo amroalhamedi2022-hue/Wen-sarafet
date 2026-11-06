@@ -34,6 +34,9 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenFabOpticalCrownDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenThemeArtDirection.java",
+    "app/src/androidTest/java/app/wensarafet/tracker/RealMainScreenCaptureTest.java",
+    ".github/workflows/wen-real-main-screenshots.yml",
+    "scripts/capture_real_main_screens.sh",
     "docs/design/WEN_190_FIVE_PREMIUM_LIQUID_HANDOFF_20261105.md",
     "docs/releases/WEN_200_PREMIUM_INTEGRATION_HANDOFF_20261105.md",
     "docs/WEN_SARAFET_REPAIR_AND_DEVELOPMENT_PLAN_2026-10-23.md",
@@ -77,6 +80,21 @@ MAIN_ONLY_PLAN = "docs/WEN_SARAFET_REPAIR_AND_DEVELOPMENT_PLAN_2026-10-23.md"
 assert (ROOT / MAIN_ONLY_PLAN).read_text(encoding="utf-8") == git(
     "show", f"283112f4bedaf2e07dd7370e581f84e14959710e:{MAIN_ONLY_PLAN}"
 ), "SAFE ZONE: existing official development plan unexpectedly changed"
+# Original account identity art is SHA-1 pinned at the 1.8.8 Sandbox:
+# do not allow a preview mock or theme refactor to replace PNG assets.
+ORIGINAL_LOGOS = {
+    "app/src/main/res/drawable-nodpi/icon_bop_mark.png":
+        "d71006e0eba4cedcd1d04b2217eeef4911b83808",
+    "app/src/main/res/drawable-nodpi/icon_jawwal_pay_mark.png":
+        "0516bd77381b48b87c404e613c908405812d7b88",
+    "app/src/main/res/drawable-nodpi/icon_palpay_mark.png":
+        "d09932adbc59a39b4ba5b8d52a7350f7aa4ba1a8",
+}
+for logo_path, vetted_blob in ORIGINAL_LOGOS.items():
+    assert git("hash-object",logo_path).strip() == vetted_blob, (
+        "SAFE ZONE: original account icon PNG unexpectedly changed: "+logo_path
+    )
+
 required = {MAIN, APP_GRADLE, SETTINGS}
 assert required <= changed, f"Visual adapter incomplete: {sorted(required - changed)}"
 
