@@ -51,6 +51,7 @@ ALLOWED = {
     ".github/workflows/wen-visual-screenshots.yml",
     "app/src/debug/AndroidManifest.xml",
     "app/src/debug/java/app/wensarafet/tracker/VisualPreviewActivity.java",
+    "scripts/capture_visual_preview.sh",
     "tests/glass_energy_contract.py",
     "tests/wen_190_visual_motion_contract.py",
     "tests/batch22_category_budget_icon_contract.py",
