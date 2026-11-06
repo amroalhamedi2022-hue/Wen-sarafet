@@ -10,6 +10,7 @@ on:
       - 'glass-engine/**'
       - '.github/workflows/wen-visual-screenshots.yml'
       - 'tests/wen_188_visual_safezone_contract.py'
+      - 'scripts/capture_visual_preview.sh'
   workflow_dispatch:
 
 permissions:
@@ -54,19 +55,7 @@ jobs:
           sdcard-path-or-size: 128M
           disable-animations: false
           emulator-boot-timeout: 600
-          script: >-
-            bash -lc 'set -euo pipefail;
-            gradle :app:assembleDebug --no-daemon --console=plain;
-            adb install -r app/build/outputs/apk/debug/app-debug.apk;
-            mkdir -p build/visual-screenshots;
-            for theme in 25 26 27 28 29; do
-              adb shell am force-stop app.wensarafet.tracker.recovered.debug || true;
-              adb shell am start -n app.wensarafet.tracker.recovered.debug/app.wensarafet.tracker.VisualPreviewActivity --ei theme "$theme";
-              sleep 3;
-              adb exec-out screencap -p > build/visual-screenshots/theme-"$theme"-android15.png;
-              test -s build/visual-screenshots/theme-"$theme"-android15.png;
-            done;
-            ls -lh build/visual-screenshots/*.png'
+          script: bash scripts/capture_visual_preview.sh
       - name: Upload screenshots of emulator-rendered real Android glass materials
         if: always()
         uses: actions/upload-artifact@v4
