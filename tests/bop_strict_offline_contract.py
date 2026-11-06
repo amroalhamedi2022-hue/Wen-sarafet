@@ -27,10 +27,10 @@ assert 'new Thread(' not in fx
 assert '"MANUAL",System.currentTimeMillis()' in fx
 assert 'isVerificationMessage(clean)' in (app/"java/app/wensarafet/tracker/CaptureEngine.java").read_text()
 assert 'Code: 12345' in (r/"tests/FinanceCoreTest.java").read_text()
-assert (app/"drawable-nodpi/icon_bop_mark.png").exists()
-assert (app/"drawable-nodpi/icon_bop_widget_soft.png").exists()
-assert (app/"xml/widget_bop.xml").exists()
-assert 'widget_bop_balance' in (app/"layout/widget_balances.xml").read_text()
+assert (app/"res/drawable-nodpi/icon_bop_mark.png").exists()
+assert (app/"res/drawable-nodpi/icon_bop_widget_soft.png").exists()
+assert (app/"res/xml/widget_bop.xml").exists()
+assert 'widget_bop_balance' in (app/"res/layout/widget_balances.xml").read_text()
 for path in app.rglob("*.xml"):
     ET.parse(path)
 print("BankOfflineContract PASS: local banking functionality restored, network prohibited, OTP filtered")
