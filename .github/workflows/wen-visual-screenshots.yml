@@ -9,6 +9,7 @@ on:
       - 'app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java'
       - 'glass-engine/**'
       - '.github/workflows/wen-visual-screenshots.yml'
+      - 'tests/wen_188_visual_safezone_contract.py'
   workflow_dispatch:
 
 permissions:
