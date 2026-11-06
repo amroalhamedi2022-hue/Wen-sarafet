@@ -56,32 +56,32 @@ public final class FinanceCoreTest {
 
         equalsText("*110*1*1234*0591234567*25.5*1#", UssdCodes.jawwalFriend("1234", "0591234567", "25.5"), "jawwal friend code");
         equalsText("*110*2*1234*0591234567*25.5*1#", UssdCodes.jawwalMerchant("1234", "0591234567", "25.5"), "jawwal merchant code");
-        equalsText("*267*1234#", UssdCodes.bankOfPalestine("1234"), "bank code");
         equalsText("*370*1*1*0591234567*25.5#", UssdCodes.palPay("0591234567", "25.5"), "palpay code");
 
-        parsed("BOP", "حوالة صادرة من حسابك بمبلغ 1200 شيكل. رصيدكم المتوفر هو 23.87", 120_000L, "ILS", FinanceRules.EXPENSE);
-        parsed("BOP", "تسديد دفعة فاتورة: الأقساط الجامعية بمبلغ 1175.69 USD", 117_569L, "USD", FinanceRules.EXPENSE);
-        parsed("BOP", "شحن: شحن رصيد جوال بمبلغ 10.00 ILS", 1_000L, "ILS", FinanceRules.EXPENSE);
+        parsed("JAWAL", "حوالة صادرة من حسابك بمبلغ 1200 شيكل. رصيدكم المتوفر هو 23.87", 120_000L, "ILS", FinanceRules.EXPENSE);
+        parsed("JAWAL", "تسديد دفعة فاتورة: الأقساط الجامعية بمبلغ 1175.69 USD", 117_569L, "USD", FinanceRules.EXPENSE);
+        parsed("JAWAL", "شحن: شحن رصيد جوال بمبلغ 10.00 ILS", 1_000L, "ILS", FinanceRules.EXPENSE);
         parsed("JAWAL", "A Money Transfer transaction with an amount of: ILS 13.00, from: 00970592896349 is done successfully. Your current balance is: ILS 148.89", 1_300L, "ILS", FinanceRules.INCOME);
         parsed("JAWAL", "Your Pay to merchant transaction with an amount of: ILS 5.00 for merchant: Al Abdessa Supermarket for Groceries is done successfully.", 500L, "ILS", FinanceRules.EXPENSE);
         parsed("JAWAL", "Your Money Transfer transaction with an amount of: ILS 35.00, to customer: 00970595786268 is done successfully.", 3_500L, "ILS", FinanceRules.EXPENSE);
         parsed("JAWAL", "amro ibrahim has transferred an amount of ILS 150.00 to your account. Available balance is: ILS 150.89.", 15_000L, "ILS", FinanceRules.INCOME);
-        TransactionParser.Result ambiguous = TransactionParser.parse("BOP", "تحويل دفع لصديق: محمد أحمد، بمبلغ 120.00 شيكل");
+        TransactionParser.Result ambiguous = TransactionParser.parse("JAWAL", "تحويل دفع لصديق: محمد أحمد، بمبلغ 120.00 شيكل");
         if (ambiguous.type != null) fail("ambiguous friend transfer was classified");
-        TransactionParser.Result withBalance = TransactionParser.parse("BOP", "حوالة صادرة من حسابك بمبلغ 49.2 دولار. رصيدكم المتوفر هو 1175.71");
+        TransactionParser.Result withBalance = TransactionParser.parse("JAWAL", "حوالة صادرة من حسابك بمبلغ 49.2 دولار. رصيدكم المتوفر هو 1175.71");
         equalsLong(117_571L, withBalance.balanceMinor, "available balance");
-        TransactionParser.Result mobileTopUp = TransactionParser.parse("BOP", "شحن: شحن رصيد جوال بمبلغ 5.93 USD");
+        TransactionParser.Result mobileTopUp = TransactionParser.parse("JAWAL", "شحن: شحن رصيد جوال بمبلغ 5.93 USD");
         equalsLong(593L, mobileTopUp.amountMinor, "top-up amount");
         if (mobileTopUp.balanceMinor != null) throw new AssertionError("top-up amount must not be parsed as final balance");
         if (!TransactionParser.isVerificationMessage("رمز التأكيد الخاص بك هو 428191")) throw new AssertionError("Arabic OTP detection");
         if (!TransactionParser.isVerificationMessage("كود الدخول إلى حسابك 428191")) throw new AssertionError("Arabic login-code detection");
         if (!TransactionParser.isVerificationMessage("Your verification code is 428191")) throw new AssertionError("English OTP detection");
+        if (!TransactionParser.isVerificationMessage("Code: 12345 For p2m for a maximum amount of: 2.00ILS.")) throw new AssertionError("wallet Code: OTP detection");
         if (!TransactionParser.isVerificationMessage("Your one-time passcode is 428191")) throw new AssertionError("English passcode detection");
         if (TransactionParser.isVerificationMessage("حوالة صادرة من حسابك بمبلغ 66.24 دولار. رصيدكم المتوفر هو 129.6")) throw new AssertionError("financial message is not OTP");
         parsed("JAWAL", "amro ibrahim sewilm alhamidi has transferred an amount of ILS 150.00 to your account.", 15_000L, "ILS", FinanceRules.TRANSFER);
         parsed("JAWAL", "amro ibrahim sewilm alhmidi has transferred an amount of ILS 150.00 to your account.", 15_000L, "ILS", FinanceRules.TRANSFER);
-        parsed("BOP", "تحويل دفع لصديق: عمرو ابراهيم سويلم الحميدي، بمبلغ 120.00 شيكل", 12_000L, "ILS", FinanceRules.TRANSFER);
-        TransactionParser.Result customName = TransactionParser.parse("BOP", "تحويل دفع لصديق: أحمَد مُحمد، بمبلغ 75 شيكل", Arrays.asList("احمد محمد"));
+        parsed("JAWAL", "تحويل دفع لصديق: عمرو ابراهيم سويلم الحميدي، بمبلغ 120.00 شيكل", 12_000L, "ILS", FinanceRules.TRANSFER);
+        TransactionParser.Result customName = TransactionParser.parse("JAWAL", "تحويل دفع لصديق: أحمَد مُحمد، بمبلغ 75 شيكل", Arrays.asList("احمد محمد"));
         equalsText(FinanceRules.TRANSFER, customName.type, "custom own-name transfer");
         System.out.println("FinanceCoreTest: all checks passed");
     }

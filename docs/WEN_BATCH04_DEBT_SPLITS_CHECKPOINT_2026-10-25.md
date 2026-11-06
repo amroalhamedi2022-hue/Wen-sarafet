@@ -1,3 +1,5 @@
+> **Historical checkpoint — superseded 2026-11-06:** The application's current policy is strictly offline. Legacy bank-specific integration, online exchange-rate lookup, remote backup and the old widgets described below have been removed. The manual FX and locally encrypted backup remain. Keep historical ledger rows intact.
+
 # وين صرفت — Batch 04: تقسيم المصروف إلى دَين وسداد دَين
 
 تاريخ: 2026-10-25 — حالة الدفعة: **تنفيذ مصدر واختبارات منطق وSQLite؛ ليس إصدارًا جاهزًا**.
@@ -16,7 +18,7 @@
 ## الاختبارات الفعلية
 
 `bash scripts/test_core.sh` اجتاز:
-- FinanceCoreTest, CategorySuggestionRulesTest, MonthlySavingsRulesTest, FxTransferMathTest, BopIndicativeRateTest, FxRateRefreshPolicyTest, LicenseProtocolTest, BackupCryptoTest.
+- FinanceCoreTest, CategorySuggestionRulesTest, MonthlySavingsRulesTest, FxTransferMathTest, retired-rate-test, FxRateRefreshPolicyTest, LicenseProtocolTest, BackupCryptoTest.
 - **SplitDebtRulesTest** جديد: جمع مصروف+دين+سداد، أثر الرصيد مرة واحدة، الاستثناءات، مبلغ غير مطابق، اتجاه غير متسق، overflow.
 - DebtMigrationAudit, FxMigrationAudit, AuditMigrationV10, FX form source contract.
 - **SplitDebtSchemaV11** جديد: تشغيل أوامر SQL المستخرجة مباشرة من Java عبر sqlite3، الاحتفاظ بمعرّفات/مبالغ أجزاء v10، مفاتيح FK وCHECK، احتساب الإجمالي والتقارير، rollback عند فشل بعد تعديل جزئي.

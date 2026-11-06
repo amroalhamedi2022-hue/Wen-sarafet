@@ -1,3 +1,5 @@
+> **Historical checkpoint — superseded 2026-11-06:** The application's current policy is strictly offline. Legacy bank-specific integration, online exchange-rate lookup, remote backup and the old widgets described below have been removed. The manual FX and locally encrypted backup remain. Keep historical ledger rows intact.
+
 # Wen Sarafet — Scoped Repair & Development Plan
 Version: 1.0 | 2026-10-23 | Status: PLAN ONLY — no application code modified
 
@@ -29,8 +31,8 @@ Monthly cap spending only across expense-eligible transactions in selected curre
 ## 4. No unnecessary classification notifications
 Send reminder **only when outstanding transactions still require classification**. Query pending count from canonical DB immediately before posting notification; when 0, do not send and cancel outdated classification notification; throttle/dedupe on count+pending IDs and respect existing settings / Android permission. Never affect other reminder types. Tests 0 pending, 1 pending, after resolving last, app background/reboot.
 
-## 5. Bank of Palestine USD => ILS internal transfer, online rate/manual rate
-Select from BOP USD to BOP ILS in existing “تحويل بين حساباتي”. Bank **buys** USD when the customer sells dollars to obtain shekels; prefer BOP *buy* USD/ILS quote. Display rate source, direction, quote timestamp, tentative status and effective exchange/fees clearly. BOP public website rates are indicative and may be unavailable/JS-rendered; **do not invent a quote or silently substitute a market midrate as the BOP rate**. Test retrieval feasibility; fallback to explicitly labelled reference rate or offline manually entered value, user confirms actual effective rate. Online daily at most one background successful refresh per date when connected, on relevant screen with stale/no rate request input; small buttons **حفظ** and **تحديث أونلاين**. Manual override saved locally and not overwritten within an in-progress transfer. Periodic scheduling (WorkManager with connected network) is best effort, not exact clock guarantee.
+## 5. retired payment provider USD => ILS internal transfer, online rate/manual rate
+Select from legacy-provider USD to legacy-provider ILS in existing “تحويل بين حساباتي”. Bank **buys** USD when the customer sells dollars to obtain shekels; prefer legacy-provider *buy* USD/ILS quote. Display rate source, direction, quote timestamp, tentative status and effective exchange/fees clearly. legacy-provider public website rates are indicative and may be unavailable/JS-rendered; **do not invent a quote or silently substitute a market midrate as the legacy-provider rate**. Test retrieval feasibility; fallback to explicitly labelled reference rate or offline manually entered value, user confirms actual effective rate. Online daily at most one background successful refresh per date when connected, on relevant screen with stale/no rate request input; small buttons **حفظ** and **تحديث أونلاين**. Manual override saved locally and not overwritten within an in-progress transfer. Periodic scheduling (WorkManager with connected network) is best effort, not exact clock guarantee.
 Atomic transfer: debit USD, credit ILS according to chosen rate, separate optional fees, store immutable effective rate and timestamp/source for historical records; transfer not expense or income, restore/undo reverses both legs exactly. Validate amount, rounding and account sufficiency consistent with existing rules. No other types of transfer changed.
 
 ## 6. Split/edit transaction with debt or repayment
@@ -61,7 +63,7 @@ Append Liquid Aurora and Liquid Fusion as separate theme IDs without editing exi
 | C2 | Settings history logs add/edit/delete with before/after; Undo restores ledger exactly including transfer/debt and logs reversal. |
 | C3 | Cap calculation excludes income/transfers/debt; live remaining and end-month congratulations accurate; no fabricated savings account. |
 | C4 | Zero pending means zero classification reminders and stale notification cancelled. |
-| C5 | USD->ILS BOP internal transfer uses correctly labelled buy-rate/manual fallback, offline/save/online refresh, accurate two-leg balances and fee/rounding, once-daily best effort. |
+| C5 | USD->ILS legacy-provider internal transfer uses correctly labelled buy-rate/manual fallback, offline/save/online refresh, accurate two-leg balances and fee/rounding, once-daily best effort. |
 | C6 | Split supports debt, repayment and normal categories, amounts reconcile, ledger corrected once. |
 | C7 | Analysis separates expense/income/received while preserving existing exclusions and currency modes. |
 | C8 | One/many custom categories delete/archive safely without orphaning history; confirm/cancel works. |
@@ -89,7 +91,7 @@ Implement one scoped PR for each group or a tightly justified set of isolated co
 3. Edit/delete an example, open Settings > Change history, Undo and compare amounts.
 4. Set monthly cap; verify remaining changes on expense but not internal transfer/received/debt repayment; review end-month message with test date/fixtures.
 5. Mark every pending classification as done; verify no classification alert remains and none reappears without new pending.
-6. Choose BOP USD -> ILS, inspect buy-rate source/time, manually save rate, refresh with internet, retry offline, confirm USD/ILS balances with exact computation.
+6. Choose legacy-provider USD -> ILS, inspect buy-rate source/time, manually save rate, refresh with internet, retry offline, confirm USD/ILS balances with exact computation.
 7. Split transaction into expense + debt/repayment, verify total and debt ledger, Undo.
 8. Analytics: check expense vs income vs received, date filters/currency; category single/bulk deletion with reassignment/archive.
 9. Verify all legacy themes unchanged, two new themes, icon selector and overlapping-icons screen, animation with reduced motion.
@@ -99,9 +101,9 @@ Implement one scoped PR for each group or a tightly justified set of isolated co
 
 
 ## 16. Approved clarification (2026-10-24): destination may be a different account and currency
-- Supported example: **BOP USD → Jawwal Pay ILS**, in addition to BOP USD → BOP ILS. Other active account pairs of unlike currencies may be used.
+- Supported example: **legacy-provider USD → Jawwal Pay ILS**, in addition to legacy-provider USD → legacy-provider ILS. Other active account pairs of unlike currencies may be used.
 - Internal transfer debits SOURCE in source currency, credits DESTINATION in destination currency; it must not count as income or expense.
-- Preserve both actual posted amounts, the user's confirmed effective FX rate, explicit rate source and quote time. An indicative market rate is never labelled as BOP buy/sell rate.
+- Preserve both actual posted amounts, the user's confirmed effective FX rate, explicit rate source and quote time. An indicative market rate is never labelled as legacy-provider buy/sell rate.
 - Manual save is implemented in locally saved Batch 01 source, but **online refresh and daily auto-rate updating remain NOT IMPLEMENTED** pending a verified exchange-rate feed and device tests.
 - Do not touch security code or existing same-currency transfer behavior.
 

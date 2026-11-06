@@ -391,8 +391,6 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     }
 
     private void seed(SQLiteDatabase db) {
-        addAccount(db, "بنك فلسطين", "ILS", 0, 1, 0);
-        addAccount(db, "بنك فلسطين", "USD", 0, 1, 1);
         addAccount(db, "Jawwal Pay", "ILS", 0, 1, 2);
         addAccount(db, "PalPay", "ILS", 0, 1, 3);
         addAccount(db, "نقدي", "ILS", 0, 1, 4);
@@ -1206,8 +1204,8 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
         if (sourceId==destinationId) throw new IllegalArgumentException("اختر حسابين مختلفين");
         if (checkedAt<=0) throw new IllegalArgumentException("وقت التحقق من سعر الصرف غير صالح");
         String provenance=rateSource==null?"MANUAL":rateSource.trim();
-        if (!"MANUAL".equals(provenance) && !"BOP_INDICATIVE_BUY_USER_CONFIRMED".equals(provenance))
-            throw new IllegalArgumentException("مصدر سعر الصرف غير معروف");
+        if (!"MANUAL".equals(provenance))
+            throw new IllegalArgumentException("سعر الصرف يدوي فقط");
         SQLiteDatabase writable=getWritableDatabase();
         writable.beginTransaction();
         try {
@@ -1215,9 +1213,6 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
             if(source==null || destination==null || !isActiveAccount(writable,sourceId)
                     || !isActiveAccount(writable,destinationId))throw new IllegalArgumentException("الحساب غير متاح");
             if(source.currency.equals(destination.currency))throw new IllegalArgumentException("التحويل بنفس العملة متاح بالطريقة المعتادة");
-            if("BOP_INDICATIVE_BUY_USER_CONFIRMED".equals(provenance)
-                    && !("USD".equals(source.currency) && "ILS".equals(destination.currency)))
-                throw new IllegalArgumentException("تسعيرة شراء الدولار من بنك فلسطين صالحة لمسار USD إلى ILS فقط");
             long destinationMinor=FxTransferMath.destinationMinor(sourceAmountMinor,destUnitsPerSourceUnit);
             long[] newBalances=FxTransferMath.balancesAfter(source.balanceMinor,destination.balanceMinor,
                     sourceAmountMinor,destinationMinor);
@@ -1411,7 +1406,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     }
 
     private long findProviderAccount(String provider, String currency) {
-        String name = "BOP".equals(provider) ? "بنك فلسطين" : "JAWAL".equals(provider) ? "Jawwal Pay" : "PALPAY".equals(provider) ? "PalPay" : null;
+        String name = "JAWAL".equals(provider) ? "Jawwal Pay" : "PALPAY".equals(provider) ? "PalPay" : null;
         if (name == null) return -1;
         try (Cursor c = getReadableDatabase().rawQuery("SELECT id FROM accounts WHERE active=1 AND name=? AND currency=? ORDER BY position,id LIMIT 1", new String[]{name, currency})) {
             return c.moveToFirst() ? c.getLong(0) : -1;

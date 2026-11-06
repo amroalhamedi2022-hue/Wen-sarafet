@@ -1,3 +1,5 @@
+> **Historical checkpoint — superseded 2026-11-06:** The application's current policy is strictly offline. Legacy bank-specific integration, online exchange-rate lookup, remote backup and the old widgets described below have been removed. The manual FX and locally encrypted backup remain. Keep historical ledger rows intact.
+
 # Wen Sarafet — Batch 01 source checkpoint (2026-10-24)
 
 ## Provenance and limitation
@@ -21,7 +23,7 @@
 - No Android SDK available in the environment. **No APK built and no real-device update test performed**.
 
 ## Known unimplemented requirements
-- Daily online rate acquisition and “Refresh online” from a trustworthy, dated source with clearly distinguished BOP buy quote vs market reference; rates cannot be fabricated.
+- Daily online rate acquisition and “Refresh online” from a trustworthy, dated source with clearly distinguished legacy-provider buy quote vs market reference; rates cannot be fabricated.
 - Settings change history/undo, cap congratulations, debt-aware split, income/received analytics, multi-category deletion, motion redesign, icon alignment and picker, two theme additions.
 - Review-and-delete FX edit restriction: to protect ledger consistency, FX entries support delete/recreate, but not in-place reclassification yet.
 - Full Android build/CI, privacy review, v8→v9 device migration and visual tests still required.

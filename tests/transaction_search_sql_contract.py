@@ -45,7 +45,7 @@ CREATE TABLE transactions(
  account_id INTEGER,destination_account_id INTEGER,category_id INTEGER,
  note TEXT,raw_text TEXT,needs_review INTEGER,created_at INTEGER,affects_balance INTEGER);
 CREATE TABLE transaction_splits(transaction_id INTEGER);
-INSERT INTO accounts VALUES(1,'نقدي'),(2,'بنك فلسطين');
+INSERT INTO accounts VALUES(1,'نقدي'),(2,'حساب قديم');
 INSERT INTO categories VALUES(1,'طعام','🍽️'),(2,'راتب','💼');
 INSERT INTO transactions VALUES
 (1,'EXPENSE',1000,'ILS',1,NULL,1,'من مخبز القدس','',0,101,1),

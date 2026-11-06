@@ -56,6 +56,13 @@ jobs:
             echo 'ERROR: release is debuggable' >&2
             exit 1
           fi
+          # Inspect the actual merged APK manifest, not just the source manifest.
+          PERMISSIONS="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$OUTPUT")"
+          if grep -Eq 'android.permission.(INTERNET|ACCESS_NETWORK_STATE)' <<< "$PERMISSIONS"; then
+            echo 'ERROR: runtime network capability was merged into the APK' >&2
+            exit 1
+          fi
+          echo 'PASS: unsigned release has no network permissions'
           sha256sum "$OUTPUT"
           echo "UNSIGNED aligned candidate only; owner signs privately after independent signer check."
       - name: Stage Android SDK APK signature verification utility

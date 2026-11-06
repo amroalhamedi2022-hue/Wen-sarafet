@@ -74,7 +74,6 @@ public final class MainActivity extends Activity {
     private boolean startupResolved;
     private long backgroundAt;
     private char[] pendingBackupPassword;
-    private char[] pendingDrivePassword;
     private String pendingNotificationType;
     private FrameLayout screenHost;
     private View activeScreen;
@@ -82,7 +81,6 @@ public final class MainActivity extends Activity {
     private static final int CREATE_BACKUP = 7301;
     private static final int OPEN_BACKUP = 7302;
     private static final int PICK_NOTIFICATION_SOUND = 7303;
-    private static final int OPEN_DRIVE_FOLDER = 7304;
 
     /**
      * Keeps one stable Activity content host and transitions screens inside it.
@@ -259,8 +257,6 @@ public final class MainActivity extends Activity {
     @Override protected void onStop() {
         super.onStop();
         backgroundAt = System.currentTimeMillis();
-        if (authenticated && db != null && DriveBackupManager.linked(this))
-            DriveBackupManager.syncAsync(this, false, null);
     }
 
     @Override protected void onNewIntent(Intent intent) {
@@ -298,22 +294,13 @@ public final class MainActivity extends Activity {
             pendingNotificationType = null;
             return;
         }
-        if (requestCode == OPEN_DRIVE_FOLDER) {
-            if (resultCode == RESULT_OK && data != null && data.getData() != null && pendingDrivePassword != null) {
-                try {
-                    DriveBackupManager.link(this, data.getData(), new String(pendingDrivePassword));
-                    Toast.makeText(this, "جاري مزامنة النسخة المشفّرة…", Toast.LENGTH_LONG).show();
-                    DriveBackupManager.syncAsync(this, true, (ok, message) -> Toast.makeText(this, message, Toast.LENGTH_LONG).show());
-                } catch (Exception error) {
-                    Toast.makeText(this, "تعذرت المزامنة: " + error.getMessage(), Toast.LENGTH_LONG).show();
-                }
-            }
-            if (pendingDrivePassword != null) Arrays.fill(pendingDrivePassword, '\0');
-            pendingDrivePassword = null;
-            return;
-        }
         if (resultCode != RESULT_OK || data == null || data.getData() == null) { clearPendingBackupPassword(); return; }
         Uri uri = data.getData();
+        if ((requestCode == CREATE_BACKUP || requestCode == OPEN_BACKUP) && !isLocalDocumentUri(uri)) {
+            clearPendingBackupPassword();
+            Toast.makeText(this, "اختر التخزين المحلي للهاتف فقط؛ التخزين السحابي ممنوع.", Toast.LENGTH_LONG).show();
+            return;
+        }
         if (requestCode == CREATE_BACKUP && pendingBackupPassword != null) {
             try {
                 if (db != null) db.close();
@@ -329,6 +316,15 @@ public final class MainActivity extends Activity {
         } else if (requestCode == OPEN_BACKUP) {
             showRestoreBackupDialog(uri);
         }
+    }
+
+    /** Reject cloud document providers even if the system picker offers them. */
+    private boolean isLocalDocumentUri(Uri uri) {
+        if (uri == null || !"content".equals(uri.getScheme())) return false;
+        String authority = uri.getAuthority();
+        return "com.android.externalstorage.documents".equals(authority)
+                || "com.android.providers.downloads.documents".equals(authority)
+                || "com.android.providers.media.documents".equals(authority);
     }
 
     private void clearPendingBackupPassword() {
@@ -352,28 +348,6 @@ public final class MainActivity extends Activity {
             Intent create = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
                     .setType("application/octet-stream").putExtra(Intent.EXTRA_TITLE, "Wen-Sarafet-" + date + ".wsb");
             startActivityForResult(create, CREATE_BACKUP);
-        })); dialog.show();
-    }
-
-    private void showDriveLinkDialog() {
-        LinearLayout form = Ui.column(this); form.setPadding(Ui.dp(this, 20), 0, Ui.dp(this, 20), Ui.dp(this, 8));
-        form.addView(Ui.text(this, "اختر كلمة سر للنسخة المشفّرة، ثم اختر مجلدًا داخل Google Drive من شاشة الملفات.", 12, Ui.MUTED, false));
-        EditText password = input("كلمة سر النسخة — 6 خانات أو أكثر");
-        password.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        EditText confirm = input("تأكيد كلمة السر");
-        confirm.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        form.addView(password, fieldParams()); form.addView(confirm, fieldParams());
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("ربط Google Drive").setView(form)
-                .setNegativeButton("إلغاء", null).setPositiveButton("اختيار المجلد", null).create();
-        dialog.setOnShowListener(x -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String first = password.getText().toString();
-            if (first.length() < 6) { password.setError("اكتب 6 خانات على الأقل"); return; }
-            if (!first.equals(confirm.getText().toString())) { confirm.setError("كلمتا السر غير متطابقتين"); return; }
-            pendingDrivePassword = first.toCharArray(); dialog.dismiss();
-            Intent tree = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
-                            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
-            startActivityForResult(tree, OPEN_DRIVE_FOLDER);
         })); dialog.show();
     }
 
@@ -967,14 +941,13 @@ public final class MainActivity extends Activity {
     private View accountIcon(Models.Account account) {
         int resource = 0;
         String name = account.name.toLowerCase(Locale.ROOT);
-        if (name.contains("بنك فلسطين") || name.contains("bank of palestine")) resource = R.drawable.icon_bop_mark;
-        else if (name.contains("jawwal")) resource = R.drawable.icon_jawwal_pay_mark;
+        if (name.contains("jawwal")) resource = R.drawable.icon_jawwal_pay_mark;
         else if (name.contains("palpay")) resource = R.drawable.icon_palpay_mark;
         if (resource != 0) {
             ImageView image = new ImageView(this);
             image.setImageResource(resource);
             image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            int iconBackground = name.contains("بنك فلسطين") || name.contains("bank of palestine") ? 0xFFD40067 : name.contains("jawwal") ? 0xFF91CF32 : 0xFF9F2BE8;
+            int iconBackground = name.contains("jawwal") ? 0xFF91CF32 : 0xFF9F2BE8;
             image.setBackground(Ui.rounded(iconBackground, 13, this));
             image.setClipToOutline(true);
             image.setElevation(Ui.dp(this, 2));
@@ -1481,30 +1454,11 @@ public final class MainActivity extends Activity {
         EditText rate=input("سعر الصرف الفعلي");
         rate.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
         form.addView(rate,fieldParams());
-        LinearLayout rateButtons=Ui.row(this);
-        Button saveRate=miniButton("حفظ");
-        Button refreshRate=miniButton("تحديث أونلاين");
-        LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,Ui.dp(this,44),1);
-        left.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
-        rateButtons.addView(saveRate,left);
-        LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,Ui.dp(this,44),1);
-        right.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
-        rateButtons.addView(refreshRate,right);
-        form.addView(rateButtons,fieldParams());
-        TextView rateStatus=Ui.text(this,"السعر يدوي حتى تحميل تسعيرة إرشادية من بنك فلسطين",12,Ui.MUTED,false);
-        form.addView(rateStatus,fieldParams());
-        final boolean[] verifiedOnline={false};
-        final long[] onlineTime={0L};
-        final String[] onlineValue={""};
-        final boolean[] loadingQuote={false};
-        final boolean[] dialogVisible={true};
-        final boolean[] autoAttemptedThisDialog={false};
-        final Runnable[] onPairChanged={null};
-        final android.content.SharedPreferences onlinePrefs=getSharedPreferences("fx_online_rates",MODE_PRIVATE);
+        Button saveRate=miniButton("حفظ السعر اليدوي");
+        form.addView(saveRate,fieldParams());
         TextView preview=Ui.text(this,"",15,Ui.BRAND,true);
         form.addView(preview,fieldParams());
-        TextView warning=Ui.text(this,"أدخل السعر الفعلي من البنك أو المحفظة. التسعيرة المنشورة إرشادية ولا تحلّ محل السعر المدخل دون موافقتك.",11,Ui.MUTED,false);
-        form.addView(warning,fieldParams());
+        form.addView(Ui.text(this,"يتم إدخال سعر الصرف يدويًا فقط. لا توجد أي اتصالات بالشبكة.",11,Ui.MUTED,false),fieldParams());
         Runnable recalc=()->{
             int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
             if(si<0 || di<0)return;
@@ -1515,82 +1469,13 @@ public final class MainActivity extends Activity {
                 preview.setText("سيُخصم "+Money.format(n,a.currency)+" ويُضاف "+Money.format(converted,b.currency));
             } catch(Exception error){preview.setText("أدخل المبلغ والسعر الصحيحين");}
         };
-        // Never overwrite a manually entered rate when accounts are reselected.
         Runnable loadSavedRate=()->{
             int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
             if(si<0 || di<0)return;
             String key=accounts.get(si).currency+"_"+accounts.get(di).currency;
             rate.setText(getSharedPreferences("fx_manual_rates",MODE_PRIVATE).getString(key,""));
-            verifiedOnline[0]=false;onlineValue[0]="";onlineTime[0]=0L;
-            if("USD_ILS".equals(key)){
-                String oldQuote=onlinePrefs.getString("USD_ILS_rate","");
-                long oldTime=onlinePrefs.getLong("USD_ILS_at",0L);
-                if(!oldQuote.isEmpty() && oldTime>0){
-                    rateStatus.setText("تسعيرة بنك فلسطين الإرشادية: "+oldQuote+" شيكل/دولار • "+
-                        new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.ROOT).format(new Date(oldTime))+" • اضغط للمراجعة");
-                }else rateStatus.setText("تسعيرة بنك فلسطين غير متوفرة؛ يمكنك إدخال السعر يدويًا");
-            }else rateStatus.setText("سعر يدوي لهذا الزوج من العملات");
             recalc.run();
-            if(onPairChanged[0]!=null)onPairChanged[0].run();
         };
-        Runnable confirmCachedRate=()->{
-            int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
-            if(si<0 || di<0 || !"USD".equals(accounts.get(si).currency) || !"ILS".equals(accounts.get(di).currency))return;
-            final String quote=onlinePrefs.getString("USD_ILS_rate","");
-            final long checked=onlinePrefs.getLong("USD_ILS_at",0L);
-            if(quote.isEmpty() || checked<=0)return;
-            new AlertDialog.Builder(this).setTitle("تسعيرة بنك فلسطين (شراء الدولار)")
-                .setMessage("كل 1 USD ≈ "+quote+" ILS (إرشادي). تاريخ الجلب: "+
-                    new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.ROOT).format(new Date(checked))+". السعر الفعلي ورسوم التحويل قد تختلف.")
-                .setNegativeButton("احتفظ بالسعر المكتوب",null)
-                .setPositiveButton("استخدام السعر",(d,w)->{
-                    rate.setText(quote);verifiedOnline[0]=true;onlineTime[0]=checked;onlineValue[0]=quote;
-                    rateStatus.setText("تم اختيار السعر الإرشادي. تأكد من السعر الفعلي قبل تأكيد التحويل.");
-                }).show();
-        };
-        rateStatus.setOnClickListener(v->confirmCachedRate.run());
-        // true: explicit refresh opens the quote confirmation; false: silent daily refresh.
-        java.util.function.Consumer<Boolean> downloadOnline=manual->{
-            int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
-            if(si<0 || di<0)return;
-            Models.Account a=accounts.get(si),b=accounts.get(di);
-            if(!"USD".equals(a.currency)||!"ILS".equals(b.currency)){
-                if(manual)Toast.makeText(this,"سعر البنك الأونلاين متاح من USD إلى ILS فقط",Toast.LENGTH_LONG).show();
-                return;
-            }
-            if(loadingQuote[0])return;
-            loadingQuote[0]=true;refreshRate.setEnabled(false);
-            rateStatus.setText("جارٍ جلب التسعيرة الإرشادية من بنك فلسطين...");
-            new Thread(()->{
-                try{
-                    final String quote=BopRateFetcher.fetchBuyUsdIls();final long fetchedAt=System.currentTimeMillis();
-                    runOnUiThread(()->{
-                        loadingQuote[0]=false;refreshRate.setEnabled(true);
-                        onlinePrefs.edit().putString("USD_ILS_rate",quote).putLong("USD_ILS_at",fetchedAt).apply();
-                        if(!dialogVisible[0])return;
-                        int activeSource=source.getSelectedItemPosition(),activeDestination=destination.getSelectedItemPosition();
-                        if(activeSource<0 || activeDestination<0 || !"USD".equals(accounts.get(activeSource).currency)
-                                || !"ILS".equals(accounts.get(activeDestination).currency))return;
-                        rateStatus.setText("تسعيرة البنك الإرشادية: "+quote+" شيكل/دولار • اضغط للمراجعة");
-                        if(manual)confirmCachedRate.run();
-                    });
-                }catch(Exception error){runOnUiThread(()->{
-                    loadingQuote[0]=false;refreshRate.setEnabled(true);
-                    if(dialogVisible[0])rateStatus.setText("لم تتوفر تسعيرة موثوقة من البنك؛ أدخل السعر الفعلي يدويًا");
-                });}
-            },"wen-bop-rate-fetch").start();
-        };
-        onPairChanged[0]=()->{
-            int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
-            if(si<0 || di<0 || !"USD".equals(accounts.get(si).currency) || !"ILS".equals(accounts.get(di).currency))return;
-            if(autoAttemptedThisDialog[0] || loadingQuote[0])return;
-            long lastFetched=onlinePrefs.getLong("USD_ILS_at",0L);
-            if(FxRateRefreshPolicy.needsDailyRefresh(lastFetched,System.currentTimeMillis(),
-                    java.util.TimeZone.getDefault())){
-                autoAttemptedThisDialog[0]=true;downloadOnline.accept(false);
-            }
-        };
-        refreshRate.setOnClickListener(v->downloadOnline.accept(true));
         saveRate.setOnClickListener(v->{
             try{
                 int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
@@ -1598,7 +1483,7 @@ public final class MainActivity extends Activity {
                 String key=accounts.get(si).currency+"_"+accounts.get(di).currency;
                 FxTransferMath.destinationMinor(100,rate.getText().toString());
                 getSharedPreferences("fx_manual_rates",MODE_PRIVATE).edit().putString(key,rate.getText().toString().trim()).apply();
-                Toast.makeText(this,"تم حفظ السعر المدخل لهذا الزوج",Toast.LENGTH_SHORT).show();
+                Toast.makeText(this,"تم حفظ السعر اليدوي لهذا الزوج",Toast.LENGTH_SHORT).show();
             }catch(Exception err){Toast.makeText(this,"أدخل سعر صرف صالحًا أولًا",Toast.LENGTH_SHORT).show();}
         });
         source.setOnItemSelectedListener(new SimpleItemSelected(loadSavedRate));
@@ -1623,13 +1508,11 @@ public final class MainActivity extends Activity {
                 Models.Account from=accounts.get(source.getSelectedItemPosition()),to=accounts.get(destination.getSelectedItemPosition());
                 Long minor=Money.parseMinor(amount.getText().toString());
                 if(minor==null || minor<=0)throw new IllegalArgumentException("أدخل المبلغ");
-                boolean onlineSelected=verifiedOnline[0] && rate.getText().toString().trim().equals(onlineValue[0]);
                 db.addFxTransfer(from.id,to.id,minor,rate.getText().toString(),
-                        onlineSelected?"BOP_INDICATIVE_BUY_USER_CONFIRMED":"MANUAL",onlineSelected?onlineTime[0]:System.currentTimeMillis());
+                        "MANUAL",System.currentTimeMillis());
                 dialog.dismiss();Toast.makeText(this,"تم التحويل بين الحسابين",Toast.LENGTH_SHORT).show();showMain(false);
             }catch(Exception error){Toast.makeText(this,error.getMessage()==null?"فشل التحويل":error.getMessage(),Toast.LENGTH_LONG).show();}
         }));
-        dialog.setOnDismissListener(d->dialogVisible[0]=false);
         dialog.show();loadSavedRate.run();
 
     }
@@ -1794,25 +1677,10 @@ public final class MainActivity extends Activity {
         content.addView(sectionTitle("صوت واهتزاز الإشعارات", "إعداد مستقل لكل نوع"));
         content.addView(notificationSettingsCard());
 
-        content.addView(sectionTitle("النسخ الاحتياطي", "Google + ملف مشفّر"));
+        content.addView(sectionTitle("النسخ الاحتياطي", "محلي ومشفّر فقط"));
         LinearLayout backupCard = Ui.column(this); backupCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
         backupCard.setBackground(Ui.rounded(Ui.SURFACE, 20, this)); backupCard.setElevation(Ui.dp(this, 3));
-        boolean driveLinked = DriveBackupManager.linked(this);
-        backupCard.addView(Ui.text(this, driveLinked ? "Google Drive مربوط — تُحدّث نسخة مشفّرة تلقائيًا عند مغادرة التطبيق." :
-                "اربط مجلدًا داخل Google Drive من شاشة الملفات لحفظ نسخة مشفّرة قابلة للاستعادة.", 12, Ui.MUTED, false));
-        if (driveLinked) {
-            Button syncDrive = actionButton("مزامنة Google Drive الآن", true);
-            syncDrive.setOnClickListener(v -> { Toast.makeText(this,"جاري مزامنة النسخة المشفّرة…",Toast.LENGTH_SHORT).show(); DriveBackupManager.syncAsync(this,true,(ok,message)->Toast.makeText(this,message,Toast.LENGTH_LONG).show()); });
-            backupCard.addView(syncDrive, fieldParams());
-            Button unlinkDrive = actionButton("إلغاء ربط Google Drive", false);
-            unlinkDrive.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("إلغاء ربط Google Drive؟")
-                    .setMessage("لن تُحذف النسخة الموجودة في Drive، لكن التطبيق سيتوقف عن تحديثها تلقائيًا.")
-                    .setNegativeButton("تراجع",null).setPositiveButton("إلغاء الربط",(d,w)->{DriveBackupManager.unlink(this);showSettings();}).show());
-            backupCard.addView(unlinkDrive, fieldParams());
-        } else {
-            Button linkDrive = actionButton("ربط Google Drive", true); linkDrive.setOnClickListener(v -> showDriveLinkDialog());
-            backupCard.addView(linkDrive, fieldParams());
-        }
+        backupCard.addView(Ui.text(this,"النسخ والاستعادة من التخزين المحلي فقط، دون مزامنة سحابية.",12,Ui.MUTED,false));
         Button createBackup = actionButton("إنشاء نسخة مشفّرة", true); createBackup.setBackground(Ui.gradient(Ui.BRAND, Ui.SKY, 16, this));
         createBackup.setOnClickListener(v -> showCreateBackupDialog()); backupCard.addView(createBackup, fieldParams());
         Button restoreBackup = actionButton("استعادة نسخة", false); restoreBackup.setOnClickListener(v -> {
@@ -1825,8 +1693,8 @@ public final class MainActivity extends Activity {
 
         content.addView(sectionTitle("الالتقاط التلقائي", db.getPendingCaptureCount() + " للمراجعة"));
         LinearLayout captureCard = Ui.column(this); captureCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12)); captureCard.setBackground(Ui.rounded(Ui.SURFACE, 20, this)); captureCard.setElevation(Ui.dp(this, 3));
-        captureCard.addView(Ui.text(this, "يقرأ فقط رسائل BOP وJawwal Pay وإشعارات بنك فلسطين وPalPay وجوال باي. النص الأصلي يبقى محفوظًا مع العملية.", 12, Ui.MUTED, false));
-        Button smsAccess = actionButton(checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED ? "✓ قراءة رسائل SMS مفعّلة" : "السماح بقراءة رسائل BOP وجوال باي", false);
+        captureCard.addView(Ui.text(this, "يقرأ فقط رسائل Jawwal Pay وإشعارات PalPay وجوال باي. النص الأصلي يبقى محفوظًا محليًا مع العملية.", 12, Ui.MUTED, false));
+        Button smsAccess = actionButton(checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED ? "✓ قراءة رسائل SMS مفعّلة" : "السماح بقراءة رسائل جوال باي", false);
         smsAccess.setOnClickListener(v -> requestPermissions(new String[]{Manifest.permission.RECEIVE_SMS, Manifest.permission.POST_NOTIFICATIONS}, 7102)); captureCard.addView(smsAccess, fieldParams());
         Button notificationAccess = actionButton("فتح صلاحية الوصول للإشعارات", false);
         notificationAccess.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))); captureCard.addView(notificationAccess, fieldParams());
@@ -1841,17 +1709,14 @@ public final class MainActivity extends Activity {
         TextView info = Ui.text(this, "احفظ رموزك هنا، ثم أضف إحدى Widgets وين صرفت؟ من شاشة الهاتف الرئيسية. التطبيق يفتح الاتصال فقط ولا ينفذ الحوالة تلقائيًا.", 12, Ui.MUTED, false);
         ussdCard.addView(info);
         EditText jawwalPin = pinField(SecurePinStore.read(this, "jawwal_pin") == null ? "PIN جوال باي — 4 أرقام" : "PIN جوال باي محفوظ — اكتب لتغييره");
-        EditText bopPin = pinField(SecurePinStore.read(this, "bop_pin") == null ? "PIN بنك فلسطين — 4 أرقام" : "PIN البنك محفوظ — اكتب لتغييره");
-        ussdCard.addView(jawwalPin, fieldParams()); ussdCard.addView(bopPin, fieldParams());
+        ussdCard.addView(jawwalPin, fieldParams());
         Button savePins = actionButton("حفظ الرموز بأمان", true); savePins.setBackground(Ui.gradient(Ui.VIOLET, Ui.CORAL, 16, this));
         savePins.setOnClickListener(v -> {
             try {
-                String jp = jawwalPin.getText().toString().trim(), bp = bopPin.getText().toString().trim();
+                String jp = jawwalPin.getText().toString().trim();
                 if (!jp.isEmpty() && !jp.matches("[0-9]{4}")) { jawwalPin.setError("يجب أن يكون 4 أرقام"); return; }
-                if (!bp.isEmpty() && !bp.matches("[0-9]{4}")) { bopPin.setError("يجب أن يكون 4 أرقام"); return; }
                 if (!jp.isEmpty()) SecurePinStore.save(this, "jawwal_pin", jp);
-                if (!bp.isEmpty()) SecurePinStore.save(this, "bop_pin", bp);
-                jawwalPin.setText(""); bopPin.setText(""); Toast.makeText(this, "تم حفظ الرموز مشفّرة", Toast.LENGTH_SHORT).show();
+                jawwalPin.setText(""); Toast.makeText(this, "تم حفظ الرموز مشفّرة", Toast.LENGTH_SHORT).show();
             } catch (Exception error) { Toast.makeText(this, "تعذر تشفير الرموز", Toast.LENGTH_LONG).show(); }
         });
         ussdCard.addView(savePins, fieldParams()); content.addView(ussdCard);
@@ -2042,7 +1907,7 @@ public final class MainActivity extends Activity {
 
     private View captureReviewCard(Models.CaptureItem item) {
         LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12)); card.setBackground(Ui.rounded(Ui.SURFACE, 20, this)); card.setElevation(Ui.dp(this, 2));
-        String provider = "BOP".equals(item.provider) ? "بنك فلسطين" : "JAWAL".equals(item.provider) ? "Jawwal Pay" : "PalPay";
+        String provider = "JAWAL".equals(item.provider) ? "Jawwal Pay" : "PALPAY".equals(item.provider) ? "PalPay" : "سجل سابق";
         LinearLayout head = Ui.row(this); head.addView(Ui.text(this, provider + " • " + ("SMS".equals(item.channel) ? "رسالة" : "إشعار"), 14, Ui.TEXT, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 38), 1));
         String money = item.amountMinor == null ? "مبلغ غير مقروء" : Money.format(item.amountMinor, item.currency == null ? "" : item.currency); TextView amount = Ui.text(this, money, 15, Ui.VIOLET, true); amount.setGravity(Gravity.END | Gravity.CENTER_VERTICAL); head.addView(amount); card.addView(head);
         TextView raw = Ui.text(this, item.rawText, 12, Ui.TEXT, false); raw.setPadding(Ui.dp(this, 10), Ui.dp(this, 9), Ui.dp(this, 10), Ui.dp(this, 9)); raw.setBackground(Ui.rounded(Ui.BRAND_SOFT, 12, this)); card.addView(raw);

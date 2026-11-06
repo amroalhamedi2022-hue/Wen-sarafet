@@ -1,3 +1,5 @@
+> **Historical checkpoint — superseded 2026-11-06:** The application's current policy is strictly offline. Legacy bank-specific integration, online exchange-rate lookup, remote backup and the old widgets described below have been removed. The manual FX and locally encrypted backup remain. Keep historical ledger rows intact.
+
 # Wen Sarafet — Batch 02 (partial integration checkpoint)
 2026-10-24
 
@@ -7,7 +9,7 @@ Verified in local source archive:
 - two new theme definitions with the original 16 preserved;
 - monthly cap arithmetic, previous-month month-keyed snapshot and greeting (no fake savings balance);
 - income versus received aggregation;
-- USD-to-ILS indicative Bank of Palestine rate fetch with explicit user acceptance, no silent rate override;
+- USD-to-ILS indicative retired payment provider rate fetch with explicit user acceptance, no silent rate override;
 - category archiving and category emoji picker;
 - database audit triggers on transactions/categories/splits;
 - nav icon gaps and reduced-motion support;
