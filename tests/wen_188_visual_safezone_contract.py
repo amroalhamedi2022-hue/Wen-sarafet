@@ -546,13 +546,12 @@ def omit_visual_method_bodies(java):
 # owner reference palettes to display legible WHITE text on dark-glass scenes.
 # Remove it before the complete class comparison; every legacy 0-24 theme,
 # preference, financial helper and palette remains byte-identical.
-new_contrast = ("DARK = theme == 20 || theme == 24 || theme == 25 || theme == 26\\n"
-                "                || theme == 28 || theme == 29")
 old_contrast = "DARK = theme == 20 || theme == 24 || theme == 25 || theme == 26"
-assert new_ui.count(new_contrast.replace("\\\\n", "\\n")) == 1, (
+new_contrast = old_contrast + chr(10) + "                || theme == 28 || theme == 29"
+assert new_ui.count(new_contrast) == 1, (
     "SAFE ZONE: unexpected changes to premium dark/glass scene condition"
 )
-normalized_ui = new_ui.replace(new_contrast.replace("\\\\n", "\\n"), old_contrast, 1)
+normalized_ui = new_ui.replace(new_contrast, old_contrast, 1)
 assert omit_visual_method_bodies(normalized_ui) == omit_visual_method_bodies(original_190_ui), (
     "SAFE ZONE: non-visual Ui class or legacy palettes changed during appearance work"
 )
