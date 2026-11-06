@@ -1761,19 +1761,59 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 30));
 
-        content.addView(sectionTitle("مظهر التطبيق", Ui.THEME_NAMES.length + " تنسيقًا • يتبع وضع الجوال"));
-        HorizontalScrollView themeScroll = new HorizontalScrollView(this); themeScroll.setHorizontalScrollBarEnabled(false);
+        content.addView(sectionTitle("مظهر التطبيق",
+                ThemeCatalogue.visibleCount(this) + " Themes • English names"));
+        HorizontalScrollView themeScroll = new HorizontalScrollView(this);
+        themeScroll.setHorizontalScrollBarEnabled(false);
         LinearLayout themeRow = Ui.row(this);
         int currentTheme = Ui.themeIndex(this);
         for (int i = 0; i < Ui.THEME_NAMES.length; i++) {
+            if (!ThemeCatalogue.isVisible(this, i)) continue;
             final int index = i;
-            LinearLayout card = Ui.column(this); card.setGravity(Gravity.CENTER);
+            FrameLayout tile = new FrameLayout(this);
+            LinearLayout card = Ui.column(this);
+            card.setGravity(Gravity.CENTER);
             card.setBackground(new AuroraDrawable(Ui.themePreviewColors(i), Ui.dp(this, 20)));
-            TextView name = Ui.text(this, (i == currentTheme ? "✓ " : "") + Ui.THEME_NAMES[i], 14, Color.WHITE, true); name.setGravity(Gravity.CENTER);
-            card.addView(name); card.setOnClickListener(v -> { Ui.saveTheme(this, index); recreate(); }); Ui.pressAnimation(card);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(Ui.dp(this, 132), Ui.dp(this, 82)); p.setMargins(Ui.dp(this, 5), 0, Ui.dp(this, 5), 0); themeRow.addView(card, p);
+            TextView name = Ui.text(this, (i == currentTheme ? "✓ " : "")
+                    + ThemeCatalogue.displayName(i), 13, Color.WHITE, true);
+            name.setGravity(Gravity.CENTER);
+            name.setPadding(Ui.dp(this, 9), Ui.dp(this, 6),
+                    Ui.dp(this, 9), Ui.dp(this, 5));
+            card.addView(name);
+            card.setOnClickListener(v -> { Ui.saveTheme(this, index); recreate(); });
+            Ui.pressAnimation(card);
+            tile.addView(card, new FrameLayout.LayoutParams(-1, -1));
+            if (index != currentTheme) {
+                TextView remove = Ui.text(this, "×", 17, Color.WHITE, true);
+                remove.setGravity(Gravity.CENTER);
+                remove.setBackground(Ui.rounded(0x88342325, 14, this));
+                remove.setContentDescription("Delete " + ThemeCatalogue.displayName(index));
+                FrameLayout.LayoutParams removeParams = new FrameLayout.LayoutParams(
+                        Ui.dp(this, 28), Ui.dp(this, 28), Gravity.TOP | Gravity.START);
+                removeParams.setMargins(Ui.dp(this, 3), Ui.dp(this, 3), 0, 0);
+                tile.addView(remove, removeParams);
+                remove.setOnClickListener(v -> new AlertDialog.Builder(this)
+                        .setTitle("حذف " + ThemeCatalogue.displayName(index))
+                        .setMessage("سيُزال من القائمة فقط، ويمكن استعادته لاحقًا.")
+                        .setNegativeButton("إلغاء", null)
+                        .setPositiveButton("حذف", (dialog, which) -> {
+                            if (ThemeCatalogue.hide(this, index)) showSettings();
+                        }).show());
+                Ui.pressAnimation(remove);
+            }
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
+                    Ui.dp(this, 132), Ui.dp(this, 82));
+            p.setMargins(Ui.dp(this, 5), 0, Ui.dp(this, 5), 0);
+            themeRow.addView(tile, p);
         }
-        themeScroll.addView(themeRow); content.addView(themeScroll);
+        themeScroll.addView(themeRow);
+        content.addView(themeScroll);
+        Button restoreThemes = actionButton("استعادة الثيمات المحذوفة", false);
+        restoreThemes.setOnClickListener(v -> {
+            ThemeCatalogue.restoreUserHidden(this);
+            showSettings();
+        });
+        content.addView(restoreThemes);
 
         content.addView(sectionTitle("تخصيص الواجهة", "مكان واحد ومنظّم لإعدادات الصفحة الرئيسية"));
         LinearLayout layoutCard = Ui.row(this); layoutCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
