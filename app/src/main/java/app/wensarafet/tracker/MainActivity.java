@@ -1000,7 +1000,7 @@ public final class MainActivity extends Activity {
         card.setElevation(Ui.dp(this, 3));
         // Contrast is material-specific, not dictated by a universal white label.
         // Ivory champagne and peach/mint cards require dark readable ink.
-        int cardInk = (Ui.themeIndex(this) == 27 || Ui.themeIndex(this) == 28)
+        int cardInk = (Ui.themeIndex(this) == 27)
                 ? 0xFF453329 : Color.WHITE;
         card.addView(Ui.text(this, label, 12, cardInk, false));
         TextView amountView = Ui.text(this, amount, 20, cardInk, true);
