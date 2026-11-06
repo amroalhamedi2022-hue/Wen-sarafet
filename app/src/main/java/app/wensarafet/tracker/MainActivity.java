@@ -1781,9 +1781,19 @@ public final class MainActivity extends Activity {
             FrameLayout tile = new FrameLayout(this);
             LinearLayout card = Ui.column(this);
             card.setGravity(Gravity.CENTER);
-            card.setBackground(new AuroraDrawable(Ui.themePreviewColors(i), Ui.dp(this, 20)));
+            // Premium swatches must use the SAME production glass shader
+            // as the actual page; a flat AuroraDrawable would mislead owners.
+            if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(i)) {
+                card.setBackground(new app.wensarafet.glass.WenPremiumLiquidDrawable(
+                        this, i,
+                        app.wensarafet.glass.WenReferenceGlassDrawable.Surface.HEADER,
+                        i != 27));
+            } else {
+                card.setBackground(new AuroraDrawable(Ui.themePreviewColors(i), Ui.dp(this, 20)));
+            }
             TextView name = Ui.text(this, (i == currentTheme ? "✓ " : "")
-                    + ThemeCatalogue.displayName(i), 13, Color.WHITE, true);
+                    + ThemeCatalogue.displayName(i), 13,
+                    i == 27 ? 0xFF56351E : Color.WHITE, true);
             name.setGravity(Gravity.CENTER);
             name.setPadding(Ui.dp(this, 9), Ui.dp(this, 6),
                     Ui.dp(this, 9), Ui.dp(this, 5));
