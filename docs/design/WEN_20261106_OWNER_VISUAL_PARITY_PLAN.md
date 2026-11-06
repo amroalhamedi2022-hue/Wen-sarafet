@@ -44,6 +44,17 @@ Date: 2026-11-06. Scope: **visual-only, no finance modifications, no merge/signi
 ## Release gate
 Visual source guard, core unit/finance guards, clean compile and Android API 33+35 tests all pass, **plus** owner approves actual emulator PNGs for all five themes. Only afterwards merge to main, inspect original signer certificate SHA-256 fingerprint, sign one normal final APK with original private keystore, verify in-place upgrade with preserved data. Never upload key or password to GitHub.
 
+## Verified implementation log — 2026-11-06
+- PR #45 on `design/wen-visual-parity-owner-review-20261106` targets only the 2.0 original-signer release candidate; NEVER main/signing.
+- Added short English preset labels, reversible hide/restore, retired presets 22–24, preserved actively selected older preset, preserved five approved 25–29. Current settings preview uses production glass shader.
+- Reworked `WenPremiumLiquidDrawable` to use cached radial caustics, metallic header/backdrop wave reflections, translucent material palettes, and separate dark/gold/champagne/emerald/violet scenes. First Android 15 debug-only fixture visual pass revealed excessively bright backgrounds, unwanted card ribbons and one blank Imperial frame; second-pass corrections reduce ambient bloom, keep caustics on background/header, and enforce nonblank retry.
+- Corrected Champagne/peach text readability and green/violet dark-scene text palette.
+- Circular FAB touch foreground prevents square glows; new finite `GlassMotion.slideLens` parent invalidation keeps optical chrome updated during screen swipe or tab tap. Actual gesture interaction still needs Android instrumentation.
+- **Gates checked**: latest screenshot workflow source Safe Zone gate passed; prior (pre-second-pass) Android build and Lint passed; screenshots of debug-only materials generated and inspected (NOT real authenticated MainActivity and NOT owner approved).
+- **Pending**: second-pass screenshot inspection, swipe-motion instrumentation, genuine MainActivity screenshots with synthetic app state, visual refinements and owner's screenshot approval. No signed APK or main merge.
+- Screenshot workflow (Android 15): `https://github.com/amroalhamedi2022-hue/Wen-sarafet/actions/workflows/wen-visual-screenshots.yml` — stores 5 PNGs, no user installation.
+- Do not replace this log with a generic progress claim; check the latest run/job conclusions and artifacts.
+
 ## Work progress
 - [x] Compared source and received 5 reference + 5 runtime screenshots.
 - [x] Verified latest 2.0 release candidate baseline and existing 30 theme indices.
