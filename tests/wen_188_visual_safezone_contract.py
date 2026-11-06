@@ -111,7 +111,7 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "51fb54c604acfdc0083a44a65987120228d29f8c"
+APPROVED_VISUAL_HOST_BLOB = "8443e7d449b953db91d3f7655a6c2abbba109f95"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
@@ -180,6 +180,21 @@ premium_fab_position = """        // Absolute LEFT/RIGHT is essential on an RTL 
 assert previous_host.count(old_fab_position) == 1
 assert sanitized_host.count(premium_fab_position) == 1
 sanitized_host = sanitized_host.replace(premium_fab_position, old_fab_position, 1)
+
+# One purely visual setting hides the thick scrollbar on the five
+# premium materials; it does not alter scroll listeners or event dispatch.
+old_scrollbar = """        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();"""
+premium_scrollbar = """        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        // Decorative five-scene materials should never be obscured by the
+        // thick transient MIUI/Android scroll indicator. Scrolling still works.
+        if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(
+                Ui.themeIndex(this))) scroll.setVerticalScrollBarEnabled(false);
+        LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();"""
+assert sanitized_host.count(premium_scrollbar) == 1
+sanitized_host = sanitized_host.replace(premium_scrollbar, old_scrollbar, 1)
 
 # Stats remain the original view/click handlers and amounts, only ink changes.
 sanitized_host = revert_visual_section(
