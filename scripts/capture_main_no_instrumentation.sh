@@ -92,15 +92,41 @@ capture() {
        adb shell input swipe 520 1900 520 610 420
        sleep 2
     fi
-    timeout 45 adb exec-out screencap -p > "$file"
-    test -s "$file"
-    local bytes
-    bytes=$(stat -c '%s' "$file")
-    test "$bytes" -gt 100000 || {
-       echo "Black/blank real-screen capture: $file ($bytes bytes)" >&2
-       exit 1
+    # Capture and COMPLETE the PNG on-device before transferring it. The
+    # Champagne emulator has previously severed adb halfway through a PNG
+    # stream, leaving an invalid image that looked like a completed screenshot.
+    # Saving on device first makes retries recoverable without recomposing UI.
+    local target="/sdcard/wen-owner-theme-${theme}.png"
+    local bytes=0
+    local complete=0
+    for attempt in 1 2 3 4; do
+      timeout 35 adb shell screencap -p "$target" || true
+      timeout 35 adb pull "$target" "$file" >/dev/null 2>&1 || true
+      if [ -s "$file" ]; then
+        bytes=$(stat -c '%s' "$file")
+        if python3 - "$file" <<'CHECK_PNG'
+import pathlib,sys,struct,zlib
+p=pathlib.Path(sys.argv[1])
+data=p.read_bytes()
+if len(data)<100000 or data[:8]!=bytes.fromhex("89504e470d0a1a0a"):sys.exit(2)
+if data[-12:]!=bytes.fromhex("0000000049454e44ae426082"):sys.exit(3)
+width,height=struct.unpack(">II",data[16:24])
+if width<720 or height<1280:sys.exit(4)
+CHECK_PNG
+        then
+          complete=1
+          break
+        fi
+      fi
+      echo "Attempt $attempt: incomplete screenshot $file ($bytes B)" >&2
+      timeout 15 adb start-server >/dev/null 2>&1 || true
+      sleep 2
+    done
+    test "$complete" -eq 1 || {
+      echo "ERROR: no complete native screenshot for $theme/$page" >&2
+      exit 1
     }
-    echo "REAL MainActivity $page theme=$theme screenshot bytes=$bytes"
+    echo "REAL MainActivity $page theme=$theme complete PNG bytes=$bytes"
 }
 
 # In CI, each owner-approved theme runs in its OWN clean AVD process.
