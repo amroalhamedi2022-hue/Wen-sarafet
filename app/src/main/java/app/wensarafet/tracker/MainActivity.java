@@ -463,6 +463,10 @@ public final class MainActivity extends Activity {
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
+        // Decorative five-scene materials should never be obscured by the
+        // thick transient MIUI/Android scroll indicator. Scrolling still works.
+        if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(
+                Ui.themeIndex(this))) scroll.setVerticalScrollBarEnabled(false);
         LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();
         scroll.addView(content, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         shell.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
