@@ -121,6 +121,22 @@ public final class NavigationVisualDecorator {
                         : premiumIndex == 27 ? 0xFF756B5B
                         : premiumIndex == 28 ? 0xFFEEEAD4 : 0xFFF4DDFC;
                 item.setTextColor(i == selected ? chosen : idle);
+                // Premium reference screenshots use fine, monochrome vector
+                // glyphs. Android's four multi-colour emojis break the visual
+                // hierarchy and resemble unstyled system defaults.
+                // Replace glyph appearance ONLY; keep original tab TextView,
+                // original navigation callback, order and accessibility label.
+                String original = item.getText().toString();
+                int lineBreak = original.lastIndexOf('\n');
+                if (lineBreak >= 0) item.setText(original.substring(lineBreak + 1));
+                WenPremiumTabIconDrawable glyph =
+                        new WenPremiumTabIconDrawable(context, premiumIndex,
+                                i, i == selected);
+                int glyphSize=Ui.dp(context, 22);
+                glyph.setBounds(0, 0, glyphSize, glyphSize);
+                item.setCompoundDrawables(null, glyph, null, null);
+                item.setCompoundDrawablePadding(Ui.dp(context, 4));
+                item.setMaxLines(1);
             } else if (Ui.isReferenceGlassTheme(context)) {
                 // Only appearance changes; the original navigation actions,
                 // accessibility labels and held-drag lens remain untouched.
