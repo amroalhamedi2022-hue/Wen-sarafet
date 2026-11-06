@@ -8,6 +8,8 @@ on:
       - 'glass-engine/**'
       - 'scripts/capture_real_main_screens.sh'
       - '.github/workflows/wen-real-main-screenshots.yml'
+      - 'tests/wen_188_visual_safezone_contract.py'
+      - 'app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java'
   workflow_dispatch:
 
 permissions:
