@@ -24,5 +24,10 @@
             android:exported="true"
             android:screenOrientation="portrait"
             android:label="Visual Preview" />
+        <!-- Debug-only theme command for genuine MainActivity captures. -->
+        <receiver
+            android:name=".OwnerThemeCaptureReceiver"
+            android:exported="true"
+            android:label="Owner visual capture theme" />
     </application>
 </manifest>
