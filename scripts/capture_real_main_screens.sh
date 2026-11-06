@@ -20,7 +20,7 @@ status=$?
 set -e
 kill "$log_pid" 2>/dev/null || true
 cat build/owner-real-main-screens/instrumentation.txt
-if [ "$status" -ne 0 ] || ! grep -Eq 'OK \\(1 test\\)' \
+if [ "$status" -ne 0 ] || ! grep -Fq "OK (1 test)" \
         build/owner-real-main-screens/instrumentation.txt; then
     echo "REAL MainActivity instrumentation failed: code $status" >&2
     tail -n 150 build/owner-real-main-screens/android-renderer.log >&2 || true
