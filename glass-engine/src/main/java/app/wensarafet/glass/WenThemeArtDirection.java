@@ -1,6 +1,5 @@
 package app.wensarafet.glass;
 
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
 import android.graphics.RectF;
@@ -51,9 +50,10 @@ final class WenThemeArtDirection {
                 Math.max(1f,w*(chrome?.50f:.35f)),
                 new int[]{0x8BFFE6AA,0x2FAE7A38,0},
                 new float[]{0f,.33f,1f},Shader.TileMode.CLAMP));
-        reflection.setShader(new LinearGradient(b.left,b.top,b.right,b.bottom,
-                new int[]{0x75FFE8BC,0x18DAB782,0x04FFFFFF,0x32E4B374,0},
-                new float[]{0f,.20f,.51f,.83f,1f},Shader.TileMode.CLAMP));
+        reflection.setShader(new RadialGradient(b.left+w*.83f,b.top+h*.14f,
+                Math.max(1f,Math.max(w,h)*.89f),
+                new int[]{0x5DFFE2AC,0x19DAB782,0},
+                new float[]{0f,.39f,1f},Shader.TileMode.CLAMP));
     }
 
     /** 26: blue-black graphite with opposite left upper and right lower gold light. */
@@ -72,9 +72,10 @@ final class WenThemeArtDirection {
                 Math.max(1f,w*(chrome?.47f:.31f)),
                 new int[]{0x91F9DEAB,0x1FCDA56D,0},
                 new float[]{0f,.44f,1f},Shader.TileMode.CLAMP));
-        reflection.setShader(new LinearGradient(b.left+w*.36f,b.top,
-                b.right-w*.12f,b.bottom,new int[]{0x6FFFFFFF,0x1AD7C7AD,
-                0x05FFFFFF,0x3DBDA078,0},new float[]{0f,.20f,.47f,.78f,1f},Shader.TileMode.CLAMP));
+        reflection.setShader(new RadialGradient(b.left+w*.19f,b.top+h*.12f,
+                Math.max(1f,Math.max(w,h)*.76f),
+                new int[]{0x59FFF4D4,0x15D7C7AD,0},
+                new float[]{0f,.43f,1f},Shader.TileMode.CLAMP));
     }
 
     /** 27: soft pearlescent cream, reflected champagne rim and broad ivory refraction. */
@@ -93,10 +94,10 @@ final class WenThemeArtDirection {
                 Math.max(1f,w*(chrome?.56f:.45f)),
                 new int[]{0xA1FFFBEF,0x54FFE8BC,0x03FFFFFF},
                 new float[]{0,.38f,1f},Shader.TileMode.CLAMP));
-        reflection.setShader(new LinearGradient(b.left,b.top,
-                b.left+w*.64f,b.bottom,
-                new int[]{0xAEFFFFFF,0x46FFF9ED,0x08FFFFFF,0x6AF5D9B3,0},
-                new float[]{0,.21f,.49f,.80f,1f},Shader.TileMode.CLAMP));
+        reflection.setShader(new RadialGradient(b.left+w*.23f,b.top+h*.14f,
+                Math.max(1f,Math.max(w,h)*.87f),
+                new int[]{0x9AFFFFFF,0x32F5D9B3,0},
+                new float[]{0f,.47f,1f},Shader.TileMode.CLAMP));
     }
 
     /** 28: true amber sunset at top left, translucent emerald folds at right/bottom. */
@@ -115,10 +116,10 @@ final class WenThemeArtDirection {
                 Math.max(1f,w*(chrome?.48f:.39f)),
                 new int[]{0xB9FFE0AD,0x50FFC89F,0},new float[]{0,.36f,1f},
                 Shader.TileMode.CLAMP));
-        reflection.setShader(new LinearGradient(b.left+w*.15f,b.top,
-                b.right,b.bottom,new int[]{0x7DFFF3D5,0x20E5FFDF,
-                0x06FFFFFF,0x56D5F9D6,0},
-                new float[]{0f,.22f,.50f,.79f,1f},Shader.TileMode.CLAMP));
+        reflection.setShader(new RadialGradient(b.left+w*.19f,b.top+h*.16f,
+                Math.max(1f,Math.max(w,h)*.81f),
+                new int[]{0x76FFF3D3,0x21C8F7D7,0},
+                new float[]{0f,.41f,1f},Shader.TileMode.CLAMP));
     }
 
     /** 29: luminous magenta from upper left, electric indigo from lower right. */
@@ -137,9 +138,9 @@ final class WenThemeArtDirection {
                 Math.max(1f,w*(chrome?.51f:.40f)),
                 new int[]{0xAEFFC6F7,0x43E59BE7,0},
                 new float[]{0,.37f,1f},Shader.TileMode.CLAMP));
-        reflection.setShader(new LinearGradient(b.left,b.top,
-                b.right-w*.13f,b.bottom,new int[]{0xA6FFE4FF,0x20FEA8EE,
-                0x06FFFFFF,0x45CBB1FF,0},new float[]{0f,.19f,.52f,.81f,1f},
-                Shader.TileMode.CLAMP));
+        reflection.setShader(new RadialGradient(b.left+w*.18f,b.top+h*.12f,
+                Math.max(1f,Math.max(w,h)*.91f),
+                new int[]{0x78FFE2FC,0x20E5A9E8,0},
+                new float[]{0f,.42f,1f},Shader.TileMode.CLAMP));
     }
 }
