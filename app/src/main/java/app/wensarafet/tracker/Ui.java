@@ -189,6 +189,12 @@ public final class Ui {
     }
 
     public static android.graphics.drawable.Drawable glassFloatingAddBackground(Context context) {
+        // Restore the exact curved optical bubble used by the isolated
+        // 1.8.8 Sandbox. The five premium themes inherit its actual layered
+        // silhouette, transparent corners, hold morph and specular crown.
+        // Other reference and original Liquid presets remain unchanged.
+        if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(themeIndex(context)))
+            return new app.wensarafet.glass.WenFabBubbleDrawable(context, SKY, DARK);
         return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.FAB);
     }
 
