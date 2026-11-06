@@ -147,8 +147,8 @@ public final class ReferenceThemesInstrumentedTest {
                 assertEquals(30, Ui.THEME_NAMES.length);
                 assertTrue(Ui.isReferenceGlassTheme(ctx));
                 assertTrue(Ui.isLiquidTheme(ctx));
-                assertEquals("Only the two gold-dark variants force dark mode",
-                        theme <= 26, Ui.DARK);
+                assertEquals("Gold dark and the two vivid chromatic materials use dark ink mode",
+                        theme != 27, Ui.DARK);
                 assertTrue(Ui.glassScreenBackground(ctx)
                         instanceof app.wensarafet.glass.WenPremiumLiquidDrawable);
                 Bitmap background = draw(Ui.glassScreenBackground(ctx), 480, 800);
