@@ -487,14 +487,24 @@ public final class GlassMotion {
                     && ValueAnimator.areAnimatorsEnabled() && !lowPower(container.getContext());
             if (!canSlide) {
                 lens.setTranslationX(targetX);
+                // The shared physical lens and the parent's optical crown must
+                // agree even if the page was selected by a content swipe.
+                container.postInvalidateOnAnimation();
                 return;
             }
             lens.setTranslationX(tabs[previousIndex].getLeft());
-            // Incoming full-screen content was previously alpha-zero for 280ms,
-            // hiding most of the 340ms slide. Animate with the screen's short
-            // transition so the movement is visible after the first rendered frame.
+            // A new Activity view hierarchy is created on each swipe/tap.
+            // Its refracting crown is painted by the parent track in dispatchDraw.
+            // Child translation animations alone do not guarantee that custom
+            // parent foregrounds are invalidated on every hardware frame.
             lens.animate().translationX(targetX).setDuration(225)
-                    .setInterpolator(NAV_SPRING).start();
+                    .setInterpolator(NAV_SPRING)
+                    .setUpdateListener(animation -> container.postInvalidateOnAnimation())
+                    .withEndAction(() -> {
+                        if (!lens.isAttachedToWindow()) return;
+                        lens.setTranslationX(targetX);
+                        container.postInvalidateOnAnimation();
+                    }).start();
         });
     }
 
