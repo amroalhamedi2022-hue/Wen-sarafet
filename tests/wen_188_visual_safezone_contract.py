@@ -34,6 +34,7 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenFabOpticalCrownDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenThemeArtDirection.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumCaustics.java",
     "app/src/androidTest/java/app/wensarafet/tracker/RealMainScreenCaptureTest.java",
     ".github/workflows/wen-real-main-screenshots.yml",
     "scripts/capture_real_main_screens.sh",
@@ -716,6 +717,19 @@ for pair in stop_pairs:
         "Android shader positions must be strictly increasing"
     )
 print("PASS: all 20 premium gradient stop arrays valid (5 independent scenes)")
+
+# Audit caustic renderer's UI-only API surface; no event handlers, timers,
+# draw-loop allocations, network or links to the application's Safe Zone.
+optical_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumCaustics.java").read_text(encoding="utf-8")
+for unsafe in ("FinanceDbHelper", "SQLiteDatabase", "getAccounts(", "OnClickListener",
+               "OnTouchListener", "onDraw(", "Handler(", "postDelayed(", "new Thread(",
+               "requestLayout(", "BitmapFactory", "HttpURLConnection", "AssetManager"):
+    assert unsafe not in optical_source, "Optics incorrectly modified business logic: "+unsafe
+for contract in ("void configure(", "void draw(Canvas canvas)", "case 25:", "case 26:",
+                 "case 27:", "case 28:", "default:", "no artificial"):
+    assert contract in optical_source.lower() if contract == "no artificial" else contract in optical_source, (
+        "Premium optics owner-specific contract missing: "+contract
+    )
 
 # Checksums of every remaining tracked file, including money, SQLite,
 # SMS notifications, protected signing/biometric and all resource files,
