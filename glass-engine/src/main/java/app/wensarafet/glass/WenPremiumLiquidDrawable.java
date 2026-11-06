@@ -31,25 +31,25 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     // backdrop x3, card x2, header x2, navigation x2, FAB x2, specular shine.
     private static final int[][] PALETTES = {
             // Royal obsidian with warm metallic amber.
-            {0xFF150F0B,0xFF4B2B16,0xFF19110F, 0xFF2E251C,0xFF51402B,
-             0xFF4A2F18,0xFFC39452, 0xFF241C17,0xFF52351E,
-             0xFF754817,0xFFE4AE4C,0xFFFFDE84},
+            {0xFF100C0A,0xFF2D1D11,0xFF140E0B, 0xFF28221C,0xFF4A3928,
+             0xFF302217,0xFFB28B4E, 0xFF241C17,0xFF493322,
+             0xFF603D1C,0xFFE1AB50,0xFFFFE29A},
             // Imperial dark graphite, champagne-gold reflections.
-            {0xFF171615,0xFF473023,0xFF1C2020, 0xFF312B28,0xFF59463D,
-             0xFF4E382B,0xFFCEAD72, 0xFF292725,0xFF66503C,
-             0xFF7D572B,0xFFD6AA67,0xFFFFE6AA},
+            {0xFF101415,0xFF33241C,0xFF16191B, 0xFF292725,0xFF4B3B31,
+             0xFF312820,0xFFBE995B, 0xFF262525,0xFF534033,
+             0xFF644823,0xFFD0A463,0xFFFFE4A7},
             // Champagne pearlescent ivory.
             {0xFFF4E7DA,0xFFE9CAB1,0xFFFDF3E8, 0xFFF9EAD9,0xFFFFF8EB,
              0xFFF2D5BB,0xFFFFF8DD, 0xFFF5E6D4,0xFFFFF6E9,
              0xFFC68A3C,0xFFF4C777,0xFFFFF1C2},
             // Bright amber pools suspended in deep green glass.
-            {0xFF17382D,0xFFBA7138,0xFF124B3B, 0xFF395F4A,0xFF805E3C,
-             0xFF395E4F,0xFFC88A57, 0xFF315A48,0xFF9A7048,
-             0xFFCE8039,0xFFFFBE70,0xFFFFE2B1},
+            {0xFF0E3529,0xFF386948,0xFF103E34, 0xFF254A3B,0xFF6A5941,
+             0xFF365F49,0xFFAB8653, 0xFF285240,0xFF655C45,
+             0xFF286447,0xFFD1884B,0xFFFFDCA1},
             // Vibrant violet, magenta and electric blue.
-            {0xFF5A1178,0xFFCB247D,0xFF2D15A0, 0xFF7039AA,0xFFAA4DB9,
-             0xFF8636B7,0xFFEC79D3, 0xFF5C329E,0xFF9B4FC7,
-             0xFF9A2CC7,0xFFEE49B8,0xFFFFB6F0}
+            {0xFF3C0E76,0xFF891B8D,0xFF26108B, 0xFF532884,0xFF762DA6,
+             0xFF5E2790,0xFFB54ABB, 0xFF44267F,0xFF7C39AD,
+             0xFF7122AA,0xFFD83BA3,0xFFFFB3EA}
     };
 
     public static boolean supports(int index) {
@@ -118,8 +118,10 @@ public final class WenPremiumLiquidDrawable extends Drawable {
                 return new int[]{p[0], blend(p[0], p[1], .66f), p[1],
                         blend(p[2], p[1], .12f), p[2]};
             case HEADER:
-                return new int[]{alpha(p[5], 228), alpha(blend(p[5], p[6], .48f), 224),
-                        alpha(p[6], 214), alpha(p[5], 226), alpha(p[5], 222)};
+                return new int[]{alpha(p[5], 226),
+                        alpha(blend(p[5], p[6], index==CHAMPAGNE?.42f:.20f), 220),
+                        alpha(blend(p[5], p[6], index==CHAMPAGNE?.57f:.31f), 217),
+                        alpha(p[5], 227), alpha(p[5], 222)};
             case NAVIGATION:
                 return new int[]{alpha(p[7], 220), alpha(p[8], 226),
                         alpha(blend(p[7], p[11], .19f), 225),
@@ -128,9 +130,10 @@ public final class WenPremiumLiquidDrawable extends Drawable {
                 return new int[]{p[9], blend(p[9], p[10], .67f),
                         blend(p[10], p[11], .77f), p[10], p[9]};
             case ACCENT:
-                return new int[]{alpha(p[9], 244), alpha(p[10], 238),
-                        alpha(blend(p[10], p[11], .30f), 234), alpha(p[9], 240),
-                        alpha(p[9], 244)};
+                return new int[]{alpha(p[9], 244),
+                        alpha(blend(p[9],p[10],.34f), 238),
+                        alpha(blend(p[9],p[10],.47f), 234),
+                        alpha(blend(p[9],p[10],.20f), 240), alpha(p[9],244)};
             default:
                 return new int[]{alpha(p[3], 228), alpha(blend(p[3], p[4], .35f), 232),
                         alpha(p[4], 230), alpha(p[3], 228), alpha(p[3], 225)};
@@ -162,8 +165,12 @@ public final class WenPremiumLiquidDrawable extends Drawable {
                 box.right+w*.15f, box.top+h*.62f);
         if (!lowPower) {
             int[] p = PALETTES[index-ROYAL_DARK];
-            float span = Math.max(1f, Math.max(w,h) * (backdrop()?.58f:.88f));
-            int strength = backdrop()?205:chrome()?125:110;
+            float span = Math.max(1f, backdrop() ? Math.min(w,h)*.84f
+                    : Math.max(w,h)*(chrome()?.62f:.73f));
+            int strength = backdrop()
+                    ? (index==ORANGE_GREEN?178:index==PURPLE_PINK?162
+                    : index==CHAMPAGNE?124:138)
+                    : chrome()?115:72;
             bloomA.setShader(new RadialGradient(box.left+w*.14f,box.top+h*.19f,
                     span,new int[]{alpha(p[11],strength),
                     alpha(p[10],Math.round(strength*.50f)),alpha(p[10],0)},
@@ -178,8 +185,8 @@ public final class WenPremiumLiquidDrawable extends Drawable {
                     alpha(p[11],0)},null,Shader.TileMode.CLAMP));
             reflection.setShader(new LinearGradient(box.left,box.top,
                     box.left+w*.65f,box.top+h*.82f,
-                    new int[]{0xB4FFFFFF,0x22FFFFFF,0x04FFFFFF,
-                    0x6CFFFFFF,0x00FFFFFF},
+                    new int[]{0x64FFFFFF,0x12FFFFFF,0x00FFFFFF,
+                    0x33FFFFFF,0x00FFFFFF},
                     new float[]{0f,.18f,.44f,.65f,1f},Shader.TileMode.CLAMP));
             ribbonGlow.setStrokeWidth((backdrop()?19f:chrome()?9f:7f)*d);
             ribbonGlow.setShader(new LinearGradient(box.left,box.top,box.right,box.bottom,
@@ -223,10 +230,14 @@ public final class WenPremiumLiquidDrawable extends Drawable {
             canvas.drawRect(box,bloomB);
             canvas.drawRect(box,caustic);
             if (!backdrop()) canvas.drawRect(box,reflection);
-            canvas.drawPath(ribbon,ribbonGlow);
-            canvas.drawPath(ribbon,ribbonEdge);
-            if (backdrop() || surface==WenReferenceGlassDrawable.Surface.HEADER)
+            // Do not draw ornamental S-curves across every metric/account.
+            // In the references caustic ribbons belong to the backdrop/header;
+            // the content stays sharp and legible above the refractive material.
+            if (backdrop() || surface==WenReferenceGlassDrawable.Surface.HEADER) {
+                canvas.drawPath(ribbon,ribbonGlow);
+                canvas.drawPath(ribbon,ribbonEdge);
                 canvas.drawPath(secondRibbon,ribbonGlow);
+            }
         }
         canvas.restoreToCount(saved);
         if (!backdrop()) {
