@@ -692,6 +692,31 @@ assert "LIQUID_FOLLOW = .60f" in motion
 assert "LIQUID_RELEASE_MS = 265L" in motion
 assert "NAV_LIQUID_STRETCH_ACTIVE" in native
 
+# Android 13 emulator revealed a fatal LinearGradient constructor error:
+# a five-colour array with only four positions crashes before the first frame.
+# Statistically audit ALL twenty real gradient stop arrays before shipping.
+import re
+direction_src = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenThemeArtDirection.java").read_text(encoding="utf-8")
+stop_pairs = list(re.finditer(
+    r"new int\\[\\]\\{([^}]+)\\}\\s*,\\s*new float\\[\\]\\{([^}]+)\\}",
+    direction_src
+))
+assert len(stop_pairs) == 20, "Prematurely removed one of the 20 themed shader stop arrays"
+for pair in stop_pairs:
+    shades = [value.strip() for value in pair.group(1).split(",") if value.strip()]
+    positions = [float(value.strip().rstrip("fF"))
+                 for value in pair.group(2).split(",") if value.strip()]
+    assert len(shades) == len(positions), (
+        "ANDROID RENDER CRASH: gradient shades/positions length mismatch"
+    )
+    assert positions[0] == 0.0 and positions[-1] == 1.0, (
+        "Android shader positions must span 0..1"
+    )
+    assert all(a < b for a,b in zip(positions, positions[1:])), (
+        "Android shader positions must be strictly increasing"
+    )
+print("PASS: all 20 premium gradient stop arrays valid (5 independent scenes)")
+
 # Checksums of every remaining tracked file, including money, SQLite,
 # SMS notifications, protected signing/biometric and all resource files,
 # are guaranteed by the exact allowlist + git diff above.
