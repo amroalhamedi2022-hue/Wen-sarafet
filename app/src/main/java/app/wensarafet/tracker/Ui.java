@@ -194,7 +194,8 @@ public final class Ui {
         // silhouette, transparent corners, hold morph and specular crown.
         // Other reference and original Liquid presets remain unchanged.
         if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(themeIndex(context)))
-            return new app.wensarafet.glass.WenFabBubbleDrawable(context, SKY, DARK);
+            return new app.wensarafet.glass.WenFabBubbleDrawable(
+                    context, SKY, DARK, themeIndex(context));
         return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.FAB);
     }
 
