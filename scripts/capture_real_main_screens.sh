@@ -2,9 +2,27 @@
 # Purely ephemeral Android 15 DEBUG-package instrumentation of REAL MainActivity.
 # Never signs, installs, unlocks or touches the owner's existing application.
 set -euo pipefail
+# Debug x86_64 emulator cannot load the optional ARM-native gaussian
+# library. The *real production* APK keeps all native libs. This exclusion
+# exists only in a disposable CI checkout, never committed to app/build.gradle.
+cat >> app/build.gradle <<'CI_DEBUG_ONLY'
+android {
+    packagingOptions {
+        jniLibs {
+            excludes += ['**/libnativegauss.so']
+        }
+    }
+}
+CI_DEBUG_ONLY
 gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --console=plain
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+# Known-good 1.8.8-Sandbox emulator recovery: Pixel Launcher has an
+# intermittent Android 15 ANR in GitHub runners although finance UI works.
+# Only the CI emulator user 0 is affected; no package change.
+adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
+adb shell am force-stop com.google.android.apps.nexuslauncher || true
+adb shell wm dismiss-keyguard || true
 mkdir -p build/owner-real-main-screens
 # Retain actual crash/renderer evidence if PixelCopy or the emulator dies.
 adb logcat -c || true
