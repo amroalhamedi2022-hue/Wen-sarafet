@@ -84,36 +84,68 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "05893051eae02b945d9430a176708b31c47a4b19"
+APPROVED_VISUAL_HOST_BLOB = "5787a90d92b2fa697c329af1907711617b05ba59"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
-# Strictly compare everything except the ONE owner-requested theme picker UI
-# against the verified 2.0 release candidate. This prevents the updated source
-# SHA pin from accidentally allowing financial, auth or navigation mutations.
+# Compare the whole 300K Java host byte-for-byte with the verified 2.0
+# release candidate after reversing ONLY three strictly visual modifications.
+# No finance, auth, routing or original callback can slip through this gate.
 PRE_THEME_CATALOGUE = "caf2f6eeac3a5a34fc688b21544902d7ccd13e71"
 previous_host = git("show", f"{PRE_THEME_CATALOGUE}:{MAIN}")
+sanitized_host = current_main
+
+def revert_visual_section(current, old, from_current, from_old, until):
+    assert current.count(from_current) == old.count(from_old) == 1
+    assert current.count(until) == old.count(until) == 1
+    fresh = current[current.index(from_current):current.index(until)]
+    historical = old[old.index(from_old):old.index(until)]
+    return current.replace(fresh, historical, 1)
+
+# Header modifications are limited to ink (including icon ink), never buttons.
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "        // Champagne is a pale gold surface; white ink becomes invisible.",
+    '        TextView title = Ui.text(this, "وين صرفت؟", 25, Color.WHITE, true);',
+    "        // Keep labels and controls inside the fixed header"
+)
+header_icons = [
+    ('TextView addAccount = Ui.text(this, "▦", headerIconText, headerInk, true);',
+     'TextView addAccount = Ui.text(this, "▦", headerIconText, Color.WHITE, true);'),
+    ('TextView settings = Ui.text(this, "⚙", headerIconText, headerInk, true);',
+     'TextView settings = Ui.text(this, "⚙", headerIconText, Color.WHITE, true);')
+]
+for new, old in header_icons:
+    assert sanitized_host.count(new) == previous_host.count(old) == 1
+    sanitized_host = sanitized_host.replace(new, old, 1)
+
+# Stats remain the original view/click handlers and amounts, only ink changes.
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "        // Contrast is material-specific, not dictated by a universal white label.",
+    "        card.addView(Ui.text(this, label, 12, Color.rgb(239, 244, 255), false));",
+    "        amountView.setAutoSizeTextTypeUniformWithConfiguration("
+)
+
 theme_start = '        content.addView(sectionTitle("مظهر التطبيق",'
 theme_end = '        content.addView(sectionTitle("تخصيص الواجهة",'
-assert previous_host.count(theme_start) == current_main.count(theme_start) == 1
-assert previous_host.count(theme_end) == current_main.count(theme_end) == 1
-before_prefix = previous_host[:previous_host.index(theme_start)]
-after_prefix = current_main[:current_main.index(theme_start)]
-before_suffix = previous_host[previous_host.index(theme_end):]
-after_suffix = current_main[current_main.index(theme_end):]
-assert before_prefix == after_prefix and before_suffix == after_suffix, (
-    "SAFE ZONE: MainActivity modified outside the theme picker only"
-)
-new_picker = current_main[current_main.index(theme_start):current_main.index(theme_end)]
+assert previous_host.count(theme_start) == sanitized_host.count(theme_start) == 1
+assert previous_host.count(theme_end) == sanitized_host.count(theme_end) == 1
+new_picker = sanitized_host[sanitized_host.index(theme_start):sanitized_host.index(theme_end)]
+old_picker = previous_host[previous_host.index(theme_start):previous_host.index(theme_end)]
 for approved in ("ThemeCatalogue.visibleCount(this)", "ThemeCatalogue.displayName(i)",
                  "ThemeCatalogue.isVisible(this, i)", "ThemeCatalogue.hide(this, index)",
                  "ThemeCatalogue.restoreUserHidden(this)", "Ui.saveTheme(this, index)",
-                 "setPositiveButton(\"حذف\"", "index != currentTheme"):
+                 'setPositiveButton("حذف"', "index != currentTheme"):
     assert approved in new_picker, "Missing owner-approved theme action: " + approved
 for forbidden in ("FinanceDbHelper", "SQLiteDatabase", "deleteTransaction(",
                   "showAddTransaction(", "getBalance(", "showDebtsScreen(",
                   "insertTransaction(", "SmsCapture"):
     assert forbidden not in new_picker, "Unsafe theme UI addition: " + forbidden
+sanitized_host = sanitized_host.replace(new_picker, old_picker, 1)
+assert sanitized_host == previous_host, (
+    "SAFE ZONE: MainActivity differs beyond approved theme picker, header and metric text"
+)
 
 SOURCE_190 = "283112f4bedaf2e07dd7370e581f84e14959710e"
 main_pre_visual_host = git("show", f"{SOURCE_190}:{MAIN}")
