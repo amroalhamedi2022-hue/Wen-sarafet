@@ -7,6 +7,7 @@ set -euo pipefail
 export PACKAGE=app.wensarafet.tracker.recovered.debug
 export SCREEN_DIR=build/owner-live-main-screens
 mkdir -p "$SCREEN_DIR"
+if [ "${WEN_DEBUG_CAPTURE_PREPARE_ONLY:-0}" = "1" ]; then
 python3 - <<'PY'
 from pathlib import Path
 path = Path('app/src/main/java/app/wensarafet/tracker/MainActivity.java')
@@ -41,6 +42,8 @@ android {
 }
 GRADLE_CI_ONLY
 gradle :app:assembleDebug --no-daemon --console=plain
+exit 0
+fi
 adb wait-for-device
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 # Proven GitHub Android 15 emulator launcher ANR workaround (debug user only).
@@ -48,6 +51,12 @@ adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
 adb shell am force-stop com.google.android.apps.nexuslauncher || true
 adb shell wm dismiss-keyguard || true
 adb logcat -c || true
+# Preserve app/runtime GPU crash output even if the emulator/ADB dies.
+adb logcat -v time -s AndroidRuntime:E WenSarafet:E WenGlassProbe:I WenRealPreview:I \
+  > "$SCREEN_DIR/live-renderer.log" 2>&1 &
+LOGCAT_PID=$!
+trap 'kill "$LOGCAT_PID" 2>/dev/null || true' EXIT
+
 
 onfailure() {
   echo 'EMULATOR DIAGNOSTICS:' >&2
@@ -69,8 +78,8 @@ capture() {
         timeout 80 adb shell am start -W -n "$PACKAGE/app.wensarafet.tracker.MainActivity" --ez open_transactions true ;;
       *) echo "Unknown page $page" >&2; exit 1 ;;
     esac
-    sleep 5
-    test -n "$(adb shell pidof "$PACKAGE" | tr -d '\r')" || {
+    sleep 4
+    test -n "$(timeout 25 adb shell pidof "$PACKAGE" 2>/dev/null | tr -d '\r')" || {
        echo "MainActivity crashed for $theme/$page" >&2; exit 1;
     }
     if [ "$page" = accounts ]; then
