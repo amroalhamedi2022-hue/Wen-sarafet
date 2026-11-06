@@ -17,6 +17,7 @@ ALLOWED = {
     "app/src/androidTest/java/app/wensarafet/tracker/WenVisualMotionInstrumentedTest.java",
     "app/src/main/AndroidManifest.xml",
     "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java",
+    "app/src/main/java/app/wensarafet/tracker/WenPremiumTabIconDrawable.java",
     "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java",
     "app/src/main/java/app/wensarafet/tracker/SplitRemainderUi.java",
     "app/src/main/java/app/wensarafet/tracker/SplitRemainderRules.java",
@@ -730,6 +731,16 @@ for contract in ("void configure(", "void draw(Canvas canvas)", "case 25:", "cas
     assert contract in optical_source, (
         "Premium optics owner-specific contract missing: "+contract
     )
+
+# Premium tab glyphs are inert vector drawables, never replacement actions.
+tab_glyph = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenPremiumTabIconDrawable.java").read_text(encoding="utf-8")
+assert "extends Drawable" in tab_glyph
+for shape in ("case 0:", "case 1:", "case 2:", "default:"):
+    assert shape in tab_glyph, "Premium icon shape missing: "+shape
+for illegal in ("FinanceDbHelper", "SQLiteDatabase", "setOnClickListener",
+                "setOnTouchListener", "setOnLongClickListener", "HttpURLConnection"):
+    assert illegal not in tab_glyph, "Premium glyph enters Safe Zone: "+illegal
+assert "new WenPremiumTabIconDrawable" in adapter, "Premium nav doesn't use original vector icon mapping"
 
 # Checksums of every remaining tracked file, including money, SQLite,
 # SMS notifications, protected signing/biometric and all resource files,
