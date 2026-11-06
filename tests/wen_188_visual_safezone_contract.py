@@ -727,7 +727,7 @@ for unsafe in ("FinanceDbHelper", "SQLiteDatabase", "getAccounts(", "OnClickList
                "requestLayout(", "BitmapFactory", "HttpURLConnection", "AssetManager"):
     assert unsafe not in optical_source, "Optics incorrectly modified business logic: "+unsafe
 for contract in ("void configure(", "void draw(Canvas canvas)", "case 25:", "case 26:",
-                 "case 27:", "case 28:", "default:", "drawRays = scene"):
+                 "case 27:", "case 28:", "default:", "drawRays = false"):
     assert contract in optical_source, (
         "Premium optics owner-specific contract missing: "+contract
     )
