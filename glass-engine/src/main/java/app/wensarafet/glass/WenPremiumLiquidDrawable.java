@@ -68,6 +68,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     private final Paint bloomB = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint reflection = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint caustic = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final WenPremiumCaustics ownerOptics = new WenPremiumCaustics();
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bevel = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float radius;
@@ -148,6 +149,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         // translucency and specular orientation of EACH theme independently.
         WenThemeArtDirection.configure(index, box, backdrop(), chrome(), lowPower,
                 bloomA, bloomB, caustic, reflection);
+        ownerOptics.configure(box, index, surface, lowPower, d);
         float padding=Math.max(.8f,d);
         inside.set(box.left+padding,box.top+padding,box.right-padding,box.bottom-padding);
         rim.setStrokeWidth(Math.max(.8f,chrome()?1.45f*d:1.0f*d));
@@ -171,7 +173,9 @@ public final class WenPremiumLiquidDrawable extends Drawable {
             canvas.drawRect(box,bloomB);
             canvas.drawRect(box,caustic);
             if (!backdrop()) canvas.drawRect(box,reflection);
-            // No artificial waves/stripes: purely smooth optical light fields.
+            // Each of the five scenes has its own refractive, broad sunlight
+            // curves; rendered from cached Paths/Shaders without per-frame work.
+            ownerOptics.draw(canvas);
         }
         canvas.restoreToCount(saved);
         if (!backdrop()) {
