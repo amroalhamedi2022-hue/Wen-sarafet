@@ -2,7 +2,7 @@ package app.wensarafet.tracker;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.PixelCopy;
+import android.view.PixelCopy;
 import android.os.Handler;
 import android.os.Looper;
 import java.util.concurrent.CountDownLatch;
