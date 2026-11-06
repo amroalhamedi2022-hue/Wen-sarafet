@@ -557,8 +557,12 @@ public final class MainActivity extends Activity {
         bar.setElevation(Ui.dp(this, 8));
 
         LinearLayout titles = Ui.column(this);
-        TextView title = Ui.text(this, "وين صرفت؟", 25, Color.WHITE, true);
-        TextView subtitle = Ui.text(this, "أموالك واضحة، وخصوصيتك محفوظة", 11, Color.rgb(225, 239, 235), false);
+        // Champagne is a pale gold surface; white ink becomes invisible.
+        // All other themes retain their established header contrast.
+        int headerInk = Ui.themeIndex(this) == 27 ? 0xFF65421F : Color.WHITE;
+        int headerSoftInk = Ui.themeIndex(this) == 27 ? 0xFF79572F : Color.rgb(225, 239, 235);
+        TextView title = Ui.text(this, "وين صرفت؟", 25, headerInk, true);
+        TextView subtitle = Ui.text(this, "أموالك واضحة، وخصوصيتك محفوظة", 11, headerSoftInk, false);
         // Keep labels and controls inside the fixed header on compact RTL screens.
         title.setSingleLine(true);
         subtitle.setSingleLine(true);
@@ -573,13 +577,13 @@ public final class MainActivity extends Activity {
         if(getResources().getConfiguration().screenWidthDp < 390)
             headerIconSize=Math.min(headerIconSize,Ui.dp(this,48));
         float headerIconText = Math.min(31f, 21f * headerPercent / 100f);
-        TextView addAccount = Ui.text(this, "▦", headerIconText, Color.WHITE, true);
+        TextView addAccount = Ui.text(this, "▦", headerIconText, headerInk, true);
         addAccount.setGravity(Gravity.CENTER);
         addAccount.setContentDescription("إدارة الحسابات");
         addAccount.setTag("wen_intro_header_accounts");
         addAccount.setBackground(Ui.rounded(Color.argb(42, 255, 255, 255), 20, this));
         addAccount.setOnClickListener(v -> showAccountManagement());
-        TextView settings = Ui.text(this, "⚙", headerIconText, Color.WHITE, true);
+        TextView settings = Ui.text(this, "⚙", headerIconText, headerInk, true);
         settings.setGravity(Gravity.CENTER);
         settings.setContentDescription("الإعدادات");
         settings.setTag("wen_intro_header_settings");
@@ -994,8 +998,12 @@ public final class MainActivity extends Activity {
         card.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 7));
         card.setBackground(Ui.glassAccentBackground(this, 20));
         card.setElevation(Ui.dp(this, 3));
-        card.addView(Ui.text(this, label, 12, Color.rgb(239, 244, 255), false));
-        TextView amountView = Ui.text(this, amount, 20, Color.WHITE, true);
+        // Contrast is material-specific, not dictated by a universal white label.
+        // Ivory champagne and peach/mint cards require dark readable ink.
+        int cardInk = (Ui.themeIndex(this) == 27 || Ui.themeIndex(this) == 28)
+                ? 0xFF453329 : Color.WHITE;
+        card.addView(Ui.text(this, label, 12, cardInk, false));
+        TextView amountView = Ui.text(this, amount, 20, cardInk, true);
         amountView.setAutoSizeTextTypeUniformWithConfiguration(13, 20, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
         card.addView(amountView);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, Ui.dp(this, 78), 1);
