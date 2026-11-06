@@ -74,6 +74,16 @@ Visual source guard, core unit/finance guards, clean compile and Android API 33+
 - **Still blocked**: actual new MainActivity PNG validation and user visual approval; no claims of perfect visual parity, no signed APK, no merge to main, no user-device install.
 - Branch: `design/wen-visual-parity-owner-review-20261106`. Review: PR #45.
 
+## 2026-11-06 — Four REAL home screenshots and reproducible renderer QA
+- Direct Pixel framebuffer of **actual** `MainActivity`, not composited mock: four complete 1080x2400 images of themes 25, 26, 28, 29. CI [run 42245228582](https://github.com/amroalhamedi2022-hue/Wen-sarafet/actions/runs/42245228582), artifacts `wen-real-mainactivity-theme-{25,26,28,29}-android13`.
+- Theme 27 Champagne's first isolated Android 13 emulator failed (ADB/renderer lost). A single-job rerun was requested; never call its screenshot successful until an actual full PNG is inspected.
+- Root cause of earlier boot-overlay Imperial screenshot was a REAL Android `IllegalArgumentException`: `LinearGradient` had 5 colours and only 4 positions in three separately composed themes (Imperial, Emerald, Violet). Fixed all three; new strict regression guard checks the 20 configured arrays have equal counts, endpoints 0/1 and monotonically increasing stops.
+- The owner-requested FAB circle is now drawn in each premium palette using an overload of the actual Sandbox `WenFabBubbleDrawable`, while holding the legacy draw and press methods byte-identical. Original account icons unchanged.
+- Eliminated redundant inset premium navigation panel background; this reduces stacked capsule borders while retaining the original tab views/clicks/optical lens.
+- **Visual parity remains NOT accepted.** Main remaining defects observed in real screenshots: too-matte/reflection-poor Royal/Imperial; some shader-diagonal contour artifacts in Imperial; chromatic glass looks flatter than owner refs; coarse emoji-style navigation glyphs and insufficient lens refractive quality; overcrowded account/FAB/nav bottom zone. Chart reads flat because disposable debug data has no spending, not because real accounts were modified.
+- Next visual-only sequence: (1) inspect Champagne full capture, (2) remove Imperial shader banding without artificial ribbon lines, (3) replace premium navigation emoji appearance with clean single-colour icons while preserving original TextViews/OnClickListeners, (4) improve refraction/specular scene independently per theme, (5) take full screenshots again and compare side by side. No merge or signed APK before owner approval.
+- Actual source still protected by source-only finance and original 3 icon SHA guards, 2.0 version ID unchanged. Test-only activation allowance exists solely as an ephemeral GitHub Actions checkout patch and is not committed to MainActivity.
+
 ## Work progress
 - [x] Compared source and received 5 reference + 5 runtime screenshots.
 - [x] Verified latest 2.0 release candidate baseline and existing 30 theme indices.
