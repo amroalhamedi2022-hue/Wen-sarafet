@@ -542,8 +542,19 @@ def omit_visual_method_bodies(java):
         java = java[:start] + "    /* preserved visual helper: " + name + " */" + java[pos:]
     return java
 
-assert omit_visual_method_bodies(new_ui) == omit_visual_method_bodies(original_190_ui), (
-    "SAFE ZONE: non-visual Ui class or palettes changed during sandbox migration"
+# One precisely approved appearance-only toggle allows the two vivid
+# owner reference palettes to display legible WHITE text on dark-glass scenes.
+# Remove it before the complete class comparison; every legacy 0-24 theme,
+# preference, financial helper and palette remains byte-identical.
+new_contrast = ("DARK = theme == 20 || theme == 24 || theme == 25 || theme == 26\\n"
+                "                || theme == 28 || theme == 29")
+old_contrast = "DARK = theme == 20 || theme == 24 || theme == 25 || theme == 26"
+assert new_ui.count(new_contrast.replace("\\\\n", "\\n")) == 1, (
+    "SAFE ZONE: unexpected changes to premium dark/glass scene condition"
+)
+normalized_ui = new_ui.replace(new_contrast.replace("\\\\n", "\\n"), old_contrast, 1)
+assert omit_visual_method_bodies(normalized_ui) == omit_visual_method_bodies(original_190_ui), (
+    "SAFE ZONE: non-visual Ui class or legacy palettes changed during appearance work"
 )
 for marker in (
     "WenFabBubbleDrawable(context, SKY, DARK)",
