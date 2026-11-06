@@ -34,7 +34,7 @@ final class WenPremiumCaustics {
     private final Paint rayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float pearlX, pearlY, pearlRadius;
     private float secondaryPearlX, secondaryPearlY, secondaryPearlRadius;
-    private boolean enabled, drawRays, showPearl;
+    private boolean enabled, drawRays, showPearl, headerOnly, navigationOnly;
 
     WenPremiumCaustics() {
         meniscusGlow.setStyle(Paint.Style.STROKE);
@@ -66,6 +66,8 @@ final class WenPremiumCaustics {
         final boolean scene = surface == WenReferenceGlassDrawable.Surface.BACKDROP;
         final boolean header = surface == WenReferenceGlassDrawable.Surface.HEADER;
         final boolean navigation = surface == WenReferenceGlassDrawable.Surface.NAVIGATION;
+        headerOnly = header;
+        navigationOnly = navigation;
         final float l = box.left, t = box.top, w = box.width(), h = box.height();
         final int gold = theme == 25 ? 0xFFFCC86B
                 : theme == 26 ? 0xFFFBE2A6
@@ -179,11 +181,13 @@ final class WenPremiumCaustics {
         }
 
         float scale = Math.min(w,h);
-        meniscusGlow.setStrokeWidth(Math.max(3f*density,
-                scene?w*.094f:header?h*.38f:navigation?h*.23f:scale*.12f));
+        // Broad strokes created flat ribbons over text in real emulator shots.
+        // Refracted highlights are now confined to the upper glass HEADER.
+        // Dashboard cards and the backdrop use smooth radial light fields.
+        meniscusGlow.setStrokeWidth(Math.max(.8f*density,header?h*.13f:scale*.014f));
         meniscusGlow.setShader(new LinearGradient(l,t+h*.08f,l+w,t+h*.84f,
-                new int[]{withAlpha(accent,0),withAlpha(gold,scene?93:124),
-                        withAlpha(gold,scene?155:176),withAlpha(contrast,44),
+                new int[]{withAlpha(accent,0),withAlpha(gold,header?48:12),
+                        withAlpha(gold,header?82:16),withAlpha(contrast,9),
                         withAlpha(accent,0)},
                 new float[]{0f,.20f,.45f,.76f,1f},Shader.TileMode.CLAMP));
         meniscusEdge.setStrokeWidth(Math.max(.6f*density,
@@ -192,17 +196,17 @@ final class WenPremiumCaustics {
                 new int[]{withAlpha(gold,0),withAlpha(accent,89),
                         withAlpha(accent,182),withAlpha(gold,85),withAlpha(gold,0)},
                 new float[]{0f,.19f,.49f,.78f,1f},Shader.TileMode.CLAMP));
-        secondaryGlow.setStrokeWidth(Math.max(2f*density,
-                scene?w*.053f:header?h*.19f:navigation?h*.15f:scale*.06f));
+        secondaryGlow.setStrokeWidth(Math.max(.7f*density,
+                header?h*.075f:navigation?h*.035f:scale*.008f));
         secondaryGlow.setShader(new LinearGradient(l+w*.18f,t,l+w*.94f,t+h,
-                new int[]{withAlpha(contrast,0),withAlpha(contrast,66),
-                        withAlpha(gold,100),withAlpha(accent,0)},
+                new int[]{withAlpha(contrast,0),withAlpha(contrast,25),
+                        withAlpha(gold,42),withAlpha(accent,0)},
                 new float[]{0f,.33f,.66f,1f},Shader.TileMode.CLAMP));
 
         float sunX=pearlX, sunY=pearlY;
         sun.setShader(new RadialGradient(sunX,sunY,Math.max(1f,pearlRadius*2.85f),
-                new int[]{withAlpha(accent,scene?182:header?158:67),
-                        withAlpha(gold,scene?89:54),withAlpha(gold,0)},
+                new int[]{withAlpha(accent,scene?143:header?105:54),
+                        withAlpha(gold,scene?62:30),withAlpha(gold,0)},
                 new float[]{0f,.24f,1f},Shader.TileMode.CLAMP));
         pearl.setShader(new RadialGradient(secondaryPearlX,secondaryPearlY,
                 Math.max(1f,secondaryPearlRadius),
@@ -213,9 +217,10 @@ final class WenPremiumCaustics {
         pearlEdge.setStrokeWidth(Math.max(.5f,density*.75f));
         showPearl=scene || header;
 
-        // Fine, low-opacity sun rays are NOT hard stripes. Rays diffuse from
-        // only one local light source and stay behind content cards.
-        drawRays = scene && (theme == 25 || theme == 26 || theme == 27 || theme == 28);
+        // Sunlight is a continuous radial field: NEVER draw long hard rays
+        // through cards. The original references have soft lens caustics, not
+        // diagonal strokes across text, backgrounds or plots.
+        drawRays = false;
         if (drawRays) {
             float startX=sunX, startY=sunY;
             rayA.moveTo(startX,startY);
@@ -237,14 +242,15 @@ final class WenPremiumCaustics {
 
     void draw(Canvas canvas) {
         if (!enabled) return;
-        if (drawRays) {
-            canvas.drawPath(rayA,rayPaint);
-            canvas.drawPath(rayB,rayPaint);
-            canvas.drawPath(rayC,rayPaint);
+        // Only a restrained pearlescent fold in the header, NEVER an opaque
+        // stripe drawn over account cards, values or the 7-day chart.
+        if (headerOnly) {
+            canvas.drawPath(secondary,secondaryGlow);
+            canvas.drawPath(meniscus,meniscusGlow);
+            canvas.drawPath(meniscus,meniscusEdge);
+        } else if (navigationOnly) {
+            canvas.drawPath(meniscus,meniscusEdge);
         }
-        canvas.drawPath(secondary,secondaryGlow);
-        canvas.drawPath(meniscus,meniscusGlow);
-        canvas.drawPath(meniscus,meniscusEdge);
         if (showPearl) {
             canvas.drawCircle(pearlX,pearlY,pearlRadius*2.85f,sun);
             canvas.drawCircle(secondaryPearlX,secondaryPearlY,secondaryPearlRadius,pearl);
