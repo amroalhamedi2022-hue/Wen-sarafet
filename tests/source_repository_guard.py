@@ -74,7 +74,7 @@ def verify() -> None:
                 if ("java.net." in code or "HttpURLConnection" in code or "HttpsURLConnection" in code
                     or "Socket(" in code or "new URL(" in code or "DriveBackup" in code
                     or "BopRateFetcher" in code or "BankOfPalestine" in code
-                    or "بنك فلسطين" in code or re.search(r"(?i)\\bBOP\\b", code)):
+                    or "بنك فلسطين" in code or re.search(r"(?i)\bBOP\b", code)):
                     failures.append(f"Forbidden network or retired-provider integration: {src.relative_to(ROOT)}")
             for path in (ROOT / "app/src/main").rglob("*"):
                 if path.is_file() and "bop" in path.name.lower():
