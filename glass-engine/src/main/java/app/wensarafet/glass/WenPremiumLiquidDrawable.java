@@ -30,21 +30,26 @@ public final class WenPremiumLiquidDrawable extends Drawable {
 
     // backdrop x3, card x2, header x2, navigation x2, FAB x2, specular shine.
     private static final int[][] PALETTES = {
-            {0xFF0C1119,0xFF282319,0xFF111924, 0xFF242A32,0xFF454037,
-             0xFF36332E,0xFFB69558, 0xFF212830,0xFF584A38,
-             0xFF755B36,0xFFEAC583,0xFFFFEAC0},
-            {0xFF10151F,0xFF2B2A32,0xFF121925, 0xFF252D3A,0xFF45454B,
-             0xFF2C3543,0xFFADA18A, 0xFF222C3A,0xFF58534E,
-             0xFF6F645B,0xFFE1CCAE,0xFFFFE7CB},
-            {0xFFF8F6F0,0xFFF4E7D4,0xFFF8F8F2, 0xFFFFFFFF,0xFFFFF3E6,
-             0xFFE9D8B4,0xFFFFF5DE, 0xFFFBF7EE,0xFFF3E6D5,
-             0xFFC69E6A,0xFFF7DFAC,0xFFFFFFFF},
-            {0xFFFFF5EF,0xFFFBE2D2,0xFFE4F1E5, 0xFFFFFFFF,0xFFF1F8F1,
-             0xFFF2B58A,0xFFD0E7CF, 0xFFFFF5E9,0xFFEDF7ED,
-             0xFFCC8D67,0xFFA2CCAA,0xFFFFF2D9},
-            {0xFFF9F2FC,0xFFF0DAF1,0xFFE9E9FA, 0xFFFFFFFF,0xFFF9F0FC,
-             0xFFD1ABE7,0xFFF1C5E7, 0xFFFCF2FE,0xFFF0EAFB,
-             0xFF966FB5,0xFFF3BCE5,0xFFFFFFFF}
+            // Royal obsidian with warm metallic amber.
+            {0xFF150F0B,0xFF4B2B16,0xFF19110F, 0xFF2E251C,0xFF51402B,
+             0xFF4A2F18,0xFFC39452, 0xFF241C17,0xFF52351E,
+             0xFF754817,0xFFE4AE4C,0xFFFFDE84},
+            // Imperial dark graphite, champagne-gold reflections.
+            {0xFF171615,0xFF473023,0xFF1C2020, 0xFF312B28,0xFF59463D,
+             0xFF4E382B,0xFFCEAD72, 0xFF292725,0xFF66503C,
+             0xFF7D572B,0xFFD6AA67,0xFFFFE6AA},
+            // Champagne pearlescent ivory.
+            {0xFFF4E7DA,0xFFE9CAB1,0xFFFDF3E8, 0xFFF9EAD9,0xFFFFF8EB,
+             0xFFF2D5BB,0xFFFFF8DD, 0xFFF5E6D4,0xFFFFF6E9,
+             0xFFC68A3C,0xFFF4C777,0xFFFFF1C2},
+            // Bright amber pools suspended in deep green glass.
+            {0xFF17382D,0xFFBA7138,0xFF124B3B, 0xFF395F4A,0xFF805E3C,
+             0xFF395E4F,0xFFC88A57, 0xFF315A48,0xFF9A7048,
+             0xFFCE8039,0xFFFFBE70,0xFFFFE2B1},
+            // Vibrant violet, magenta and electric blue.
+            {0xFF5A1178,0xFFCB247D,0xFF2D15A0, 0xFF7039AA,0xFFAA4DB9,
+             0xFF8636B7,0xFFEC79D3, 0xFF5C329E,0xFF9B4FC7,
+             0xFF9A2CC7,0xFFEE49B8,0xFFFFB6F0}
     };
 
     public static boolean supports(int index) {
@@ -62,6 +67,11 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     private final Paint bloomA = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bloomB = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint reflection = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint caustic = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint ribbonGlow = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint ribbonEdge = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Path ribbon = new Path();
+    private final Path secondRibbon = new Path();
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bevel = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float radius;
@@ -79,6 +89,8 @@ public final class WenPremiumLiquidDrawable extends Drawable {
                 || (manager != null && manager.isLowRamDevice());
         rim.setStyle(Paint.Style.STROKE);
         bevel.setStyle(Paint.Style.STROKE);
+        ribbonGlow.setStyle(Paint.Style.STROKE);
+        ribbonEdge.setStyle(Paint.Style.STROKE);
     }
 
     private static int blend(int a, int b, float t) {
@@ -102,15 +114,26 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     private int[] stops() {
         int[] p = PALETTES[index - ROYAL_DARK];
         switch (surface) {
-            case BACKDROP: return new int[]{p[0],blend(p[0],p[1],.65f),p[1],p[2],p[0]};
-            case HEADER: return new int[]{p[5],blend(p[5],p[6],.58f),p[6],p[5],blend(p[5],p[3],.32f)};
-            case NAVIGATION: return new int[]{alpha(p[7],234),alpha(p[8],239),
-                    alpha(blend(p[7],p[11],.23f),242),alpha(p[8],237),alpha(p[7],231)};
-            case FAB: return new int[]{p[9],blend(p[9],p[10],.55f),
-                    blend(p[10],p[11],.65f),p[10],p[9]};
-            case ACCENT: return new int[]{p[9],p[10],p[11],p[10],p[9]};
-            default: return new int[]{alpha(p[3],249),alpha(blend(p[3],p[4],.36f),250),
-                    alpha(p[4],251),alpha(p[3],249),alpha(p[4],248)};
+            case BACKDROP:
+                return new int[]{p[0], blend(p[0], p[1], .66f), p[1],
+                        blend(p[2], p[1], .12f), p[2]};
+            case HEADER:
+                return new int[]{alpha(p[5], 228), alpha(blend(p[5], p[6], .48f), 224),
+                        alpha(p[6], 214), alpha(p[5], 226), alpha(p[5], 222)};
+            case NAVIGATION:
+                return new int[]{alpha(p[7], 220), alpha(p[8], 226),
+                        alpha(blend(p[7], p[11], .19f), 225),
+                        alpha(p[8], 225), alpha(p[7], 220)};
+            case FAB:
+                return new int[]{p[9], blend(p[9], p[10], .67f),
+                        blend(p[10], p[11], .77f), p[10], p[9]};
+            case ACCENT:
+                return new int[]{alpha(p[9], 244), alpha(p[10], 238),
+                        alpha(blend(p[10], p[11], .30f), 234), alpha(p[9], 240),
+                        alpha(p[9], 244)};
+            default:
+                return new int[]{alpha(p[3], 228), alpha(blend(p[3], p[4], .35f), 232),
+                        alpha(p[4], 230), alpha(p[3], 228), alpha(p[3], 225)};
         }
     }
 
@@ -124,31 +147,70 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         silhouette.addRoundRect(box,radius,radius,Path.Direction.CW);
         base.setShader(new LinearGradient(box.left,box.top,box.right,box.bottom,
                 stops(),new float[]{0f,.24f,.50f,.77f,1f},Shader.TileMode.CLAMP));
+        ribbon.reset();
+        secondRibbon.reset();
+        ribbon.moveTo(box.left-w*.12f, box.top+h*(backdrop()?.30f:.90f));
+        ribbon.cubicTo(box.left+w*.22f, box.top+h*.04f,
+                box.left+w*.36f, box.top+h*.86f,
+                box.left+w*.66f, box.top+h*.40f);
+        ribbon.cubicTo(box.left+w*.88f, box.top+h*.18f,
+                box.right+w*.04f, box.top+h*.72f,
+                box.right+w*.16f, box.top+h*.46f);
+        secondRibbon.moveTo(box.left-w*.10f, box.top+h*.80f);
+        secondRibbon.cubicTo(box.left+w*.32f, box.top+h*.58f,
+                box.left+w*.56f, box.top+h*1.14f,
+                box.right+w*.15f, box.top+h*.62f);
         if (!lowPower) {
-            float span=Math.max(1f,Math.max(w,h)*(backdrop()?.71f:.92f));
-            float glow=backdrop()?.25f:chrome()?.27f:.14f;
-            int[] p=PALETTES[index-ROYAL_DARK];
-            bloomA.setShader(new RadialGradient(box.left+w*.12f,box.top+h*.12f,span,
-                    new int[]{alpha(p[11],Math.round(185f*glow)),
+            int[] p = PALETTES[index-ROYAL_DARK];
+            float span = Math.max(1f, Math.max(w,h) * (backdrop()?.58f:.88f));
+            int strength = backdrop()?205:chrome()?125:110;
+            bloomA.setShader(new RadialGradient(box.left+w*.14f,box.top+h*.19f,
+                    span,new int[]{alpha(p[11],strength),
+                    alpha(p[10],Math.round(strength*.50f)),alpha(p[10],0)},
+                    new float[]{0f,.30f,1f},Shader.TileMode.CLAMP));
+            bloomB.setShader(new RadialGradient(box.left+w*.83f,box.top+h*.76f,
+                    span*.85f,new int[]{alpha(p[10],Math.round(strength*.82f)),
+                    alpha(p[10],Math.round(strength*.24f)),alpha(p[10],0)},
+                    new float[]{0f,.40f,1f},Shader.TileMode.CLAMP));
+            caustic.setShader(new RadialGradient(box.left+w*.70f,box.top+h*.07f,
+                    Math.max(1f,Math.max(w,h)*.34f),
+                    new int[]{alpha(p[11],backdrop()?116:chrome()?122:74),
                     alpha(p[11],0)},null,Shader.TileMode.CLAMP));
-            bloomB.setShader(new RadialGradient(box.left+w*.84f,box.top+h*.86f,span,
-                    new int[]{alpha(p[10],Math.round(135f*glow)),
-                    alpha(p[10],0)},null,Shader.TileMode.CLAMP));
-            reflection.setShader(new LinearGradient(box.left+w*.1f,box.top,
-                    box.right-w*.1f,box.top+h*.72f,
-                    new int[]{0x49FFFFFF,0x24FFFFFF,0x00FFFFFF,0x0FFFFFFF},
-                    new float[]{0f,.16f,.65f,1f},Shader.TileMode.CLAMP));
+            reflection.setShader(new LinearGradient(box.left,box.top,
+                    box.left+w*.65f,box.top+h*.82f,
+                    new int[]{0xB4FFFFFF,0x22FFFFFF,0x04FFFFFF,
+                    0x6CFFFFFF,0x00FFFFFF},
+                    new float[]{0f,.18f,.44f,.65f,1f},Shader.TileMode.CLAMP));
+            ribbonGlow.setStrokeWidth((backdrop()?19f:chrome()?9f:7f)*d);
+            ribbonGlow.setShader(new LinearGradient(box.left,box.top,box.right,box.bottom,
+                    new int[]{alpha(p[10],0),alpha(p[11],backdrop()?105:83),
+                    alpha(p[10],35),alpha(p[11],92),alpha(p[11],0)},
+                    null,Shader.TileMode.CLAMP));
+            ribbonEdge.setStrokeWidth(Math.max(.65f,(backdrop()?1.5f:1f)*d));
+            ribbonEdge.setShader(new LinearGradient(box.left,box.top,box.right,box.bottom,
+                    new int[]{alpha(p[11],0),alpha(p[11],132),
+                    alpha(p[11],52),alpha(p[11],158),alpha(p[11],0)},
+                    null,Shader.TileMode.CLAMP));
         } else {
             bloomA.setShader(null);
             bloomB.setShader(null);
+            caustic.setShader(null);
             reflection.setShader(null);
+            ribbonGlow.setShader(null);
+            ribbonEdge.setShader(null);
         }
-        float padding=Math.max(.8f,d);
+
+    float padding=Math.max(.8f,d);
         inside.set(box.left+padding,box.top+padding,box.right-padding,box.bottom-padding);
         rim.setStrokeWidth(Math.max(.8f,chrome()?1.45f*d:1.0f*d));
         bevel.setStrokeWidth(Math.max(.6f,.65f*d));
-        rim.setColor(backdrop()?Color.TRANSPARENT:dark?0xB9E9D7AD:0xD9FFFFFF);
-        bevel.setColor(backdrop()?Color.TRANSPARENT:dark?0x77FFFFFF:0xA8FFFFFF);
+        int[] p = PALETTES[index-ROYAL_DARK];
+        rim.setColor(backdrop()?Color.TRANSPARENT:alpha(
+                dark && index<=IMPERIAL_DARK ? p[11] : Color.WHITE,
+                dark ? 191 : 218));
+        bevel.setColor(backdrop()?Color.TRANSPARENT:alpha(
+                dark && index<=IMPERIAL_DARK ? p[10] : Color.WHITE,
+                dark ? 89 : 128));
     }
 
     @Override public void draw(Canvas canvas) {
@@ -159,7 +221,12 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         if (!lowPower) {
             canvas.drawRect(box,bloomA);
             canvas.drawRect(box,bloomB);
+            canvas.drawRect(box,caustic);
             if (!backdrop()) canvas.drawRect(box,reflection);
+            canvas.drawPath(ribbon,ribbonGlow);
+            canvas.drawPath(ribbon,ribbonEdge);
+            if (backdrop() || surface==WenReferenceGlassDrawable.Surface.HEADER)
+                canvas.drawPath(secondRibbon,ribbonGlow);
         }
         canvas.restoreToCount(saved);
         if (!backdrop()) {
@@ -175,6 +242,9 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         bloomA.setAlpha(opacity);
         bloomB.setAlpha(opacity);
         reflection.setAlpha(opacity);
+        caustic.setAlpha(opacity);
+        ribbonGlow.setAlpha(opacity);
+        ribbonEdge.setAlpha(opacity);
         rim.setAlpha(opacity);
         bevel.setAlpha(opacity);
         invalidateSelf();
@@ -185,6 +255,9 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         bloomA.setColorFilter(filter);
         bloomB.setColorFilter(filter);
         reflection.setColorFilter(filter);
+        caustic.setColorFilter(filter);
+        ribbonGlow.setColorFilter(filter);
+        ribbonEdge.setColorFilter(filter);
         rim.setColorFilter(filter);
         bevel.setColorFilter(filter);
         invalidateSelf();
