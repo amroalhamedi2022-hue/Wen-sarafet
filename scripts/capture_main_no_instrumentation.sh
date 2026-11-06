@@ -84,9 +84,23 @@ capture() {
         timeout 80 adb shell am start -W -n "$PACKAGE/app.wensarafet.tracker.MainActivity" --ez open_transactions true ;;
       *) echo "Unknown page $page" >&2; exit 1 ;;
     esac
-    sleep 4
-    test -n "$(timeout 25 adb shell pidof "$PACKAGE" 2>/dev/null | tr -d '\r')" || {
-       echo "MainActivity crashed for $theme/$page" >&2; exit 1;
+    # Android 13's SplashScreen is a real, valid PNG, and was previously
+    # mistaken for a successful MainActivity capture. Wait for the real HOME
+    # hierarchy instead of assuming am start -W implies first content frame.
+    local ready=0
+    for attempt in 1 2 3 4 5 6 7 8; do
+      sleep 3
+      test -n "$(timeout 20 adb shell pidof "$PACKAGE" 2>/dev/null | tr -d '\r')" || continue
+      timeout 25 adb shell uiautomator dump /sdcard/wen-window.xml >/dev/null 2>&1 || true
+      if timeout 12 adb shell cat /sdcard/wen-window.xml 2>/dev/null | grep -Fq "إجمالي أرصدتك"; then
+        ready=1
+        break
+      fi
+      echo "Theme $theme UI probe attempt $attempt: still not on actual home screen"
+    done
+    test "$ready" -eq 1 || {
+      echo "ERROR: UI hierarchy did not show real MainActivity dashboard; refusing SplashScreen" >&2
+      exit 1
     }
     if [ "$page" = accounts ]; then
        adb shell input swipe 520 1900 520 610 420
