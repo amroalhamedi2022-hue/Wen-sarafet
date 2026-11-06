@@ -54,6 +54,7 @@ jobs:
           sdcard-path-or-size: 128M
           disable-animations: false
           emulator-boot-timeout: 600
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: bash scripts/capture_real_main_screens.sh
       - name: Deliver original-pixel full-resolution PNGs, no mocks or AI renders
         if: always()
