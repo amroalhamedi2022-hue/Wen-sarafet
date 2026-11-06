@@ -1,8 +1,14 @@
 package app.wensarafet.tracker;
 
-import android.app.UiAutomation;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.PixelCopy;
+import android.os.Handler;
+import android.os.Looper;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import android.os.SystemClock;
 import android.view.View;
 import android.view.ViewGroup;
@@ -39,8 +45,6 @@ import static org.junit.Assert.*;
 public final class RealMainScreenCaptureTest {
     private final Context context =
             InstrumentationRegistry.getInstrumentation().getTargetContext();
-    private final UiAutomation automation =
-            InstrumentationRegistry.getInstrumentation().getUiAutomation();
 
     private static void set(Object target, String field, Object value) throws Exception {
         Field f=target.getClass().getDeclaredField(field);
@@ -98,13 +102,29 @@ public final class RealMainScreenCaptureTest {
                 resolved);
     }
 
-    private void capture(int theme, String name) throws Exception {
+    private void capture(ActivityScenario<MainActivity> scenario, int theme,
+                         String name) throws Exception {
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-        SystemClock.sleep(450);
-        Bitmap bitmap=automation.takeScreenshot();
-        assertNotNull("Actual emulator screenshot required: "+name,bitmap);
-        assertTrue("Capture must be full resolution",bitmap.getWidth()>=720
-                && bitmap.getHeight()>=1280);
+        SystemClock.sleep(600);
+        final AtomicReference<MainActivity> active = new AtomicReference<>();
+        scenario.onActivity(active::set);
+        MainActivity activity=active.get();
+        assertNotNull(activity);
+        View decor=activity.getWindow().getDecorView();
+        int width=decor.getWidth(),height=decor.getHeight();
+        assertTrue("MainActivity Window must be laid out",width>=720 && height>=1280);
+        Bitmap bitmap=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+        CountDownLatch copyDone=new CountDownLatch(1);
+        AtomicInteger result=new AtomicInteger(PixelCopy.ERROR_UNKNOWN);
+        // Copy the ACTUAL rendered Android window, not a mock View tree or
+        // a generative image. This avoids UiAutomation screenshot service
+        // disconnects observed on GitHub's API35 headless emulator.
+        PixelCopy.request(activity.getWindow(),bitmap,code-> {
+            result.set(code);
+            copyDone.countDown();
+        },new Handler(Looper.getMainLooper()));
+        assertTrue("Android PixelCopy did not finish",copyDone.await(12,TimeUnit.SECONDS));
+        assertEquals("Real rendered window copy failed",PixelCopy.SUCCESS,result.get());
         File root=new File(context.getExternalFilesDir(null),"owner-real-screens");
         assertTrue(root.isDirectory()||root.mkdirs());
         File output=new File(root,"real-theme-"+theme+"-"+name+".png");
@@ -141,14 +161,14 @@ public final class RealMainScreenCaptureTest {
                                 "الرئيسية"));
                     } catch(Exception error){throw new AssertionError(error);}
                 });
-                capture(theme,"home");
+                capture(scenario,theme,"home");
 
                 scenario.onActivity(activity-> {
                     ScrollView scroll=findScroll(activity.getWindow().getDecorView());
                     assertNotNull(scroll);
                     scroll.scrollTo(0,Ui.dp(activity,360));
                 });
-                capture(theme,"original-account-icons");
+                capture(scenario,theme,"original-account-icons");
 
                 scenario.onActivity(activity-> {
                     try {
@@ -157,7 +177,7 @@ public final class RealMainScreenCaptureTest {
                                 "التحليلات"));
                     }catch(Exception error){throw new AssertionError(error);}
                 });
-                capture(theme,"analytics");
+                capture(scenario,theme,"analytics");
 
                 scenario.onActivity(activity-> {
                     try {
@@ -166,7 +186,7 @@ public final class RealMainScreenCaptureTest {
                                 "الإعدادات"));
                     }catch(Exception error){throw new AssertionError(error);}
                 });
-                capture(theme,"settings");
+                capture(scenario,theme,"settings");
             }
         }
     }
