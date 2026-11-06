@@ -68,10 +68,6 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     private final Paint bloomB = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint reflection = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint caustic = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint ribbonGlow = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint ribbonEdge = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Path ribbon = new Path();
-    private final Path secondRibbon = new Path();
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bevel = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float radius;
@@ -89,8 +85,6 @@ public final class WenPremiumLiquidDrawable extends Drawable {
                 || (manager != null && manager.isLowRamDevice());
         rim.setStyle(Paint.Style.STROKE);
         bevel.setStyle(Paint.Style.STROKE);
-        ribbonGlow.setStyle(Paint.Style.STROKE);
-        ribbonEdge.setStyle(Paint.Style.STROKE);
     }
 
     private static int blend(int a, int b, float t) {
@@ -150,64 +144,11 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         silhouette.addRoundRect(box,radius,radius,Path.Direction.CW);
         base.setShader(new LinearGradient(box.left,box.top,box.right,box.bottom,
                 stops(),new float[]{0f,.24f,.50f,.77f,1f},Shader.TileMode.CLAMP));
-        ribbon.reset();
-        secondRibbon.reset();
-        ribbon.moveTo(box.left-w*.12f, box.top+h*(backdrop()?.30f:.90f));
-        ribbon.cubicTo(box.left+w*.22f, box.top+h*.04f,
-                box.left+w*.36f, box.top+h*.86f,
-                box.left+w*.66f, box.top+h*.40f);
-        ribbon.cubicTo(box.left+w*.88f, box.top+h*.18f,
-                box.right+w*.04f, box.top+h*.72f,
-                box.right+w*.16f, box.top+h*.46f);
-        secondRibbon.moveTo(box.left-w*.10f, box.top+h*.80f);
-        secondRibbon.cubicTo(box.left+w*.32f, box.top+h*.58f,
-                box.left+w*.56f, box.top+h*1.14f,
-                box.right+w*.15f, box.top+h*.62f);
-        if (!lowPower) {
-            int[] p = PALETTES[index-ROYAL_DARK];
-            float span = Math.max(1f, backdrop() ? Math.min(w,h)*.84f
-                    : Math.max(w,h)*(chrome()?.62f:.73f));
-            int strength = backdrop()
-                    ? (index==ORANGE_GREEN?178:index==PURPLE_PINK?162
-                    : index==CHAMPAGNE?124:138)
-                    : chrome()?115:72;
-            bloomA.setShader(new RadialGradient(box.left+w*.14f,box.top+h*.19f,
-                    span,new int[]{alpha(p[11],strength),
-                    alpha(p[10],Math.round(strength*.50f)),alpha(p[10],0)},
-                    new float[]{0f,.30f,1f},Shader.TileMode.CLAMP));
-            bloomB.setShader(new RadialGradient(box.left+w*.83f,box.top+h*.76f,
-                    span*.85f,new int[]{alpha(p[10],Math.round(strength*.82f)),
-                    alpha(p[10],Math.round(strength*.24f)),alpha(p[10],0)},
-                    new float[]{0f,.40f,1f},Shader.TileMode.CLAMP));
-            caustic.setShader(new RadialGradient(box.left+w*.70f,box.top+h*.07f,
-                    Math.max(1f,Math.max(w,h)*.34f),
-                    new int[]{alpha(p[11],backdrop()?116:chrome()?122:74),
-                    alpha(p[11],0)},null,Shader.TileMode.CLAMP));
-            reflection.setShader(new LinearGradient(box.left,box.top,
-                    box.left+w*.65f,box.top+h*.82f,
-                    new int[]{0x64FFFFFF,0x12FFFFFF,0x00FFFFFF,
-                    0x33FFFFFF,0x00FFFFFF},
-                    new float[]{0f,.18f,.44f,.65f,1f},Shader.TileMode.CLAMP));
-            ribbonGlow.setStrokeWidth((backdrop()?19f:chrome()?9f:7f)*d);
-            ribbonGlow.setShader(new LinearGradient(box.left,box.top,box.right,box.bottom,
-                    new int[]{alpha(p[10],0),alpha(p[11],backdrop()?105:83),
-                    alpha(p[10],35),alpha(p[11],92),alpha(p[11],0)},
-                    null,Shader.TileMode.CLAMP));
-            ribbonEdge.setStrokeWidth(Math.max(.65f,(backdrop()?1.5f:1f)*d));
-            ribbonEdge.setShader(new LinearGradient(box.left,box.top,box.right,box.bottom,
-                    new int[]{alpha(p[11],0),alpha(p[11],132),
-                    alpha(p[11],52),alpha(p[11],158),alpha(p[11],0)},
-                    null,Shader.TileMode.CLAMP));
-        } else {
-            bloomA.setShader(null);
-            bloomB.setShader(null);
-            caustic.setShader(null);
-            reflection.setShader(null);
-            ribbonGlow.setShader(null);
-            ribbonEdge.setShader(null);
-        }
-
-    float padding=Math.max(.8f,d);
+        // A distinct art director controls the position, falloff, hue,
+        // translucency and specular orientation of EACH theme independently.
+        WenThemeArtDirection.configure(index, box, backdrop(), chrome(), lowPower,
+                bloomA, bloomB, caustic, reflection);
+        float padding=Math.max(.8f,d);
         inside.set(box.left+padding,box.top+padding,box.right-padding,box.bottom-padding);
         rim.setStrokeWidth(Math.max(.8f,chrome()?1.45f*d:1.0f*d));
         bevel.setStrokeWidth(Math.max(.6f,.65f*d));
@@ -230,14 +171,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
             canvas.drawRect(box,bloomB);
             canvas.drawRect(box,caustic);
             if (!backdrop()) canvas.drawRect(box,reflection);
-            // Do not draw ornamental S-curves across every metric/account.
-            // In the references caustic ribbons belong to the backdrop/header;
-            // the content stays sharp and legible above the refractive material.
-            if (backdrop() || surface==WenReferenceGlassDrawable.Surface.HEADER) {
-                canvas.drawPath(ribbon,ribbonGlow);
-                canvas.drawPath(ribbon,ribbonEdge);
-                canvas.drawPath(secondRibbon,ribbonGlow);
-            }
+            // No artificial waves/stripes: purely smooth optical light fields.
         }
         canvas.restoreToCount(saved);
         if (!backdrop()) {
@@ -254,8 +188,6 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         bloomB.setAlpha(opacity);
         reflection.setAlpha(opacity);
         caustic.setAlpha(opacity);
-        ribbonGlow.setAlpha(opacity);
-        ribbonEdge.setAlpha(opacity);
         rim.setAlpha(opacity);
         bevel.setAlpha(opacity);
         invalidateSelf();
@@ -267,8 +199,6 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         bloomB.setColorFilter(filter);
         reflection.setColorFilter(filter);
         caustic.setColorFilter(filter);
-        ribbonGlow.setColorFilter(filter);
-        ribbonEdge.setColorFilter(filter);
         rim.setColorFilter(filter);
         bevel.setColorFilter(filter);
         invalidateSelf();
