@@ -1,4 +1,4 @@
-name: Wen REAL MainActivity 20 screenshots — adb framebuffer
+name: Wen REAL MainActivity screenshots — Android 13 stable capture
 on:
   push:
     branches:
@@ -49,12 +49,12 @@ jobs:
       - name: Render production MainActivity views in isolated DEBUG process
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 33
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          ram-size: 2048M
-          heap-size: 256M
+          ram-size: 3072M
+          heap-size: 384M
           disk-size: 1536M
           sdcard-path-or-size: 128M
           disable-animations: false
