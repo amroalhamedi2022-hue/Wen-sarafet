@@ -698,7 +698,7 @@ assert "NAV_LIQUID_STRETCH_ACTIVE" in native
 import re
 direction_src = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenThemeArtDirection.java").read_text(encoding="utf-8")
 stop_pairs = list(re.finditer(
-    r"new int\\[\\]\\{([^}]+)\\}\\s*,\\s*new float\\[\\]\\{([^}]+)\\}",
+    r"new int\[\]\{([^}]+)\}\s*,\s*new float\[\]\{([^}]+)\}",
     direction_src
 ))
 assert len(stop_pairs) == 20, "Prematurely removed one of the 20 themed shader stop arrays"
