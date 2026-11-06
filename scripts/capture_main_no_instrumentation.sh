@@ -50,6 +50,12 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
 adb shell am force-stop com.google.android.apps.nexuslauncher || true
 adb shell wm dismiss-keyguard || true
+# STATIC screenshot pass: 0x animator scales eliminate transitional black
+# frames; the liquid visual material/shaders remain the production drawables.
+# Motion quality is validated separately with animations re-enabled.
+adb shell settings put global window_animation_scale 0
+adb shell settings put global transition_animation_scale 0
+adb shell settings put global animator_duration_scale 0
 adb logcat -c || true
 # Preserve app/runtime GPU crash output even if the emulator/ADB dies.
 adb logcat -v time -s AndroidRuntime:E WenSarafet:E WenGlassProbe:I WenRealPreview:I \
