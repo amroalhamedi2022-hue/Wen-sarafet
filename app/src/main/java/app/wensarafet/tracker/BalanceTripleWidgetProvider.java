@@ -21,17 +21,17 @@ public final class BalanceTripleWidgetProvider extends AppWidgetProvider {
         FinanceDbHelper db = new FinanceDbHelper(context);
         try {
             Long jawwal = db.getAccountBalance("Jawwal Pay", "ILS");
-            Long cash = db.getAccountBalance("نقدي", "ILS");
+            Long bop = db.getAccountBalance("بنك فلسطين", "ILS");
             Long palpay = db.getAccountBalance("PalPay", "ILS");
-            for (int id : ids) manager.updateAppWidget(id, views(context, id, jawwal, cash, palpay));
+            for (int id : ids) manager.updateAppWidget(id, views(context, id, jawwal, bop, palpay));
         } finally { db.close(); }
     }
 
-    private RemoteViews views(Context context, int id, Long jawwal, Long cash, Long palpay) {
+    private RemoteViews views(Context context, int id, Long jawwal, Long bop, Long palpay) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_balances_triple);
         boolean active = LicenseManager.isActivated(context);
         views.setTextViewText(R.id.widget_triple_jawwal_balance, active ? value(jawwal) : "يتطلب تفعيل");
-        views.setTextViewText(R.id.widget_triple_cash_balance, active ? value(cash) : "يتطلب تفعيل");
+        views.setTextViewText(R.id.widget_triple_bop_balance, active ? value(bop) : "يتطلب تفعيل");
         views.setTextViewText(R.id.widget_triple_palpay_balance, active ? value(palpay) : "يتطلب تفعيل");
         Intent intent = new Intent(context, MainActivity.class);
         intent.setData(android.net.Uri.parse("wensarafet://balances-all/" + id));
