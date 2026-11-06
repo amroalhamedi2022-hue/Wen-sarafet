@@ -76,9 +76,12 @@ public final class NavigationVisualDecorator {
             GradientDrawable premiumPlate = new GradientDrawable(
                     GradientDrawable.Orientation.TL_BR, glass);
             premiumPlate.setCornerRadius(Ui.dp(context, 26));
-            premiumPlate.setStroke(Ui.dp(context, 1),
-                    Ui.DARK ? 0xB9E6D6B6 : 0xCFFFFFFF);
-            tabs.setBackground(premiumPlate);
+            // The nav host already draws the premium glass capsule and rim.
+            // Painting another filled/stroked pill on this child creates the
+            // three thick concentric outlines visible in real emulator PNGs.
+            // Keep the child TRANSPARENT so the real moving lens samples the
+            // scene directly; original four TextViews/clicks remain untouched.
+            tabs.setBackground(null);
         } else if (Ui.isReferenceGlassTheme(context)) {
             // The old opaque #F8FBFF plate would completely conceal both
             // reference palettes under the native refractive lens.
