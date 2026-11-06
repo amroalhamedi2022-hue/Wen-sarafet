@@ -11,7 +11,7 @@ public final class AuditPresentationTest {
     }
     public static void main(String[] args) {
         Map<Long,String> accounts=new HashMap<>();
-        accounts.put(3L,"بنك فلسطين");
+        accounts.put(3L,"حساب قديم");
         Map<Long,String> currencies=new HashMap<>();
         currencies.put(3L,"ILS");
         Map<Long,String> cats=new HashMap<>();
@@ -35,7 +35,7 @@ public final class AuditPresentationTest {
                 "No raw database coding exposed");
         List<String> created=AuditPresentation.details("ADD",null,a,accounts,cats,currencies);
         contains(created,"المبلغ: 8.00 ILS");
-        contains(created,"الحساب: بنك فلسطين");
+        contains(created,"الحساب: حساب قديم");
         List<String> deleted=AuditPresentation.details("DELETE",a,null,accounts,cats,currencies);
         contains(deleted,"المبلغ: 8.00 ILS");
         check(AuditPresentation.details("EDIT","garbage",null,accounts,cats,currencies).size()==1,

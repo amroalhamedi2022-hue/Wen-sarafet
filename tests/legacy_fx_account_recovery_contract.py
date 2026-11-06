@@ -27,8 +27,8 @@ db.executescript("""
 CREATE TABLE accounts(id INTEGER PRIMARY KEY,name TEXT,currency TEXT,
  balance_minor INTEGER,active INTEGER,position INTEGER);
 CREATE TABLE transactions(id INTEGER PRIMARY KEY,account_id INTEGER,amount_minor INTEGER);
-INSERT INTO accounts VALUES(1,'بنك فلسطين - شيكل','ILS',10000,1,1),
- (2,'بنك فلسطين - دولار','USD',2540,0,2),
+INSERT INTO accounts VALUES(1,'حساب قديم - شيكل','ILS',10000,1,1),
+ (2,'حساب قديم - دولار','USD',2540,0,2),
  (3,'خانة قديمة','EUR',900,0,3);
 INSERT INTO transactions VALUES(5,2,100),(6,2,-40);
 """)

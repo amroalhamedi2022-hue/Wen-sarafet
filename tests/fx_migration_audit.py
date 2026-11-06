@@ -11,8 +11,9 @@ for col in fields:
     assert f'ALTER TABLE transactions ADD COLUMN {col} ' in code, col
     assert col in code.split('CREATE TABLE transactions',1)[1].split('FOREIGN KEY',1)[0],col
 fx_method=code.split('public long addFxTransfer(',1)[1].split('public long insertCapture',1)[0]
-assert '"BOP_INDICATIVE_BUY_USER_CONFIRMED".equals(provenance)' in fx_method
-assert '"USD".equals(source.currency) && "ILS".equals(destination.currency)' in fx_method
+assert 'if (!"MANUAL".equals(provenance))' in fx_method
+assert 'BOP_INDICATIVE' not in fx_method
+assert 'BopRateFetcher' not in fx_method
 assert 'id=? AND active=1' in fx_method
 assert 'Math.addExact' in (Path(__file__).resolve().parents[1]/'app/src/main/java/app/wensarafet/tracker/FxTransferMath.java').read_text()
 
@@ -21,7 +22,7 @@ c.execute('CREATE TABLE accounts (id INTEGER PRIMARY KEY, name TEXT, currency TE
 c.execute('CREATE TABLE transactions (id INTEGER PRIMARY KEY, type TEXT NOT NULL, amount_minor INTEGER NOT NULL, currency TEXT NOT NULL, account_id INTEGER, destination_account_id INTEGER, category_id INTEGER, special_kind TEXT, needs_review INTEGER DEFAULT 0, created_at INTEGER DEFAULT 1)')
 c.execute('CREATE TABLE transaction_splits (transaction_id INTEGER, category_id INTEGER)')
 c.execute('CREATE TABLE capture_inbox (status TEXT, inferred_type TEXT)')
-c.executemany('INSERT INTO accounts (id,name,currency,balance_minor) VALUES (?,?,?,?)',[(1,'BOP','USD',10000),(2,'Jawwal Pay','ILS',500)])
+c.executemany('INSERT INTO accounts (id,name,currency,balance_minor) VALUES (?,?,?,?)',[(1,'Cash USD','USD',10000),(2,'Jawwal Pay','ILS',500)])
 # Existing v8 transaction unchanged by schema migration
 c.execute("INSERT INTO transactions (id,type,amount_minor,currency,account_id,category_id) VALUES(1,'EXPENSE',100,'USD',1,3)")
 for col,kind in [('destination_amount_minor','INTEGER'),('exchange_rate','TEXT'),('exchange_rate_source','TEXT'),('exchange_rate_checked_at','INTEGER')]:

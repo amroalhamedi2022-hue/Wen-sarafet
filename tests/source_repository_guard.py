@@ -39,6 +39,8 @@ def verify() -> None:
                 "android.permission.QUERY_ALL_PACKAGES",
                 "android.permission.READ_SMS",
                 "android.permission.BIND_ACCESSIBILITY_SERVICE",
+                "android.permission.INTERNET",
+                "android.permission.ACCESS_NETWORK_STATE",
             }
             if permissions & forbidden:
                 failures.append(f"Unexpected privileged permissions: {sorted(permissions & forbidden)}")
@@ -57,13 +59,24 @@ def verify() -> None:
             else:
                 if app.attrib.get(ANDROID + "debuggable") == "true":
                     failures.append("Release manifest must not force debuggable=true")
+                if app.attrib.get(ANDROID + "allowBackup") != "false":
+                    failures.append("Automatic cloud backup must be disabled")
                 if app.attrib.get(ANDROID + "usesCleartextTraffic") == "true":
                     failures.append("Cleartext HTTP must remain disabled")
                 for service in app.findall("service"):
                     if service.attrib.get(ANDROID + "permission") == "android.permission.BIND_ACCESSIBILITY_SERVICE":
                         failures.append("An accessibility service was added")
             print(f"Declared manifest permissions: {', '.join(sorted(permissions))}")
-            # INTERNET is intentional for the opt-in, best-effort BOP indicative rate feature.
+            # Verify app source has no direct network API or retired integrations.
+            java_root = ROOT / "app/src/main/java"
+            for src in java_root.rglob("*.java"):
+                code = src.read_text(encoding="utf-8")
+                if re.search(r"(?i)\\b(java\\.net\\.|HttpURLConnection|HttpsURLConnection|Socket|URL\\s*\\(|DriveBackup|BopRateFetcher|BankOfPalestine|\\bBOP\\b|بنك فلسطين)\\b", code):
+                    failures.append(f"Forbidden network or retired-provider integration: {src.relative_to(ROOT)}")
+            for xml_name in ("data_extraction_rules.xml","backup_rules.xml"):
+                local_rules = ROOT / "app/src/main/res/xml" / xml_name
+                if not local_rules.is_file() or '<exclude domain="root" path="." />' not in local_rules.read_text():
+                    failures.append(f"Cloud backup exclusion missing: {xml_name}")
         except (ET.ParseError, OSError) as exc:
             failures.append(f"Manifest could not be checked: {exc}")
 

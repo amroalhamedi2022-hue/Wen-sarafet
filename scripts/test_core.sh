@@ -41,12 +41,6 @@ compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FxTransferMath.java" \
   "$PROJECT_DIR/tests/FxTransferMathTest.java"
 java -cp "$OUT_DIR" FxTransferMathTest
-compile "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BopIndicativeRate.java" \
-  "$PROJECT_DIR/tests/BopIndicativeRateTest.java"
-java -cp "$OUT_DIR" BopIndicativeRateTest
-compile "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FxRateRefreshPolicy.java" \
-  "$PROJECT_DIR/tests/FxRateRefreshPolicyTest.java"
-java -cp "$OUT_DIR" FxRateRefreshPolicyTest
 compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceRules.java" \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/DebtLedgerRules.java" \
@@ -67,10 +61,6 @@ compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupSettingsCodec.java" \
   "$PROJECT_DIR/tests/BackupSettingsCodecTest.java"
 java -cp "$OUT_DIR" app.wensarafet.tracker.BackupSettingsCodecTest
-compile \
-  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/DriveBackupPublication.java" \
-  "$PROJECT_DIR/tests/DriveBackupPublicationTest.java"
-java -cp "$OUT_DIR" app.wensarafet.tracker.DriveBackupPublicationTest
 compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupCrypto.java" \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BackupArchiveVerifier.java" \
@@ -114,7 +104,6 @@ python3 "$PROJECT_DIR/tests/reminder_snooze_contract.py"
 python3 "$PROJECT_DIR/tests/chart_capture_quality_contract.py"
 
 python3 "$PROJECT_DIR/tests/backup_restore_preflight_contract.py"
-python3 "$PROJECT_DIR/tests/drive_backup_publication_contract.py"
 
 python3 "$PROJECT_DIR/tests/batch22_category_budget_icon_contract.py"
 
