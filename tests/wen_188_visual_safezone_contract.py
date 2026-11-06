@@ -111,7 +111,7 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "ed5fcc6eba75f219d519cb25d241d93967397b7d"
+APPROVED_VISUAL_HOST_BLOB = "51fb54c604acfdc0083a44a65987120228d29f8c"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
@@ -163,6 +163,23 @@ sanitized_host = revert_visual_section(
     "        fab.setElevation(Ui.dp(this, 8));",
     '        fab.setTag("wen_intro_fab");'
 )
+
+# RTL position correction affects only the premium FAB alignment, and
+# preserves the owner's stored side preference and original click action.
+old_fab_position = "        FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));"
+premium_fab_position = """        // Absolute LEFT/RIGHT is essential on an RTL root: START maps to the
+        // right side, contrary to the user's saved home_fab_right preference.
+        // Five approved premium scenes restore the reference FAB on the LEFT
+        // by default; an explicit user choice of right stays honoured.
+        int fabGravity = app.wensarafet.glass.WenPremiumLiquidDrawable
+                .supports(Ui.themeIndex(this))
+                ? (Ui.homeFabOnRight(this) ? Gravity.RIGHT : Gravity.LEFT)
+                : (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START);
+        FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(
+                fabSize, fabSize, Gravity.BOTTOM | fabGravity);"""
+assert previous_host.count(old_fab_position) == 1
+assert sanitized_host.count(premium_fab_position) == 1
+sanitized_host = sanitized_host.replace(premium_fab_position, old_fab_position, 1)
 
 # Stats remain the original view/click handlers and amounts, only ink changes.
 sanitized_host = revert_visual_section(
