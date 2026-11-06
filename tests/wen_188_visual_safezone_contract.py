@@ -12,6 +12,7 @@ SETTINGS = "settings.gradle"
 ALLOWED = {
     MAIN, APP_GRADLE, SETTINGS, "gradle.properties", "proguard-rules.pro",
     "app/src/main/java/app/wensarafet/tracker/Ui.java",
+    "app/src/main/java/app/wensarafet/tracker/ThemeCatalogue.java",
     "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java",
     "app/src/androidTest/java/app/wensarafet/tracker/WenVisualMotionInstrumentedTest.java",
     "app/src/main/AndroidManifest.xml",
@@ -45,6 +46,9 @@ ALLOWED = {
     "tests/original_180_upgrade_contract.py",
     "tests/upgrade_gate_contract.py",
     "docs/design/WEN_190_REFERENCE_THEMES_20261105.md",
+    "docs/design/WEN_20261106_OWNER_VISUAL_PARITY_PLAN.md",
+    "app/src/androidTest/java/app/wensarafet/tracker/ThemeCatalogueInstrumentedTest.java",
+    ".github/workflows/wen-visual-screenshots.yml",
     "tests/glass_energy_contract.py",
     "tests/wen_190_visual_motion_contract.py",
     "tests/batch22_category_budget_icon_contract.py",
@@ -80,10 +84,37 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "bf6163c8464c8cb99189e962ee35fdbeb1c5f8ae"
+APPROVED_VISUAL_HOST_BLOB = "05893051eae02b945d9430a176708b31c47a4b19"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
+# Strictly compare everything except the ONE owner-requested theme picker UI
+# against the verified 2.0 release candidate. This prevents the updated source
+# SHA pin from accidentally allowing financial, auth or navigation mutations.
+PRE_THEME_CATALOGUE = "caf2f6eeac3a5a34fc688b21544902d7ccd13e71"
+previous_host = git("show", f"{PRE_THEME_CATALOGUE}:{MAIN}")
+theme_start = '        content.addView(sectionTitle("مظهر التطبيق",'
+theme_end = '        content.addView(sectionTitle("تخصيص الواجهة",'
+assert previous_host.count(theme_start) == current_main.count(theme_start) == 1
+assert previous_host.count(theme_end) == current_main.count(theme_end) == 1
+before_prefix = previous_host[:previous_host.index(theme_start)]
+after_prefix = current_main[:current_main.index(theme_start)]
+before_suffix = previous_host[previous_host.index(theme_end):]
+after_suffix = current_main[current_main.index(theme_end):]
+assert before_prefix == after_prefix and before_suffix == after_suffix, (
+    "SAFE ZONE: MainActivity modified outside the theme picker only"
+)
+new_picker = current_main[current_main.index(theme_start):current_main.index(theme_end)]
+for approved in ("ThemeCatalogue.visibleCount(this)", "ThemeCatalogue.displayName(i)",
+                 "ThemeCatalogue.isVisible(this, i)", "ThemeCatalogue.hide(this, index)",
+                 "ThemeCatalogue.restoreUserHidden(this)", "Ui.saveTheme(this, index)",
+                 "setPositiveButton(\"حذف\"", "index != currentTheme"):
+    assert approved in new_picker, "Missing owner-approved theme action: " + approved
+for forbidden in ("FinanceDbHelper", "SQLiteDatabase", "deleteTransaction(",
+                  "showAddTransaction(", "getBalance(", "showDebtsScreen(",
+                  "insertTransaction(", "SmsCapture"):
+    assert forbidden not in new_picker, "Unsafe theme UI addition: " + forbidden
+
 SOURCE_190 = "283112f4bedaf2e07dd7370e581f84e14959710e"
 main_pre_visual_host = git("show", f"{SOURCE_190}:{MAIN}")
 assert main_pre_visual_host != current_main, "Missing staged optical host transfer"
