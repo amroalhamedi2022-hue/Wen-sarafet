@@ -4,7 +4,7 @@
 # Explicit 2026-11-04 owner request: fix debt reclassification, auditable manual balance updates, and safe linked repayments.
 # 2026-11-06 owner-authorized offline-only, legacy provider removal: no deletion of ledger rows or existing account balances.
 # Each change must retain account and historical data; do not automatically reconcile prior balances.
-a621f73f682a5c03b582dc185eb746aaeb0943c6  app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java
+9e2b0768cfb160d91371aa57aa669f01117a0207  app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java
 37badf39525c09eaf4e5abf5565031bcab7cd108  app/src/main/java/app/wensarafet/tracker/FinanceRules.java
 6a0fb5a1af1cba7f25f5bdd1206163086e025a71  app/src/main/java/app/wensarafet/tracker/DebtLedgerRules.java
 29f4d3383e97ed45e3b7574056e5adadb0b52486  app/src/main/java/app/wensarafet/tracker/FxTransferMath.java

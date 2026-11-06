@@ -67,18 +67,14 @@ def verify() -> None:
                     if service.attrib.get(ANDROID + "permission") == "android.permission.BIND_ACCESSIBILITY_SERVICE":
                         failures.append("An accessibility service was added")
             print(f"Declared manifest permissions: {', '.join(sorted(permissions))}")
-            # Verify app source has no direct network API or retired integrations.
+            # Verify app source has no direct network APIs or cloud backup integrations.
             java_root = ROOT / "app/src/main/java"
             for src in java_root.rglob("*.java"):
                 code = src.read_text(encoding="utf-8")
                 if ("java.net." in code or "HttpURLConnection" in code or "HttpsURLConnection" in code
                     or "Socket(" in code or "new URL(" in code or "DriveBackup" in code
-                    or "BopRateFetcher" in code or "BankOfPalestine" in code
-                    or "بنك فلسطين" in code or re.search(r"(?i)\bBOP\b", code)):
+                    or "BopRateFetcher" in code or "DriveBackupManager" in code):
                     failures.append(f"Forbidden network or retired-provider integration: {src.relative_to(ROOT)}")
-            for path in (ROOT / "app/src/main").rglob("*"):
-                if path.is_file() and "bop" in path.name.lower():
-                    failures.append(f"Retired provider asset remains: {path.relative_to(ROOT)}")
             for xml_name in ("data_extraction_rules.xml","backup_rules.xml"):
                 local_rules = ROOT / "app/src/main/res/xml" / xml_name
                 if not local_rules.is_file() or '<exclude domain="root" path="." />' not in local_rules.read_text():

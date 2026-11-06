@@ -29,8 +29,8 @@
 ## Current privacy boundary — 2026-11-06 owner-approved strict offline release
 
 - The Android app MUST NOT request `android.permission.INTERNET` or `ACCESS_NETWORK_STATE`. The merged release APK permissions are inspected in GitHub Actions; the source-only guard checks for reintroduced network code.
-- The app MUST NOT include any online exchange-rate fetcher, cloud-sync code or legacy bank-specific financial capture, quick actions, widgets or image assets.
-- Manual FX conversion, locally encrypted backups, optional SMS/notification capture for the remaining wallets and financial ledger entries still work without network access. The document picker restricts manual backups/restores to local system storage providers.
+- The app MUST NOT include online exchange-rate fetchers or cloud-sync code. Bank of Palestine SMS/notification capture, its original icons and widgets, and optional USSD quick action have been restored without Internet permission. USSD opens the system phone dialer, which uses the cellular network and is not an Internet request by this app.
+- Manual FX conversion, locally encrypted backups, and optional SMS/notification capture for Bank of Palestine, Jawwal Pay and PalPay still work locally. Wallet verification SMS (including Code: formats) must be rejected before ledger storage. The document picker restricts manual backups/restores to local system storage providers.
 - Android automatic backup is disabled (`allowBackup=false`) and extraction rules exclude the app's private data from cloud and device-transfer backups.
 - Existing user accounts, balances, audit records and transactions MUST NOT be deleted or silently rewritten during an update. Previously existing locally named accounts can remain in the user's own database until the user explicitly renames them.
 - Historical remote backup files and old public Git commits or branch snapshots are not erased by a source-level privacy update. Existing installations are NOT protected by the new policy until a verified owner-signed update is installed.
