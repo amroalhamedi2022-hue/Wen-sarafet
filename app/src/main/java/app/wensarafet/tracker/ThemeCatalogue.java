@@ -35,7 +35,11 @@ public final class ThemeCatalogue {
         if (themeIndex < 0 || themeIndex >= ENGLISH_NAMES.length) return false;
         // These three transitional themes followed Frozen Pearl, but are NOT
         // among the owner's five newer, separately approved designs (25-29).
-        if (themeIndex >= 22 && themeIndex <= 24) return false;
+        // Preserve an already selected older palette until the owner chooses
+        // something else. It disappears from the catalogue after switching;
+        // never silently force a different persisted theme on an update.
+        if (themeIndex >= 22 && themeIndex <= 24)
+            return Ui.themeIndex(context) == themeIndex;
         return !context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getBoolean(HIDDEN_PREFIX + themeIndex, false);
     }
