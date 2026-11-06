@@ -74,7 +74,7 @@ final class WenThemeArtDirection {
                 new float[]{0f,.44f,1f},Shader.TileMode.CLAMP));
         reflection.setShader(new LinearGradient(b.left+w*.36f,b.top,
                 b.right-w*.12f,b.bottom,new int[]{0x6FFFFFFF,0x1AD7C7AD,
-                0x05FFFFFF,0x3DBDA078,0},new float[]{0,.23f,.70f,1f},Shader.TileMode.CLAMP));
+                0x05FFFFFF,0x3DBDA078,0},new float[]{0f,.20f,.47f,.78f,1f},Shader.TileMode.CLAMP));
     }
 
     /** 27: soft pearlescent cream, reflected champagne rim and broad ivory refraction. */
@@ -118,7 +118,7 @@ final class WenThemeArtDirection {
         reflection.setShader(new LinearGradient(b.left+w*.15f,b.top,
                 b.right,b.bottom,new int[]{0x7DFFF3D5,0x20E5FFDF,
                 0x06FFFFFF,0x56D5F9D6,0},
-                new float[]{0,.29f,.58f,1f},Shader.TileMode.CLAMP));
+                new float[]{0f,.22f,.50f,.79f,1f},Shader.TileMode.CLAMP));
     }
 
     /** 29: luminous magenta from upper left, electric indigo from lower right. */
@@ -139,7 +139,7 @@ final class WenThemeArtDirection {
                 new float[]{0,.37f,1f},Shader.TileMode.CLAMP));
         reflection.setShader(new LinearGradient(b.left,b.top,
                 b.right-w*.13f,b.bottom,new int[]{0xA6FFE4FF,0x20FEA8EE,
-                0x06FFFFFF,0x45CBB1FF,0},new float[]{0,.23f,.65f,1f},
+                0x06FFFFFF,0x45CBB1FF,0},new float[]{0f,.19f,.52f,.81f,1f},
                 Shader.TileMode.CLAMP));
     }
 }
