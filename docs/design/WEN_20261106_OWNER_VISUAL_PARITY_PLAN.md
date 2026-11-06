@@ -62,6 +62,18 @@ Visual source guard, core unit/finance guards, clean compile and Android API 33+
 - Pixel inspection: dark gold materials still too brown and insufficiently glossy versus reference; Orange-Green is olive rather than vivid amber/forest gradients; Pink-Violet glass still lacks rich blue/pink translucency; navigation capsule feels flatter than accepted reference. Further visual code and real app screenshot automation are required before owner approval.
 - No production build signed, no main merge, no user-device install.
 
+## Owner's 2026-11-06 visual refinement request — implementation audit
+- Recovered actual archived 1.8.8 Sandbox emulator screenshot artifact from run `41411629334`; the reference uses a restrained double-rim translucent blue capsule, native circular optical FAB, real original account badges.
+- Ported the Sandbox contextual header titles/subtitles, pageHeader tag and press effect, and true rounded FAB outline to the current 2.0 candidate WITHOUT changing the original click callbacks or account/finance logic. The five premiums now render their FAB using original `WenFabBubbleDrawable`, with circular clipped foreground and press/release optics.
+- Added `WenThemeArtDirection.java`: five independent cached radial/specular compositions rather than one recoloured shader. Removed synthetic ribbon/wavy background strokes from `WenPremiumLiquidDrawable`.
+- Confirmed original asset blob SHAs and pinned them in `tests/wen_188_visual_safezone_contract.py`: BOP `d71006e0`, Jawwal `0516bd77`, PalPay `d09932ad`. The original PNGs and accountIcon mapping have not been edited.
+- Source-only finance/safety gate, original package/no-signing guard and Android debug build/lint have passed in review branch (runs `42194920267`, `42194920164`, `42194920228`). Do NOT confuse these with a visually approved final release.
+- Owner requires ACTUAL MainActivity screenshot evidence rather than `VisualPreviewActivity`. Two separate screenshot techniques were implemented:
+  1. `RealMainScreenCaptureTest` uses Android PixelCopy on the genuine Activity window in an isolated debug test instance, with fake data and original seeded bank accounts. GitHub emulator has experienced ADB disconnection/runner GPU failures; not yet approved.
+  2. `.github/workflows/wen-main-physical-screens.yml` boots a disposable debug build of REAL MainActivity with test-only activation allowances in the CI checkout, NEVER committed into the production code. The build is now performed BEFORE emulator boot with KVM, SwiftShader, x86-only native exclusions and Pixel Launcher ANR workaround, matching verified 1.8.8 Sandbox test setup. Expected 20 framebuffer PNGs: 5 themes x home, account icons, transactions and analytics; attempts without 20 valid images fail.
+- **Still blocked**: actual new MainActivity PNG validation and user visual approval; no claims of perfect visual parity, no signed APK, no merge to main, no user-device install.
+- Branch: `design/wen-visual-parity-owner-review-20261106`. Review: PR #45.
+
 ## Work progress
 - [x] Compared source and received 5 reference + 5 runtime screenshots.
 - [x] Verified latest 2.0 release candidate baseline and existing 30 theme indices.
