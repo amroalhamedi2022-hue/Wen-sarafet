@@ -18,5 +18,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Screenshot-only material fixture, never compiled into release APK. -->
+        <activity
+            android:name=".VisualPreviewActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:label="Visual Preview" />
     </application>
 </manifest>
