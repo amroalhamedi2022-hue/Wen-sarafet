@@ -18,6 +18,10 @@ permissions:
 
 jobs:
   android15-real-main:
+    strategy:
+      fail-fast: false
+      matrix:
+        theme: [25, 26, 27, 28, 29]
     runs-on: ubuntu-latest
     timeout-minutes: 38
     steps:
@@ -60,12 +64,12 @@ jobs:
           disable-animations: false
           emulator-boot-timeout: 600
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: bash scripts/capture_main_no_instrumentation.sh
+          script: bash scripts/capture_main_no_instrumentation.sh ${{ matrix.theme }}
       - name: Export 20 native framebuffer screenshots and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wen-real-mainactivity-5themes-android15
+          name: wen-real-mainactivity-theme-${{ matrix.theme }}-android13
           path: build/owner-live-main-screens/
           retention-days: 14
           if-no-files-found: warn
