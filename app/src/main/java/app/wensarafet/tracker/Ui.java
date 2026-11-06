@@ -266,6 +266,7 @@ public final class Ui {
         // The three new light palettes remain legible on dark-mode phones;
         // all prior 25 themes keep their original dark-mode behaviour.
         DARK = theme == 20 || theme == 24 || theme == 25 || theme == 26
+                || theme == 28 || theme == 29
                 || (theme < 25 && (context.getResources().getConfiguration().uiMode
                         & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES);
         int[] p = THEMES[theme];
