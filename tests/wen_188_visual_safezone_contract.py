@@ -49,6 +49,8 @@ ALLOWED = {
     "docs/design/WEN_20261106_OWNER_VISUAL_PARITY_PLAN.md",
     "app/src/androidTest/java/app/wensarafet/tracker/ThemeCatalogueInstrumentedTest.java",
     ".github/workflows/wen-visual-screenshots.yml",
+    "app/src/debug/AndroidManifest.xml",
+    "app/src/debug/java/app/wensarafet/tracker/VisualPreviewActivity.java",
     "tests/glass_energy_contract.py",
     "tests/wen_190_visual_motion_contract.py",
     "tests/batch22_category_budget_icon_contract.py",
