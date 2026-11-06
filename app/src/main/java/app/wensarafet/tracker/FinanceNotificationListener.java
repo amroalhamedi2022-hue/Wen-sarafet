@@ -10,7 +10,8 @@ public final class FinanceNotificationListener extends NotificationListenerServi
         if (!LicenseManager.isActivated(this)) return;
         String pkg = sbn.getPackageName();
         String provider;
-        if ("com.pcnc.wallet".equals(pkg)) provider = "PALPAY";
+        if ("com.pcnc.bop".equals(pkg)) provider = "BOP";
+        else if ("com.pcnc.wallet".equals(pkg)) provider = "PALPAY";
         else if ("ps.Jawwal.JawwalPayNewPlus".equals(pkg)) provider = "JAWAL";
         else return;
         Bundle extras = sbn.getNotification().extras;

@@ -16,7 +16,8 @@ public final class SmsCaptureReceiver extends BroadcastReceiver {
         String sender = messages[0].getDisplayOriginatingAddress();
         String lower = sender == null ? "" : sender.toLowerCase(Locale.ROOT).replace(" ", "");
         String provider;
-        if (lower.contains("jawwalpay") || lower.contains("jawalpay")) provider = "JAWAL";
+        if (lower.contains("bop")) provider = "BOP";
+        else if (lower.contains("jawwalpay") || lower.contains("jawalpay")) provider = "JAWAL";
         else return;
         StringBuilder body = new StringBuilder();
         long timestamp = messages[0].getTimestampMillis();

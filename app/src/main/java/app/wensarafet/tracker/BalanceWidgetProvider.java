@@ -21,16 +21,16 @@ public final class BalanceWidgetProvider extends AppWidgetProvider {
         FinanceDbHelper db = new FinanceDbHelper(context);
         try {
             Long jawwal = db.getAccountBalance("Jawwal Pay", "ILS");
-            Long palpay = db.getAccountBalance("PalPay", "ILS");
-            for (int id : ids) manager.updateAppWidget(id, views(context, id, jawwal, palpay));
+            Long bop = db.getAccountBalance("بنك فلسطين", "ILS");
+            for (int id : ids) manager.updateAppWidget(id, views(context, id, jawwal, bop));
         } finally { db.close(); }
     }
 
-    private RemoteViews views(Context context, int id, Long jawwal, Long palpay) {
+    private RemoteViews views(Context context, int id, Long jawwal, Long bop) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_balances);
         boolean active = LicenseManager.isActivated(context);
         views.setTextViewText(R.id.widget_jawwal_balance, !active ? "يتطلب تفعيل" : jawwal == null ? "غير موجود" : Money.format(jawwal, "ILS"));
-        views.setTextViewText(R.id.widget_secondary_palpay_balance, !active ? "يتطلب تفعيل" : palpay == null ? "غير موجود" : Money.format(palpay, "ILS"));
+        views.setTextViewText(R.id.widget_bop_balance, !active ? "يتطلب تفعيل" : bop == null ? "غير موجود" : Money.format(bop, "ILS"));
         Intent intent = new Intent(context, MainActivity.class);
         intent.setData(android.net.Uri.parse("wensarafet://balances/" + id));
         PendingIntent pending = PendingIntent.getActivity(context, 12000 + id, intent,

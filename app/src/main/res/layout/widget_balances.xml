@@ -52,23 +52,23 @@
             android:layout_width="60dp"
             android:layout_height="60dp"
             android:scaleType="fitCenter"
-            android:src="@drawable/icon_palpay_widget_soft"
-            android:contentDescription="@string/widget_palpay_balance" />
+            android:src="@drawable/icon_bop_widget_soft"
+            android:contentDescription="@string/widget_bop_balance" />
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="PalPay"
-            android:textColor="@color/widget_palpay_text"
+            android:text="بنك فلسطين"
+            android:textColor="@color/widget_bop_text"
             android:textStyle="normal"
             android:textSize="10.5sp"
             android:maxLines="1" />
         <TextView
-            android:id="@+id/widget_secondary_palpay_balance"
+            android:id="@+id/widget_bop_balance"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:textColor="@color/widget_palpay_text"
+            android:textColor="@color/widget_bop_text"
             android:textStyle="bold"
             android:textSize="11.5sp"
             android:maxLines="1" />

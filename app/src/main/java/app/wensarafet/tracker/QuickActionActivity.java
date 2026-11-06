@@ -30,6 +30,11 @@ public final class QuickActionActivity extends Activity {
             startActivity(new Intent(this, MainActivity.class)); finish(); return;
         }
         String action = getIntent().getStringExtra("action");
+        if ("bop".equals(action)) {
+            String pin = SecurePinStore.read(this, "bop_pin");
+            if (pin == null) missingPin("بنك فلسطين"); else dial(UssdCodes.bankOfPalestine(pin));
+            return;
+        }
         boolean jawwal = "jawwal_friend".equals(action) || "jawwal_merchant".equals(action);
         if (jawwal && SecurePinStore.read(this, "jawwal_pin") == null) { missingPin("جوال باي"); return; }
         showForm(action);

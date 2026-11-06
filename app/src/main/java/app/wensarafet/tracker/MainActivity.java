@@ -941,13 +941,14 @@ public final class MainActivity extends Activity {
     private View accountIcon(Models.Account account) {
         int resource = 0;
         String name = account.name.toLowerCase(Locale.ROOT);
-        if (name.contains("jawwal")) resource = R.drawable.icon_jawwal_pay_mark;
+        if (name.contains("بنك فلسطين") || name.contains("bank of palestine")) resource = R.drawable.icon_bop_mark;
+        else if (name.contains("jawwal")) resource = R.drawable.icon_jawwal_pay_mark;
         else if (name.contains("palpay")) resource = R.drawable.icon_palpay_mark;
         if (resource != 0) {
             ImageView image = new ImageView(this);
             image.setImageResource(resource);
             image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            int iconBackground = name.contains("jawwal") ? 0xFF91CF32 : 0xFF9F2BE8;
+            int iconBackground = name.contains("بنك فلسطين") || name.contains("bank of palestine") ? 0xFFD40067 : name.contains("jawwal") ? 0xFF91CF32 : 0xFF9F2BE8;
             image.setBackground(Ui.rounded(iconBackground, 13, this));
             image.setClipToOutline(true);
             image.setElevation(Ui.dp(this, 2));
@@ -1693,8 +1694,8 @@ public final class MainActivity extends Activity {
 
         content.addView(sectionTitle("الالتقاط التلقائي", db.getPendingCaptureCount() + " للمراجعة"));
         LinearLayout captureCard = Ui.column(this); captureCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12)); captureCard.setBackground(Ui.rounded(Ui.SURFACE, 20, this)); captureCard.setElevation(Ui.dp(this, 3));
-        captureCard.addView(Ui.text(this, "يقرأ فقط رسائل Jawwal Pay وإشعارات PalPay وجوال باي. النص الأصلي يبقى محفوظًا محليًا مع العملية.", 12, Ui.MUTED, false));
-        Button smsAccess = actionButton(checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED ? "✓ قراءة رسائل SMS مفعّلة" : "السماح بقراءة رسائل جوال باي", false);
+        captureCard.addView(Ui.text(this, "يقرأ رسائل بنك فلسطين وجوال باي وإشعارات بنك فلسطين وPalPay وجوال باي محليًا. لا يرسل أي بيانات عبر الإنترنت.", 12, Ui.MUTED, false));
+        Button smsAccess = actionButton(checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED ? "✓ قراءة رسائل SMS مفعّلة" : "السماح بقراءة رسائل البنك وجوال باي", false);
         smsAccess.setOnClickListener(v -> requestPermissions(new String[]{Manifest.permission.RECEIVE_SMS, Manifest.permission.POST_NOTIFICATIONS}, 7102)); captureCard.addView(smsAccess, fieldParams());
         Button notificationAccess = actionButton("فتح صلاحية الوصول للإشعارات", false);
         notificationAccess.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))); captureCard.addView(notificationAccess, fieldParams());
@@ -1709,14 +1710,17 @@ public final class MainActivity extends Activity {
         TextView info = Ui.text(this, "احفظ رموزك هنا، ثم أضف إحدى Widgets وين صرفت؟ من شاشة الهاتف الرئيسية. التطبيق يفتح الاتصال فقط ولا ينفذ الحوالة تلقائيًا.", 12, Ui.MUTED, false);
         ussdCard.addView(info);
         EditText jawwalPin = pinField(SecurePinStore.read(this, "jawwal_pin") == null ? "PIN جوال باي — 4 أرقام" : "PIN جوال باي محفوظ — اكتب لتغييره");
-        ussdCard.addView(jawwalPin, fieldParams());
+        EditText bopPin = pinField(SecurePinStore.read(this, "bop_pin") == null ? "PIN بنك فلسطين — 4 أرقام" : "PIN البنك محفوظ — اكتب لتغييره");
+        ussdCard.addView(jawwalPin, fieldParams()); ussdCard.addView(bopPin, fieldParams());
         Button savePins = actionButton("حفظ الرموز بأمان", true); savePins.setBackground(Ui.gradient(Ui.VIOLET, Ui.CORAL, 16, this));
         savePins.setOnClickListener(v -> {
             try {
-                String jp = jawwalPin.getText().toString().trim();
+                String jp = jawwalPin.getText().toString().trim(), bp = bopPin.getText().toString().trim();
                 if (!jp.isEmpty() && !jp.matches("[0-9]{4}")) { jawwalPin.setError("يجب أن يكون 4 أرقام"); return; }
+                if (!bp.isEmpty() && !bp.matches("[0-9]{4}")) { bopPin.setError("يجب أن يكون 4 أرقام"); return; }
                 if (!jp.isEmpty()) SecurePinStore.save(this, "jawwal_pin", jp);
-                jawwalPin.setText(""); Toast.makeText(this, "تم حفظ الرموز مشفّرة", Toast.LENGTH_SHORT).show();
+                if (!bp.isEmpty()) SecurePinStore.save(this, "bop_pin", bp);
+                jawwalPin.setText(""); bopPin.setText(""); Toast.makeText(this, "تم حفظ الرموز مشفّرة", Toast.LENGTH_SHORT).show();
             } catch (Exception error) { Toast.makeText(this, "تعذر تشفير الرموز", Toast.LENGTH_LONG).show(); }
         });
         ussdCard.addView(savePins, fieldParams()); content.addView(ussdCard);
@@ -1907,7 +1911,7 @@ public final class MainActivity extends Activity {
 
     private View captureReviewCard(Models.CaptureItem item) {
         LinearLayout card = Ui.column(this); card.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12)); card.setBackground(Ui.rounded(Ui.SURFACE, 20, this)); card.setElevation(Ui.dp(this, 2));
-        String provider = "JAWAL".equals(item.provider) ? "Jawwal Pay" : "PALPAY".equals(item.provider) ? "PalPay" : "سجل سابق";
+        String provider = "BOP".equals(item.provider) ? "بنك فلسطين" : "JAWAL".equals(item.provider) ? "Jawwal Pay" : "PALPAY".equals(item.provider) ? "PalPay" : "سجل سابق";
         LinearLayout head = Ui.row(this); head.addView(Ui.text(this, provider + " • " + ("SMS".equals(item.channel) ? "رسالة" : "إشعار"), 14, Ui.TEXT, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 38), 1));
         String money = item.amountMinor == null ? "مبلغ غير مقروء" : Money.format(item.amountMinor, item.currency == null ? "" : item.currency); TextView amount = Ui.text(this, money, 15, Ui.VIOLET, true); amount.setGravity(Gravity.END | Gravity.CENTER_VERTICAL); head.addView(amount); card.addView(head);
         TextView raw = Ui.text(this, item.rawText, 12, Ui.TEXT, false); raw.setPadding(Ui.dp(this, 10), Ui.dp(this, 9), Ui.dp(this, 10), Ui.dp(this, 9)); raw.setBackground(Ui.rounded(Ui.BRAND_SOFT, 12, this)); card.addView(raw);

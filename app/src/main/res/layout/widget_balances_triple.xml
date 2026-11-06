@@ -31,10 +31,10 @@
     <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
         android:orientation="vertical" android:gravity="center" android:padding="1dp">
         <ImageView android:layout_width="54dp" android:layout_height="54dp" android:scaleType="fitCenter"
-            android:src="@drawable/ic_cash_widget" android:contentDescription="@string/widget_cash_balance" />
+            android:src="@drawable/icon_bop_widget_soft" android:contentDescription="@string/widget_bop_balance" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center"
-            android:text="نقدي" android:textColor="@color/widget_cash_text" android:textStyle="normal" android:textSize="10sp" android:maxLines="1" />
-        <TextView android:id="@+id/widget_triple_cash_balance" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:gravity="center" android:textColor="@color/widget_cash_text" android:textStyle="bold" android:textSize="11sp" android:maxLines="1" />
+            android:text="بنك فلسطين" android:textColor="@color/widget_bop_text" android:textStyle="normal" android:textSize="10sp" android:maxLines="1" />
+        <TextView android:id="@+id/widget_triple_bop_balance" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:gravity="center" android:textColor="@color/widget_bop_text" android:textStyle="bold" android:textSize="11sp" android:maxLines="1" />
     </LinearLayout>
 </LinearLayout>

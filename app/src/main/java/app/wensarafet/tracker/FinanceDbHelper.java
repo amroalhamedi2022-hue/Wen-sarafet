@@ -391,6 +391,8 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     }
 
     private void seed(SQLiteDatabase db) {
+        addAccount(db, "بنك فلسطين", "ILS", 0, 1, 0);
+        addAccount(db, "بنك فلسطين", "USD", 0, 1, 1);
         addAccount(db, "Jawwal Pay", "ILS", 0, 1, 2);
         addAccount(db, "PalPay", "ILS", 0, 1, 3);
         addAccount(db, "نقدي", "ILS", 0, 1, 4);
@@ -1406,7 +1408,7 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
     }
 
     private long findProviderAccount(String provider, String currency) {
-        String name = "JAWAL".equals(provider) ? "Jawwal Pay" : "PALPAY".equals(provider) ? "PalPay" : null;
+        String name = "BOP".equals(provider) ? "بنك فلسطين" : "JAWAL".equals(provider) ? "Jawwal Pay" : "PALPAY".equals(provider) ? "PalPay" : null;
         if (name == null) return -1;
         try (Cursor c = getReadableDatabase().rawQuery("SELECT id FROM accounts WHERE active=1 AND name=? AND currency=? ORDER BY position,id LIMIT 1", new String[]{name, currency})) {
             return c.moveToFirst() ? c.getLong(0) : -1;
