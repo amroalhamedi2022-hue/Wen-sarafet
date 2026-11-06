@@ -31,11 +31,11 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     // backdrop x3, card x2, header x2, navigation x2, FAB x2, specular shine.
     private static final int[][] PALETTES = {
             // Royal obsidian with warm metallic amber.
-            {0xFF100C0A,0xFF2D1D11,0xFF140E0B, 0xFF28221C,0xFF4A3928,
+            {0xFF0B0C0D,0xFF1D1612,0xFF13110F, 0xFF24211E,0xFF40352A,
              0xFF302217,0xFFB28B4E, 0xFF241C17,0xFF493322,
              0xFF603D1C,0xFFE1AB50,0xFFFFE29A},
             // Imperial dark graphite, champagne-gold reflections.
-            {0xFF101415,0xFF33241C,0xFF16191B, 0xFF292725,0xFF4B3B31,
+            {0xFF0C1115,0xFF292622,0xFF181B20, 0xFF272B30,0xFF3E3832,
              0xFF312820,0xFFBE995B, 0xFF262525,0xFF534033,
              0xFF644823,0xFFD0A463,0xFFFFE4A7},
             // Champagne pearlescent ivory.
@@ -108,19 +108,27 @@ public final class WenPremiumLiquidDrawable extends Drawable {
 
     private int[] stops() {
         int[] p = PALETTES[index - ROYAL_DARK];
+        // Transparent glass, not a flat tinted plastic card. Gold stats stay
+        // slightly denser to protect white text; champagne keeps dark ink.
+        final int cardAlpha = index == CHAMPAGNE ? 202
+                : index == IMPERIAL_DARK ? 178 : index == ROYAL_DARK ? 170
+                : index == ORANGE_GREEN ? 165 : 168;
+        final int headerAlpha = index == CHAMPAGNE ? 212
+                : index == ORANGE_GREEN || index == PURPLE_PINK ? 191 : 196;
+        final int navAlpha = index == CHAMPAGNE ? 192 : 180;
         switch (surface) {
             case BACKDROP:
                 return new int[]{p[0], blend(p[0], p[1], .66f), p[1],
                         blend(p[2], p[1], .12f), p[2]};
             case HEADER:
-                return new int[]{alpha(p[5], 226),
-                        alpha(blend(p[5], p[6], index==CHAMPAGNE?.42f:.20f), 220),
-                        alpha(blend(p[5], p[6], index==CHAMPAGNE?.57f:.31f), 217),
-                        alpha(p[5], 227), alpha(p[5], 222)};
+                return new int[]{alpha(p[5],headerAlpha),
+                        alpha(blend(p[5],p[6],index==CHAMPAGNE?.42f:.20f),headerAlpha+6),
+                        alpha(blend(p[5],p[6],index==CHAMPAGNE?.57f:.31f),headerAlpha+3),
+                        alpha(p[5],headerAlpha+2),alpha(p[5],headerAlpha)};
             case NAVIGATION:
-                return new int[]{alpha(p[7], 220), alpha(p[8], 226),
-                        alpha(blend(p[7], p[11], .19f), 225),
-                        alpha(p[8], 225), alpha(p[7], 220)};
+                return new int[]{alpha(p[7],navAlpha),alpha(p[8],navAlpha+12),
+                        alpha(blend(p[7],p[11],.15f),navAlpha+16),
+                        alpha(p[8],navAlpha+9),alpha(p[7],navAlpha)};
             case FAB:
                 return new int[]{p[9], blend(p[9], p[10], .67f),
                         blend(p[10], p[11], .77f), p[10], p[9]};
@@ -130,8 +138,10 @@ public final class WenPremiumLiquidDrawable extends Drawable {
                         alpha(blend(p[9],p[10],.47f), 234),
                         alpha(blend(p[9],p[10],.20f), 240), alpha(p[9],244)};
             default:
-                return new int[]{alpha(p[3], 228), alpha(blend(p[3], p[4], .35f), 232),
-                        alpha(p[4], 230), alpha(p[3], 228), alpha(p[3], 225)};
+                return new int[]{alpha(p[3],cardAlpha),
+                        alpha(blend(p[3],p[4],.26f),cardAlpha+10),
+                        alpha(p[4],cardAlpha+7),alpha(p[3],cardAlpha+3),
+                        alpha(p[3],cardAlpha)};
         }
     }
 
