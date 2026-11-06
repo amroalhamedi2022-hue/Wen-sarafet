@@ -607,18 +607,35 @@ for marker in (
 ):
     assert marker in new_ui, "Missing sandbox visual-only transfer: " + marker
 
-for graphic in (
-    "WenGlassDrawable.java",
-    "WenFabBubbleDrawable.java",
-):
-    location = "glass-engine/src/main/java/app/wensarafet/glass/" + graphic
-    expected = git("show", f"{SANDBOX_SOURCE}:{location}")
-    actual = (ROOT / location).read_text(encoding="utf-8")
-    assert actual == expected, "SAFE ZONE: visual source must match vetted sandbox exactly: " + graphic
-    for protected in ("FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
-                      "LicenseManager", "SmsCaptureReceiver", "SandboxMode",
-                      "setOnClickListener(", "setOnLongClickListener("):
-        assert protected not in actual, "SAFE ZONE: drawing file references protected behaviour"
+# The original Sandbox generic glass renderer MUST remain exactly intact.
+graphic = "WenGlassDrawable.java"
+location = "glass-engine/src/main/java/app/wensarafet/glass/" + graphic
+assert (ROOT / location).read_text(encoding="utf-8") == git(
+    "show", f"{SANDBOX_SOURCE}:{location}"
+), "SAFE ZONE: original Sandbox glass renderer changed"
+
+# Premiums 25–29 need correct GOLD/GREEN/VIOLET materials instead of the
+# Sandbox BLUE button. Pin the single audited drawing-only blob, and prove the
+# original hit/hold animation, draw and opacity methods are byte-identical.
+location = "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java"
+bubble = (ROOT / location).read_text(encoding="utf-8")
+vetted_bubble_blob = "d26043c8e787937776d1fca546919e2646605238"
+assert git("hash-object", location).strip() == vetted_bubble_blob, (
+    "SAFE ZONE: unreviewed original FAB drawable modifications"
+)
+original_bubble = git("show", f"{SANDBOX_SOURCE}:{location}")
+legacy_methods = "    public float getPress() { return press; }"
+assert bubble[bubble.index(legacy_methods):] == original_bubble[
+    original_bubble.index(legacy_methods):], (
+    "SAFE ZONE: original FAB press/hold/draw contract altered"
+)
+for value in ("case 25:", "case 26:", "case 27:", "case 28:",
+              "default: // Pink-Violet Glass"):
+    assert value in bubble, "Approved five-theme FAB material absent: " + value
+for protected in ("FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
+                  "LicenseManager", "SmsCaptureReceiver", "SandboxMode",
+                  "setOnClickListener(", "setOnLongClickListener("):
+    assert protected not in bubble, "SAFE ZONE: decorative FAB source references protected behaviour"
 
 # Strictly isolate new on-screen transitions from all protected business methods.
 screen_motion = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java").read_text(encoding="utf-8")
