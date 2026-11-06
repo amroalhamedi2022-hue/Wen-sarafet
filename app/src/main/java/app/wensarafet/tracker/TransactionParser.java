@@ -48,7 +48,13 @@ public final class TransactionParser {
     }
 
     public static boolean isVerificationMessage(String raw) {
-        return raw != null && VERIFICATION.matcher(normalize(raw)).find();
+        if (raw == null) return false;
+        String normalized = normalize(raw);
+        // Some wallet verification texts begin with "Code: 12345" instead of "OTP".
+        // Reject these messages before writing any raw message into the local ledger.
+        return VERIFICATION.matcher(normalized).find()
+                || java.util.regex.Pattern.compile("(?i)\\bcode\\s*:\\s*\\d{4,8}\\b").matcher(normalized).find()
+                || java.util.regex.Pattern.compile("(?i)\\bp2m\\b.{0,90}\\b(?:code|maximum|account owner)\\b").matcher(normalized).find();
     }
 
     private static void findAmount(String text, Result out) {
