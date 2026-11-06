@@ -482,7 +482,24 @@ public final class MainActivity extends Activity {
                 ? Ui.glassFloatingAddBackground(this)
                 : (Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
                 : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this)));
-        fab.setElevation(Ui.dp(this, 8));
+        // A hard circular outline (from Sandbox 1.8.8) prevents Android's
+        // rectangular default shadow/ripple on Pixel and MIUI renderers.
+        // Does NOT change the click/hold action or hitbox.
+        fab.setForeground(null);
+        fab.setStateListAnimator(null);
+        fab.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override public void getOutline(View view, android.graphics.Outline outline) {
+                int side = Math.min(view.getWidth(), view.getHeight());
+                if (side > 0) {
+                    int x = (view.getWidth()-side)/2;
+                    int y = (view.getHeight()-side)/2;
+                    outline.setOval(x, y, x+side, y+side);
+                } else outline.setOval(0,0,1,1);
+            }
+        });
+        fab.setClipToOutline(true);
+        fab.setElevation(Ui.dp(this, 6));
+        fab.setContentDescription("إضافة عملية");
         fab.setTag("wen_intro_fab");
         fab.setOnClickListener(v -> {
             if (Ui.isLiquidTheme(this)) visualMotion.markFabTap(v, screenHost);
@@ -545,6 +562,7 @@ public final class MainActivity extends Activity {
 
     private View mainTopBar() {
         LinearLayout wrapper = Ui.column(this);
+        wrapper.setTag("wen_top_chrome");
         wrapper.setPadding(Ui.dp(this, 14), Ui.dp(this, 10), Ui.dp(this, 14), Ui.dp(this, 10));
         FrameLayout layers = new FrameLayout(this);
         View background = new View(this);
@@ -561,8 +579,30 @@ public final class MainActivity extends Activity {
         // All other themes retain their established header contrast.
         int headerInk = Ui.themeIndex(this) == 27 ? 0xFF65421F : Color.WHITE;
         int headerSoftInk = Ui.themeIndex(this) == 27 ? 0xFF79572F : Color.rgb(225, 239, 235);
-        TextView title = Ui.text(this, "وين صرفت؟", 25, headerInk, true);
-        TextView subtitle = Ui.text(this, "أموالك واضحة، وخصوصيتك محفوظة", 11, headerSoftInk, false);
+        // Reuse the original 1.8.8 Sandbox screen-specific header identity:
+        // the title/subtitle reflect the ACTIVE primary tab, not a fixed app name.
+        String headerTitle;
+        String headerSubtitle;
+        switch (currentTab) {
+            case TAB_TRANSACTIONS:
+                headerTitle = "كل العمليات";
+                headerSubtitle = "سجل المصروفات والدخل والتحويلات";
+                break;
+            case TAB_DEBTS:
+                headerTitle = "الديون";
+                headerSubtitle = "الأرصدة المستحقة وسجل السداد";
+                break;
+            case TAB_ANALYTICS:
+                headerTitle = "التحليلات";
+                headerSubtitle = "تقارير الإنفاق والميزانيات";
+                break;
+            default:
+                headerTitle = "الرئيسية";
+                headerSubtitle = "ملخص الحسابات والمصروفات";
+                break;
+        }
+        TextView title = Ui.text(this, headerTitle, 25, headerInk, true);
+        TextView subtitle = Ui.text(this, headerSubtitle, 11, headerSoftInk, false);
         // Keep labels and controls inside the fixed header on compact RTL screens.
         title.setSingleLine(true);
         subtitle.setSingleLine(true);
@@ -1738,19 +1778,24 @@ public final class MainActivity extends Activity {
 
     private View pageHeader(String titleValue, Runnable backAction) {
         LinearLayout wrapper=Ui.column(this);
+        wrapper.setTag("wen_top_chrome");
         wrapper.setPadding(Ui.dp(this,14),Ui.dp(this,5),
                 Ui.dp(this,14),Ui.dp(this,5));
         LinearLayout bar=Ui.row(this);
         bar.setPadding(Ui.dp(this,14),0,Ui.dp(this,14),0);
         bar.setBackground(Ui.glassHeaderBackground(this,20));
         bar.setElevation(Ui.dp(this,6));
-        TextView back=Ui.text(this,"‹",32,Color.WHITE,false);
+        // Mirror the header's material-aware typography in the original
+        // Sandbox back/title chrome; do not alter the back callback.
+        int headerInk = Ui.themeIndex(this) == 27 ? 0xFF65421F : Color.WHITE;
+        TextView back=Ui.text(this,"‹",32,headerInk,false);
         back.setGravity(Gravity.CENTER);
         back.setContentDescription("رجوع");
         back.setBackground(Ui.rounded(Color.argb(40,255,255,255),12,this));
         back.setOnClickListener(v->backAction.run());
+        Ui.pressAnimation(back);
         bar.addView(back,new LinearLayout.LayoutParams(Ui.dp(this,46),Ui.dp(this,46)));
-        TextView title=Ui.text(this,titleValue,22,Color.WHITE,true);
+        TextView title=Ui.text(this,titleValue,22,headerInk,true);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);
         title.setAutoSizeTextTypeUniformWithConfiguration(16,22,1,
