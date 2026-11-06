@@ -1,0 +1,75 @@
+name: Wen REAL MainActivity screenshots — Android 13 stable capture
+on:
+  push:
+    branches:
+      - design/wen-visual-parity-owner-review-20261106
+    paths:
+      - 'app/src/main/java/app/wensarafet/tracker/MainActivity.java'
+      - 'app/src/main/java/app/wensarafet/tracker/Ui.java'
+      - 'app/src/debug/**'
+      - 'glass-engine/**'
+      - 'scripts/capture_main_no_instrumentation.sh'
+      - '.github/workflows/wen-main-physical-screens.yml'
+      - 'tests/wen_188_visual_safezone_contract.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android15-real-main:
+    strategy:
+      fail-fast: false
+      matrix:
+        theme: [25, 26, 27, 28, 29]
+    runs-on: ubuntu-latest
+    timeout-minutes: 38
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Audit protected original bank logos and finance source BEFORE disposable debug modifications
+        run: |
+          python3 tests/wen_188_visual_safezone_contract.py
+          python3 tests/financial_safe_zone_guard.py
+      - name: Compile disposable visual-debug APK BEFORE starting emulator
+        env:
+          WEN_DEBUG_CAPTURE_PREPARE_ONLY: '1'
+        run: bash scripts/capture_main_no_instrumentation.sh
+      - name: Enable KVM
+        run: |
+          sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -e /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Render production MainActivity views in isolated DEBUG process
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 3072M
+          heap-size: 384M
+          disk-size: 1536M
+          sdcard-path-or-size: 128M
+          disable-animations: false
+          emulator-boot-timeout: 600
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash scripts/capture_main_no_instrumentation.sh ${{ matrix.theme }}
+      - name: Export 20 native framebuffer screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wen-real-mainactivity-theme-${{ matrix.theme }}-android13
+          path: build/owner-live-main-screens/
+          retention-days: 14
+          if-no-files-found: warn

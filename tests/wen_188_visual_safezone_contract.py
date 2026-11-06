@@ -12,10 +12,12 @@ SETTINGS = "settings.gradle"
 ALLOWED = {
     MAIN, APP_GRADLE, SETTINGS, "gradle.properties", "proguard-rules.pro",
     "app/src/main/java/app/wensarafet/tracker/Ui.java",
+    "app/src/main/java/app/wensarafet/tracker/ThemeCatalogue.java",
     "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java",
     "app/src/androidTest/java/app/wensarafet/tracker/WenVisualMotionInstrumentedTest.java",
     "app/src/main/AndroidManifest.xml",
     "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java",
+    "app/src/main/java/app/wensarafet/tracker/WenPremiumTabIconDrawable.java",
     "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java",
     "app/src/main/java/app/wensarafet/tracker/SplitRemainderUi.java",
     "app/src/main/java/app/wensarafet/tracker/SplitRemainderRules.java",
@@ -32,6 +34,14 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenFabOpticalCrownDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenThemeArtDirection.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumCaustics.java",
+    "app/src/androidTest/java/app/wensarafet/tracker/RealMainScreenCaptureTest.java",
+    ".github/workflows/wen-real-main-screenshots.yml",
+    "scripts/capture_real_main_screens.sh",
+    "app/src/debug/java/app/wensarafet/tracker/OwnerThemeCaptureReceiver.java",
+    "scripts/capture_main_no_instrumentation.sh",
+    ".github/workflows/wen-main-physical-screens.yml",
     "docs/design/WEN_190_FIVE_PREMIUM_LIQUID_HANDOFF_20261105.md",
     "docs/releases/WEN_200_PREMIUM_INTEGRATION_HANDOFF_20261105.md",
     "docs/WEN_SARAFET_REPAIR_AND_DEVELOPMENT_PLAN_2026-10-23.md",
@@ -45,6 +55,12 @@ ALLOWED = {
     "tests/original_180_upgrade_contract.py",
     "tests/upgrade_gate_contract.py",
     "docs/design/WEN_190_REFERENCE_THEMES_20261105.md",
+    "docs/design/WEN_20261106_OWNER_VISUAL_PARITY_PLAN.md",
+    "app/src/androidTest/java/app/wensarafet/tracker/ThemeCatalogueInstrumentedTest.java",
+    ".github/workflows/wen-visual-screenshots.yml",
+    "app/src/debug/AndroidManifest.xml",
+    "app/src/debug/java/app/wensarafet/tracker/VisualPreviewActivity.java",
+    "scripts/capture_visual_preview.sh",
     "tests/glass_energy_contract.py",
     "tests/wen_190_visual_motion_contract.py",
     "tests/batch22_category_budget_icon_contract.py",
@@ -69,6 +85,21 @@ MAIN_ONLY_PLAN = "docs/WEN_SARAFET_REPAIR_AND_DEVELOPMENT_PLAN_2026-10-23.md"
 assert (ROOT / MAIN_ONLY_PLAN).read_text(encoding="utf-8") == git(
     "show", f"283112f4bedaf2e07dd7370e581f84e14959710e:{MAIN_ONLY_PLAN}"
 ), "SAFE ZONE: existing official development plan unexpectedly changed"
+# Original account identity art is SHA-1 pinned at the 1.8.8 Sandbox:
+# do not allow a preview mock or theme refactor to replace PNG assets.
+ORIGINAL_LOGOS = {
+    "app/src/main/res/drawable-nodpi/icon_bop_mark.png":
+        "d71006e0eba4cedcd1d04b2217eeef4911b83808",
+    "app/src/main/res/drawable-nodpi/icon_jawwal_pay_mark.png":
+        "0516bd77381b48b87c404e613c908405812d7b88",
+    "app/src/main/res/drawable-nodpi/icon_palpay_mark.png":
+        "d09932adbc59a39b4ba5b8d52a7350f7aa4ba1a8",
+}
+for logo_path, vetted_blob in ORIGINAL_LOGOS.items():
+    assert git("hash-object",logo_path).strip() == vetted_blob, (
+        "SAFE ZONE: original account icon PNG unexpectedly changed: "+logo_path
+    )
+
 required = {MAIN, APP_GRADLE, SETTINGS}
 assert required <= changed, f"Visual adapter incomplete: {sorted(required - changed)}"
 
@@ -80,10 +111,119 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "bf6163c8464c8cb99189e962ee35fdbeb1c5f8ae"
+APPROVED_VISUAL_HOST_BLOB = "8443e7d449b953db91d3f7655a6c2abbba109f95"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
+# Compare the whole 300K Java host byte-for-byte with the verified 2.0
+# release candidate after reversing ONLY three strictly visual modifications.
+# No finance, auth, routing or original callback can slip through this gate.
+PRE_THEME_CATALOGUE = "caf2f6eeac3a5a34fc688b21544902d7ccd13e71"
+previous_host = git("show", f"{PRE_THEME_CATALOGUE}:{MAIN}")
+sanitized_host = current_main
+
+def revert_visual_section(current, old, from_current, from_old, until):
+    assert current.count(from_current) == old.count(from_old) == 1
+    assert current.count(until) == old.count(until) == 1
+    fresh = current[current.index(from_current):current.index(until)]
+    historical = old[old.index(from_old):old.index(until)]
+    return current.replace(fresh, historical, 1)
+
+# Only the top-bar VIEW method is ported from the owner's 1.8.8 Sandbox.
+# Every action callback remains the original handler, and the full Java file
+# remains protected by APPROVED_VISUAL_HOST_BLOB above.
+for callback in (
+    "addAccount.setOnClickListener(v -> showAccountManagement());",
+    "settings.setOnClickListener(v -> showSettings());",
+):
+    assert current_main.count(callback) == 1, "Protected header action changed"
+for title in ("كل العمليات", "الديون", "التحليلات", "الرئيسية"):
+    assert title in current_main, "Missing Sandbox per-screen heading: " + title
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "    private View mainTopBar()", "    private View mainTopBar()",
+    "    private LinearLayout bottomNavigation("
+)
+# Original Sandbox subpage chrome keeps its original back-action delegate,
+# but now supports champagne contrast and a finite press response.
+assert current_main.count("back.setOnClickListener(v->backAction.run());") == 1
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "    private View pageHeader(", "    private View pageHeader(",
+    "    private void showSettings()"
+)
+# FAB bubble rendering and clipping ONLY: its existing transaction callback
+# and screen placement are byte-for-byte restored in this comparison.
+assert current_main.count("showAddTransaction(); // exact same original action, still immediate") == 1
+assert 'fab.setStateListAnimator(null);' in current_main
+assert 'fab.setClipToOutline(true);' in current_main
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "        // A hard circular outline (from Sandbox 1.8.8)",
+    "        fab.setElevation(Ui.dp(this, 8));",
+    '        fab.setTag("wen_intro_fab");'
+)
+
+# RTL position correction affects only the premium FAB alignment, and
+# preserves the owner's stored side preference and original click action.
+old_fab_position = "        FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));"
+premium_fab_position = """        // Absolute LEFT/RIGHT is essential on an RTL root: START maps to the
+        // right side, contrary to the user's saved home_fab_right preference.
+        // Five approved premium scenes restore the reference FAB on the LEFT
+        // by default; an explicit user choice of right stays honoured.
+        int fabGravity = app.wensarafet.glass.WenPremiumLiquidDrawable
+                .supports(Ui.themeIndex(this))
+                ? (Ui.homeFabOnRight(this) ? Gravity.RIGHT : Gravity.LEFT)
+                : (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START);
+        FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(
+                fabSize, fabSize, Gravity.BOTTOM | fabGravity);"""
+assert previous_host.count(old_fab_position) == 1
+assert sanitized_host.count(premium_fab_position) == 1
+sanitized_host = sanitized_host.replace(premium_fab_position, old_fab_position, 1)
+
+# One purely visual setting hides the thick scrollbar on the five
+# premium materials; it does not alter scroll listeners or event dispatch.
+old_scrollbar = """        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();"""
+premium_scrollbar = """        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        // Decorative five-scene materials should never be obscured by the
+        // thick transient MIUI/Android scroll indicator. Scrolling still works.
+        if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(
+                Ui.themeIndex(this))) scroll.setVerticalScrollBarEnabled(false);
+        LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();"""
+assert sanitized_host.count(premium_scrollbar) == 1
+sanitized_host = sanitized_host.replace(premium_scrollbar, old_scrollbar, 1)
+
+# Stats remain the original view/click handlers and amounts, only ink changes.
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "        // Contrast is material-specific, not dictated by a universal white label.",
+    "        card.addView(Ui.text(this, label, 12, Color.rgb(239, 244, 255), false));",
+    "        amountView.setAutoSizeTextTypeUniformWithConfiguration("
+)
+
+theme_start = '        content.addView(sectionTitle("مظهر التطبيق",'
+theme_end = '        content.addView(sectionTitle("تخصيص الواجهة",'
+assert previous_host.count(theme_start) == sanitized_host.count(theme_start) == 1
+assert previous_host.count(theme_end) == sanitized_host.count(theme_end) == 1
+new_picker = sanitized_host[sanitized_host.index(theme_start):sanitized_host.index(theme_end)]
+old_picker = previous_host[previous_host.index(theme_start):previous_host.index(theme_end)]
+for approved in ("ThemeCatalogue.visibleCount(this)", "ThemeCatalogue.displayName(i)",
+                 "ThemeCatalogue.isVisible(this, i)", "ThemeCatalogue.hide(this, index)",
+                 "ThemeCatalogue.restoreUserHidden(this)", "Ui.saveTheme(this, index)",
+                 'setPositiveButton("حذف"', "index != currentTheme"):
+    assert approved in new_picker, "Missing owner-approved theme action: " + approved
+for forbidden in ("FinanceDbHelper", "SQLiteDatabase", "deleteTransaction(",
+                  "showAddTransaction(", "getBalance(", "showDebtsScreen(",
+                  "insertTransaction(", "SmsCapture"):
+    assert forbidden not in new_picker, "Unsafe theme UI addition: " + forbidden
+sanitized_host = sanitized_host.replace(new_picker, old_picker, 1)
+assert sanitized_host == previous_host, (
+    "SAFE ZONE: MainActivity differs beyond approved theme picker, header and metric text"
+)
+
 SOURCE_190 = "283112f4bedaf2e07dd7370e581f84e14959710e"
 main_pre_visual_host = git("show", f"{SOURCE_190}:{MAIN}")
 assert main_pre_visual_host != current_main, "Missing staged optical host transfer"
@@ -453,7 +593,8 @@ ui_path = "app/src/main/java/app/wensarafet/tracker/Ui.java"
 PREMIUM_SOURCE = "ea61bb7a266652751fe9c08f321e0721350df1ea"
 original_190_ui = git("show", f"{PREMIUM_SOURCE}:{ui_path}")
 visual_only_methods = (
-    "glassAccentBackground", "animateScreen", "animateChildren", "pressAnimation",
+    "glassAccentBackground", "glassFloatingAddBackground",
+    "animateScreen", "animateChildren", "pressAnimation",
 )
 
 def omit_visual_method_bodies(java):
@@ -477,8 +618,18 @@ def omit_visual_method_bodies(java):
         java = java[:start] + "    /* preserved visual helper: " + name + " */" + java[pos:]
     return java
 
-assert omit_visual_method_bodies(new_ui) == omit_visual_method_bodies(original_190_ui), (
-    "SAFE ZONE: non-visual Ui class or palettes changed during sandbox migration"
+# One precisely approved appearance-only toggle allows the two vivid
+# owner reference palettes to display legible WHITE text on dark-glass scenes.
+# Remove it before the complete class comparison; every legacy 0-24 theme,
+# preference, financial helper and palette remains byte-identical.
+old_contrast = "DARK = theme == 20 || theme == 24 || theme == 25 || theme == 26"
+new_contrast = old_contrast + chr(10) + "                || theme == 28 || theme == 29"
+assert new_ui.count(new_contrast) == 1, (
+    "SAFE ZONE: unexpected changes to premium dark/glass scene condition"
+)
+normalized_ui = new_ui.replace(new_contrast, old_contrast, 1)
+assert omit_visual_method_bodies(normalized_ui) == omit_visual_method_bodies(original_190_ui), (
+    "SAFE ZONE: non-visual Ui class or legacy palettes changed during appearance work"
 )
 for marker in (
     "WenFabBubbleDrawable(context, SKY, DARK)",
@@ -490,18 +641,35 @@ for marker in (
 ):
     assert marker in new_ui, "Missing sandbox visual-only transfer: " + marker
 
-for graphic in (
-    "WenGlassDrawable.java",
-    "WenFabBubbleDrawable.java",
-):
-    location = "glass-engine/src/main/java/app/wensarafet/glass/" + graphic
-    expected = git("show", f"{SANDBOX_SOURCE}:{location}")
-    actual = (ROOT / location).read_text(encoding="utf-8")
-    assert actual == expected, "SAFE ZONE: visual source must match vetted sandbox exactly: " + graphic
-    for protected in ("FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
-                      "LicenseManager", "SmsCaptureReceiver", "SandboxMode",
-                      "setOnClickListener(", "setOnLongClickListener("):
-        assert protected not in actual, "SAFE ZONE: drawing file references protected behaviour"
+# The original Sandbox generic glass renderer MUST remain exactly intact.
+graphic = "WenGlassDrawable.java"
+location = "glass-engine/src/main/java/app/wensarafet/glass/" + graphic
+assert (ROOT / location).read_text(encoding="utf-8") == git(
+    "show", f"{SANDBOX_SOURCE}:{location}"
+), "SAFE ZONE: original Sandbox glass renderer changed"
+
+# Premiums 25–29 need correct GOLD/GREEN/VIOLET materials instead of the
+# Sandbox BLUE button. Pin the single audited drawing-only blob, and prove the
+# original hit/hold animation, draw and opacity methods are byte-identical.
+location = "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java"
+bubble = (ROOT / location).read_text(encoding="utf-8")
+vetted_bubble_blob = "d26043c8e787937776d1fca546919e2646605238"
+assert git("hash-object", location).strip() == vetted_bubble_blob, (
+    "SAFE ZONE: unreviewed original FAB drawable modifications"
+)
+original_bubble = git("show", f"{SANDBOX_SOURCE}:{location}")
+legacy_methods = "    public float getPress() { return press; }"
+assert bubble[bubble.index(legacy_methods):] == original_bubble[
+    original_bubble.index(legacy_methods):], (
+    "SAFE ZONE: original FAB press/hold/draw contract altered"
+)
+for value in ("case 25:", "case 26:", "case 27:", "case 28:",
+              "default: // Pink-Violet Glass"):
+    assert value in bubble, "Approved five-theme FAB material absent: " + value
+for protected in ("FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
+                  "LicenseManager", "SmsCaptureReceiver", "SandboxMode",
+                  "setOnClickListener(", "setOnLongClickListener("):
+    assert protected not in bubble, "SAFE ZONE: decorative FAB source references protected behaviour"
 
 # Strictly isolate new on-screen transitions from all protected business methods.
 screen_motion = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java").read_text(encoding="utf-8")
@@ -557,6 +725,54 @@ assert "glass.setDispersionStrength(0f);" in native
 assert "LIQUID_FOLLOW = .60f" in motion
 assert "LIQUID_RELEASE_MS = 265L" in motion
 assert "NAV_LIQUID_STRETCH_ACTIVE" in native
+
+# Android 13 emulator revealed a fatal LinearGradient constructor error:
+# a five-colour array with only four positions crashes before the first frame.
+# Statistically audit ALL twenty real gradient stop arrays before shipping.
+import re
+direction_src = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenThemeArtDirection.java").read_text(encoding="utf-8")
+stop_pairs = list(re.finditer(
+    r"new int\[\]\{([^}]+)\}\s*,\s*new float\[\]\{([^}]+)\}",
+    direction_src
+))
+assert len(stop_pairs) == 20, "Prematurely removed one of the 20 themed shader stop arrays"
+for pair in stop_pairs:
+    shades = [value.strip() for value in pair.group(1).split(",") if value.strip()]
+    positions = [float(value.strip().rstrip("fF"))
+                 for value in pair.group(2).split(",") if value.strip()]
+    assert len(shades) == len(positions), (
+        "ANDROID RENDER CRASH: gradient shades/positions length mismatch"
+    )
+    assert positions[0] == 0.0 and positions[-1] == 1.0, (
+        "Android shader positions must span 0..1"
+    )
+    assert all(a < b for a,b in zip(positions, positions[1:])), (
+        "Android shader positions must be strictly increasing"
+    )
+print("PASS: all 20 premium gradient stop arrays valid (5 independent scenes)")
+
+# Audit caustic renderer's UI-only API surface; no event handlers, timers,
+# draw-loop allocations, network or links to the application's Safe Zone.
+optical_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumCaustics.java").read_text(encoding="utf-8")
+for unsafe in ("FinanceDbHelper", "SQLiteDatabase", "getAccounts(", "OnClickListener",
+               "OnTouchListener", "onDraw(", "Handler(", "postDelayed(", "new Thread(",
+               "requestLayout(", "BitmapFactory", "HttpURLConnection", "AssetManager"):
+    assert unsafe not in optical_source, "Optics incorrectly modified business logic: "+unsafe
+for contract in ("void configure(", "void draw(Canvas canvas)", "case 25:", "case 26:",
+                 "case 27:", "case 28:", "default:", "drawRays = false"):
+    assert contract in optical_source, (
+        "Premium optics owner-specific contract missing: "+contract
+    )
+
+# Premium tab glyphs are inert vector drawables, never replacement actions.
+tab_glyph = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenPremiumTabIconDrawable.java").read_text(encoding="utf-8")
+assert "extends Drawable" in tab_glyph
+for shape in ("case 0:", "case 1:", "case 2:", "default:"):
+    assert shape in tab_glyph, "Premium icon shape missing: "+shape
+for illegal in ("FinanceDbHelper", "SQLiteDatabase", "setOnClickListener",
+                "setOnTouchListener", "setOnLongClickListener", "HttpURLConnection"):
+    assert illegal not in tab_glyph, "Premium glyph enters Safe Zone: "+illegal
+assert "new WenPremiumTabIconDrawable" in adapter, "Premium nav doesn't use original vector icon mapping"
 
 # Checksums of every remaining tracked file, including money, SQLite,
 # SMS notifications, protected signing/biometric and all resource files,

@@ -71,14 +71,17 @@ public final class NavigationVisualDecorator {
                     : premiumIndex == 27
                     ? new int[]{0xECFFF9EF,0xF0FAF3E6,0xEAFDF9F3}
                     : premiumIndex == 28
-                    ? new int[]{0xECFFF8EF,0xF0F8F6ED,0xEAF4FAF4}
-                    : new int[]{0xECFCF6FF,0xF0FAF2FC,0xEBF6F2FF};
+                    ? new int[]{0xDE234E40,0xD65C6546,0xDD234E40}
+                    : new int[]{0xDE512B8B,0xD7683A9B,0xDA482585};
             GradientDrawable premiumPlate = new GradientDrawable(
                     GradientDrawable.Orientation.TL_BR, glass);
             premiumPlate.setCornerRadius(Ui.dp(context, 26));
-            premiumPlate.setStroke(Ui.dp(context, 1),
-                    Ui.DARK ? 0xB9E6D6B6 : 0xCFFFFFFF);
-            tabs.setBackground(premiumPlate);
+            // The nav host already draws the premium glass capsule and rim.
+            // Painting another filled/stroked pill on this child creates the
+            // three thick concentric outlines visible in real emulator PNGs.
+            // Keep the child TRANSPARENT so the real moving lens samples the
+            // scene directly; original four TextViews/clicks remain untouched.
+            tabs.setBackground(null);
         } else if (Ui.isReferenceGlassTheme(context)) {
             // The old opaque #F8FBFF plate would completely conceal both
             // reference palettes under the native refractive lens.
@@ -112,12 +115,28 @@ public final class NavigationVisualDecorator {
                 int chosen = premiumIndex == 25 ? 0xFFFFE8B4
                         : premiumIndex == 26 ? 0xFFF6E6C9
                         : premiumIndex == 27 ? 0xFF644A2F
-                        : premiumIndex == 28 ? 0xFF285A47 : 0xFF693D80;
+                        : premiumIndex == 28 ? 0xFFFFFFFF : 0xFFFFFFFF;
                 int idle = premiumIndex == 25 ? 0xFFD4C5A9
                         : premiumIndex == 26 ? 0xFFCBC4BB
                         : premiumIndex == 27 ? 0xFF756B5B
-                        : premiumIndex == 28 ? 0xFF646D62 : 0xFF78657E;
+                        : premiumIndex == 28 ? 0xFFEEEAD4 : 0xFFF4DDFC;
                 item.setTextColor(i == selected ? chosen : idle);
+                // Premium reference screenshots use fine, monochrome vector
+                // glyphs. Android's four multi-colour emojis break the visual
+                // hierarchy and resemble unstyled system defaults.
+                // Replace glyph appearance ONLY; keep original tab TextView,
+                // original navigation callback, order and accessibility label.
+                String original = item.getText().toString();
+                int lineBreak = original.lastIndexOf('\n');
+                if (lineBreak >= 0) item.setText(original.substring(lineBreak + 1));
+                WenPremiumTabIconDrawable glyph =
+                        new WenPremiumTabIconDrawable(context, premiumIndex,
+                                i, i == selected);
+                int glyphSize=Ui.dp(context, 22);
+                glyph.setBounds(0, 0, glyphSize, glyphSize);
+                item.setCompoundDrawables(null, glyph, null, null);
+                item.setCompoundDrawablePadding(Ui.dp(context, 4));
+                item.setMaxLines(1);
             } else if (Ui.isReferenceGlassTheme(context)) {
                 // Only appearance changes; the original navigation actions,
                 // accessibility labels and held-drag lens remain untouched.

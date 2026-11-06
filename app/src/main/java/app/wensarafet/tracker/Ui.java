@@ -189,6 +189,13 @@ public final class Ui {
     }
 
     public static android.graphics.drawable.Drawable glassFloatingAddBackground(Context context) {
+        // Restore the exact curved optical bubble used by the isolated
+        // 1.8.8 Sandbox. The five premium themes inherit its actual layered
+        // silhouette, transparent corners, hold morph and specular crown.
+        // Other reference and original Liquid presets remain unchanged.
+        if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(themeIndex(context)))
+            return new app.wensarafet.glass.WenFabBubbleDrawable(
+                    context, SKY, DARK, themeIndex(context));
         return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.FAB);
     }
 
@@ -266,6 +273,7 @@ public final class Ui {
         // The three new light palettes remain legible on dark-mode phones;
         // all prior 25 themes keep their original dark-mode behaviour.
         DARK = theme == 20 || theme == 24 || theme == 25 || theme == 26
+                || theme == 28 || theme == 29
                 || (theme < 25 && (context.getResources().getConfiguration().uiMode
                         & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES);
         int[] p = THEMES[theme];

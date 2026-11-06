@@ -1,0 +1,66 @@
+name: Wen owner REAL MainActivity screenshots (Android 15)
+on:
+  push:
+    branches: [design/wen-visual-parity-owner-review-20261106]
+    paths:
+      - 'app/src/main/**'
+      - 'app/src/androidTest/java/app/wensarafet/tracker/RealMainScreenCaptureTest.java'
+      - 'glass-engine/**'
+      - 'scripts/capture_real_main_screens.sh'
+      - '.github/workflows/wen-real-main-screenshots.yml'
+      - 'tests/wen_188_visual_safezone_contract.py'
+      - 'app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pixel6-api35-real-main:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Exact Safe Zone and original icons source guard
+        run: |
+          python3 tests/wen_188_visual_safezone_contract.py
+          python3 tests/financial_safe_zone_guard.py
+      - name: Enable hardware-accelerated emulator
+        run: |
+          sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -e /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Capture REAL MainActivity using isolated debug test DB and original 7 account icons
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 3072M
+          heap-size: 512M
+          disk-size: 1536M
+          sdcard-path-or-size: 128M
+          disable-animations: false
+          emulator-boot-timeout: 600
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash scripts/capture_real_main_screens.sh
+      - name: Deliver original-pixel full-resolution PNGs, no mocks or AI renders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wen-owner-real-mainactivity-20-screens
+          path: build/owner-real-main-screens/
+          retention-days: 14
+          if-no-files-found: warn

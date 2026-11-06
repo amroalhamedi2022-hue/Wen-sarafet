@@ -30,21 +30,26 @@ public final class WenPremiumLiquidDrawable extends Drawable {
 
     // backdrop x3, card x2, header x2, navigation x2, FAB x2, specular shine.
     private static final int[][] PALETTES = {
-            {0xFF0C1119,0xFF282319,0xFF111924, 0xFF242A32,0xFF454037,
-             0xFF36332E,0xFFB69558, 0xFF212830,0xFF584A38,
-             0xFF755B36,0xFFEAC583,0xFFFFEAC0},
-            {0xFF10151F,0xFF2B2A32,0xFF121925, 0xFF252D3A,0xFF45454B,
-             0xFF2C3543,0xFFADA18A, 0xFF222C3A,0xFF58534E,
-             0xFF6F645B,0xFFE1CCAE,0xFFFFE7CB},
-            {0xFFF8F6F0,0xFFF4E7D4,0xFFF8F8F2, 0xFFFFFFFF,0xFFFFF3E6,
-             0xFFE9D8B4,0xFFFFF5DE, 0xFFFBF7EE,0xFFF3E6D5,
-             0xFFC69E6A,0xFFF7DFAC,0xFFFFFFFF},
-            {0xFFFFF5EF,0xFFFBE2D2,0xFFE4F1E5, 0xFFFFFFFF,0xFFF1F8F1,
-             0xFFF2B58A,0xFFD0E7CF, 0xFFFFF5E9,0xFFEDF7ED,
-             0xFFCC8D67,0xFFA2CCAA,0xFFFFF2D9},
-            {0xFFF9F2FC,0xFFF0DAF1,0xFFE9E9FA, 0xFFFFFFFF,0xFFF9F0FC,
-             0xFFD1ABE7,0xFFF1C5E7, 0xFFFCF2FE,0xFFF0EAFB,
-             0xFF966FB5,0xFFF3BCE5,0xFFFFFFFF}
+            // Royal obsidian with warm metallic amber.
+            {0xFF0B0C0D,0xFF1D1612,0xFF13110F, 0xFF24211E,0xFF40352A,
+             0xFF302217,0xFFB28B4E, 0xFF241C17,0xFF493322,
+             0xFF603D1C,0xFFE1AB50,0xFFFFE29A},
+            // Imperial dark graphite, champagne-gold reflections.
+            {0xFF0C1115,0xFF292622,0xFF181B20, 0xFF272B30,0xFF3E3832,
+             0xFF312820,0xFFBE995B, 0xFF262525,0xFF534033,
+             0xFF644823,0xFFD0A463,0xFFFFE4A7},
+            // Champagne pearlescent ivory.
+            {0xFFF4E7DA,0xFFE9CAB1,0xFFFDF3E8, 0xFFF9EAD9,0xFFFFF8EB,
+             0xFFF2D5BB,0xFFFFF8DD, 0xFFF5E6D4,0xFFFFF6E9,
+             0xFFC68A3C,0xFFF4C777,0xFFFFF1C2},
+            // Bright amber pools suspended in deep green glass.
+            {0xFF0E3529,0xFF386948,0xFF103E34, 0xFF254A3B,0xFF6A5941,
+             0xFF365F49,0xFFAB8653, 0xFF285240,0xFF655C45,
+             0xFF286447,0xFFD1884B,0xFFFFDCA1},
+            // Vibrant violet, magenta and electric blue.
+            {0xFF3C0E76,0xFF891B8D,0xFF26108B, 0xFF532884,0xFF762DA6,
+             0xFF5E2790,0xFFB54ABB, 0xFF44267F,0xFF7C39AD,
+             0xFF7122AA,0xFFD83BA3,0xFFFFB3EA}
     };
 
     public static boolean supports(int index) {
@@ -62,6 +67,9 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     private final Paint bloomA = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bloomB = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint reflection = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint caustic = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint rimGlint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final WenPremiumCaustics ownerOptics = new WenPremiumCaustics();
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bevel = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float radius;
@@ -101,16 +109,40 @@ public final class WenPremiumLiquidDrawable extends Drawable {
 
     private int[] stops() {
         int[] p = PALETTES[index - ROYAL_DARK];
+        // Transparent glass, not a flat tinted plastic card. Gold stats stay
+        // slightly denser to protect white text; champagne keeps dark ink.
+        final int cardAlpha = index == CHAMPAGNE ? 202
+                : index == IMPERIAL_DARK ? 178 : index == ROYAL_DARK ? 170
+                : index == ORANGE_GREEN ? 165 : 168;
+        final int headerAlpha = index == CHAMPAGNE ? 212
+                : index == ORANGE_GREEN || index == PURPLE_PINK ? 191 : 196;
+        final int navAlpha = index == CHAMPAGNE ? 192 : 180;
         switch (surface) {
-            case BACKDROP: return new int[]{p[0],blend(p[0],p[1],.65f),p[1],p[2],p[0]};
-            case HEADER: return new int[]{p[5],blend(p[5],p[6],.58f),p[6],p[5],blend(p[5],p[3],.32f)};
-            case NAVIGATION: return new int[]{alpha(p[7],234),alpha(p[8],239),
-                    alpha(blend(p[7],p[11],.23f),242),alpha(p[8],237),alpha(p[7],231)};
-            case FAB: return new int[]{p[9],blend(p[9],p[10],.55f),
-                    blend(p[10],p[11],.65f),p[10],p[9]};
-            case ACCENT: return new int[]{p[9],p[10],p[11],p[10],p[9]};
-            default: return new int[]{alpha(p[3],249),alpha(blend(p[3],p[4],.36f),250),
-                    alpha(p[4],251),alpha(p[3],249),alpha(p[4],248)};
+            case BACKDROP:
+                return new int[]{p[0], blend(p[0], p[1], .66f), p[1],
+                        blend(p[2], p[1], .12f), p[2]};
+            case HEADER:
+                return new int[]{alpha(p[5],headerAlpha),
+                        alpha(blend(p[5],p[6],index==CHAMPAGNE?.42f:.20f),headerAlpha+6),
+                        alpha(blend(p[5],p[6],index==CHAMPAGNE?.57f:.31f),headerAlpha+3),
+                        alpha(p[5],headerAlpha+2),alpha(p[5],headerAlpha)};
+            case NAVIGATION:
+                return new int[]{alpha(p[7],navAlpha),alpha(p[8],navAlpha+12),
+                        alpha(blend(p[7],p[11],.15f),navAlpha+16),
+                        alpha(p[8],navAlpha+9),alpha(p[7],navAlpha)};
+            case FAB:
+                return new int[]{p[9], blend(p[9], p[10], .67f),
+                        blend(p[10], p[11], .77f), p[10], p[9]};
+            case ACCENT:
+                return new int[]{alpha(p[9], 244),
+                        alpha(blend(p[9],p[10],.34f), 238),
+                        alpha(blend(p[9],p[10],.47f), 234),
+                        alpha(blend(p[9],p[10],.20f), 240), alpha(p[9],244)};
+            default:
+                return new int[]{alpha(p[3],cardAlpha),
+                        alpha(blend(p[3],p[4],.26f),cardAlpha+10),
+                        alpha(p[4],cardAlpha+7),alpha(p[3],cardAlpha+3),
+                        alpha(p[3],cardAlpha)};
         }
     }
 
@@ -124,31 +156,43 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         silhouette.addRoundRect(box,radius,radius,Path.Direction.CW);
         base.setShader(new LinearGradient(box.left,box.top,box.right,box.bottom,
                 stops(),new float[]{0f,.24f,.50f,.77f,1f},Shader.TileMode.CLAMP));
-        if (!lowPower) {
-            float span=Math.max(1f,Math.max(w,h)*(backdrop()?.71f:.92f));
-            float glow=backdrop()?.25f:chrome()?.27f:.14f;
-            int[] p=PALETTES[index-ROYAL_DARK];
-            bloomA.setShader(new RadialGradient(box.left+w*.12f,box.top+h*.12f,span,
-                    new int[]{alpha(p[11],Math.round(185f*glow)),
-                    alpha(p[11],0)},null,Shader.TileMode.CLAMP));
-            bloomB.setShader(new RadialGradient(box.left+w*.84f,box.top+h*.86f,span,
-                    new int[]{alpha(p[10],Math.round(135f*glow)),
-                    alpha(p[10],0)},null,Shader.TileMode.CLAMP));
-            reflection.setShader(new LinearGradient(box.left+w*.1f,box.top,
-                    box.right-w*.1f,box.top+h*.72f,
-                    new int[]{0x49FFFFFF,0x24FFFFFF,0x00FFFFFF,0x0FFFFFFF},
-                    new float[]{0f,.16f,.65f,1f},Shader.TileMode.CLAMP));
-        } else {
-            bloomA.setShader(null);
-            bloomB.setShader(null);
-            reflection.setShader(null);
-        }
+        // A distinct art director controls the position, falloff, hue,
+        // translucency and specular orientation of EACH theme independently.
+        WenThemeArtDirection.configure(index, box, backdrop(), chrome(), lowPower,
+                bloomA, bloomB, caustic, reflection);
+        ownerOptics.configure(box, index, surface, lowPower, d);
         float padding=Math.max(.8f,d);
         inside.set(box.left+padding,box.top+padding,box.right-padding,box.bottom-padding);
         rim.setStrokeWidth(Math.max(.8f,chrome()?1.45f*d:1.0f*d));
         bevel.setStrokeWidth(Math.max(.6f,.65f*d));
-        rim.setColor(backdrop()?Color.TRANSPARENT:dark?0xB9E9D7AD:0xD9FFFFFF);
-        bevel.setColor(backdrop()?Color.TRANSPARENT:dark?0x77FFFFFF:0xA8FFFFFF);
+        int[] p = PALETTES[index-ROYAL_DARK];
+        rim.setColor(backdrop()?Color.TRANSPARENT:alpha(
+                dark && index<=IMPERIAL_DARK ? p[11] : Color.WHITE,
+                dark ? 191 : 218));
+        bevel.setColor(backdrop()?Color.TRANSPARENT:alpha(
+                dark && index<=IMPERIAL_DARK ? p[10] : Color.WHITE,
+                dark ? 89 : 128));
+        if (!backdrop()) {
+            // Metallic highlights belong to the curved EDGE, not broad
+            // diagonal plastic ribbons over balances and Arabic text.
+            rim.setShader(new LinearGradient(box.left,box.top,
+                    box.right,box.top+h*.57f,
+                    new int[]{alpha(p[11],52),alpha(p[11],233),
+                            alpha(p[10],87),alpha(p[11],215),alpha(p[11],49)},
+                    new float[]{0f,.20f,.49f,.81f,1f},Shader.TileMode.CLAMP));
+            float hotX=box.left+w*(index==IMPERIAL_DARK?.47f
+                    : index==CHAMPAGNE?.28f:index==ORANGE_GREEN?.72f
+                    : index==PURPLE_PINK?.86f:.78f);
+            float hotY=box.bottom-h*.035f;
+            rimGlint.setShader(new RadialGradient(hotX,hotY,
+                    Math.max(1f,Math.min(w,h)*.87f),
+                    new int[]{alpha(p[11],index==CHAMPAGNE?135:115),
+                            alpha(p[10],22),alpha(p[11],0)},
+                    new float[]{0f,.29f,1f},Shader.TileMode.CLAMP));
+        } else {
+            rim.setShader(null);
+            rimGlint.setShader(null);
+        }
     }
 
     @Override public void draw(Canvas canvas) {
@@ -159,7 +203,12 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         if (!lowPower) {
             canvas.drawRect(box,bloomA);
             canvas.drawRect(box,bloomB);
+            canvas.drawRect(box,caustic);
             if (!backdrop()) canvas.drawRect(box,reflection);
+            // Each of the five scenes has its own refractive, broad sunlight
+            // curves; rendered from cached Paths/Shaders without per-frame work.
+            ownerOptics.draw(canvas);
+            if (!backdrop()) canvas.drawRect(box,rimGlint);
         }
         canvas.restoreToCount(saved);
         if (!backdrop()) {
@@ -175,6 +224,8 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         bloomA.setAlpha(opacity);
         bloomB.setAlpha(opacity);
         reflection.setAlpha(opacity);
+        caustic.setAlpha(opacity);
+        rimGlint.setAlpha(opacity);
         rim.setAlpha(opacity);
         bevel.setAlpha(opacity);
         invalidateSelf();
@@ -185,6 +236,8 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         bloomA.setColorFilter(filter);
         bloomB.setColorFilter(filter);
         reflection.setColorFilter(filter);
+        caustic.setColorFilter(filter);
+        rimGlint.setColorFilter(filter);
         rim.setColorFilter(filter);
         bevel.setColorFilter(filter);
         invalidateSelf();

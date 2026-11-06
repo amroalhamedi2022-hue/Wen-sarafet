@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 
 root = Path(__file__).resolve().parents[1]
-trusted_main = "283112f4bedaf2e07dd7370e581f84e14959710e"
+trusted_main = "caf2f6eeac3a5a34fc688b21544902d7ccd13e71"
 main_path = "app/src/main/java/app/wensarafet/tracker/MainActivity.java"
 motion_path = "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java"
 fab_path = "glass-engine/src/main/java/app/wensarafet/glass/WenFabOpticalCrownDrawable.java"
@@ -25,7 +25,7 @@ ui = (root / ui_path).read_text(encoding="utf-8")
 # Pin original v1.9 production host exactly. The only approved changes are the
 # reviewed view-only hooks in the new MainActivity blob and this new motion file.
 assert git("hash-object", main_path) == (
-    "bf6163c8464c8cb99189e962ee35fdbeb1c5f8ae"
+    "8443e7d449b953db91d3f7655a6c2abbba109f95"
 ), "MainActivity changed beyond reviewed host-level visual hooks"
 assert git("hash-object", motion_path) == (
     "860c1a2187d7c3474b00f86d42c8500bcc189c67"
@@ -96,8 +96,8 @@ assert "return false; // Never steal existing FAB click/hold actions." in ui
 assert "WenFabBubbleDrawable" in bubble
 assert "public void setPress(float fraction)" in bubble
 
-# This branch is intentionally a source-only v1.9 theme staging area.
-assert 'versionCode 27' in (root / "app/build.gradle").read_text(encoding="utf-8")
-assert 'versionName "1.9"' in (root / "app/build.gradle").read_text(encoding="utf-8")
+# This review branch retains the verified 2.0 release candidate build identity.
+assert 'versionCode 28' in (root / "app/build.gradle").read_text(encoding="utf-8")
+assert 'versionName "2.0"' in (root / "app/build.gradle").read_text(encoding="utf-8")
 print("PASS: Sandbox circular reveal, tab swipe, top-chrome/icon and over-glyph "
       "FAB optics are source-staged with finance, security, signing and old clicks frozen")
