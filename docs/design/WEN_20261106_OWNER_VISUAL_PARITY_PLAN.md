@@ -55,6 +55,13 @@ Visual source guard, core unit/finance guards, clean compile and Android API 33+
 - Screenshot workflow (Android 15): `https://github.com/amroalhamedi2022-hue/Wen-sarafet/actions/workflows/wen-visual-screenshots.yml` — stores 5 PNGs, no user installation.
 - Do not replace this log with a generic progress claim; check the latest run/job conclusions and artifacts.
 
+## Latest emulator evidence — 2026-11-06
+- Android 15 screenshot workflow **SUCCESS** at `https://github.com/amroalhamedi2022-hue/Wen-sarafet/actions/runs/42186651170`; artifact `wen-owner-visual-preview-android15` includes 5 nonblank 1080x2400 PNGs (themes 25–29). The screenshot script rejects black transition captures.
+- Source-only financial Safe Zone gate also passed on latest visual code commit `c33504b`.
+- These images are **debug-only VisualPreviewActivity**, using real production material classes and synthetic amounts. They are NOT a real authenticated MainActivity screenshot, NOT signer release QA, and **NOT visually accepted**.
+- Pixel inspection: dark gold materials still too brown and insufficiently glossy versus reference; Orange-Green is olive rather than vivid amber/forest gradients; Pink-Violet glass still lacks rich blue/pink translucency; navigation capsule feels flatter than accepted reference. Further visual code and real app screenshot automation are required before owner approval.
+- No production build signed, no main merge, no user-device install.
+
 ## Work progress
 - [x] Compared source and received 5 reference + 5 runtime screenshots.
 - [x] Verified latest 2.0 release candidate baseline and existing 30 theme indices.
