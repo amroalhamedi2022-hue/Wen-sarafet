@@ -33,6 +33,7 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenFabOpticalCrownDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenThemeArtDirection.java",
     "docs/design/WEN_190_FIVE_PREMIUM_LIQUID_HANDOFF_20261105.md",
     "docs/releases/WEN_200_PREMIUM_INTEGRATION_HANDOFF_20261105.md",
     "docs/WEN_SARAFET_REPAIR_AND_DEVELOPMENT_PLAN_2026-10-23.md",
@@ -87,7 +88,7 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "22087cf296cab7260cd895a2449024b9f5c838e5"
+APPROVED_VISUAL_HOST_BLOB = "ed5fcc6eba75f219d519cb25d241d93967397b7d"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
@@ -105,22 +106,40 @@ def revert_visual_section(current, old, from_current, from_old, until):
     historical = old[old.index(from_old):old.index(until)]
     return current.replace(fresh, historical, 1)
 
-# Header modifications are limited to ink (including icon ink), never buttons.
+# Only the top-bar VIEW method is ported from the owner's 1.8.8 Sandbox.
+# Every action callback remains the original handler, and the full Java file
+# remains protected by APPROVED_VISUAL_HOST_BLOB above.
+for callback in (
+    "addAccount.setOnClickListener(v -> showAccountManagement());",
+    "settings.setOnClickListener(v -> showSettings());",
+):
+    assert current_main.count(callback) == 1, "Protected header action changed"
+for title in ("كل العمليات", "الديون", "التحليلات", "الرئيسية"):
+    assert title in current_main, "Missing Sandbox per-screen heading: " + title
 sanitized_host = revert_visual_section(
     sanitized_host, previous_host,
-    "        // Champagne is a pale gold surface; white ink becomes invisible.",
-    '        TextView title = Ui.text(this, "وين صرفت؟", 25, Color.WHITE, true);',
-    "        // Keep labels and controls inside the fixed header"
+    "    private View mainTopBar()", "    private View mainTopBar()",
+    "    private LinearLayout bottomNavigation("
 )
-header_icons = [
-    ('TextView addAccount = Ui.text(this, "▦", headerIconText, headerInk, true);',
-     'TextView addAccount = Ui.text(this, "▦", headerIconText, Color.WHITE, true);'),
-    ('TextView settings = Ui.text(this, "⚙", headerIconText, headerInk, true);',
-     'TextView settings = Ui.text(this, "⚙", headerIconText, Color.WHITE, true);')
-]
-for new, old in header_icons:
-    assert sanitized_host.count(new) == previous_host.count(old) == 1
-    sanitized_host = sanitized_host.replace(new, old, 1)
+# Original Sandbox subpage chrome keeps its original back-action delegate,
+# but now supports champagne contrast and a finite press response.
+assert current_main.count("back.setOnClickListener(v->backAction.run());") == 1
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "    private View pageHeader(", "    private View pageHeader(",
+    "    private void showSettings()"
+)
+# FAB bubble rendering and clipping ONLY: its existing transaction callback
+# and screen placement are byte-for-byte restored in this comparison.
+assert current_main.count("showAddTransaction(); // exact same original action, still immediate") == 1
+assert 'fab.setStateListAnimator(null);' in current_main
+assert 'fab.setClipToOutline(true);' in current_main
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "        // A hard circular outline (from Sandbox 1.8.8)",
+    "        fab.setElevation(Ui.dp(this, 8));",
+    '        fab.setTag("wen_intro_fab");'
+)
 
 # Stats remain the original view/click handlers and amounts, only ink changes.
 sanitized_host = revert_visual_section(
@@ -519,7 +538,8 @@ ui_path = "app/src/main/java/app/wensarafet/tracker/Ui.java"
 PREMIUM_SOURCE = "ea61bb7a266652751fe9c08f321e0721350df1ea"
 original_190_ui = git("show", f"{PREMIUM_SOURCE}:{ui_path}")
 visual_only_methods = (
-    "glassAccentBackground", "animateScreen", "animateChildren", "pressAnimation",
+    "glassAccentBackground", "glassFloatingAddBackground",
+    "animateScreen", "animateChildren", "pressAnimation",
 )
 
 def omit_visual_method_bodies(java):
