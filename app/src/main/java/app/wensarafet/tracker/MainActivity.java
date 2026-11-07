@@ -459,7 +459,8 @@ public final class MainActivity extends Activity {
         LinearLayout shell = Ui.column(this);
         root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         View topBar = mainTopBar();
-        shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
+        shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 112, 80)));
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -584,7 +585,10 @@ public final class MainActivity extends Activity {
         background.setElevation(Ui.dp(this, 7));
         layers.addView(background, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         LinearLayout bar = Ui.row(this);
-        bar.setPadding(Ui.dp(this, 18), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 10));
+        bar.setPadding(Ui.dp(this, WenPremiumLayout.compact(this)?14:18),
+                Ui.dp(this, WenPremiumLayout.compact(this)?5:12),
+                Ui.dp(this, WenPremiumLayout.compact(this)?12:14),
+                Ui.dp(this, WenPremiumLayout.compact(this)?5:10));
         bar.setElevation(Ui.dp(this, 8));
 
         LinearLayout titles = Ui.column(this);
@@ -615,7 +619,8 @@ public final class MainActivity extends Activity {
                 headerSubtitle = "أموالك واضحة، وخصوصيتك محفوظة";
                 break;
         }
-        TextView title = Ui.text(this, headerTitle, 25, headerInk, true);
+        TextView title = Ui.text(this, headerTitle,
+                WenPremiumLayout.compact(this)?21:25, headerInk, true);
         TextView subtitle = Ui.text(this, headerSubtitle, 11, headerSoftInk, false);
         // Keep labels and controls inside the fixed header on compact RTL screens.
         title.setSingleLine(true);
@@ -630,6 +635,8 @@ public final class MainActivity extends Activity {
         int headerIconSize = Math.max(Ui.dp(this, 32), Math.min(Ui.dp(this, 62), Ui.homeIconDp(this, "header", 42)));
         if(getResources().getConfiguration().screenWidthDp < 390)
             headerIconSize=Math.min(headerIconSize,Ui.dp(this,48));
+        if (WenPremiumLayout.compact(this))
+            headerIconSize=Math.min(headerIconSize,Ui.dp(this,38));
         float headerIconText = Math.min(31f, 21f * headerPercent / 100f);
         TextView addAccount = Ui.text(this, "▦", headerIconText, headerInk, true);
         addAccount.setGravity(Gravity.CENTER);
@@ -657,7 +664,8 @@ public final class MainActivity extends Activity {
         }
         Ui.pressAnimation(addAccount); Ui.pressAnimation(settings);
         layers.addView(bar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        wrapper.addView(layers, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 90)));
+        wrapper.addView(layers, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 90, 60)));
         return wrapper;
     }
 
@@ -935,12 +943,14 @@ public final class MainActivity extends Activity {
 
     private View sectionTitle(String titleValue, String subtitleValue) {
         LinearLayout row = Ui.row(this);
-        row.setPadding(Ui.dp(this, 18), Ui.dp(this, 18), Ui.dp(this, 18), Ui.dp(this, 10));
+        row.setPadding(Ui.dp(this, 18), WenPremiumLayout.dp(this,18,6),
+                Ui.dp(this, 18), WenPremiumLayout.dp(this,10,4));
         TextView title = Ui.text(this, titleValue, 17, Ui.TEXT, true);
         TextView subtitle = Ui.text(this, subtitleValue, 12, Ui.MUTED, false);
         subtitle.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        row.addView(title, new LinearLayout.LayoutParams(0, Ui.dp(this, 36), 1));
-        row.addView(subtitle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(this, 36)));
+        row.addView(title, new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,36,27), 1));
+        row.addView(subtitle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                WenPremiumLayout.dp(this,36,27)));
         return row;
     }
 
@@ -959,7 +969,7 @@ public final class MainActivity extends Activity {
         for (String currency : Arrays.asList("ILS", "USD", "JOD")) {
             LinearLayout card = Ui.column(this);
             int hPadding = premium ? 9 : 16;
-            int vPadding = premium ? 12 : 14;
+            int vPadding = WenPremiumLayout.compact(this) ? 7 : premium ? 12 : 14;
             card.setPadding(Ui.dp(this, hPadding), Ui.dp(this, vPadding),
                     Ui.dp(this, hPadding), Ui.dp(this, vPadding));
             card.setBackground(Ui.glassBalanceBackground(this, 22));
@@ -979,7 +989,7 @@ public final class MainActivity extends Activity {
             amountParams.topMargin = Ui.dp(this, premium ? 5 : 8);
             card.addView(amount, amountParams);
             LinearLayout.LayoutParams cardParams = premium
-                    ? new LinearLayout.LayoutParams(0, Ui.dp(this, 90), 1f)
+                    ? new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,90,67), 1f)
                     : new LinearLayout.LayoutParams(Ui.dp(this, 178), Ui.dp(this, 98));
             cardParams.setMargins(Ui.dp(this, premium ? 4 : 6),
                     0, Ui.dp(this, premium ? 4 : 6), 0);
@@ -995,7 +1005,8 @@ public final class MainActivity extends Activity {
         box.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), 0);
 
         LinearLayout header = Ui.row(this);
-        header.addView(Ui.text(this, "نظرة على مصروفك", 18, Ui.TEXT, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 42), 1));
+        header.addView(Ui.text(this, "نظرة على مصروفك", 18, Ui.TEXT, true),
+                new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,42,32), 1));
         LinearLayout currencies = Ui.row(this);
         Map<TextView, String> currencyChips = new LinkedHashMap<>();
         for (String code : Arrays.asList("ILS", "USD", "JOD")) {
@@ -1011,7 +1022,7 @@ public final class MainActivity extends Activity {
         header.addView(currencies);
         box.addView(header);
         TextView currencyHint = Ui.text(this, "عملة الرسم — اضغط ILS أو USD أو JOD للتبديل", 11, Ui.MUTED, false);
-        currencyHint.setPadding(Ui.dp(this, 3), 0, Ui.dp(this, 3), Ui.dp(this, 8));
+        currencyHint.setPadding(Ui.dp(this,3), 0, Ui.dp(this,3), WenPremiumLayout.dp(this,8,4));
         box.addView(currencyHint);
 
         Calendar day = Calendar.getInstance();
@@ -1044,9 +1055,11 @@ public final class MainActivity extends Activity {
         chartCard.setElevation(Ui.dp(this, 2));
         chartCard.addView(Ui.text(this, "مصاريف الأيام السبعة", 15, Ui.TEXT, true));
         FrameLayout chartHost = new FrameLayout(this);
-        chartCard.addView(chartHost, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 190)));
+        chartCard.addView(chartHost, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this,190,120)));
         chartCard.setOnClickListener(v -> showAnalyticsScreen()); Ui.pressAnimation(chartCard);
-        LinearLayout.LayoutParams chartParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 240));
+        LinearLayout.LayoutParams chartParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this,240,175));
         chartParams.setMargins(0, Ui.dp(this, 10), 0, 0);
         box.addView(chartCard, chartParams);
 
@@ -1071,7 +1084,8 @@ public final class MainActivity extends Activity {
 
     private View statCard(String label, String amount) {
         LinearLayout card = Ui.column(this);
-        card.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 7));
+        card.setPadding(Ui.dp(this,12), WenPremiumLayout.dp(this,8,4),
+                Ui.dp(this,12), WenPremiumLayout.dp(this,7,3));
         card.setBackground(Ui.glassAccentBackground(this, 20));
         card.setElevation(Ui.dp(this, 3));
         // Contrast is material-specific, not dictated by a universal white label.
@@ -1082,7 +1096,8 @@ public final class MainActivity extends Activity {
         TextView amountView = Ui.text(this, amount, 20, cardInk, true);
         amountView.setAutoSizeTextTypeUniformWithConfiguration(13, 20, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
         card.addView(amountView);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, Ui.dp(this, 78), 1);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
+                WenPremiumLayout.dp(this,78,58), 1);
         params.setMargins(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
         card.setLayoutParams(params);
         return card;
@@ -1112,12 +1127,14 @@ public final class MainActivity extends Activity {
 
     private View accountCard(Models.Account account) {
         LinearLayout card = Ui.row(this);
-        card.setPadding(Ui.dp(this, 15), Ui.dp(this, 13), Ui.dp(this, 15), Ui.dp(this, 13));
+        card.setPadding(Ui.dp(this,15), WenPremiumLayout.dp(this,13,7),
+                Ui.dp(this,15), WenPremiumLayout.dp(this,13,7));
         card.setBackground(Ui.glassListBackground(this, 18));
         card.setElevation(Ui.dp(this, 1));
 
         View icon = accountIcon(account);
         int iconSize = Ui.homeIconDp(this, "accounts", 44);
+        if (WenPremiumLayout.compact(this)) iconSize=Math.min(iconSize, Ui.dp(this,34));
         if (Ui.iconsOnRight(this)) card.addView(icon, new LinearLayout.LayoutParams(iconSize, iconSize));
 
         LinearLayout labels = Ui.column(this);
@@ -1140,8 +1157,10 @@ public final class MainActivity extends Activity {
         }
         if (!Ui.iconsOnRight(this)) card.addView(icon, new LinearLayout.LayoutParams(iconSize, iconSize));
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(Ui.dp(this, compactAccountCard?98:72), iconSize + Ui.dp(this, 26)));
-        params.setMargins(Ui.dp(this, 16), Ui.dp(this, 5), Ui.dp(this, 16), Ui.dp(this, 5));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(WenPremiumLayout.dp(this,compactAccountCard?98:72,
+                compactAccountCard?80:56), iconSize + WenPremiumLayout.dp(this,26,14)));
+        params.setMargins(Ui.dp(this,16), WenPremiumLayout.dp(this,5,3),
+                Ui.dp(this,16), WenPremiumLayout.dp(this,5,3));
         card.setLayoutParams(params);
         card.setOnClickListener(v -> showAccountDetails(account));
         Ui.pressAnimation(card);
