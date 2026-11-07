@@ -111,7 +111,7 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "8443e7d449b953db91d3f7655a6c2abbba109f95"
+APPROVED_VISUAL_HOST_BLOB = "491158404d66c1c2f0f0be688132cc0089e2a4f4"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
@@ -195,6 +195,28 @@ premium_scrollbar = """        ScrollView scroll = new ScrollView(this);
         LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();"""
 assert sanitized_host.count(premium_scrollbar) == 1
 sanitized_host = sanitized_host.replace(premium_scrollbar, old_scrollbar, 1)
+
+# Real reference parity: three currency cards must remain visible together.
+# This transformation touches only width, padding and TextView appearance.
+# No currency, money computation, database lookup or click routing may change.
+balance_start = "    private View balanceCards() {"
+balance_end = "    private View spendingDashboard() {"
+premium_balance = sanitized_host[sanitized_host.index(balance_start):sanitized_host.index(balance_end)]
+legacy_balance = previous_host[previous_host.index(balance_start):previous_host.index(balance_end)]
+for required_balance in (
+    'Map<String, Long> totals = db.getTotals();',
+    'Arrays.asList("ILS", "USD", "JOD")',
+    'Money.format(totals.get(currency), currency)',
+    'Ui.glassBalanceBackground(this, 22)',
+    'if (premium) return row;',
+    'new LinearLayout.LayoutParams(0, Ui.dp(this, 90), 1f)',
+):
+    assert premium_balance.count(required_balance) == 1, "Unreviewed balance content/layout: " + required_balance
+for blocked_balance in ("db.update", "db.delete", "db.insert", "showAddTransaction(",
+                        "LicenseManager", "setOnClickListener", "Sqlite"):
+    assert blocked_balance not in premium_balance, "Safe Zone violated by balance layout: " + blocked_balance
+assert premium_balance != legacy_balance
+sanitized_host = sanitized_host.replace(premium_balance, legacy_balance, 1)
 
 # Stats remain the original view/click handlers and amounts, only ink changes.
 sanitized_host = revert_visual_section(
