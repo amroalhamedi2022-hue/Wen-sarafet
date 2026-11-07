@@ -37,7 +37,8 @@ final class WenPremiumSunlight {
             "  float shafts=(0.7*first+0.47*second)*radial;\n" +
             "  float glow=flare*0.41+shafts*0.39;\n" +
             "  glow *= smoothstep(-0.15,0.13,uv.x);\n" +
-            "  return half4(half3(uColor),half(clamp(glow,0.0,0.39)));\n" +
+            "  float opacity=clamp(glow*0.70,0.0,0.22);\n" +
+            "  return half4(half3(uColor*opacity),half(opacity));\n" +
             "}\n";
 
     private final boolean supported;
