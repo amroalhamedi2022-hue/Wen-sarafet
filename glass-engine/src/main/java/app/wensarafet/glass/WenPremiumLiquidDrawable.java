@@ -70,6 +70,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     private final Paint caustic = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint rimGlint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final WenPremiumCaustics ownerOptics = new WenPremiumCaustics();
+    private final WenPremiumSunlight sunField;
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bevel = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float radius;
@@ -85,6 +86,8 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         lowPower = (power != null && power.isPowerSaveMode())
                 || (manager != null && manager.isLowRamDevice());
+        sunField = kind == WenReferenceGlassDrawable.Surface.BACKDROP
+                ? new WenPremiumSunlight(lowPower) : null;
         rim.setStyle(Paint.Style.STROKE);
         bevel.setStyle(Paint.Style.STROKE);
     }
@@ -161,6 +164,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         WenThemeArtDirection.configure(index, box, backdrop(), chrome(), lowPower,
                 bloomA, bloomB, caustic, reflection);
         ownerOptics.configure(box, index, surface, lowPower, d);
+        if (sunField != null) sunField.configure(box, index);
         float padding=Math.max(.8f,d);
         inside.set(box.left+padding,box.top+padding,box.right-padding,box.bottom-padding);
         rim.setStrokeWidth(Math.max(.8f,chrome()?1.45f*d:1.0f*d));
@@ -208,6 +212,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
             // Each of the five scenes has its own refractive, broad sunlight
             // curves; rendered from cached Paths/Shaders without per-frame work.
             ownerOptics.draw(canvas);
+            if (sunField != null) sunField.draw(canvas, box);
             if (!backdrop()) canvas.drawRect(box,rimGlint);
         }
         canvas.restoreToCount(saved);
