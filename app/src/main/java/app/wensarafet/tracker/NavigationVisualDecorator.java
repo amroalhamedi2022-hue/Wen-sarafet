@@ -181,7 +181,11 @@ public final class NavigationVisualDecorator {
         track.addView(tabs, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         if (attached) {
-            lens.bringToFront(); // Foreground optics ABOVE glyphs.
+            // The liquid lens now refracts the actual SCROLL BACKDROP, so
+            // tab icons/Arabic labels must sit above the glass to remain crisp.
+            // Legacy materials retain their prior original draw order.
+            if (premium) tabs.bringToFront();
+            else lens.bringToFront();
         } else if (track.getOptic() != null) {
             track.getOptic().bringToFront();
         }
