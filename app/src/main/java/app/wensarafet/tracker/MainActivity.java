@@ -460,7 +460,7 @@ public final class MainActivity extends Activity {
         root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         View topBar = mainTopBar();
         shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                WenPremiumLayout.dp(this, 112, 80)));
+                WenPremiumLayout.dp(this, 112, 74)));
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -472,7 +472,8 @@ public final class MainActivity extends Activity {
         scroll.addView(content, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         shell.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         View bottomNav = bottomNavigation(currentTab);
-        FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72), Gravity.BOTTOM);
+        FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.dp(this,72,58), Gravity.BOTTOM);
         // Floating glass navigation is visual-only; the underlying tabs stay unchanged.
         if (Ui.isLiquidTheme(this)) navParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));
         root.addView(bottomNav, navParams);
@@ -520,7 +521,8 @@ public final class MainActivity extends Activity {
                 : (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START);
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(
                 fabSize, fabSize, Gravity.BOTTOM | fabGravity);
-        fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18), Ui.dp(this, 88));
+        fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18),
+                WenPremiumLayout.dp(this,88,73));
         root.addView(fab, fabParams);
         final boolean[] chromeHidden = {false};
         final int[] upwardTravel = {0};
@@ -665,7 +667,7 @@ public final class MainActivity extends Activity {
         Ui.pressAnimation(addAccount); Ui.pressAnimation(settings);
         layers.addView(bar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         wrapper.addView(layers, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                WenPremiumLayout.dp(this, 90, 60)));
+                WenPremiumLayout.dp(this, 90, 54)));
         return wrapper;
     }
 
@@ -948,9 +950,9 @@ public final class MainActivity extends Activity {
         TextView title = Ui.text(this, titleValue, 17, Ui.TEXT, true);
         TextView subtitle = Ui.text(this, subtitleValue, 12, Ui.MUTED, false);
         subtitle.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        row.addView(title, new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,36,27), 1));
+        row.addView(title, new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,36,24), 1));
         row.addView(subtitle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                WenPremiumLayout.dp(this,36,27)));
+                WenPremiumLayout.dp(this,36,24)));
         return row;
     }
 
@@ -989,7 +991,7 @@ public final class MainActivity extends Activity {
             amountParams.topMargin = Ui.dp(this, premium ? 5 : 8);
             card.addView(amount, amountParams);
             LinearLayout.LayoutParams cardParams = premium
-                    ? new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,90,67), 1f)
+                    ? new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,90,58), 1f)
                     : new LinearLayout.LayoutParams(Ui.dp(this, 178), Ui.dp(this, 98));
             cardParams.setMargins(Ui.dp(this, premium ? 4 : 6),
                     0, Ui.dp(this, premium ? 4 : 6), 0);
@@ -1056,10 +1058,10 @@ public final class MainActivity extends Activity {
         chartCard.addView(Ui.text(this, "مصاريف الأيام السبعة", 15, Ui.TEXT, true));
         FrameLayout chartHost = new FrameLayout(this);
         chartCard.addView(chartHost, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                WenPremiumLayout.dp(this,190,120)));
+                WenPremiumLayout.dp(this,190,98)));
         chartCard.setOnClickListener(v -> showAnalyticsScreen()); Ui.pressAnimation(chartCard);
         LinearLayout.LayoutParams chartParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                WenPremiumLayout.dp(this,240,175));
+                WenPremiumLayout.dp(this,240,150));
         chartParams.setMargins(0, Ui.dp(this, 10), 0, 0);
         box.addView(chartCard, chartParams);
 
@@ -1097,7 +1099,7 @@ public final class MainActivity extends Activity {
         amountView.setAutoSizeTextTypeUniformWithConfiguration(13, 20, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
         card.addView(amountView);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
-                WenPremiumLayout.dp(this,78,58), 1);
+                WenPremiumLayout.dp(this,78,51), 1);
         params.setMargins(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
         card.setLayoutParams(params);
         return card;
@@ -1158,7 +1160,7 @@ public final class MainActivity extends Activity {
         if (!Ui.iconsOnRight(this)) card.addView(icon, new LinearLayout.LayoutParams(iconSize, iconSize));
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(WenPremiumLayout.dp(this,compactAccountCard?98:72,
-                compactAccountCard?80:56), iconSize + WenPremiumLayout.dp(this,26,14)));
+                compactAccountCard?74:52), iconSize + WenPremiumLayout.dp(this,26,14)));
         params.setMargins(Ui.dp(this,16), WenPremiumLayout.dp(this,5,3),
                 Ui.dp(this,16), WenPremiumLayout.dp(this,5,3));
         card.setLayoutParams(params);
