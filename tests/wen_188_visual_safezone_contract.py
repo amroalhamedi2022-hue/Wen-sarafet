@@ -113,7 +113,7 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "89e60652a4b6dbfcb2dbb58cc8fdd6e29eda371a"
+APPROVED_VISUAL_HOST_BLOB = "47555fc7906dd05a4ab228fc82822f242ce68e2d"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
@@ -211,7 +211,7 @@ for required_balance in (
     'Money.format(totals.get(currency), currency)',
     'Ui.glassBalanceBackground(this, 22)',
     'if (premium) return row;',
-    'new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,90,67), 1f)',
+    'new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,90,58), 1f)',
 ):
     assert premium_balance.count(required_balance) == 1, "Unreviewed balance content/layout: " + required_balance
 for blocked_balance in ("db.update", "db.delete", "db.insert", "showAddTransaction(",
@@ -220,11 +220,23 @@ for blocked_balance in ("db.update", "db.delete", "db.insert", "showAddTransacti
 assert premium_balance != legacy_balance
 sanitized_host = sanitized_host.replace(premium_balance, legacy_balance, 1)
 
+# Nav/FAB vertical offsets are position-only; preserve the original click,
+# side preference, screen routing and accessibility hitboxes.
+premium_nav_frame = """FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.dp(this,72,58), Gravity.BOTTOM);"""
+old_nav_frame = """FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72), Gravity.BOTTOM);"""
+premium_fab_margin = """fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18),
+                WenPremiumLayout.dp(this,88,73));"""
+old_fab_margin = """fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18), Ui.dp(this, 88));"""
+for visual, old in ((premium_nav_frame,old_nav_frame),(premium_fab_margin,old_fab_margin)):
+    assert sanitized_host.count(visual) == 1
+    sanitized_host = sanitized_host.replace(visual,old,1)
+
 # Extra-short reference viewport metrics: solely View dimension changes,
 # not data queries, debt logic, callbacks or installed app preferences.
 old_header_height = """shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));"""
 new_header_height = """shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                WenPremiumLayout.dp(this, 112, 80)));"""
+                WenPremiumLayout.dp(this, 112, 74)));"""
 assert sanitized_host.count(new_header_height) == 1
 sanitized_host = sanitized_host.replace(new_header_height, old_header_height, 1)
 
@@ -271,7 +283,7 @@ card_padding_current = """card.setPadding(Ui.dp(this,12), WenPremiumLayout.dp(th
                 Ui.dp(this,12), WenPremiumLayout.dp(this,7,3));"""
 card_padding_original = """card.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 7));"""
 metric_current = """LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
-                WenPremiumLayout.dp(this,78,58), 1);"""
+                WenPremiumLayout.dp(this,78,51), 1);"""
 metric_original = """LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, Ui.dp(this, 78), 1);"""
 for current, legacy in ((card_padding_current, card_padding_original),
                          (metric_current, metric_original)):
