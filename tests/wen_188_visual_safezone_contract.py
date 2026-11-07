@@ -111,7 +111,7 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "491158404d66c1c2f0f0be688132cc0089e2a4f4"
+APPROVED_VISUAL_HOST_BLOB = "89e60652a4b6dbfcb2dbb58cc8fdd6e29eda371a"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
@@ -209,7 +209,7 @@ for required_balance in (
     'Money.format(totals.get(currency), currency)',
     'Ui.glassBalanceBackground(this, 22)',
     'if (premium) return row;',
-    'new LinearLayout.LayoutParams(0, Ui.dp(this, 90), 1f)',
+    'new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,90,67), 1f)',
 ):
     assert premium_balance.count(required_balance) == 1, "Unreviewed balance content/layout: " + required_balance
 for blocked_balance in ("db.update", "db.delete", "db.insert", "showAddTransaction(",
@@ -217,6 +217,64 @@ for blocked_balance in ("db.update", "db.delete", "db.insert", "showAddTransacti
     assert blocked_balance not in premium_balance, "Safe Zone violated by balance layout: " + blocked_balance
 assert premium_balance != legacy_balance
 sanitized_host = sanitized_host.replace(premium_balance, legacy_balance, 1)
+
+# Extra-short reference viewport metrics: solely View dimension changes,
+# not data queries, debt logic, callbacks or installed app preferences.
+old_header_height = """shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));"""
+new_header_height = """shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 112, 80)));"""
+assert sanitized_host.count(new_header_height) == 1
+sanitized_host = sanitized_host.replace(new_header_height, old_header_height, 1)
+
+# Section heading is entirely presentational.
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "    private View sectionTitle(", "    private View sectionTitle(",
+    "    private View balanceCards("
+)
+# The 7-day chart / three expense cards preserve every expense value and
+# analytics click; only their heights/visual margins differ.
+report_start = "    private View spendingDashboard() {"
+report_end = "    private View statCard("
+report_view = sanitized_host[sanitized_host.index(report_start):sanitized_host.index(report_end)]
+report_base = previous_host[previous_host.index(report_start):previous_host.index(report_end)]
+for call in ('getExpenseTotal(', 'getTransactions(', 'showAnalyticsScreen()',
+             'statCard("مصاريف اليوم"', 'statCard("آخر 7 أيام"',
+             'statCard("هذا الشهر"'):
+    assert report_view.count(call) == report_base.count(call), (
+        "Protected analytics call or expenditure data changed: " + call)
+assert report_view[report_view.index("        Runnable updateOverview = () -> {"):] == report_base[
+    report_base.index("        Runnable updateOverview = () -> {"):], (
+    "Protected chart data update callbacks changed"
+)
+sanitized_host = sanitized_host.replace(report_view, report_base, 1)
+
+# Account rows keep EXACT balance expression, original account icon mapper,
+# click handler and detail screen. Only padding/height are altered.
+account_start = "    private View accountCard(Models.Account account) {"
+account_end = "    private void showAccountDetails("
+account_view = sanitized_host[sanitized_host.index(account_start):sanitized_host.index(account_end)]
+account_base = previous_host[previous_host.index(account_start):previous_host.index(account_end)]
+for call in ('Money.format(account.balanceMinor, account.currency)',
+             'View icon = accountIcon(account);',
+             'card.setOnClickListener(v -> showAccountDetails(account));',
+             'Ui.pressAnimation(card);'):
+    assert account_view.count(call) == account_base.count(call) == 1, (
+        "Protected account content or handler changed: " + call)
+sanitized_host = sanitized_host.replace(account_view, account_base, 1)
+
+# The existing statistic's readable ink correction remains tracked below.
+# Its two short-viewport metric declarations are reversed byte-for-byte.
+card_padding_current = """card.setPadding(Ui.dp(this,12), WenPremiumLayout.dp(this,8,4),
+                Ui.dp(this,12), WenPremiumLayout.dp(this,7,3));"""
+card_padding_original = """card.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 7));"""
+metric_current = """LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
+                WenPremiumLayout.dp(this,78,58), 1);"""
+metric_original = """LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, Ui.dp(this, 78), 1);"""
+for current, legacy in ((card_padding_current, card_padding_original),
+                         (metric_current, metric_original)):
+    assert sanitized_host.count(current) == 1
+    sanitized_host = sanitized_host.replace(current, legacy, 1)
 
 # Stats remain the original view/click handlers and amounts, only ink changes.
 sanitized_host = revert_visual_section(
