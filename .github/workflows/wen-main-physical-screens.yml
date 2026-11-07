@@ -6,12 +6,20 @@ on:
     paths:
       - 'app/src/main/java/app/wensarafet/tracker/MainActivity.java'
       - 'app/src/main/java/app/wensarafet/tracker/Ui.java'
+      - 'app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java'
+      - 'app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java'
+      - 'app/src/main/java/app/wensarafet/tracker/WenPremiumLayout.java'
+      - 'app/src/main/java/app/wensarafet/tracker/WenPremiumTabIconDrawable.java'
       - 'app/src/debug/**'
       - 'glass-engine/**'
       - 'scripts/capture_main_no_instrumentation.sh'
       - '.github/workflows/wen-main-physical-screens.yml'
       - 'tests/wen_188_visual_safezone_contract.py'
   workflow_dispatch:
+
+concurrency:
+  group: wen-owner-real-screens-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
