@@ -18,6 +18,7 @@ ALLOWED = {
     "app/src/main/AndroidManifest.xml",
     "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java",
     "app/src/main/java/app/wensarafet/tracker/WenPremiumTabIconDrawable.java",
+    "app/src/main/java/app/wensarafet/tracker/WenPremiumLayout.java",
     "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java",
     "app/src/main/java/app/wensarafet/tracker/SplitRemainderUi.java",
     "app/src/main/java/app/wensarafet/tracker/SplitRemainderRules.java",
@@ -853,6 +854,14 @@ for illegal in ("FinanceDbHelper", "SQLiteDatabase", "setOnClickListener",
                 "setOnTouchListener", "setOnLongClickListener", "HttpURLConnection"):
     assert illegal not in tab_glyph, "Premium glyph enters Safe Zone: "+illegal
 assert "new WenPremiumTabIconDrawable" in adapter, "Premium nav doesn't use original vector icon mapping"
+
+# A viewport size selector may ONLY inspect device configuration and the
+# current visual index, never account state, persistence or navigation.
+layout_src = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenPremiumLayout.java").read_text(encoding="utf-8")
+assert "config.screenHeightDp < 800" in layout_src
+for forbidden in ("FinanceDbHelper", "SQLiteDatabase", "getAccounts(", "setOnClickListener",
+                  "getSharedPreferences(", "saveTheme(", "new Thread("):
+    assert forbidden not in layout_src, "Premium size adapter entered protected logic"
 
 # Checksums of every remaining tracked file, including money, SQLite,
 # SMS notifications, protected signing/biometric and all resource files,
