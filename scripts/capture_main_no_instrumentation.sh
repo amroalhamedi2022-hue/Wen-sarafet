@@ -45,6 +45,16 @@ gradle :app:assembleDebug --no-daemon --console=plain
 exit 0
 fi
 adb wait-for-device
+# Match the reference screenshots' native aspect ratios rather than judging
+# a 9:16 / 10:16 owner layout on the Pixel 6's 9:20 viewport.
+# This changes only the disposable CI emulator, not any app preference.
+theme_for_viewport="${1:-25}"
+if [ "$theme_for_viewport" -ge 28 ]; then
+    adb shell wm size 1080x1728  # Orange/Green & Pink/Violet refs: 961x1536
+else
+    adb shell wm size 1080x1920  # Three GOLD refs: 864x1536
+fi
+adb shell wm density 420
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 # Proven GitHub Android 15 emulator launcher ANR workaround (debug user only).
 adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
