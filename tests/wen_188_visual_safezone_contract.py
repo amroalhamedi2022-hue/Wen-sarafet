@@ -37,6 +37,7 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenThemeArtDirection.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumCaustics.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumSunlight.java",
     "app/src/androidTest/java/app/wensarafet/tracker/RealMainScreenCaptureTest.java",
     ".github/workflows/wen-real-main-screenshots.yml",
     "scripts/capture_real_main_screens.sh",
@@ -862,6 +863,20 @@ assert "config.screenHeightDp < 800" in layout_src
 for forbidden in ("FinanceDbHelper", "SQLiteDatabase", "getAccounts(", "setOnClickListener",
                   "getSharedPreferences(", "saveTheme(", "new Thread("):
     assert forbidden not in layout_src, "Premium size adapter entered protected logic"
+
+# Android 13+ optional GPU solar-field shader: only the BACKDROP can
+# instantiate it. Pre-33/low-power devices continue using the Canvas fallback.
+solar_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumSunlight.java").read_text(encoding="utf-8")
+for ray_contract in ('Build.VERSION.SDK_INT >= 33', 'new RuntimeShader(FRAGMENT)',
+                     'void configure(', 'void draw(Canvas canvas, RectF bounds)',
+                     'canvas.isHardwareAccelerated()', 'shader.setFloatUniform'):
+    assert ray_contract in solar_source, "Optional optical shader contract missing: "+ray_contract
+for prohibited in ('FinanceDbHelper', 'SQLiteDatabase', 'OnClickListener', 'Handler(',
+                   'postDelayed(', 'HttpURLConnection', 'new Thread(', 'getSharedPreferences('):
+    assert prohibited not in solar_source, "Solar shader touches protected area: "+prohibited
+premium_shader_host=(ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java").read_text(encoding="utf-8")
+assert 'kind == WenReferenceGlassDrawable.Surface.BACKDROP' in premium_shader_host
+assert 'sunField = ' in premium_shader_host
 
 # Checksums of every remaining tracked file, including money, SQLite,
 # SMS notifications, protected signing/biometric and all resource files,
