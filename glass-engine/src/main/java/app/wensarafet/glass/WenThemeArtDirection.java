@@ -39,12 +39,12 @@ final class WenThemeArtDirection {
                               Paint c, Paint focal, Paint reflection) {
         float w=b.width(),h=b.height();
         a.setShader(new RadialGradient(b.left+w*.85f,b.top+h*.24f,
-                Math.max(1f,w*(scene?.79f:1.06f)),
-                new int[]{0xA8CB9047,0x635A3820,0x18221513,0x00130D0B},
+                Math.max(1f,w*(scene?.67f:1.06f)),
+                new int[]{0x86CB9047,0x635A3820,0x18221513,0x00130D0B},
                 new float[]{0f,.26f,.57f,1f},Shader.TileMode.CLAMP));
         c.setShader(new RadialGradient(b.left+w*.21f,b.top+h*.81f,
                 Math.max(1f,w*(scene?1.06f:.84f)),
-                new int[]{0x8757371D,0x393F2C1F,0x051A1816,0},
+                new int[]{0x6857371D,0x393F2C1F,0x051A1816,0},
                 new float[]{0f,.39f,.77f,1f},Shader.TileMode.CLAMP));
         focal.setShader(new RadialGradient(b.left+w*.72f,b.top+h*.09f,
                 Math.max(1f,w*(chrome?.50f:.35f)),
@@ -61,12 +61,12 @@ final class WenThemeArtDirection {
                                  Paint c, Paint focal, Paint reflection) {
         float w=b.width(),h=b.height();
         a.setShader(new RadialGradient(b.left+w*.12f,b.top+h*.14f,
-                Math.max(1f,w*(scene?.68f:.86f)),
-                new int[]{0xB0C0A171,0x65594C3C,0x1A3D3937,0},
+                Math.max(1f,w*(scene?.59f:.86f)),
+                new int[]{0x7CC0A171,0x65594C3C,0x1A3D3937,0},
                 new float[]{0f,.24f,.57f,1f},Shader.TileMode.CLAMP));
         c.setShader(new RadialGradient(b.left+w*.93f,b.top+h*.77f,
-                Math.max(1f,w*(scene?.98f:.84f)),
-                new int[]{0x996F593C,0x474F4033,0x09272C2B,0},
+                Math.max(1f,w*(scene?.82f:.84f)),
+                new int[]{0x666F593C,0x474F4033,0x09272C2B,0},
                 new float[]{0f,.31f,.70f,1f},Shader.TileMode.CLAMP));
         focal.setShader(new RadialGradient(b.left+w*.67f,b.top+h*.35f,
                 Math.max(1f,w*(chrome?.47f:.31f)),
@@ -84,15 +84,15 @@ final class WenThemeArtDirection {
         float w=b.width(),h=b.height();
         a.setShader(new RadialGradient(b.left+w*.28f,b.top+h*.12f,
                 Math.max(1f,w*(scene?.95f:1.05f)),
-                new int[]{0xB1FFFFFF,0x78FFEBD7,0x26EDCEAC,0},
+                new int[]{0x86FFFFFF,0x78FFEBD7,0x26EDCEAC,0},
                 new float[]{0f,.38f,.72f,1f},Shader.TileMode.CLAMP));
         c.setShader(new RadialGradient(b.left+w*.93f,b.top+h*.80f,
                 Math.max(1f,w*(scene?1.15f:.91f)),
-                new int[]{0xB3F1C3A2,0x65E9C5A9,0x16FFFFFF,0},
+                new int[]{0x96F1C3A2,0x65E9C5A9,0x16FFFFFF,0},
                 new float[]{0f,.39f,.75f,1f},Shader.TileMode.CLAMP));
         focal.setShader(new RadialGradient(b.left+w*.64f,b.top+h*.30f,
                 Math.max(1f,w*(chrome?.56f:.45f)),
-                new int[]{0xA1FFFBEF,0x54FFE8BC,0x03FFFFFF},
+                new int[]{0x85FFFBEF,0x54FFE8BC,0x03FFFFFF},
                 new float[]{0,.38f,1f},Shader.TileMode.CLAMP));
         reflection.setShader(new RadialGradient(b.left+w*.23f,b.top+h*.14f,
                 Math.max(1f,Math.max(w,h)*.87f),
@@ -110,7 +110,7 @@ final class WenThemeArtDirection {
                 new float[]{0f,.33f,.70f,1f},Shader.TileMode.CLAMP));
         c.setShader(new RadialGradient(b.left+w*.84f,b.top+h*.73f,
                 Math.max(1f,w*(scene?.94f:.78f)),
-                new int[]{0xC05BAF86,0x76549374,0x16426E55,0},
+                new int[]{0xC930AB70,0x86417C5D,0x16426E55,0},
                 new float[]{0,.40f,.75f,1f},Shader.TileMode.CLAMP));
         focal.setShader(new RadialGradient(b.left+w*.78f,b.top+h*.09f,
                 Math.max(1f,w*(chrome?.48f:.39f)),
@@ -128,11 +128,11 @@ final class WenThemeArtDirection {
         float w=b.width(),h=b.height();
         a.setShader(new RadialGradient(b.left+w*.19f,b.top+h*.23f,
                 Math.max(1f,w*(scene?.94f:.89f)),
-                new int[]{0xDEF67AD8,0xA7DC4FAF,0x495C2BB1,0},
+                new int[]{0xC1FF4BC6,0xA7DC4FAF,0x495C2BB1,0},
                 new float[]{0,.33f,.65f,1f},Shader.TileMode.CLAMP));
         c.setShader(new RadialGradient(b.left+w*.87f,b.top+h*.79f,
                 Math.max(1f,w*(scene?1.12f:.87f)),
-                new int[]{0xCA6482FF,0x79594EE6,0x1E3A258D,0},
+                new int[]{0xB8585CFF,0x79594EE6,0x1E3A258D,0},
                 new float[]{0,.37f,.76f,1f},Shader.TileMode.CLAMP));
         focal.setShader(new RadialGradient(b.left+w*.74f,b.top+h*.11f,
                 Math.max(1f,w*(chrome?.51f:.40f)),
