@@ -43,26 +43,36 @@ public final class NavigationLiquidMaterial {
             // The native AGSL renderer uses PX. Convert material thickness
             // from dp so the same lens survives 1x emulator and 3x phones.
             final float d = lens.getResources().getDisplayMetrics().density;
+            final boolean premiumLiquid = app.wensarafet.glass.WenPremiumLiquidDrawable
+                    .supports(Ui.themeIndex(lens.getContext()));
+            final android.os.PowerManager powerManager =
+                    (android.os.PowerManager) lens.getContext()
+                            .getSystemService(android.content.Context.POWER_SERVICE);
+            final boolean powerSave = powerManager != null && powerManager.isPowerSaveMode();
+            // The old "liquid" looked like coloured plastic: every optical
+            // feature was deliberately disabled, while the sampled source
+            // contained no page detail. Opt into the library's REAL pipeline
+            // only for the five owner-approved premiums.
             glass.setUseShaderPipeline(true);
-            glass.setEnableDynamicBackground(false); // redraw only on gestures
-            glass.setEnablePressEffect(false); // original tab owns touch
-            glass.setEnableBackdropBlur(false); // sampled glyphs must remain sharp
-            glass.setBlurAmount(0f);
-            glass.setEnableChromaticAberration(false);
+            glass.setEnableDynamicBackground(premiumLiquid && !powerSave);
+            glass.setEnablePressEffect(false); // keep the original tab's gesture owner
+            glass.setEnableBackdropBlur(premiumLiquid && !powerSave);
+            glass.setBlurAmount(premiumLiquid && !powerSave ? .045f : 0f);
+            glass.setEnableChromaticAberration(premiumLiquid && !powerSave);
             glass.setEnableShadow(false);
             glass.setEnableEdgeHighlight(true);
             glass.setCornerRadius(999f);
-            glass.setBevelWidth(7.5f * d);
-            glass.setRefractionFalloff(1.4f);
-            glass.setDispersionStrength(0f);
-            glass.setDisplacementScale(14f);
-            glass.setRefractionHeight(6.0f * d);
-            glass.setEdgeSoftness(1.8f * d);
-            glass.setAberrationIntensity(0f);
-            glass.setSaturation(100f);
-            glass.setGlassTint(Color.WHITE, .045f);
-            glass.setEdgeHighlightBorderWidth(.65f * d);
-            glass.setEdgeHighlightOpacity(27f);
+            glass.setBevelWidth((premiumLiquid ? 13.0f : 7.5f) * d);
+            glass.setRefractionFalloff(premiumLiquid ? 2.15f : 1.4f);
+            glass.setDispersionStrength(premiumLiquid && !powerSave ? .065f : 0f);
+            glass.setDisplacementScale(premiumLiquid ? 38f : 14f);
+            glass.setRefractionHeight((premiumLiquid ? 30f : 6f) * d);
+            glass.setEdgeSoftness((premiumLiquid ? 2.6f : 1.8f) * d);
+            glass.setAberrationIntensity(premiumLiquid && !powerSave ? .65f : 0f);
+            glass.setSaturation(premiumLiquid ? 115f : 100f);
+            glass.setGlassTint(Color.WHITE, premiumLiquid ? .022f : .045f);
+            glass.setEdgeHighlightBorderWidth(.75f * d);
+            glass.setEdgeHighlightOpacity(premiumLiquid ? 45f : 27f);
             lens.setClipChildren(false);
             lens.setClipToPadding(false);
             lens.addView(glass, new FrameLayout.LayoutParams(
@@ -103,10 +113,14 @@ public final class NavigationLiquidMaterial {
                     }
                     // Elastic capsule: follows the finger like a cohesive
                     // substance; never an independent halo or second bubble.
-                    glass.setBevelWidth((7.5f + 1.9f * t + 2.0f * strain) * d);
-                    glass.setRefractionHeight((6.0f + 11.5f * t + 6.2f * strain) * d);
-                    glass.setDisplacementScale(14f + 46f * t + 15f * strain);
-                    glass.setGlassTint(Color.WHITE, .045f + .022f * t);
+                    glass.setBevelWidth(((premiumLiquid ? 13f : 7.5f)
+                            + 2.1f * t + 2.2f * strain) * d);
+                    glass.setRefractionHeight(((premiumLiquid ? 30f : 6f)
+                            + 19f * t + 9f * strain) * d);
+                    glass.setDisplacementScale((premiumLiquid ? 38f : 14f)
+                            + 47f * t + 20f * strain);
+                    glass.setGlassTint(Color.WHITE,
+                            (premiumLiquid ? .022f : .045f) + .017f * t);
                     glass.setScaleX(1f + .028f * t + .143f * strain);
                     glass.setScaleY(1f + .012f * t - .065f * strain);
                     sheen.setMotion(t, dragDirection * strain);
@@ -186,10 +200,16 @@ public final class NavigationLiquidMaterial {
                 // backdrop source is an ancestor; actions are unaffected.
                 boolean premiumScene = app.wensarafet.glass.WenPremiumLiquidDrawable
                         .supports(Ui.themeIndex(lens.getContext()));
-                if (premiumScene && nav.getWidth() > 0) {
-                    glass.setBackdropSource(nav);
+                if (premiumScene) {
+                    // Refraction MUST sample real screen detail behind the
+                    // floating bar, not the bar's own nearly-flat material.
+                    // Text and tab icons stay in the foreground, so their
+                    // readability is not sacrificed to the background blur.
+                    View scene = findUnderlay(container);
+                    glass.setBackdropSource(scene != null ? scene : nav);
                     android.util.Log.i("WenGlassProbe",
-                            "MIT_VIEW_GLASS_BACKDROP_BOUND source=nav-material");
+                            "MIT_VIEW_GLASS_BACKDROP_BOUND source="
+                                    + (scene != null ? "real-page-underlay" : "nav-fallback"));
                 } else if (tabContent != null && tabContent.getWidth() > 0) {
                     glass.setBackdropSource(tabContent);
                     android.util.Log.i("WenGlassProbe",
