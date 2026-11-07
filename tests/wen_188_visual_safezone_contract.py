@@ -886,6 +886,12 @@ for ray_contract in ('Build.VERSION.SDK_INT >= 33', 'new RuntimeShader(FRAGMENT)
 for prohibited in ('FinanceDbHelper', 'SQLiteDatabase', 'OnClickListener', 'Handler(',
                    'postDelayed(', 'HttpURLConnection', 'new Thread(', 'getSharedPreferences('):
     assert prohibited not in solar_source, "Solar shader touches protected area: "+prohibited
+# Android AGSL requires *premultiplied* alpha. Without RGB*alpha a
+# nominal 10% sunlight beam renders at near-full RGB, causing neon washout.
+assert 'half3(uColor*opacity),half(opacity)' in solar_source, (
+    "AGSL premultiplied-alpha regression: bright full-screen overexposure"
+)
+assert 'half3(uColor),half(clamp(glow' not in solar_source
 premium_shader_host=(ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java").read_text(encoding="utf-8")
 assert 'kind == WenReferenceGlassDrawable.Surface.BACKDROP' in premium_shader_host
 assert 'sunField = ' in premium_shader_host
