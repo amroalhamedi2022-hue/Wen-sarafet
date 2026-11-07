@@ -610,8 +610,9 @@ public final class MainActivity extends Activity {
                 headerSubtitle = "تقارير الإنفاق والميزانيات";
                 break;
             default:
-                headerTitle = "الرئيسية";
-                headerSubtitle = "ملخص الحسابات والمصروفات";
+                // Exact approved identity from the owner's five references.
+                headerTitle = "وين صرفت؟";
+                headerSubtitle = "أموالك واضحة، وخصوصيتك محفوظة";
                 break;
         }
         TextView title = Ui.text(this, headerTitle, 25, headerInk, true);
@@ -944,25 +945,47 @@ public final class MainActivity extends Activity {
     }
 
     private View balanceCards() {
-        HorizontalScrollView scroll = new HorizontalScrollView(this);
-        scroll.setHorizontalScrollBarEnabled(false);
+        // Premium references place ILS / USD / JOD in the SAME viewport.
+        // The original fixed 178dp horizontal scroller clips JOD on phones
+        // (3 * 178dp + 36dp margins > 390dp viewport). Legacy themes retain
+        // their existing horizontally scrollable presentation unchanged.
+        boolean premium = app.wensarafet.glass.WenPremiumLiquidDrawable
+                .supports(Ui.themeIndex(this));
+        HorizontalScrollView scroll = premium ? null : new HorizontalScrollView(this);
+        if (scroll != null) scroll.setHorizontalScrollBarEnabled(false);
         LinearLayout row = Ui.row(this);
         row.setPadding(Ui.dp(this, 12), 0, Ui.dp(this, 12), Ui.dp(this, 4));
         Map<String, Long> totals = db.getTotals();
         for (String currency : Arrays.asList("ILS", "USD", "JOD")) {
             LinearLayout card = Ui.column(this);
-            card.setPadding(Ui.dp(this, 16), Ui.dp(this, 14), Ui.dp(this, 16), Ui.dp(this, 14));
+            int hPadding = premium ? 9 : 16;
+            int vPadding = premium ? 12 : 14;
+            card.setPadding(Ui.dp(this, hPadding), Ui.dp(this, vPadding),
+                    Ui.dp(this, hPadding), Ui.dp(this, vPadding));
             card.setBackground(Ui.glassBalanceBackground(this, 22));
             card.setElevation(Ui.dp(this, 2));
-            card.addView(Ui.text(this, currency, 13, Ui.DARK ? Ui.TEXT : Ui.BRAND_DARK, true));
-            TextView amount = Ui.text(this, Money.format(totals.get(currency), currency), 20, Ui.TEXT, true);
-            LinearLayout.LayoutParams amountParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            amountParams.topMargin = Ui.dp(this, 8);
+            card.addView(Ui.text(this, currency, premium ? 11 : 13,
+                    Ui.DARK ? Ui.TEXT : Ui.BRAND_DARK, true));
+            TextView amount = Ui.text(this, Money.format(totals.get(currency), currency),
+                    premium ? 17 : 20, Ui.TEXT, true);
+            if (premium) {
+                amount.setMaxLines(1);
+                amount.setSingleLine(true);
+                amount.setAutoSizeTextTypeUniformWithConfiguration(11, 17, 1,
+                        android.util.TypedValue.COMPLEX_UNIT_SP);
+            }
+            LinearLayout.LayoutParams amountParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            amountParams.topMargin = Ui.dp(this, premium ? 5 : 8);
             card.addView(amount, amountParams);
-            LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(Ui.dp(this, 178), Ui.dp(this, 98));
-            cardParams.setMargins(Ui.dp(this, 6), 0, Ui.dp(this, 6), 0);
+            LinearLayout.LayoutParams cardParams = premium
+                    ? new LinearLayout.LayoutParams(0, Ui.dp(this, 90), 1f)
+                    : new LinearLayout.LayoutParams(Ui.dp(this, 178), Ui.dp(this, 98));
+            cardParams.setMargins(Ui.dp(this, premium ? 4 : 6),
+                    0, Ui.dp(this, premium ? 4 : 6), 0);
             row.addView(card, cardParams);
         }
+        if (premium) return row;
         scroll.addView(row);
         return scroll;
     }
