@@ -178,7 +178,19 @@ public final class NavigationLiquidMaterial {
                 // Sampling the scroll viewport made unrelated page text appear
                 // under the lens while the actual tab glyphs stayed unwarped.
                 View tabContent = track.findViewWithTag("wen_glass_tab_content");
-                if (tabContent != null && tabContent.getWidth() > 0) {
+                // The five owner-approved premiums use the REAL theme
+                // background of the nav parent as their refraction source.
+                // Sampling transparent text-only tabs produced an opaque grey
+                // disk on Royal/Champagne/Purple instead of clear liquid glass.
+                // The library explicitly excludes its glass branch when the
+                // backdrop source is an ancestor; actions are unaffected.
+                boolean premiumScene = app.wensarafet.glass.WenPremiumLiquidDrawable
+                        .supports(Ui.themeIndex(lens.getContext()));
+                if (premiumScene && nav.getWidth() > 0) {
+                    glass.setBackdropSource(nav);
+                    android.util.Log.i("WenGlassProbe",
+                            "MIT_VIEW_GLASS_BACKDROP_BOUND source=nav-material");
+                } else if (tabContent != null && tabContent.getWidth() > 0) {
                     glass.setBackdropSource(tabContent);
                     android.util.Log.i("WenGlassProbe",
                             "MIT_VIEW_GLASS_BACKDROP_BOUND source=tabs");
