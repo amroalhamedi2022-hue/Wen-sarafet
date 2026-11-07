@@ -814,8 +814,18 @@ assert "if (tapEligible && hovered == originIndex)" in motion, "Selected tab tap
 assert "tapEligible=false;" in motion, "Dragging away and back cannot trigger accidental refresh"
 assert "tabs[hovered].performClick();" in motion.split("if (hovered == selected)", 1)[1].split("} else {",1)[0], "Selected tap no longer invokes original callback"
 assert "NavigationLiquidMaterial.attach(lens, track)" in adapter
-assert "glass.setEnableChromaticAberration(false);" in native
-assert "glass.setDispersionStrength(0f);" in native
+# The premium lens now samples the genuine scrolling underlay and uses
+# physically visible edge refraction instead of inactive 0-value optics.
+# Older themes retain the original restrained settings via ternary fallback.
+assert "glass.setEnableDynamicBackground(premiumLiquid && !powerSave);" in native
+assert "glass.setEnableBackdropBlur(premiumLiquid && !powerSave);" in native
+assert "glass.setEnableChromaticAberration(premiumLiquid && !powerSave);" in native
+assert "glass.setDispersionStrength(premiumLiquid && !powerSave ? .065f : 0f);" in native
+assert "glass.setRefractionHeight((premiumLiquid ? 30f : 6f) * d);" in native
+assert "View scene = findUnderlay(container);" in native
+assert "glass.setBackdropSource(scene != null ? scene : nav);" in native
+assert "if (premium) tabs.bringToFront();" in adapter
+assert "glass.setEnablePressEffect(false);" in native, "Original tab must remain gesture owner"
 assert "LIQUID_FOLLOW = .60f" in motion
 assert "LIQUID_RELEASE_MS = 265L" in motion
 assert "NAV_LIQUID_STRETCH_ACTIVE" in native
