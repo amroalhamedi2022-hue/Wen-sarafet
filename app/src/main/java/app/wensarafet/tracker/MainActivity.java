@@ -486,14 +486,15 @@ public final class MainActivity extends Activity {
         shell.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         View bottomNav = bottomNavigation(currentTab);
         FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.dp(this,72,58), Gravity.BOTTOM);
+                ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.navigationHeight(this), Gravity.BOTTOM);
         // Floating glass navigation is visual-only; the underlying tabs stay unchanged.
         if (Ui.isLiquidTheme(this)) {
             // Owner reference: truly floating 16dp inset, preserving
             // the original four tab callbacks and scroll routing.
-            int sideInset = WenGoldGlassSurface.enabled(this) ? 16 : 10;
+            int sideInset = WenPremiumLayout.navigationSideInsetDp(this);
             navParams.setMargins(Ui.dp(this,sideInset),0,
-                    Ui.dp(this,sideInset),Ui.dp(this,8));
+                    Ui.dp(this,sideInset),
+                    Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
         }
         root.addView(bottomNav, navParams);
 
@@ -541,7 +542,7 @@ public final class MainActivity extends Activity {
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(
                 fabSize, fabSize, Gravity.BOTTOM | fabGravity);
         fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18),
-                WenPremiumLayout.dp(this,88,73));
+                WenPremiumLayout.fabBottomOffset(this));
         root.addView(fab, fabParams);
         final boolean[] chromeHidden = {false};
         final int[] upwardTravel = {0};
@@ -615,8 +616,12 @@ public final class MainActivity extends Activity {
         LinearLayout titles = Ui.column(this);
         // Champagne is a pale gold surface; white ink becomes invisible.
         // All other themes retain their established header contrast.
-        int headerInk = Ui.themeIndex(this) == 27 ? 0xFF65421F : Color.WHITE;
-        int headerSoftInk = Ui.themeIndex(this) == 27 ? 0xFF79572F : Color.rgb(225, 239, 235);
+        int headerInk = WenGoldGlassSurface.enabled(this)
+                ? WenGoldGlassSurface.headerTitleInk(Ui.themeIndex(this))
+                : Color.WHITE;
+        int headerSoftInk = WenGoldGlassSurface.enabled(this)
+                ? WenGoldGlassSurface.headerSecondaryInk(Ui.themeIndex(this))
+                : Color.rgb(225, 239, 235);
         // Reuse the original 1.8.8 Sandbox screen-specific header identity:
         // the title/subtitle reflect the ACTIVE primary tab, not a fixed app name.
         String headerTitle;
@@ -829,7 +834,7 @@ public final class MainActivity extends Activity {
         scroll.addView(content);
         page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         page.addView(bottomNavigation(TAB_TRANSACTIONS),
-                new LinearLayout.LayoutParams(-1,Ui.dp(this,72)));
+                new LinearLayout.LayoutParams(-1,WenPremiumLayout.navigationHeight(this)));
         setContentView(page);
         Calendar first=midnight(Calendar.getInstance());
         first.set(Calendar.DAY_OF_MONTH,1);
@@ -2307,10 +2312,12 @@ public final class MainActivity extends Activity {
         FrameLayout primaryRoot=new FrameLayout(this);
         primaryRoot.setBackground(Ui.glassScreenBackground(this));
         primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
         LinearLayout page=Ui.column(this);
         primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View debtTopBar=mainTopBar();
-        page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
+        page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 112, 74)));
         ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this);
         content.setPadding(Ui.dp(this, 16), Ui.dp(this, 10), Ui.dp(this, 16), Ui.dp(this, 110));
         content.addView(sectionTitle("دفتر الديون","أرصدة الديون وحركاتها"));
@@ -2353,8 +2360,11 @@ public final class MainActivity extends Activity {
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         View debtNav=bottomNavigation(TAB_DEBTS);
         FrameLayout.LayoutParams debtNavParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM);
-        if (Ui.isLiquidTheme(this)) debtNavParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));
+                ViewGroup.LayoutParams.MATCH_PARENT,WenPremiumLayout.navigationHeight(this),Gravity.BOTTOM);
+        if (Ui.isLiquidTheme(this)) debtNavParams.setMargins(
+                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),0,
+                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),
+                Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
         primaryRoot.addView(debtNav,debtNavParams);
         bindPrimaryNavigationScroll(scroll,debtTopBar,debtNav);
         setContentView(primaryRoot); Ui.animateScreen(primaryRoot); content.post(() -> Ui.animateChildren(content));
@@ -2709,10 +2719,12 @@ public final class MainActivity extends Activity {
         FrameLayout primaryRoot=new FrameLayout(this);
         primaryRoot.setBackground(Ui.glassScreenBackground(this));
         primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
         LinearLayout page=Ui.column(this);
         primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View analyticsTopBar=mainTopBar();
-        page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112)));
+        page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 112, 74)));
         ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 110));
         content.addView(sectionTitle("تحليل المصروفات","تقاريرك حسب العملة"));
         content.addView(Ui.text(this, "اختر عملة التحليل", 14, Ui.TEXT, true));
@@ -2808,8 +2820,11 @@ public final class MainActivity extends Activity {
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         View analyticsNav=bottomNavigation(TAB_ANALYTICS);
         FrameLayout.LayoutParams analyticsNavParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM);
-        if (Ui.isLiquidTheme(this)) analyticsNavParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));
+                ViewGroup.LayoutParams.MATCH_PARENT,WenPremiumLayout.navigationHeight(this),Gravity.BOTTOM);
+        if (Ui.isLiquidTheme(this)) analyticsNavParams.setMargins(
+                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),0,
+                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),
+                Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
         primaryRoot.addView(analyticsNav,analyticsNavParams);
         bindPrimaryNavigationScroll(scroll,analyticsTopBar,analyticsNav);
         setContentView(primaryRoot); Ui.animateScreen(primaryRoot);
