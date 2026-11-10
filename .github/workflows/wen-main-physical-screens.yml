@@ -61,13 +61,13 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          ram-size: 3072M
-          heap-size: 384M
-          disk-size: 1536M
+          ram-size: 4096M
+          heap-size: 512M
+          disk-size: 2048M
           sdcard-path-or-size: 128M
           disable-animations: false
           emulator-boot-timeout: 600
-          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-options: -no-snapshot -no-window -gpu software -noaudio -no-boot-anim
           script: bash scripts/capture_main_no_instrumentation.sh ${{ matrix.theme }}
       - name: Export three gold-only native framebuffer screenshots and diagnostics
         if: always()
