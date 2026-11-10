@@ -26,12 +26,11 @@ public final class WenPremiumTabIconDrawable extends Drawable {
 
     WenPremiumTabIconDrawable(Context context, int theme, int tabIndex, boolean selected) {
         tab=tabIndex;
-        dim=Ui.dp(context, 22);
-        int selectedInk = theme==25 ? 0xFFFFDC8C : theme==26 ? 0xFFFFE1AB
-                : theme==27 ? 0xFF895B2A : theme==28 ? 0xFFFFF3D7 : 0xFFFFFFFF;
-        int idleInk = theme==25 ? 0xFFD8CBB4 : theme==26 ? 0xFFD9CEC2
-                : theme==27 ? 0xFF836849 : theme==28 ? 0xFFE5F5E8 : 0xFFF6E6FF;
-        int ink=selected?selectedInk:idleInk;
+        dim=Ui.dp(context, 29);
+        // Glyph strokes and Arabic labels share ONE visual token source.
+        int ink = theme <= 27
+                ? WenGoldGlassSurface.navigationInk(theme, selected)
+                : selected ? Color.WHITE : (theme == 28 ? 0xFFE5F5E8 : 0xFFF6E6FF);
         line.setColor(ink);
         line.setStyle(Paint.Style.STROKE);
         line.setStrokeWidth(selected?2.2f:1.9f);
