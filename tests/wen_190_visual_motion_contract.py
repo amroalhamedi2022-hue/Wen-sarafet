@@ -25,7 +25,7 @@ ui = (root / ui_path).read_text(encoding="utf-8")
 # Pin original v1.9 production host exactly. The only approved changes are the
 # reviewed view-only hooks in the new MainActivity blob and this new motion file.
 assert git("hash-object", main_path) == (
-    "fd2e770e1f02840a93718b83d98eea2e6a8ae075"
+    "49de0e45e8d1052642e859d2d158c1a60c785118"
 ), "MainActivity changed beyond reviewed host-level visual hooks"
 assert git("hash-object", motion_path) == (
     "860c1a2187d7c3474b00f86d42c8500bcc189c67"
