@@ -72,11 +72,21 @@ jobs:
           # documented 'software' mode chooses a compatible renderer.
           emulator-options: -no-snapshot -no-window -gpu software -noaudio -no-boot-anim
           script: bash scripts/capture_main_no_instrumentation.sh ${{ inputs.theme || '25' }}
-      - name: Keep full PNG plus renderer diagnostics, even on a failed theme
-        if: always()
+      - name: Upload verified REAL MainActivity PNG (never failure diagnostics)
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: wen-mainactivity-theme-${{ inputs.theme || '25' }}-android15
-          path: build/owner-live-main-screens/
+          name: VERIFIED-native-mainactivity-theme-${{ inputs.theme || '25' }}-android15
+          path: build/owner-live-main-screens/main-theme-*-home.png
           retention-days: 14
+          if-no-files-found: error
+      - name: Upload FAILED capture diagnostics (NOT screenshots)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FAILED-capture-diagnostics-theme-${{ inputs.theme || '25' }}-android15
+          path: |
+            build/owner-live-main-screens/*.log
+            build/owner-live-main-screens/*.bin
+          retention-days: 7
           if-no-files-found: warn
