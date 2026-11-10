@@ -461,7 +461,8 @@ public final class MainActivity extends Activity {
             // snapshots or fabricated gradients in the glass children.
             View goldBackdrop = new View(this);
             goldBackdrop.setTag(WenGoldGlassSurface.BACKDROP_TAG);
-            goldBackdrop.setBackground(Ui.glassScreenBackground(this));
+            android.graphics.drawable.Drawable existingScene = Ui.glassScreenBackground(this);
+            goldBackdrop.setBackground(existingScene);
             root.setBackground(null);
             root.addView(goldBackdrop, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
