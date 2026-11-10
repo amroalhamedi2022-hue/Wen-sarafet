@@ -20,8 +20,8 @@ public final class ThemeCatalogue {
         "Dark Forest", "Charcoal", "Pearl", "Copper",
         "Liquid Aurora", "Liquid Fusion", "Blue Glass", "Aqua Bubbles",
         "Night Aurora", "Frozen Pearl", "Prism Glow", "Golden Bloom",
-        "Royal Gold", "Royal Dark Gold", "Imperial Gold", "Champagne Gold",
-        "Orange Green", "Pink Violet"
+        "Royal Gold", "Royal Dark", "Imperial Dark", "Champagne Light",
+        "Retired", "Retired"
     };
 
     private ThemeCatalogue() {}
@@ -33,13 +33,12 @@ public final class ThemeCatalogue {
 
     public static boolean isVisible(Context context, int themeIndex) {
         if (themeIndex < 0 || themeIndex >= ENGLISH_NAMES.length) return false;
-        // These three transitional themes followed Frozen Pearl, but are NOT
-        // among the owner's five newer, separately approved designs (25-29).
-        // Preserve an already selected older palette until the owner chooses
-        // something else. It disappears from the catalogue after switching;
-        // never silently force a different persisted theme on an update.
-        if (themeIndex >= 22 && themeIndex <= 24)
-            return Ui.themeIndex(context) == themeIndex;
+        // Final owner scope: TWO black gold designs plus ONE ivory-gold.
+        // Permanently retire 28/29 from selection and restoration.
+        // An already active older theme is shown for manual switching,
+        // without changing the owner's account or security preferences.
+        if (themeIndex >= 28) return false;
+        if (themeIndex < 25) return Ui.themeIndex(context) == themeIndex;
         return !context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getBoolean(HIDDEN_PREFIX + themeIndex, false);
     }
