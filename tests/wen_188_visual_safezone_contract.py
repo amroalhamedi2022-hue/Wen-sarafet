@@ -721,6 +721,12 @@ expected_energy = expected_energy.replace(
 assert "WenFabBubbleDrawable(context, SKY, DARK)" in ui, "Restore circular original-Liquid FAB"
 assert "liquid ? 2 : 10" in ui and "liquid ? 125 : 300" in ui, "Fast staged Liquid entrances"
 assert "setDuration(115)" in ui, "Gentle sandbox-style screen reveal"''')
+# Preserve the historical legacy 26dp nav while enforcing the 28dp
+# gold-only owner reference. No callback or navigation destination changes.
+expected_energy = expected_energy.replace(
+    'assert "glassNavigationBackground(this, 26)" in main',
+    '''assert "glassNavigationBackground(this," in main
+assert "WenGoldGlassSurface.enabled(this) ? 28 : 26" in main''')
 expected_energy = expected_energy.replace(
     'assert "if (isLiquidTheme(v.getContext()))" in ui',
     'assert "if (isLiquidTheme(view.getContext()))" in ui')
