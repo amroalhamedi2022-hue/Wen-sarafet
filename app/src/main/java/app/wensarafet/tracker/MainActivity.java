@@ -488,7 +488,13 @@ public final class MainActivity extends Activity {
         FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.dp(this,72,58), Gravity.BOTTOM);
         // Floating glass navigation is visual-only; the underlying tabs stay unchanged.
-        if (Ui.isLiquidTheme(this)) navParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));
+        if (Ui.isLiquidTheme(this)) {
+            // Owner reference: truly floating 16dp inset, preserving
+            // the original four tab callbacks and scroll routing.
+            int sideInset = WenGoldGlassSurface.enabled(this) ? 16 : 10;
+            navParams.setMargins(Ui.dp(this,sideInset),0,
+                    Ui.dp(this,sideInset),Ui.dp(this,8));
+        }
         root.addView(bottomNav, navParams);
 
         int fabPercent = Ui.homeIconScalePercent(this, "fab");
@@ -688,7 +694,8 @@ public final class MainActivity extends Activity {
     private LinearLayout bottomNavigation(int selectedTab) {
         LinearLayout nav = Ui.row(this);
         nav.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 8));
-        nav.setBackground(Ui.glassNavigationBackground(this, 26));
+        nav.setBackground(Ui.glassNavigationBackground(this,
+                WenGoldGlassSurface.enabled(this) ? 28 : 26));
         nav.setElevation(Ui.dp(this, 12));
 
         TextView home = navButton("🏠\nالرئيسية", selectedTab == TAB_HOME);
