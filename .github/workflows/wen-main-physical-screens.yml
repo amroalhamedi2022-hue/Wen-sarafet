@@ -1,5 +1,16 @@
 name: Wen REAL MainActivity screenshots — Android 13 stable capture
 on:
+  # The owner-review PR must expose actual MainActivity evidence as a check,
+  # rather than hiding screenshots only in push-side workflow runs.
+  pull_request:
+    branches:
+      - release/wen-2.0-premium-original-signer-20261105
+    paths:
+      - 'app/src/main/java/app/wensarafet/tracker/**'
+      - 'app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java'
+      - 'glass-engine/**'
+      - 'tests/wen_188_visual_safezone_contract.py'
+      - '.github/workflows/wen-main-physical-screens.yml'
   push:
     branches:
       - design/wen-visual-parity-owner-review-20261106
