@@ -20,6 +20,7 @@ ALLOWED = {
     "app/src/main/java/app/wensarafet/tracker/WenPremiumTabIconDrawable.java",
     "app/src/main/java/app/wensarafet/tracker/WenPremiumLayout.java",
     "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java",
+    "app/src/main/java/app/wensarafet/tracker/WenGoldGlassSurface.java",
     "app/src/main/java/app/wensarafet/tracker/SplitRemainderUi.java",
     "app/src/main/java/app/wensarafet/tracker/SplitRemainderRules.java",
     "tests/SplitRemainderRulesTest.java",
@@ -113,7 +114,7 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "47555fc7906dd05a4ab228fc82822f242ce68e2d"
+APPROVED_VISUAL_HOST_BLOB = "fd2e770e1f02840a93718b83d98eea2e6a8ae075"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
@@ -130,6 +131,33 @@ def revert_visual_section(current, old, from_current, from_old, until):
     fresh = current[current.index(from_current):current.index(until)]
     historical = old[old.index(from_old):old.index(until)]
     return current.replace(fresh, historical, 1)
+
+# New gold-only screen background is a passive view placed before the
+# original shell; no finance callbacks, layout actions, or input routing.
+# Revert exactly this one visual layer before the full MainActivity diff.
+original_scene = """        root.setBackground(Ui.glassScreenBackground(this));
+        root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        LinearLayout shell = Ui.column(this);"""
+gold_scene = """        root.setBackground(Ui.glassScreenBackground(this));
+        root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        if (WenGoldGlassSurface.enabled(this)) {
+            // A single real scene View behind every overlay, shared by
+            // header, balance and chart optics. No duplicate background
+            // snapshots or fabricated gradients in the glass children.
+            View goldBackdrop = new View(this);
+            goldBackdrop.setTag(WenGoldGlassSurface.BACKDROP_TAG);
+            android.graphics.drawable.Drawable existingScene = Ui.glassScreenBackground(this);
+            goldBackdrop.setBackground(existingScene);
+            root.setBackground(null);
+            root.addView(goldBackdrop, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+
+        LinearLayout shell = Ui.column(this);"""
+assert sanitized_host.count(gold_scene) == 1
+sanitized_host = sanitized_host.replace(gold_scene, original_scene, 1)
 
 # Only the top-bar VIEW method is ported from the owner's 1.8.8 Sandbox.
 # Every action callback remains the original handler, and the full Java file
@@ -212,6 +240,7 @@ for required_balance in (
     'Ui.glassBalanceBackground(this, 22)',
     'if (premium) return row;',
     'new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,90,58), 1f)',
+    'WenGoldGlassSurface.wrap(card,22)',
 ):
     assert premium_balance.count(required_balance) == 1, "Unreviewed balance content/layout: " + required_balance
 for blocked_balance in ("db.update", "db.delete", "db.insert", "showAddTransaction(",
@@ -257,6 +286,11 @@ for call in ('getExpenseTotal(', 'getTransactions(', 'showAnalyticsScreen()',
              'statCard("هذا الشهر"'):
     assert report_view.count(call) == report_base.count(call), (
         "Protected analytics call or expenditure data changed: " + call)
+# Finance values are read from original TextViews BEFORE adding overlays.
+assert 'todayCard = WenGoldGlassSurface.wrap(todayCard,20);' in report_view
+assert 'weekCard = WenGoldGlassSurface.wrap(weekCard,20);' in report_view
+assert 'monthCard = WenGoldGlassSurface.wrap(monthCard,20);' in report_view
+assert 'box.addView(WenGoldGlassSurface.wrap(chartCard,22), chartParams);' in report_view
 assert report_view[report_view.index("        Runnable updateOverview = () -> {"):] == report_base[
     report_base.index("        Runnable updateOverview = () -> {"):], (
     "Protected chart data update callbacks changed"
@@ -905,6 +939,33 @@ assert 'half3(uColor),half(clamp(glow' not in solar_source
 premium_shader_host=(ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java").read_text(encoding="utf-8")
 assert 'kind == WenReferenceGlassDrawable.Surface.BACKDROP' in premium_shader_host
 assert 'sunField = ' in premium_shader_host
+
+# A single inert gold optical material contains no financial, storage,
+# navigation, activation, network, or event-handler business logic. Confirm
+# fast-path paints and card content layering remain passive.
+gold_surface = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenGoldGlassSurface.java").read_text(encoding="utf-8")
+for required in ('class WenGoldGlassSurface', 'LiquidGlassView glass',
+                 'setBackdropSource(target)', 'glass.setEnableBackdropBlur(!economical)',
+                 'glass.setEnableDynamicBackground(!economical)',
+                 'host.addView(content', 'void enhanceHeader(',
+                 'radiusDp*density', 'bounds.height()*.15f'):
+    assert required in gold_surface, "Gold material contract missing: "+required
+for forbidden in ('FinanceDbHelper', 'SQLiteDatabase', 'AccountRepository',
+                  'SmsCaptureReceiver', 'AppLockManager', 'LicenseManager',
+                  'setOnClickListener(', 'setOnTouchListener(', 'postDelayed(',
+                  'HttpURLConnection', 'getSharedPreferences('):
+    assert forbidden not in gold_surface, "Gold material crossed Safe Zone: "+forbidden
+for method in ('void draw(Canvas canvas)',):
+    assert method in gold_surface
+
+# Only three approved GOLD scenes remain visible. Legacy selection state
+# remains stable until manually changed; obsolete 28/29 cannot be restored.
+catalogue = (ROOT / "app/src/main/java/app/wensarafet/tracker/ThemeCatalogue.java").read_text(encoding="utf-8")
+assert 'if (themeIndex >= 28) return false;' in catalogue
+assert 'if (themeIndex < 25) return Ui.themeIndex(context) == themeIndex;' in catalogue
+for gold_name in ('"Royal Dark"', '"Imperial Dark"', '"Champagne Light"'):
+    assert gold_name in catalogue
+assert '"Orange Green"' not in catalogue and '"Pink Violet"' not in catalogue
 
 # Checksums of every remaining tracked file, including money, SQLite,
 # SMS notifications, protected signing/biometric and all resource files,
