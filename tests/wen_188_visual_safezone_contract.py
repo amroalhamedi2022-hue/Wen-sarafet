@@ -114,7 +114,7 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "49de0e45e8d1052642e859d2d158c1a60c785118"
+APPROVED_VISUAL_HOST_BLOB = "dec2d386f2c7dbada90649e568f74d81e35bf493"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
@@ -137,9 +137,10 @@ def revert_visual_section(current, old, from_current, from_old, until):
 gold_nav_margin = """        if (Ui.isLiquidTheme(this)) {
             // Owner reference: truly floating 16dp inset, preserving
             // the original four tab callbacks and scroll routing.
-            int sideInset = WenGoldGlassSurface.enabled(this) ? 16 : 10;
+            int sideInset = WenPremiumLayout.navigationSideInsetDp(this);
             navParams.setMargins(Ui.dp(this,sideInset),0,
-                    Ui.dp(this,sideInset),Ui.dp(this,8));
+                    Ui.dp(this,sideInset),
+                    Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
         }"""
 legacy_nav_margin = """        if (Ui.isLiquidTheme(this)) navParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));"""
 gold_nav_radius = """nav.setBackground(Ui.glassNavigationBackground(this,
@@ -278,10 +279,10 @@ sanitized_host = sanitized_host.replace(premium_balance, legacy_balance, 1)
 # Nav/FAB vertical offsets are position-only; preserve the original click,
 # side preference, screen routing and accessibility hitboxes.
 premium_nav_frame = """FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.dp(this,72,58), Gravity.BOTTOM);"""
+                ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.navigationHeight(this), Gravity.BOTTOM);"""
 old_nav_frame = """FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72), Gravity.BOTTOM);"""
 premium_fab_margin = """fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18),
-                WenPremiumLayout.dp(this,88,73));"""
+                WenPremiumLayout.fabBottomOffset(this));"""
 old_fab_margin = """fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18), Ui.dp(this, 88));"""
 for visual, old in ((premium_nav_frame,old_nav_frame),(premium_fab_margin,old_fab_margin)):
     assert sanitized_host.count(visual) == 1
@@ -374,6 +375,49 @@ for forbidden in ("FinanceDbHelper", "SQLiteDatabase", "deleteTransaction(",
                   "insertTransaction(", "SmsCapture"):
     assert forbidden not in new_picker, "Unsafe theme UI addition: " + forbidden
 sanitized_host = sanitized_host.replace(new_picker, old_picker, 1)
+# EXACT reversible gold-only layout changes, shared across every
+# primary page. The real backdrop is a passive View behind the same original
+# debt/analytics content and callbacks; these replacements MUST recover the
+# entire 2.0 MainActivity source byte-for-byte.
+assert current_main.count("WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);") == 2
+assert current_main.count("WenPremiumLayout.navigationHeight(this)") == 4
+gold_root = """primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
+        LinearLayout page=Ui.column(this);"""
+legacy_root = """primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        LinearLayout page=Ui.column(this);"""
+assert sanitized_host.count(gold_root) == 2, "Gold backdrop may only wrap debt/analytics"
+sanitized_host = sanitized_host.replace(gold_root, legacy_root)
+gold_debt_header = """page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 112, 74)));"""
+old_debt_header = """page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));"""
+gold_analytics_header = """page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 112, 74)));"""
+old_analytics_header = """page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112)));"""
+for gold, old in ((gold_debt_header, old_debt_header),
+                  (gold_analytics_header, old_analytics_header)):
+    assert sanitized_host.count(gold) == 1, "Unreviewed gold primary screen header size"
+    sanitized_host = sanitized_host.replace(gold, old, 1)
+for page in ("debt", "analytics"):
+    variable = page + "NavParams"
+    gold_navigation = ("""FrameLayout.LayoutParams {variable} = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,WenPremiumLayout.navigationHeight(this),Gravity.BOTTOM);
+        if (Ui.isLiquidTheme(this)) {variable}.setMargins(
+                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),0,
+                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),
+                Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));""").replace("{variable}", variable)
+    old_navigation = ("""FrameLayout.LayoutParams {variable} = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM);
+        if (Ui.isLiquidTheme(this)) {variable}.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));""").replace("{variable}", variable)
+    assert sanitized_host.count(gold_navigation) == 1, (
+        "Unreviewed " + page + " original navigation view layout"
+    )
+    sanitized_host = sanitized_host.replace(gold_navigation, old_navigation, 1)
+gold_insights_navigation = "new LinearLayout.LayoutParams(-1,WenPremiumLayout.navigationHeight(this)));"
+old_insights_navigation = "new LinearLayout.LayoutParams(-1,Ui.dp(this,72)));"
+assert sanitized_host.count(gold_insights_navigation) == 1
+sanitized_host = sanitized_host.replace(gold_insights_navigation, old_insights_navigation, 1)
+
 assert sanitized_host == previous_host, (
     "SAFE ZONE: MainActivity differs beyond approved theme picker, header and metric text"
 )
@@ -981,11 +1025,20 @@ for illegal in ("FinanceDbHelper", "SQLiteDatabase", "setOnClickListener",
                 "setOnTouchListener", "setOnLongClickListener", "HttpURLConnection"):
     assert illegal not in tab_glyph, "Premium glyph enters Safe Zone: "+illegal
 assert "new WenPremiumTabIconDrawable" in adapter, "Premium nav doesn't use original vector icon mapping"
+assert "int glyphSize = Ui.dp(context, 29);" in adapter
+assert "item.setMinHeight(Ui.dp(context, 48));" in adapter
+assert "item.setAutoSizeTextTypeUniformWithConfiguration(" in adapter
+assert "dim=Ui.dp(context, 29);" in tab_glyph
+assert "WenGoldGlassSurface.navigationInk(theme, selected)" in tab_glyph
+assert "glass.setGlassTint(opticalTint, premiumLiquid ? .018f : .045f);" in native
 
 # A viewport size selector may ONLY inspect device configuration and the
 # current visual index, never account state, persistence or navigation.
 layout_src = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenPremiumLayout.java").read_text(encoding="utf-8")
 assert "config.screenHeightDp < 800" in layout_src
+assert "dp(context, 86, 76)" in layout_src
+assert "WenPremiumLayout.navigationHeight(this)" in current_main
+assert "WenPremiumLayout.fabBottomOffset(this)" in current_main
 for forbidden in ("FinanceDbHelper", "SQLiteDatabase", "getAccounts(", "setOnClickListener",
                   "getSharedPreferences(", "saveTheme(", "new Thread("):
     assert forbidden not in layout_src, "Premium size adapter entered protected logic"
@@ -1014,7 +1067,9 @@ assert 'sunField = ' in premium_shader_host
 # navigation, activation, network, or event-handler business logic. Confirm
 # fast-path paints and card content layering remain passive.
 gold_surface = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenGoldGlassSurface.java").read_text(encoding="utf-8")
-for required in ('class WenGoldGlassSurface', 'LiquidGlassView glass',
+for required in ('class WenGoldGlassSurface', 'static void attachGoldBackdrop(',
+                 'static int navigationInk(', 'static int headerTitleInk(',
+                 'LiquidGlassView glass',
                  'setBackdropSource(target)', 'glass.setEnableBackdropBlur(!economical)',
                  'glass.setEnableDynamicBackground(!economical)',
                  'host.addView(content', 'void enhanceHeader(',
