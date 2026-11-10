@@ -10,6 +10,7 @@ on:
       - 'app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java'
       - 'glass-engine/**'
       - 'tests/wen_188_visual_safezone_contract.py'
+      - 'scripts/capture_main_no_instrumentation.sh'
       - '.github/workflows/wen-main-physical-screens.yml'
   push:
     branches:
