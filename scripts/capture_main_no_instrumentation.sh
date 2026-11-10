@@ -90,24 +90,30 @@ capture() {
         timeout 80 adb shell am start -W -n "$PACKAGE/app.wensarafet.tracker.MainActivity" --ez open_transactions true ;;
       *) echo "Unknown page $page" >&2; exit 1 ;;
     esac
-    # Android 13's SplashScreen is a real, valid PNG, and was previously
-    # mistaken for a successful MainActivity capture. Wait for the real HOME
-    # hierarchy instead of assuming am start -W implies first content frame.
+    # Android 13's SplashScreen is a valid PNG, but NOT the finance UI.
+    # UIAutomator repeatedly blocked the hosted emulator (and eventually ADB)
+    # even AFTER MainActivity logged native nav attachment and live backdrop.
+    # Use the genuine window's optical attachment probe instead. It is emitted
+    # by PRODUCTION nav code only after the four-tab MainActivity view is mounted.
+    # This is not a mock, a synthetic screen, or a screenshot substitute.
     local ready=0
-    for attempt in 1 2 3 4 5 6 7 8; do
+    for attempt in 1 2 3 4 5 6 7 8 9 10; do
       sleep 3
-      test -n "$(timeout 20 adb shell pidof "$PACKAGE" 2>/dev/null | tr -d '\r')" || continue
-      timeout 25 adb shell uiautomator dump /sdcard/wen-window.xml >/dev/null 2>&1 || true
-      if timeout 12 adb shell cat /sdcard/wen-window.xml 2>/dev/null | grep -Fq "إجمالي أرصدتك"; then
+      test -n "$(timeout 8 adb shell pidof "$PACKAGE" 2>/dev/null | tr -d '\r')" || continue
+      if timeout 8 adb logcat -d -s WenGlassProbe:I AndroidRuntime:E WenSarafet:E 2>/dev/null \
+         | grep -Fq "MIT_VIEW_GLASS_BACKDROP_BOUND source=real-page-underlay"; then
         ready=1
         break
       fi
-      echo "Theme $theme UI probe attempt $attempt: still not on actual home screen"
+      echo "Theme $theme probe $attempt: waiting for native MainActivity optical view"
     done
     test "$ready" -eq 1 || {
-      echo "ERROR: UI hierarchy did not show real MainActivity dashboard; refusing SplashScreen" >&2
+      echo "ERROR: original MainActivity live backdrop did not attach; refusing SplashScreen" >&2
       exit 1
     }
+    # One compositor beat AFTER attachment so the first bitmap is not a
+    # transition to the dashboard; the per-PNG integrity gate remains strict.
+    sleep 2
     if [ "$page" = accounts ]; then
        adb shell input swipe 520 1900 520 610 420
        sleep 2
