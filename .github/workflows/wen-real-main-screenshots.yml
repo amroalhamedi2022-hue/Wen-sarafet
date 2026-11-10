@@ -60,7 +60,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wen-owner-real-mainactivity-20-screens
+          name: wen-owner-real-mainactivity-12-gold-screens
           path: build/owner-real-main-screens/
           retention-days: 14
           if-no-files-found: warn
