@@ -1,16 +1,11 @@
 name: Wen owner visual emulator screenshots
+# DEBUG-ONLY preview fixtures are not the authenticated MainActivity.
+# Opt-in solely when diagnosing glass rendering; never burn emulator minutes
+# or claim fixture PNGs are genuine screens after an ordinary code commit.
 on:
-  push:
-    branches:
-      - design/wen-visual-parity-owner-review-20261106
-    paths:
-      - 'app/src/debug/**'
-      - 'app/src/main/java/app/wensarafet/tracker/Ui.java'
-      - 'app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java'
-      - 'glass-engine/**'
-      - '.github/workflows/wen-visual-screenshots.yml'
-      - 'tests/wen_188_visual_safezone_contract.py'
-      - 'scripts/capture_visual_preview.sh'
+  pull_request:
+    types: [labeled]
+    branches: [release/wen-2.0-premium-original-signer-20261105]
   workflow_dispatch:
 
 permissions:
@@ -18,8 +13,9 @@ permissions:
 
 jobs:
   android35-owner-preview:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'wen-qa-debug-fixture'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
         with:
