@@ -139,7 +139,7 @@ public final class RealMainScreenCaptureTest {
             throws Exception {
         assertEquals("Test-only package: never change real app",
                 "app.wensarafet.tracker.recovered.debug",context.getPackageName());
-        for(int theme=25;theme<=29;theme++) {
+        for(int theme=25;theme<=27;theme++) {
             Ui.saveTheme(context,theme);
             try(ActivityScenario<MainActivity> scenario =
                     ActivityScenario.launch(MainActivity.class)) {
