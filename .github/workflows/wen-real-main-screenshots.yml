@@ -1,5 +1,14 @@
 name: Wen owner REAL MainActivity screenshots (Android 15)
 on:
+  pull_request:
+    branches: [release/wen-2.0-premium-original-signer-20261105]
+    paths:
+      - 'app/src/main/**'
+      - 'app/src/androidTest/java/app/wensarafet/tracker/RealMainScreenCaptureTest.java'
+      - 'glass-engine/**'
+      - 'scripts/capture_real_main_screens.sh'
+      - '.github/workflows/wen-real-main-screenshots.yml'
+      - 'tests/wen_188_visual_safezone_contract.py'
   push:
     branches: [design/wen-visual-parity-owner-review-20261106]
     paths:
