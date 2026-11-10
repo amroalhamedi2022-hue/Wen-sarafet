@@ -148,6 +148,7 @@ final class WenGoldGlassSurface {
         private final Paint light=new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint edge=new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF bounds=new RectF();
+        private final RectF rimBounds=new RectF();
         private final Path clip=new Path();
         private final int theme;
         private final float radius;
@@ -171,6 +172,9 @@ final class WenGoldGlassSurface {
                     b.top+b.height()*.15f,
                     new int[]{white,theme==27?0x50FFFFFF:0x50FFE1AB,0},
                     new float[]{0f,.40f,1f},Shader.TileMode.CLAMP));
+            float inset=edge.getStrokeWidth()*.6f;
+            rimBounds.set(bounds.left+inset,bounds.top+inset,
+                    bounds.right-inset,bounds.bottom-inset);
             edge.setShader(new LinearGradient(b.left,b.top,b.right,b.bottom,
                     new int[]{theme==27?0xB0FFFFFF:0x66FFE3B1,0xC7FFFFFF,
                             theme==27?0x80E4BC82:0x7AF9B55C,0xB9FFFFFF},
@@ -184,10 +188,7 @@ final class WenGoldGlassSurface {
             canvas.drawRect(bounds.left,bounds.top,bounds.right,
                     bounds.top+bounds.height()*.15f,light);
             canvas.restoreToCount(save);
-            float inset=edge.getStrokeWidth()*.6f;
-            RectF r=new RectF(bounds.left+inset,bounds.top+inset,
-                    bounds.right-inset,bounds.bottom-inset);
-            canvas.drawRoundRect(r,radius,radius,edge);
+            canvas.drawRoundRect(rimBounds,radius,radius,edge);
         }
         @Override public void setAlpha(int alpha) {
             opacity=alpha;
