@@ -114,7 +114,7 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "fd2e770e1f02840a93718b83d98eea2e6a8ae075"
+APPROVED_VISUAL_HOST_BLOB = "49de0e45e8d1052642e859d2d158c1a60c785118"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
@@ -131,6 +131,32 @@ def revert_visual_section(current, old, from_current, from_old, until):
     fresh = current[current.index(from_current):current.index(until)]
     historical = old[old.index(from_old):old.index(until)]
     return current.replace(fresh, historical, 1)
+
+# Strictly presentational floating-navigation inset and radius:
+# original tab click handlers, activity routes and selection state are unchanged.
+gold_nav_margin = """        if (Ui.isLiquidTheme(this)) {
+            // Owner reference: truly floating 16dp inset, preserving
+            // the original four tab callbacks and scroll routing.
+            int sideInset = WenGoldGlassSurface.enabled(this) ? 16 : 10;
+            navParams.setMargins(Ui.dp(this,sideInset),0,
+                    Ui.dp(this,sideInset),Ui.dp(this,8));
+        }"""
+legacy_nav_margin = """        if (Ui.isLiquidTheme(this)) navParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));"""
+gold_nav_radius = """nav.setBackground(Ui.glassNavigationBackground(this,
+                WenGoldGlassSurface.enabled(this) ? 28 : 26));"""
+legacy_nav_radius = "nav.setBackground(Ui.glassNavigationBackground(this, 26));"
+for optical, historic in ((gold_nav_margin,legacy_nav_margin),
+                          (gold_nav_radius,legacy_nav_radius)):
+    assert sanitized_host.count(optical) == 1, "Unreviewed bottom bar appearance"
+    sanitized_host = sanitized_host.replace(optical,historic,1)
+# Preserve tab routes byte-for-byte; only layout and glass are in scope.
+for route in (
+    "home.setOnClickListener(v -> showMain(false));",
+    "tx.setOnClickListener(v -> showMain(true));",
+    "debts.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_RECEIVABLE));",
+    "analytics.setOnClickListener(v -> showAnalyticsScreen());",
+):
+    assert current_main.count(route) == 1, "Navigation route changed"
 
 # New gold-only screen background is a passive view placed before the
 # original shell; no finance callbacks, layout actions, or input routing.
