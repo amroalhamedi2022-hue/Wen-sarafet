@@ -44,6 +44,10 @@ ALLOWED = {
     "scripts/capture_real_main_screens.sh",
     "app/src/debug/java/app/wensarafet/tracker/OwnerThemeCaptureReceiver.java",
     "scripts/capture_main_no_instrumentation.sh",
+    # CI-only screenshot integrity guard; no app sources, DB or money logic.
+    "scripts/validate_native_capture.py",
+    "tests/test_native_capture_integrity.py",
+    ".github/workflows/core-rules.yml",
     ".github/workflows/wen-main-physical-screens.yml",
     "docs/design/WEN_190_FIVE_PREMIUM_LIQUID_HANDOFF_20261105.md",
     "docs/releases/WEN_200_PREMIUM_INTEGRATION_HANDOFF_20261105.md",
