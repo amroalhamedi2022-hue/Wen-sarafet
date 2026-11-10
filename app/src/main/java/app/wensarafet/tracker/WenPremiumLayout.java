@@ -37,4 +37,13 @@ final class WenPremiumLayout {
         return WenGoldGlassSurface.enabled(context)
                 ? dp(context, 114, 104) : Ui.dp(context, 88);
     }
+
+    static int navigationClearance(Context context) {
+        // The floating capsule is an OVERLAY, not a content row. Reserve the
+        // capsule + its lower inset + a breathing gap so bank-account values
+        // do not appear through the tab labels at rest.
+        if (!WenGoldGlassSurface.enabled(context)) return 0;
+        return navigationHeight(context)
+                + Ui.dp(context, navigationBottomInsetDp(context) + 8);
+    }
 }
