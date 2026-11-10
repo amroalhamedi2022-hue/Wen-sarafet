@@ -61,7 +61,15 @@ final class WenGoldGlassSurface {
         // the solid card background from its TEXT child is essential: an
         // opaque content layer would conceal every refracted pixel below it.
         Drawable original=content.getBackground();
-        host.setBackground(original);
+        // Preserve the old visual drawable as a subtle warm optical underlay,
+        // never a thick opaque plastic surface blocking live refraction.
+        // Each card owns its own Drawable instance; mutate() prevents bleed
+        // into sibling tiles and old themes.
+        if (original != null) {
+            Drawable underlay=original.mutate();
+            underlay.setAlpha(Ui.themeIndex(context)==27 ? 32 : 24);
+            host.setBackground(underlay);
+        }
         content.setBackground(null);
         LiquidGlassView glass=buildGlass(context,radiusDp);
         host.addView(glass,new FrameLayout.LayoutParams(
@@ -82,6 +90,11 @@ final class WenGoldGlassSurface {
     /** Existing header: keep its original button/text hierarchy untouched. */
     static void enhanceHeader(FrameLayout header,int radiusDp) {
         if (!enabled(header.getContext()) || header.getChildCount()<2) return;
+        // The old opaque gold header backing would otherwise cover every
+        // moving pixel sampled by the library. Keep only a faint warm wash.
+        View oldBacking=header.getChildAt(0);
+        oldBacking.setAlpha(Ui.themeIndex(header.getContext())==27 ? .15f : .12f);
+        oldBacking.setElevation(0f);
         final LiquidGlassView glass=buildGlass(header.getContext(),radiusDp);
         header.addView(glass,1,new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
@@ -108,14 +121,14 @@ final class WenGoldGlassSurface {
         glass.setUseShaderPipeline(true);
         glass.setEnableDynamicBackground(!economical);
         glass.setEnableBackdropBlur(!economical);
-        glass.setBlurAmount(!economical ? .075f : 0f);
+        glass.setBlurAmount(!economical ? (theme==27 ? .082f : .068f) : 0f);
         glass.setEnableChromaticAberration(!economical);
         glass.setEnablePressEffect(false);
         glass.setEnableShadow(false);
         glass.setEnableEdgeHighlight(true);
         glass.setCornerRadius(radiusDp*density);
-        glass.setBevelWidth(10.5f*density);
-        glass.setRefractionHeight(31f*density);
+        glass.setBevelWidth((theme==27 ? 12.0f : 14.0f)*density);
+        glass.setRefractionHeight((theme==27 ? 28f : 35f)*density);
         glass.setRefractionFalloff(2.35f);
         glass.setDispersionStrength(!economical ? .048f : 0f);
         glass.setDisplacementScale(35f);
@@ -123,7 +136,7 @@ final class WenGoldGlassSurface {
         glass.setAberrationIntensity(!economical ? .38f : 0f);
         glass.setSaturation(111f);
         glass.setGlassTint(theme==27?0xFFFFEAD1:0xFFFFD6A0,
-                theme==27?.025f:.035f);
+                theme==27?.018f:.020f);
         glass.setEdgeHighlightBorderWidth(.8f*density);
         glass.setEdgeHighlightOpacity(theme==27?55f:47f);
         return glass;
