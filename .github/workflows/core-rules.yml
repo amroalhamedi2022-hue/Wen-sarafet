@@ -30,6 +30,11 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p test_native_capture_integrity.py -v
           bash -n scripts/capture_main_no_instrumentation.sh
+          if command -v pwsh >/dev/null 2>&1; then
+            pwsh -NoProfile -NonInteractive -Command '$tokens=$null; $parseErrors=$null; [System.Management.Automation.Language.Parser]::ParseFile("scripts/capture_owner_android_device.ps1",[ref]$tokens,[ref]$parseErrors) | Out-Null; if ($parseErrors.Count -gt 0) { $parseErrors | Out-String | Write-Host; exit 1 }'
+          else
+            echo "PowerShell unavailable on runner: device helper syntax check skipped"
+          fi
       - name: Check protected security file digests remain identical to recovered baseline
         run: sha256sum -c tests/protected_security_sha256.txt
       - name: Validate Android XML, manifest permissions and public repository hygiene
