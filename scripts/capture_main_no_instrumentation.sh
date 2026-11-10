@@ -90,18 +90,19 @@ capture() {
         timeout 80 adb shell am start -W -n "$PACKAGE/app.wensarafet.tracker.MainActivity" --ez open_transactions true ;;
       *) echo "Unknown page $page" >&2; exit 1 ;;
     esac
-    # Android 13's SplashScreen is a valid PNG, but NOT the finance UI.
-    # UIAutomator repeatedly blocked the hosted emulator (and eventually ADB)
-    # even AFTER MainActivity logged native nav attachment and live backdrop.
-    # Use the genuine window's optical attachment probe instead. It is emitted
-    # by PRODUCTION nav code only after the four-tab MainActivity view is mounted.
-    # This is not a mock, a synthetic screen, or a screenshot substitute.
+    # Android's SplashScreen is a valid PNG, but NOT the finance UI.
+    # The golden visual patch deliberately changed the real refractive source
+    # from the SCROLL viewport (which leaked account text into the dock) to
+    # the dedicated LIVE backdrop View. Accept ONLY its actual new 'gold-scene'
+    # readiness probe after the four-tab MainActivity hierarchy is mounted.
+    # The previous 'real-page-underlay' probe falsely failed all 3 themes.
+    # Keep the strict PNG completeness check; never accept SplashScreen.
     local ready=0
     for attempt in 1 2 3 4 5 6 7 8 9 10; do
       sleep 3
       test -n "$(timeout 8 adb shell pidof "$PACKAGE" 2>/dev/null | tr -d '\r')" || continue
       if timeout 8 adb logcat -d -s WenGlassProbe:I AndroidRuntime:E WenSarafet:E 2>/dev/null \
-         | grep -Fq "MIT_VIEW_GLASS_BACKDROP_BOUND source=real-page-underlay"; then
+         | grep -Fq "MIT_VIEW_GLASS_BACKDROP_BOUND source=gold-scene"; then
         ready=1
         break
       fi
