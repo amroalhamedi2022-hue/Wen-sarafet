@@ -470,6 +470,10 @@ public final class MainActivity extends Activity {
         }
 
         LinearLayout shell = Ui.column(this);
+        // Gold floating dock must NEVER obscure a readable account/amount.
+        // Reserve only viewport space; DB queries and scroll data stay exact.
+        if (WenGoldGlassSurface.enabled(this))
+            shell.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));
         root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         View topBar = mainTopBar();
         shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -2314,6 +2318,10 @@ public final class MainActivity extends Activity {
         primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
         LinearLayout page=Ui.column(this);
+        // Identical visual clearance on Debts and Analytics. Scroll routing,
+        // navigation listeners and all financial content are unchanged.
+        if (WenGoldGlassSurface.enabled(this))
+            page.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));
         primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View debtTopBar=mainTopBar();
         page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -2721,6 +2729,10 @@ public final class MainActivity extends Activity {
         primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
         LinearLayout page=Ui.column(this);
+        // Identical visual clearance on Debts and Analytics. Scroll routing,
+        // navigation listeners and all financial content are unchanged.
+        if (WenGoldGlassSurface.enabled(this))
+            page.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));
         primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View analyticsTopBar=mainTopBar();
         page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
