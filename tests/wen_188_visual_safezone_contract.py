@@ -46,6 +46,7 @@ ALLOWED = {
     "scripts/capture_main_no_instrumentation.sh",
     # CI-only screenshot integrity guard; no app sources, DB or money logic.
     "scripts/validate_native_capture.py",
+    "scripts/capture_owner_android_device.ps1",
     "tests/test_native_capture_integrity.py",
     ".github/workflows/core-rules.yml",
     ".github/workflows/wen-main-physical-screens.yml",
