@@ -14,11 +14,8 @@ on:
       - '.github/workflows/wen-main-physical-screens.yml'
   workflow_dispatch:
 
-# Keep running screenshot evidence intact when other visual commits land.
-# PR-only triggers avoid the earlier double push + pull_request runs.
-concurrency:
-  group: wen-owner-real-screens-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+# PR-only trigger: no duplicate push runs or concurrency-group eviction.
+# Every started screenshot check retains its own immutable run ID.
 
 permissions:
   contents: read
