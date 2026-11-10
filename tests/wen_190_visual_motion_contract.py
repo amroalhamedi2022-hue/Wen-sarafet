@@ -25,7 +25,7 @@ ui = (root / ui_path).read_text(encoding="utf-8")
 # Pin original v1.9 production host exactly. The only approved changes are the
 # reviewed view-only hooks in the new MainActivity blob and this new motion file.
 assert git("hash-object", main_path) == (
-    "47555fc7906dd05a4ab228fc82822f242ce68e2d"
+    "fd2e770e1f02840a93718b83d98eea2e6a8ae075"
 ), "MainActivity changed beyond reviewed host-level visual hooks"
 assert git("hash-object", motion_path) == (
     "860c1a2187d7c3474b00f86d42c8500bcc189c67"
@@ -34,6 +34,16 @@ assert git("show", f"{trusted_main}:app/build.gradle") == (
     root / "app/build.gradle").read_text(encoding="utf-8").rstrip(), (
     "Never change version, package, permissions or signing in a visual-only batch"
 )
+
+# New premium hosts may draw real SDF glass behind values, but cannot
+# replace the original data-bearing card trees or attach independent clicks.
+for visual in ("WenGoldGlassSurface.enhanceHeader(layers,24);",
+               "WenGoldGlassSurface.wrap(card,22)",
+               "WenGoldGlassSurface.wrap(todayCard,20)",
+               "WenGoldGlassSurface.wrap(weekCard,20)",
+               "WenGoldGlassSurface.wrap(monthCard,20)",
+               "WenGoldGlassSurface.wrap(chartCard,22)"):
+    assert visual in main, "Gold surface mounting missing: "+visual
 
 # All original 1.8.8 navigation/financial callbacks keep their exact targets.
 for old_callback in (
