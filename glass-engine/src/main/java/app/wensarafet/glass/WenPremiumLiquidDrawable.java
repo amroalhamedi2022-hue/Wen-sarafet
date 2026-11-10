@@ -114,12 +114,12 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         int[] p = PALETTES[index - ROYAL_DARK];
         // Transparent glass, not a flat tinted plastic card. Gold stats stay
         // slightly denser to protect white text; champagne keeps dark ink.
-        final int cardAlpha = index == CHAMPAGNE ? 202
-                : index == IMPERIAL_DARK ? 178 : index == ROYAL_DARK ? 170
+        final int cardAlpha = index == CHAMPAGNE ? 156
+                : index == IMPERIAL_DARK ? 147 : index == ROYAL_DARK ? 140
                 : index == ORANGE_GREEN ? 165 : 168;
-        final int headerAlpha = index == CHAMPAGNE ? 212
-                : index == ORANGE_GREEN || index == PURPLE_PINK ? 191 : 196;
-        final int navAlpha = index == CHAMPAGNE ? 192 : 180;
+        final int headerAlpha = index == CHAMPAGNE ? 165
+                : index == ORANGE_GREEN || index == PURPLE_PINK ? 191 : 158;
+        final int navAlpha = index == CHAMPAGNE ? 154 : 143;
         switch (surface) {
             case BACKDROP:
                 return new int[]{p[0], blend(p[0], p[1], .66f), p[1],
