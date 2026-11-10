@@ -75,12 +75,24 @@ assert main.count("setBackground(Ui.glassScreenBackground(this))") == 4
 assert "new RadialGradient" in engine
 assert "new LinearGradient" in engine
 assert "innerBorder.set(surface)" in engine
-assert "showLens = strong && w > h * 3.1f && !lowPower;" in engine
+assert "showLens = false;" in engine, "Sandbox cards must not render unrelated floating orbs"
+assert "prismRim.setShader(new LinearGradient" in engine, "Restore fine optical rim"
+assert "crown.setShader(new LinearGradient" in engine, "Restore pearly crown"
+assert "final int bodyAlpha = strong ? 202 : 221;" in engine, "Keep actual background visible through glass"
 assert "canvas.drawCircle(lensX, lensY, lensRadius, bubble);" in engine
 assert "canvas.drawRect(surface, ambient);" in engine
 assert "if (!lowPower && strong)" in engine
-assert "new android.view.animation.OvershootInterpolator(1.35f)" in ui
-assert "if (isLiquidTheme(v.getContext()))" in ui
+assert "GlassMotion.bindPress(view, SKY)" in ui, "Restore sandbox finite pressure bubble"
+assert "WenFabBubbleDrawable(context, SKY, DARK)" in ui, "Restore circular original-Liquid FAB"
+assert "liquid ? 2 : 10" in ui and "liquid ? 125 : 300" in ui, "Fast staged Liquid entrances"
+assert "setDuration(115)" in ui, "Gentle sandbox-style screen reveal"
+assert "if (isLiquidTheme(view.getContext()))" in ui
 assert "if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return false;" in ui
 assert "ViewPropertyAnimator" not in engine
+fab_bubble = (root / "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java").read_text(encoding="utf-8")
+assert "public float getPress()" in fab_bubble and "public void setPress(float fraction)" in fab_bubble
+assert "new RadialGradient" in fab_bubble, "Real pearly FAB depth must be restored"
+assert "Timer" not in fab_bubble and "postDelayed" not in fab_bubble
+assert "return false; // Never steal existing FAB click/hold actions." in ui
+
 print("PASS: component-wide Liquid glass surfaces are passive; other themes retain fallbacks")
