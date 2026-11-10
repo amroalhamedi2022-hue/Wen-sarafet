@@ -123,21 +123,33 @@ capture() {
     local complete=0
     local tmp="$file.partial"
     rm -f "$file" "$tmp"
-    # One direct framebuffer stream; no second ADB round trip.
-    timeout -k 3s 20s adb exec-out screencap -p > "$tmp" 2>/dev/null || true
+    # One direct framebuffer stream; no second ADB round trip. Preserve the
+    # stderr and exact invalid bytes for a failed job so GPU stalls, zero-byte
+    # output and strict PNG validation errors are distinguishable afterward.
+    timeout -k 3s 20s adb exec-out screencap -p > "$tmp" \
+      2>> "$SCREEN_DIR/adb-screencap-stderr.log" || true
     if python3 scripts/validate_native_capture.py "$tmp" >/dev/null 2>&1; then
       mv "$tmp" "$file"
       complete=1
     else
-      # Fallback only when the native stream is incomplete: save on emulator
-      # then pull. Do not restart Android or repeatedly kill its ADB daemon.
-      echo "WARN: direct PNG stream incomplete; using one on-device retry" >&2
+      echo "WARN: direct framebuffer PNG rejected for $theme/$page" >&2
+      wc -c "$tmp" >&2 || true
+      python3 scripts/validate_native_capture.py "$tmp" >&2 || true
+      # These files must NEVER be named .png: they are NOT verified images.
+      cp "$tmp" "$SCREEN_DIR/unverified-theme-${theme}-execout.bin" || true
       local target="/sdcard/wen-owner-theme-${theme}.png"
-      timeout -k 3s 16s adb shell screencap -p "$target" || true
-      timeout -k 3s 16s adb pull "$target" "$tmp" >/dev/null 2>&1 || true
+      timeout -k 3s 16s adb shell screencap -p "$target" \
+        2>> "$SCREEN_DIR/adb-screencap-stderr.log" || true
+      timeout -k 3s 16s adb pull "$target" "$tmp" \
+        >> "$SCREEN_DIR/adb-screencap-stderr.log" 2>&1 || true
       if python3 scripts/validate_native_capture.py "$tmp" >/dev/null 2>&1; then
         mv "$tmp" "$file"
         complete=1
+      else
+        echo "WARN: on-device framebuffer PNG rejected for $theme/$page" >&2
+        wc -c "$tmp" >&2 || true
+        python3 scripts/validate_native_capture.py "$tmp" >&2 || true
+        cp "$tmp" "$SCREEN_DIR/unverified-theme-${theme}-ondevice.bin" || true
       fi
     fi
     rm -f "$tmp"
