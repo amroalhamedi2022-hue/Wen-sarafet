@@ -64,11 +64,11 @@ public final class NavigationLiquidMaterial {
             glass.setCornerRadius(999f);
             glass.setBevelWidth((premiumLiquid ? 13.0f : 7.5f) * d);
             glass.setRefractionFalloff(premiumLiquid ? 2.15f : 1.4f);
-            glass.setDispersionStrength(premiumLiquid && !powerSave ? .065f : 0f);
-            glass.setDisplacementScale(premiumLiquid ? 38f : 14f);
-            glass.setRefractionHeight((premiumLiquid ? 30f : 6f) * d);
+            glass.setDispersionStrength(premiumLiquid && !powerSave ? .016f : 0f);
+            glass.setDisplacementScale(premiumLiquid ? 24f : 14f);
+            glass.setRefractionHeight((premiumLiquid ? 24f : 6f) * d);
             glass.setEdgeSoftness((premiumLiquid ? 2.6f : 1.8f) * d);
-            glass.setAberrationIntensity(premiumLiquid && !powerSave ? .65f : 0f);
+            glass.setAberrationIntensity(premiumLiquid && !powerSave ? .18f : 0f);
             glass.setSaturation(premiumLiquid ? 115f : 100f);
             final int opticalTint = premiumLiquid
                     ? WenGoldGlassSurface.navigationLensTint(Ui.themeIndex(lens.getContext()))
@@ -118,10 +118,10 @@ public final class NavigationLiquidMaterial {
                     // substance; never an independent halo or second bubble.
                     glass.setBevelWidth(((premiumLiquid ? 13f : 7.5f)
                             + 2.1f * t + 2.2f * strain) * d);
-                    glass.setRefractionHeight(((premiumLiquid ? 30f : 6f)
-                            + 19f * t + 9f * strain) * d);
-                    glass.setDisplacementScale((premiumLiquid ? 38f : 14f)
-                            + 47f * t + 20f * strain);
+                    glass.setRefractionHeight(((premiumLiquid ? 24f : 6f)
+                            + 15f * t + 7f * strain) * d);
+                    glass.setDisplacementScale((premiumLiquid ? 24f : 14f)
+                            + 32f * t + 13f * strain);
                     glass.setGlassTint(opticalTint,
                             (premiumLiquid ? .018f : .045f) + .017f * t);
                     glass.setScaleX(1f + .028f * t + .143f * strain);
@@ -209,10 +209,21 @@ public final class NavigationLiquidMaterial {
                     // Text and tab icons stay in the foreground, so their
                     // readability is not sacrificed to the background blur.
                     View scene = findUnderlay(container);
-                    glass.setBackdropSource(scene != null ? scene : nav);
+                    View goldBackdrop = nav.getRootView().findViewWithTag(
+                            WenGoldGlassSurface.BACKDROP_TAG);
+                    // The real gold backdrop is a live View with its own
+                    // painted scene. Using the scroll viewport had refracted
+                    // bank logos and balance text behind navigation captions,
+                    // producing the overlap seen in actual emulator shots.
+                    // Keep that previous fallback for other Liquid themes.
+                    View source = premiumScene && goldBackdrop != null
+                            && goldBackdrop.isAttachedToWindow() ? goldBackdrop : scene;
+                    glass.setBackdropSource(source != null ? source : nav);
                     android.util.Log.i("WenGlassProbe",
                             "MIT_VIEW_GLASS_BACKDROP_BOUND source="
-                                    + (scene != null ? "real-page-underlay" : "nav-fallback"));
+                                    + (source == goldBackdrop && source != null
+                                    ? "gold-scene" : scene != null
+                                    ? "real-page-underlay" : "nav-fallback"));
                 } else if (tabContent != null && tabContent.getWidth() > 0) {
                     glass.setBackdropSource(tabContent);
                     android.util.Log.i("WenGlassProbe",
