@@ -72,8 +72,9 @@ trap 'kill "$LOGCAT_PID" 2>/dev/null || true' EXIT
 
 onfailure() {
   echo 'EMULATOR DIAGNOSTICS:' >&2
-  adb shell dumpsys activity activities 2>/dev/null | tail -n 35 >&2 || true
-  adb logcat -d -t 260 2>/dev/null | tail -n 120 >&2 || true
+  # ADB failure diagnostics must NEVER hang after the emulator disappears.
+  timeout -k 2s 8s adb shell dumpsys activity activities 2>/dev/null | tail -n 35 >&2 || true
+  timeout -k 2s 8s adb logcat -d -t 260 2>/dev/null | tail -n 120 >&2 || true
 }
 trap onfailure ERR
 
@@ -90,69 +91,62 @@ capture() {
         timeout 80 adb shell am start -W -n "$PACKAGE/app.wensarafet.tracker.MainActivity" --ez open_transactions true ;;
       *) echo "Unknown page $page" >&2; exit 1 ;;
     esac
-    # Android's SplashScreen is a valid PNG, but NOT the finance UI.
-    # The golden visual patch deliberately changed the real refractive source
-    # from the SCROLL viewport (which leaked account text into the dock) to
-    # the dedicated LIVE backdrop View. Accept ONLY its actual new 'gold-scene'
-    # readiness probe after the four-tab MainActivity hierarchy is mounted.
-    # The previous 'real-page-underlay' probe falsely failed all 3 themes.
-    # Keep the strict PNG completeness check; never accept SplashScreen.
+    # Wait for the REAL native optical marker in the ALREADY STREAMING local
+    # logcat file, NOT through repeated 'adb shell pidof' / 'adb logcat -d'
+    # requests. Those synchronous ADB queries often froze the emulator after
+    # the screen had already rendered, before screenshot capture could start.
+    # This never accepts SplashScreen: the marker is emitted by the real
+    # four-tab MainActivity after its live gold-scene has been attached.
     local ready=0
-    for attempt in 1 2 3 4 5 6 7 8 9 10; do
-      sleep 3
-      test -n "$(timeout 8 adb shell pidof "$PACKAGE" 2>/dev/null | tr -d '\r')" || continue
-      if timeout 8 adb logcat -d -s WenGlassProbe:I AndroidRuntime:E WenSarafet:E 2>/dev/null \
-         | grep -Fq "MIT_VIEW_GLASS_BACKDROP_BOUND source=gold-scene"; then
+    for attempt in $(seq 1 30); do
+      if grep -Fq "MIT_VIEW_GLASS_BACKDROP_BOUND source=gold-scene" \
+          "$SCREEN_DIR/live-renderer.log"; then
         ready=1
         break
       fi
-      echo "Theme $theme probe $attempt: waiting for native MainActivity optical view"
+      sleep 0.5
     done
-    test "$ready" -eq 1 || {
-      echo "ERROR: original MainActivity live backdrop did not attach; refusing SplashScreen" >&2
+    if [ "$ready" -ne 1 ]; then
+      echo "ERROR: 15s expired before real MainActivity gold-scene optical attachment" >&2
+      tail -n 40 "$SCREEN_DIR/live-renderer.log" >&2 || true
       exit 1
-    }
-    # One compositor beat AFTER attachment so the first bitmap is not a
-    # transition to the dashboard; the per-PNG integrity gate remains strict.
-    sleep 2
-    if [ "$page" = accounts ]; then
-       adb shell input swipe 520 1900 520 610 420
-       sleep 2
     fi
-    # Capture and COMPLETE the PNG on-device before transferring it. The
-    # Champagne emulator has previously severed adb halfway through a PNG
-    # stream, leaving an invalid image that looked like a completed screenshot.
-    # Saving on device first makes retries recoverable without recomposing UI.
-    local target="/sdcard/wen-owner-theme-${theme}.png"
+    # Give the original View hierarchy one compositor beat, then CAPTURE NOW,
+    # while ADB is still alive. The former on-device PNG + second adb pull
+    # routinely came too late (and often returned zero bytes).
+    sleep 0.6
+    if [ "$page" = accounts ]; then
+       timeout -k 2s 8s adb shell input swipe 520 1700 520 610 420
+       sleep 0.6
+    fi
     local bytes=0
     local complete=0
-    for attempt in 1 2 3 4; do
-      timeout 35 adb shell screencap -p "$target" || true
-      timeout 35 adb pull "$target" "$file" >/dev/null 2>&1 || true
-      if [ -s "$file" ]; then
-        bytes=$(stat -c '%s' "$file")
-        if python3 - "$file" <<'CHECK_PNG'
-import pathlib,sys,struct,zlib
-p=pathlib.Path(sys.argv[1])
-data=p.read_bytes()
-if len(data)<100000 or data[:8]!=bytes.fromhex("89504e470d0a1a0a"):sys.exit(2)
-if data[-12:]!=bytes.fromhex("0000000049454e44ae426082"):sys.exit(3)
-width,height=struct.unpack(">II",data[16:24])
-if width<720 or height<1280:sys.exit(4)
-CHECK_PNG
-        then
-          complete=1
-          break
-        fi
+    local tmp="$file.partial"
+    rm -f "$file" "$tmp"
+    # One direct framebuffer stream; no second ADB round trip.
+    timeout -k 3s 20s adb exec-out screencap -p > "$tmp" 2>/dev/null || true
+    if python3 scripts/validate_native_capture.py "$tmp" >/dev/null 2>&1; then
+      mv "$tmp" "$file"
+      complete=1
+    else
+      # Fallback only when the native stream is incomplete: save on emulator
+      # then pull. Do not restart Android or repeatedly kill its ADB daemon.
+      echo "WARN: direct PNG stream incomplete; using one on-device retry" >&2
+      local target="/sdcard/wen-owner-theme-${theme}.png"
+      timeout -k 3s 16s adb shell screencap -p "$target" || true
+      timeout -k 3s 16s adb pull "$target" "$tmp" >/dev/null 2>&1 || true
+      if python3 scripts/validate_native_capture.py "$tmp" >/dev/null 2>&1; then
+        mv "$tmp" "$file"
+        complete=1
       fi
-      echo "Attempt $attempt: incomplete screenshot $file ($bytes B)" >&2
-      timeout 15 adb start-server >/dev/null 2>&1 || true
-      sleep 2
-    done
+    fi
+    rm -f "$tmp"
     test "$complete" -eq 1 || {
-      echo "ERROR: no complete native screenshot for $theme/$page" >&2
+      echo "ERROR: no valid framebuffer PNG for theme $theme/$page" >&2
+      tail -n 40 "$SCREEN_DIR/live-renderer.log" >&2 || true
       exit 1
     }
+    bytes=$(stat -c '%s' "$file")
     echo "REAL MainActivity $page theme=$theme complete PNG bytes=$bytes"
 }
 
@@ -177,10 +171,11 @@ root=pathlib.Path(sys.argv[1])
 files=list(root.glob("main-theme-*-home.png"))
 assert len(files)==int(sys.argv[2]), "Missing authentic MainActivity screenshots"
 for file in files:
-    data=file.read_bytes()
-    assert data[:8] == bytes.fromhex("89504e470d0a1a0a"), file
-    assert data[-12:] == bytes.fromhex("0000000049454e44ae426082"), (
-        "Truncated screenshot, not acceptable for review: "+str(file))
+    # This fast final scan checks both content and all PNG chunk CRCs.
+    # The initial capture already used this same validator before acceptance.
+    import subprocess
+    subprocess.run(["python3","scripts/validate_native_capture.py",str(file)],
+                   check=True)
 print("PASS:",len(files),"genuine full PNG screenshots, original UI pixels.")
 PY
 sha256sum "$SCREEN_DIR"/*.png > "$SCREEN_DIR/checksums.txt"
