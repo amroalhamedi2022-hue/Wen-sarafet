@@ -42,7 +42,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
           test -e /dev/kvm
           sudo chmod 0666 /dev/kvm
-      - name: Render 5 owner palettes on Android 15 and capture PNG screenshots
+      - name: Render three approved gold materials on Android 15 and capture PNG screenshots
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
