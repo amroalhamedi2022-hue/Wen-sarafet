@@ -12,26 +12,13 @@ on:
       - 'tests/wen_188_visual_safezone_contract.py'
       - 'scripts/capture_main_no_instrumentation.sh'
       - '.github/workflows/wen-main-physical-screens.yml'
-  push:
-    branches:
-      - design/wen-visual-parity-owner-review-20261106
-    paths:
-      - 'app/src/main/java/app/wensarafet/tracker/MainActivity.java'
-      - 'app/src/main/java/app/wensarafet/tracker/Ui.java'
-      - 'app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java'
-      - 'app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java'
-      - 'app/src/main/java/app/wensarafet/tracker/WenPremiumLayout.java'
-      - 'app/src/main/java/app/wensarafet/tracker/WenPremiumTabIconDrawable.java'
-      - 'app/src/debug/**'
-      - 'glass-engine/**'
-      - 'scripts/capture_main_no_instrumentation.sh'
-      - '.github/workflows/wen-main-physical-screens.yml'
-      - 'tests/wen_188_visual_safezone_contract.py'
   workflow_dispatch:
 
+# Keep running screenshot evidence intact when other visual commits land.
+# PR-only triggers avoid the earlier double push + pull_request runs.
 concurrency:
-  group: wen-owner-real-screens-${{ github.ref }}
-  cancel-in-progress: true
+  group: wen-owner-real-screens-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -43,7 +30,7 @@ jobs:
       matrix:
         theme: [25, 26, 27]
     runs-on: ubuntu-latest
-    timeout-minutes: 38
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
