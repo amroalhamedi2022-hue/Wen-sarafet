@@ -756,6 +756,44 @@ assert new_ui.count(new_contrast) == 1, (
     "SAFE ZONE: unexpected changes to premium dark/glass scene condition"
 )
 normalized_ui = new_ui.replace(new_contrast, old_contrast, 1)
+# Safely retire only the two non-gold visual IDs. These exact three replacements
+# are the ONLY changes allowed to legacy theme handling; palettes 0-27 and
+# preferences unrelated to "theme" remain byte-identical.
+retirement_changes = [
+    (
+        """        // Load through the visual-only compatibility resolver: retained old
+        // preset 28/29 never paints again, even on an update install.
+        int theme = themeIndex(context);
+        if (theme < 0 || theme >= THEMES.length) theme = 25;""",
+        """        int theme = context.getSharedPreferences("appearance", Context.MODE_PRIVATE).getInt("theme", 0);
+        if (theme < 0 || theme >= THEMES.length) theme = 0;"""
+    ),
+    (
+        """    public static int themeIndex(Context context) {
+        int persisted = context.getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .getInt("theme", 0);
+        // Retired colourful presets are VISUAL-ONLY aliases of Royal Dark.
+        // Do not rewrite unrelated appearance prefs or the finance database.
+        // Preserves stable IDs for old saved sessions and safe update installs.
+        if (persisted == 28 || persisted == 29) return 25;
+        return persisted;
+    }""",
+        """    public static int themeIndex(Context context) {
+        return context.getSharedPreferences("appearance", Context.MODE_PRIVATE).getInt("theme", 0);
+    }"""
+    ),
+    (
+        """    public static void saveTheme(Context context, int index) {
+        // Never allow selecting either retired non-gold theme via stale UI.
+        if (index == 28 || index == 29) index = 25;
+        if (index < 0 || index >= THEMES.length) index = 25;""",
+        """    public static void saveTheme(Context context, int index) {
+        if (index < 0 || index >= THEMES.length) index = 0;"""
+    ),
+]
+for fresh, original in retirement_changes:
+    assert normalized_ui.count(fresh) == 1, "Unauthorised theme migration change"
+    normalized_ui = normalized_ui.replace(fresh, original, 1)
 assert omit_visual_method_bodies(normalized_ui) == omit_visual_method_bodies(original_190_ui), (
     "SAFE ZONE: non-visual Ui class or legacy palettes changed during appearance work"
 )
