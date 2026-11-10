@@ -71,6 +71,11 @@ final class WenGoldGlassSurface {
             host.setBackground(underlay);
         }
         content.setBackground(null);
+        // The old tile's rectangular elevation outline leaked beneath the
+        // rounded optical glass and created a square press/shadow artifact.
+        // Only the passive visual elevation changes; host still forwards
+        // original accessibility and click behavior to its real content.
+        content.setElevation(0f);
         LiquidGlassView glass=buildGlass(context,radiusDp);
         host.addView(glass,new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
