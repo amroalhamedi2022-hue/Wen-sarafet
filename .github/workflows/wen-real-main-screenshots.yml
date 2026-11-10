@@ -11,12 +11,8 @@ on:
       - 'tests/wen_188_visual_safezone_contract.py'
   workflow_dispatch:
 
-# One owner-review PR run per source revision; no duplicate push + PR
-# emulator launches. A newer commit is queued, not allowed to cancel
-# a running real-screen evidence capture.
-concurrency:
-  group: wen-android15-visual-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+# PR-only trigger: no duplicate push runs or concurrency-group eviction.
+# Every started screenshot check retains its own immutable run ID.
 
 permissions:
   contents: read
