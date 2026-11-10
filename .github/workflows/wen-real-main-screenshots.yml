@@ -1,26 +1,31 @@
 name: Wen owner REAL MainActivity screenshots (Android 15)
+
 on:
+  # One independent emulator per gold theme; a GPU crash for Champagne
+  # must never cancel or conceal a successful Royal screenshot.
   pull_request:
     branches: [release/wen-2.0-premium-original-signer-20261105]
     paths:
       - 'app/src/main/**'
-      - 'app/src/androidTest/java/app/wensarafet/tracker/RealMainScreenCaptureTest.java'
+      - 'app/src/main/java/app/wensarafet/tracker/**'
+      - 'app/src/debug/**'
       - 'glass-engine/**'
-      - 'scripts/capture_real_main_screens.sh'
+      - 'scripts/capture_main_no_instrumentation.sh'
       - '.github/workflows/wen-real-main-screenshots.yml'
       - 'tests/wen_188_visual_safezone_contract.py'
   workflow_dispatch:
-
-# PR-only trigger: no duplicate push runs or concurrency-group eviction.
-# Every started screenshot check retains its own immutable run ID.
 
 permissions:
   contents: read
 
 jobs:
-  pixel6-api35-real-main:
+  android15-real-main:
+    strategy:
+      fail-fast: false
+      matrix:
+        theme: [25, 26, 27]
     runs-on: ubuntu-latest
-    timeout-minutes: 22
+    timeout-minutes: 24
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,37 +37,43 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-      - name: Exact Safe Zone and original icons source guard
+      - name: Exact Safe Zone and original account logo guards
         run: |
           python3 tests/wen_188_visual_safezone_contract.py
           python3 tests/financial_safe_zone_guard.py
-      - name: Enable hardware-accelerated emulator
+      - name: Build disposable DEBUG app with the original MainActivity
+        env:
+          WEN_DEBUG_CAPTURE_PREPARE_ONLY: '1'
+        run: bash scripts/capture_main_no_instrumentation.sh
+      - name: Enable KVM for hardware-accelerated VM
         run: |
           sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
           test -e /dev/kvm
           sudo chmod 0666 /dev/kvm
-      - name: Capture REAL MainActivity using isolated debug test DB and original 7 account icons
+      - name: Capture original MainActivity pixels using Android 15 software GPU
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          ram-size: 3072M
+          ram-size: 4096M
           heap-size: 512M
-          disk-size: 1536M
+          disk-size: 2048M
           sdcard-path-or-size: 128M
           disable-animations: false
           emulator-boot-timeout: 450
-          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: bash scripts/capture_real_main_screens.sh
-      - name: Deliver original-pixel full-resolution PNGs, no mocks or AI renders
+          # New emulator versions deprecate swiftshader_indirect. Android's
+          # documented 'software' mode chooses a compatible renderer.
+          emulator-options: -no-snapshot -no-window -gpu software -noaudio -no-boot-anim
+          script: bash scripts/capture_main_no_instrumentation.sh ${{ matrix.theme }}
+      - name: Keep full PNG plus renderer diagnostics, even on a failed theme
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wen-owner-real-mainactivity-12-gold-screens
-          path: build/owner-real-main-screens/
+          name: wen-mainactivity-theme-${{ matrix.theme }}-android15
+          path: build/owner-live-main-screens/
           retention-days: 14
           if-no-files-found: warn
