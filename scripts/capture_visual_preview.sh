@@ -4,7 +4,7 @@ set -euo pipefail
 gradle :app:assembleDebug --no-daemon --console=plain
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 mkdir -p build/visual-screenshots
-for theme in 25 26 27 28 29; do
+for theme in 25 26 27; do
     adb shell am force-stop app.wensarafet.tracker.recovered.debug || true
     adb shell am start -W -n \
        app.wensarafet.tracker.recovered.debug/app.wensarafet.tracker.VisualPreviewActivity \
