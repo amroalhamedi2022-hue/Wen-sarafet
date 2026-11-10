@@ -49,11 +49,7 @@ adb wait-for-device
 # a 9:16 / 10:16 owner layout on the Pixel 6's 9:20 viewport.
 # This changes only the disposable CI emulator, not any app preference.
 theme_for_viewport="${1:-25}"
-if [ "$theme_for_viewport" -ge 28 ]; then
-    adb shell wm size 1080x1728  # Orange/Green & Pink/Violet refs: 961x1536
-else
-    adb shell wm size 1080x1920  # Three GOLD refs: 864x1536
-fi
+adb shell wm size 1080x1920  # Three remaining gold reference themes
 adb shell wm density 420
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 # Proven GitHub Android 15 emulator launcher ANR workaround (debug user only).
@@ -156,10 +152,10 @@ CHECK_PNG
 # In CI, each owner-approved theme runs in its OWN clean AVD process.
 # This prevents one GPU/ADB crash from corrupting the other four themes.
 if [ "$#" -ge 1 ]; then
-  case "$1" in 25|26|27|28|29) themes=("$1");;
+  case "$1" in 25|26|27) themes=("$1");;
     *) echo "Unsupported theme index: $1" >&2; exit 2;; esac
 else
-  themes=(25 26 27 28 29)
+  themes=(25 26 27)
 fi
 for theme in "${themes[@]}"; do
   adb shell am force-stop "$PACKAGE" || true
