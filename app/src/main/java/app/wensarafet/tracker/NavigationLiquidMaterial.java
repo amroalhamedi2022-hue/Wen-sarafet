@@ -70,7 +70,10 @@ public final class NavigationLiquidMaterial {
             glass.setEdgeSoftness((premiumLiquid ? 2.6f : 1.8f) * d);
             glass.setAberrationIntensity(premiumLiquid && !powerSave ? .65f : 0f);
             glass.setSaturation(premiumLiquid ? 115f : 100f);
-            glass.setGlassTint(Color.WHITE, premiumLiquid ? .022f : .045f);
+            final int opticalTint = premiumLiquid
+                    ? WenGoldGlassSurface.navigationLensTint(Ui.themeIndex(lens.getContext()))
+                    : Color.WHITE;
+            glass.setGlassTint(opticalTint, premiumLiquid ? .018f : .045f);
             glass.setEdgeHighlightBorderWidth(.75f * d);
             glass.setEdgeHighlightOpacity(premiumLiquid ? 45f : 27f);
             lens.setClipChildren(false);
@@ -119,8 +122,8 @@ public final class NavigationLiquidMaterial {
                             + 19f * t + 9f * strain) * d);
                     glass.setDisplacementScale((premiumLiquid ? 38f : 14f)
                             + 47f * t + 20f * strain);
-                    glass.setGlassTint(Color.WHITE,
-                            (premiumLiquid ? .022f : .045f) + .017f * t);
+                    glass.setGlassTint(opticalTint,
+                            (premiumLiquid ? .018f : .045f) + .017f * t);
                     glass.setScaleX(1f + .028f * t + .143f * strain);
                     glass.setScaleY(1f + .012f * t - .065f * strain);
                     sheen.setMotion(t, dragDirection * strain);
