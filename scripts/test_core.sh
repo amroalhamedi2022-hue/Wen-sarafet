@@ -27,6 +27,16 @@ compile \
   "$PROJECT_DIR/tests/FinanceCoreTest.java"
 
 java -cp "$OUT_DIR" FinanceCoreTest
+# Read-only Arabic SMS experiment. No integration with production CaptureEngine.
+compile "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/Money.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/TransactionParser.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/ArabicSmsParserPilot.java" \
+  "$PROJECT_DIR/tests/ArabicSmsParserPilotTest.java"
+java -cp "$OUT_DIR" ArabicSmsParserPilotTest
+python3 "$PROJECT_DIR/tests/arabic_sms_isolation_contract.py"
+python3 "$PROJECT_DIR/tests/sms_lab_isolation_contract.py"
+
 compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/CategorySuggestionRules.java" \
   "$PROJECT_DIR/tests/CategorySuggestionRulesTest.java"

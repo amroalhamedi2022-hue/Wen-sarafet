@@ -6,4 +6,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral(); maven { url 'https://jitpack.io' } }
 }
 rootProject.name = "WenSarafet"
-include(":app", ":license-generator", ":glass-engine")
+include(":app", ":license-generator", ":glass-engine", ":sms-lab")
