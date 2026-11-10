@@ -8,6 +8,11 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -173,6 +178,66 @@ public final class ReferenceThemesInstrumentedTest {
                 card.recycle();
                 nav.recycle();
                 plus.recycle();
+            }));
+        }
+    }
+
+    /** Regression for actual View geometry and callbacks, not a mocked screen PNG. */
+    @Test public void threeGoldDocksUseLegibleUnifiedIconsAndKeepNativeTabClicks() {
+        for (int theme = 25; theme <= 27; theme++) {
+            final int selectedTheme = theme;
+            onUi(() -> underTheme(selectedTheme, () -> {
+                Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
+                int expectedHeight = Ui.dp(ctx, WenPremiumLayout.compact(ctx) ? 76 : 86);
+                assertEquals("Consistent floating dock height on all primary screens",
+                        expectedHeight, WenPremiumLayout.navigationHeight(ctx));
+                assertEquals(16, WenPremiumLayout.navigationSideInsetDp(ctx));
+                assertEquals(10, WenPremiumLayout.navigationBottomInsetDp(ctx));
+
+                LinearLayout dock = new LinearLayout(ctx);
+                dock.setOrientation(LinearLayout.HORIZONTAL);
+                dock.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+                String[] labels = {"الرئيسية", "العمليات", "الديون", "التحليل"};
+                String[] emojis = {"🏠", "📋", "🤝", "📊"};
+                TextView[] tabs = new TextView[4];
+                int[] taps = new int[4];
+                for (int i = 0; i < 4; i++) {
+                    final int clickIndex = i;
+                    TextView tab = new TextView(ctx);
+                    tab.setText(emojis[i] + "\n" + labels[i]);
+                    tab.setGravity(Gravity.CENTER);
+                    tab.setOnClickListener(v -> taps[clickIndex]++);
+                    tabs[i] = tab;
+                    dock.addView(tab, new LinearLayout.LayoutParams(
+                            0, expectedHeight, 1f));
+                }
+                NavigationVisualDecorator.install(dock, tabs, 0);
+                assertEquals("Only one shared glass track", 1, dock.getChildCount());
+                for (int i = 0; i < tabs.length; i++) {
+                    TextView tab = tabs[i];
+                    assertEquals("Emoji replaced, Arabic retained", labels[i],
+                            tab.getText().toString());
+                    assertEquals("Icon/label typography has one scene-specific ink",
+                            WenGoldGlassSurface.navigationInk(selectedTheme, i == 0),
+                            tab.getCurrentTextColor());
+                    assertNotNull(tab.getCompoundDrawables()[1]);
+                    assertEquals("Premium glyph intrinsic size must never regress",
+                            Ui.dp(ctx, 29),
+                            tab.getCompoundDrawables()[1].getIntrinsicWidth());
+                    assertTrue("Touchable tab too short", tab.getMinHeight() >= Ui.dp(ctx, 48));
+                    assertEquals("Single-line Arabic label", 1, tab.getMaxLines());
+                }
+                tabs[2].performClick();
+                assertArrayEquals("Original navigation listeners remain attached",
+                        new int[]{0, 0, 1, 0}, taps);
+
+                FrameLayout screen = new FrameLayout(ctx);
+                screen.setBackground(Ui.glassScreenBackground(ctx));
+                WenGoldGlassSurface.attachGoldBackdrop(screen);
+                assertEquals("One shared authentic optical source", 1,
+                        screen.getChildCount());
+                assertEquals(WenGoldGlassSurface.BACKDROP_TAG,
+                        screen.getChildAt(0).getTag());
             }));
         }
     }
