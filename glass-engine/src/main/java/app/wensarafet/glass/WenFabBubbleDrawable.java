@@ -18,6 +18,7 @@ public final class WenFabBubbleDrawable extends Drawable {
     private final float density;
     private final boolean dark;
     private final int accent;
+    private final int premiumTheme;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint inner = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint highlight = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -33,6 +34,13 @@ public final class WenFabBubbleDrawable extends Drawable {
     private int alpha=255;
 
     public WenFabBubbleDrawable(Context context, int accentColor, boolean darkTheme) {
+        this(context, accentColor, darkTheme, -1);
+    }
+
+    /** Exact Sandbox optics and geometry, theme-specific spectral materials. */
+    public WenFabBubbleDrawable(Context context, int accentColor, boolean darkTheme,
+                                int premiumTheme) {
+        this.premiumTheme = premiumTheme;
         density=context.getResources().getDisplayMetrics().density;
         dark=darkTheme;
         accent=accentColor;
@@ -59,6 +67,45 @@ public final class WenFabBubbleDrawable extends Drawable {
                 bounds.centerX()+side*.475f,bounds.centerY()+side*.475f);
         // Neutral, light-transmitting body. The old nearly opaque blue gradient
         // looked like a plastic action button instead of a curved glass lens.
+        // Five distinct glass bodies: keep the original Sandbox bubble's
+        // precise round silhouette, hold morph, rim and highlight geometry.
+        // Only the colour/refraction spectrum changes per approved scene.
+        if (premiumTheme >= 25 && premiumTheme <= 29) {
+            final int[] material;
+            final int glow;
+            final int depth;
+            final int edge;
+            switch (premiumTheme) {
+                case 25: // Royal Dark Gold
+                    material = new int[]{0xE18A5A2B,0xD9FFC66B,0xDF8A5428};
+                    glow=0xAEFFE0A1; depth=0x666A401B; edge=0xEEFFE3AE; break;
+                case 26: // Imperial Dark Gold
+                    material = new int[]{0xD96F5E48,0xDFF5CF8F,0xE07A5C35};
+                    glow=0xB3FFE1B8; depth=0x624D402B; edge=0xEEFFEDC7; break;
+                case 27: // Champagne Gold
+                    material = new int[]{0xEFFFF4DF,0xF2F0C58C,0xE6E9BB7F};
+                    glow=0xA9FFFFFF; depth=0x65B78855; edge=0xEEFFFCF2; break;
+                case 28: // Orange-Green Glass
+                    material = new int[]{0xD579B896,0xE0FFD08A,0xC6579974};
+                    glow=0xB3FFF0BC; depth=0x653A704E; edge=0xE4FFFFFF; break;
+                default: // Pink-Violet Glass
+                    material = new int[]{0xE7AD59DC,0xE9FF7DC7,0xD65A42C4};
+                    glow=0xBEFFBDF1; depth=0x644A277B; edge=0xE9FFFFFF; break;
+            }
+            fill.setShader(new LinearGradient(circle.left,circle.top,
+                    circle.right,circle.bottom,material,
+                    new float[]{0f,.51f,1f},Shader.TileMode.CLAMP));
+            opticalDepth.setShader(new RadialGradient(
+                    circle.centerX()-circle.width()*.24f,
+                    circle.centerY()-circle.height()*.28f,
+                    Math.max(1f,circle.width()*.78f),
+                    new int[]{glow,0x28FFFFFF,depth},
+                    new float[]{0f,.44f,1f},Shader.TileMode.CLAMP));
+            rim.setColor(edge);
+            halo.setColor(premiumTheme==25||premiumTheme==26||premiumTheme==27
+                    ? 0xA8FFDB98 : premiumTheme==28 ? 0xA4FFE2A8 : 0xA8FFD5FB);
+            inner.setColor(premiumTheme<=27 ? 0xA4FFEEC3 : 0xB8FFFFFF);
+        } else {
         fill.setShader(new LinearGradient(circle.left, circle.top,
                 circle.right, circle.bottom,
                 new int[]{dark ? 0xC65E638E : 0xD9FFFFFF,
@@ -72,6 +119,7 @@ public final class WenFabBubbleDrawable extends Drawable {
                 new int[]{0xA2FFFFFF, 0x2BFFFFFF,
                         dark ? 0x42233169 : 0x3C5276A9},
                 new float[]{0f, .43f, 1f}, Shader.TileMode.CLAMP));
+        }
         highlight.setShader(new LinearGradient(circle.left,circle.top,
                 circle.left,circle.bottom,
                 new int[]{0xDFFFFFFF, 0x46FFFFFF, 0x00FFFFFF},

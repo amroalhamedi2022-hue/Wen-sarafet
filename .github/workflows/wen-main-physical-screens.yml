@@ -1,0 +1,89 @@
+name: Wen REAL MainActivity screenshots — Android 13 stable capture
+# Android screenshot capture is QUARANTINED: GitHub-hosted Android emulators
+# repeatedly disappear from ADB AFTER they attach the real gold-scene shader.
+# No automatic visual runs on every code commit. Run just ONE opted-in theme
+# by adding PR label 'wen-qa-android13', or dispatch this workflow manually once
+# it exists on the default branch. Source/finance/compile CI remains automatic.
+on:
+  pull_request:
+    types: [labeled]
+    branches: [release/wen-2.0-premium-original-signer-20261105]
+  workflow_dispatch:
+    inputs:
+      theme:
+        description: "One gold theme to test (do not launch 3 emulators)"
+        required: true
+        type: choice
+        default: "25"
+        options:
+          - "25"
+          - "26"
+          - "27"
+
+permissions:
+  contents: read
+
+jobs:
+  android15-real-main:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'wen-qa-android13'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Audit protected original bank logos and finance source BEFORE disposable debug modifications
+        run: |
+          python3 tests/wen_188_visual_safezone_contract.py
+          python3 tests/financial_safe_zone_guard.py
+      - name: Compile disposable visual-debug APK BEFORE starting emulator
+        env:
+          WEN_DEBUG_CAPTURE_PREPARE_ONLY: '1'
+        run: bash scripts/capture_main_no_instrumentation.sh
+      - name: Enable KVM
+        run: |
+          sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -e /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Render production MainActivity views in isolated DEBUG process
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          heap-size: 512M
+          disk-size: 2048M
+          sdcard-path-or-size: 128M
+          disable-animations: false
+          emulator-boot-timeout: 300
+          emulator-options: -no-snapshot -no-window -gpu software -noaudio -no-boot-anim
+          script: bash scripts/capture_main_no_instrumentation.sh ${{ inputs.theme || '25' }}
+      - name: Upload verified REAL MainActivity PNG (never failure diagnostics)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: VERIFIED-native-mainactivity-theme-${{ inputs.theme || '25' }}-android13
+          path: build/owner-live-main-screens/main-theme-*-home.png
+          retention-days: 14
+          if-no-files-found: error
+      - name: Upload FAILED capture diagnostics (NOT screenshots)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FAILED-capture-diagnostics-theme-${{ inputs.theme || '25' }}-android13
+          path: |
+            build/owner-live-main-screens/*.log
+            build/owner-live-main-screens/*.bin
+          retention-days: 7
+          if-no-files-found: warn

@@ -45,7 +45,8 @@ public final class GlassMotion {
     /** Bind without consuming click, click-and-hold or touch-scroll events. */
     public static void bindPress(View view, int accent) {
         if (!view.isClickable() && !view.isLongClickable()) return;
-        final PressState state = new PressState(view, accent);
+        final PressState state = new PressState(view, accent,
+                "wen_intro_fab".equals(view.getTag()));
         view.setOnTouchListener((v, event) -> state.onTouch(event));
         view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override public void onViewAttachedToWindow(View v) {}
@@ -336,14 +337,16 @@ public final class GlassMotion {
         private final View view;
         private final int accent;
         private final int slop;
+        private final boolean circular;
         private float startX, startY;
         private boolean pressed;
         private ValueAnimator glowAnimator;
         private GlowDrawable glow;
 
-        PressState(View view, int accent) {
+        PressState(View view, int accent, boolean circular) {
             this.view = view;
             this.accent = accent;
+            this.circular = circular;
             slop = ViewConfiguration.get(view.getContext()).getScaledTouchSlop();
         }
 
@@ -374,7 +377,7 @@ public final class GlassMotion {
             if (lowPower(view.getContext())) return;
             // Lazy allocation: list rows do not own Paint/Shader until actually pressed.
             if (glow == null && view.getForeground() == null) {
-                glow = new GlowDrawable(accent);
+                glow = new GlowDrawable(accent, circular);
                 view.setForeground(glow);
             }
             if (glow != null) {
@@ -484,14 +487,24 @@ public final class GlassMotion {
                     && ValueAnimator.areAnimatorsEnabled() && !lowPower(container.getContext());
             if (!canSlide) {
                 lens.setTranslationX(targetX);
+                // The shared physical lens and the parent's optical crown must
+                // agree even if the page was selected by a content swipe.
+                container.postInvalidateOnAnimation();
                 return;
             }
             lens.setTranslationX(tabs[previousIndex].getLeft());
-            // Incoming full-screen content was previously alpha-zero for 280ms,
-            // hiding most of the 340ms slide. Animate with the screen's short
-            // transition so the movement is visible after the first rendered frame.
+            // A new Activity view hierarchy is created on each swipe/tap.
+            // Its refracting crown is painted by the parent track in dispatchDraw.
+            // Child translation animations alone do not guarantee that custom
+            // parent foregrounds are invalidated on every hardware frame.
             lens.animate().translationX(targetX).setDuration(225)
-                    .setInterpolator(NAV_SPRING).start();
+                    .setInterpolator(NAV_SPRING)
+                    .setUpdateListener(animation -> container.postInvalidateOnAnimation())
+                    .withEndAction(() -> {
+                        if (!lens.isAttachedToWindow()) return;
+                        lens.setTranslationX(targetX);
+                        container.postInvalidateOnAnimation();
+                    }).start();
         });
     }
 
@@ -500,12 +513,16 @@ public final class GlassMotion {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF bounds = new RectF();
         private final int color;
+        private final boolean circular;
         private float x, y;
         private float radius;
         private float intensity;
         private int alpha = 255;
 
-        GlowDrawable(int color) { this.color = color; }
+        GlowDrawable(int color, boolean circular) {
+            this.color = color;
+            this.circular = circular;
+        }
 
         @Override protected void onBoundsChange(Rect rect) {
             super.onBoundsChange(rect);
@@ -535,8 +552,14 @@ public final class GlassMotion {
 
         @Override public void draw(Canvas canvas) {
             if (intensity <= 0f || bounds.isEmpty()) return;
-            float r = Math.min(bounds.width(), bounds.height()) * .24f;
-            canvas.drawRoundRect(bounds, r, r, paint);
+            if (circular) {
+                // The original FAB is a true circle: never paint a square
+                // Android foreground/ripple around its transparent corners.
+                canvas.drawOval(bounds, paint);
+            } else {
+                float r = Math.min(bounds.width(), bounds.height()) * .24f;
+                canvas.drawRoundRect(bounds, r, r, paint);
+            }
         }
 
         @Override public void setAlpha(int value) {
