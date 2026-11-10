@@ -49,6 +49,10 @@ final class WenGoldGlassSurface {
         if (!enabled(context)) return content;
 
         FrameLayout host=new FrameLayout(context);
+        // Preserve caller-provided LinearLayout.LayoutParams, weight and
+        // margins exactly, especially the three financial statistic cards.
+        ViewGroup.LayoutParams originalParams=content.getLayoutParams();
+        if(originalParams!=null)host.setLayoutParams(originalParams);
         host.setClipChildren(false);
         host.setClipToPadding(false);
         host.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
