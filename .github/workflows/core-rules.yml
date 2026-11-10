@@ -26,6 +26,10 @@ jobs:
           java-version: '17'
       - name: Run Java business-rule and SQL migration tests (no APK)
         run: bash scripts/test_core.sh
+      - name: Test genuine Android screenshot integrity without an emulator
+        run: |
+          python3 -m unittest discover -s tests -p test_native_capture_integrity.py -v
+          bash -n scripts/capture_main_no_instrumentation.sh
       - name: Check protected security file digests remain identical to recovered baseline
         run: sha256sum -c tests/protected_security_sha256.txt
       - name: Validate Android XML, manifest permissions and public repository hygiene
