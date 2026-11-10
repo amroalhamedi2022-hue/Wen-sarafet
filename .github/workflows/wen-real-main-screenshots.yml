@@ -9,17 +9,14 @@ on:
       - 'scripts/capture_real_main_screens.sh'
       - '.github/workflows/wen-real-main-screenshots.yml'
       - 'tests/wen_188_visual_safezone_contract.py'
-  push:
-    branches: [design/wen-visual-parity-owner-review-20261106]
-    paths:
-      - 'app/src/main/**'
-      - 'app/src/androidTest/java/app/wensarafet/tracker/RealMainScreenCaptureTest.java'
-      - 'glass-engine/**'
-      - 'scripts/capture_real_main_screens.sh'
-      - '.github/workflows/wen-real-main-screenshots.yml'
-      - 'tests/wen_188_visual_safezone_contract.py'
-      - 'app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java'
   workflow_dispatch:
+
+# One owner-review PR run per source revision; no duplicate push + PR
+# emulator launches. A newer commit is queued, not allowed to cancel
+# a running real-screen evidence capture.
+concurrency:
+  group: wen-android15-visual-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -27,7 +24,7 @@ permissions:
 jobs:
   pixel6-api35-real-main:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,7 +59,7 @@ jobs:
           disk-size: 1536M
           sdcard-path-or-size: 128M
           disable-animations: false
-          emulator-boot-timeout: 600
+          emulator-boot-timeout: 450
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: bash scripts/capture_real_main_screens.sh
       - name: Deliver original-pixel full-resolution PNGs, no mocks or AI renders
