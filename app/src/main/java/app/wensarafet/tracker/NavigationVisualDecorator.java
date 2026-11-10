@@ -2,6 +2,8 @@ package app.wensarafet.tracker;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.util.TypedValue;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -63,24 +65,8 @@ public final class NavigationVisualDecorator {
         sampledPlate.setColor(Ui.DARK ? 0xFF30394C : 0xFFF8FBFF);
         sampledPlate.setCornerRadius(Ui.dp(context, 26));
         if (premium) {
-            // Neutral smoked / ivory material, no coloured selected-tab pill.
-            int[] glass = premiumIndex == 25
-                    ? new int[]{0xE31D252E,0xE64A4032,0xE1222932}
-                    : premiumIndex == 26
-                    ? new int[]{0xE21E2A38,0xE5414347,0xE1242D39}
-                    : premiumIndex == 27
-                    ? new int[]{0xECFFF9EF,0xF0FAF3E6,0xEAFDF9F3}
-                    : premiumIndex == 28
-                    ? new int[]{0xDE234E40,0xD65C6546,0xDD234E40}
-                    : new int[]{0xDE512B8B,0xD7683A9B,0xDA482585};
-            GradientDrawable premiumPlate = new GradientDrawable(
-                    GradientDrawable.Orientation.TL_BR, glass);
-            premiumPlate.setCornerRadius(Ui.dp(context, 26));
-            // The nav host already draws the premium glass capsule and rim.
-            // Painting another filled/stroked pill on this child creates the
-            // three thick concentric outlines visible in real emulator PNGs.
-            // Keep the child TRANSPARENT so the real moving lens samples the
-            // scene directly; original four TextViews/clicks remain untouched.
+            // The track itself owns the curved glass. Avoid any second
+            // opaque plate which would break the lens' true refraction.
             tabs.setBackground(null);
         } else if (Ui.isReferenceGlassTheme(context)) {
             // The old opaque #F8FBFF plate would completely conceal both
@@ -102,6 +88,13 @@ public final class NavigationVisualDecorator {
         }
 
         nav.removeAllViews();
+        if (premium) {
+            // 48dp+ touch targets, optically centred in one floating capsule.
+            // Every tab keeps its original listener and accessibility identity.
+            nav.setPadding(Ui.dp(context, 8), Ui.dp(context, 6),
+                    Ui.dp(context, 8), Ui.dp(context, 6));
+            nav.setElevation(Ui.dp(context, 6));
+        }
         String[] descriptions = new String[]{
                 "تبويب الرئيسية", "تبويب العمليات", "تبويب الديون", "تبويب التحليل"
         };
@@ -110,33 +103,37 @@ public final class NavigationVisualDecorator {
             item.setBackground(null); // One shared lens, never stacked pills.
             item.setSelected(i == selected);
             if (premium) {
-                // Optical lens remains clear/neutral. Selected text is the
-                // only per-tab colour cue, rather than an opaque colour bubble.
-                int chosen = premiumIndex == 25 ? 0xFFFFE8B4
-                        : premiumIndex == 26 ? 0xFFF6E6C9
-                        : premiumIndex == 27 ? 0xFF644A2F
-                        : premiumIndex == 28 ? 0xFFFFFFFF : 0xFFFFFFFF;
-                int idle = premiumIndex == 25 ? 0xFFD4C5A9
-                        : premiumIndex == 26 ? 0xFFCBC4BB
-                        : premiumIndex == 27 ? 0xFF756B5B
-                        : premiumIndex == 28 ? 0xFFEEEAD4 : 0xFFF4DDFC;
-                item.setTextColor(i == selected ? chosen : idle);
-                // Premium reference screenshots use fine, monochrome vector
-                // glyphs. Android's four multi-colour emojis break the visual
-                // hierarchy and resemble unstyled system defaults.
-                // Replace glyph appearance ONLY; keep original tab TextView,
-                // original navigation callback, order and accessibility label.
+                // One calibrated palette from screen header through nav label
+                // and vector stroke: no Android emoji or unrelated blue pill.
+                int ink = premiumIndex <= 27
+                        ? WenGoldGlassSurface.navigationInk(premiumIndex, i == selected)
+                        : (i == selected ? Color.WHITE : 0xFFF6E6FF);
+                item.setTextColor(ink);
                 String original = item.getText().toString();
                 int lineBreak = original.lastIndexOf('\n');
                 if (lineBreak >= 0) item.setText(original.substring(lineBreak + 1));
+                item.setGravity(Gravity.CENTER);
+                item.setTextDirection(View.TEXT_DIRECTION_LOCALE);
+                item.setTypeface(Typeface.create(
+                        i == selected ? "sans-serif-medium" : "sans-serif",
+                        Typeface.NORMAL));
+                item.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+                item.setAutoSizeTextTypeUniformWithConfiguration(
+                        12, 14, 1, TypedValue.COMPLEX_UNIT_SP);
+                item.setIncludeFontPadding(false);
+                item.setLineSpacing(0f, 1f);
+                item.setPadding(Ui.dp(context, 2), Ui.dp(context, 3),
+                        Ui.dp(context, 2), Ui.dp(context, 3));
+                item.setMinHeight(Ui.dp(context, 48));
                 WenPremiumTabIconDrawable glyph =
                         new WenPremiumTabIconDrawable(context, premiumIndex,
                                 i, i == selected);
-                int glyphSize=Ui.dp(context, 22);
+                int glyphSize = Ui.dp(context, 29);
                 glyph.setBounds(0, 0, glyphSize, glyphSize);
                 item.setCompoundDrawables(null, glyph, null, null);
-                item.setCompoundDrawablePadding(Ui.dp(context, 4));
-                item.setMaxLines(1);
+                item.setCompoundDrawablePadding(Ui.dp(context, 3));
+                item.setSingleLine(true);
+                item.setEllipsize(android.text.TextUtils.TruncateAt.END);
             } else if (Ui.isReferenceGlassTheme(context)) {
                 // Only appearance changes; the original navigation actions,
                 // accessibility labels and held-drag lens remain untouched.
@@ -150,7 +147,8 @@ public final class NavigationVisualDecorator {
             item.setContentDescription(descriptions[i]);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-            params.setMargins(Ui.dp(context, 4), 0, Ui.dp(context, 4), 0);
+            params.setMargins(Ui.dp(context, premium ? 2 : 4), 0,
+                    Ui.dp(context, premium ? 2 : 4), 0);
             tabs.addView(item, params);
         }
 
