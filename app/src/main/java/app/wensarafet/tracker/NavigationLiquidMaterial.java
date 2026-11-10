@@ -297,11 +297,11 @@ public final class NavigationLiquidMaterial {
             if (circle) {
                 frost.setShader(new RadialGradient(w*.5f, h*.5f,
                         Math.max(1f, Math.min(w,h)*.51f),
-                        new int[]{0xC6FFFFFF,0xA6FFFFFF,0x54FFFFFF},
+                        new int[]{0x48FFFFFF,0x33FFFFFF,0x13FFFFFF},
                         new float[]{0f,.62f,1f}, Shader.TileMode.CLAMP));
             } else {
                 frost.setShader(new LinearGradient(0f,0f,0f,h,
-                        new int[]{0x20FFFFFF,0x3AFFFFFF,0x30FFFFFF,0x18FFFFFF},
+                        new int[]{0x0CFFFFFF,0x19FFFFFF,0x14FFFFFF,0x08FFFFFF},
                         new float[]{0f,.27f,.68f,1f}, Shader.TileMode.CLAMP));
             }
             float margin = d * .85f;
