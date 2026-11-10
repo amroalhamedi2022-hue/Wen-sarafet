@@ -12,7 +12,8 @@ import android.content.Intent;
 public final class OwnerThemeCaptureReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context, Intent intent) {
         int index = intent == null ? -1 : intent.getIntExtra("theme", -1);
-        if (index >= 25 && index <= 29) {
+        // Only the three owner-approved gold themes can be selected in QA.
+        if (index >= 25 && index <= 27) {
             Ui.saveTheme(context, index);
             android.util.Log.i("WenRealPreview", "DEBUG_THEME_SET index=" + index);
         }
