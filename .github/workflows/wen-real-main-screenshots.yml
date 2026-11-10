@@ -1,31 +1,34 @@
 name: Wen owner REAL MainActivity screenshots (Android 15)
 
+# Android screenshot capture is QUARANTINED: GitHub-hosted Android emulators
+# repeatedly disappear from ADB AFTER they attach the real gold-scene shader.
+# No automatic visual runs on every code commit. Run just ONE opted-in theme
+# by adding PR label 'wen-qa-android15', or dispatch this workflow manually once
+# it exists on the default branch. Source/finance/compile CI remains automatic.
 on:
-  # One independent emulator per gold theme; a GPU crash for Champagne
-  # must never cancel or conceal a successful Royal screenshot.
   pull_request:
+    types: [labeled]
     branches: [release/wen-2.0-premium-original-signer-20261105]
-    paths:
-      - 'app/src/main/**'
-      - 'app/src/main/java/app/wensarafet/tracker/**'
-      - 'app/src/debug/**'
-      - 'glass-engine/**'
-      - 'scripts/capture_main_no_instrumentation.sh'
-      - '.github/workflows/wen-real-main-screenshots.yml'
-      - 'tests/wen_188_visual_safezone_contract.py'
   workflow_dispatch:
+    inputs:
+      theme:
+        description: "One gold theme to test (do not launch 3 emulators)"
+        required: true
+        type: choice
+        default: "25"
+        options:
+          - "25"
+          - "26"
+          - "27"
 
 permissions:
   contents: read
 
 jobs:
   android15-real-main:
-    strategy:
-      fail-fast: false
-      matrix:
-        theme: [25, 26, 27]
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'wen-qa-android15'
     runs-on: ubuntu-latest
-    timeout-minutes: 24
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -64,16 +67,16 @@ jobs:
           disk-size: 2048M
           sdcard-path-or-size: 128M
           disable-animations: false
-          emulator-boot-timeout: 450
+          emulator-boot-timeout: 300
           # New emulator versions deprecate swiftshader_indirect. Android's
           # documented 'software' mode chooses a compatible renderer.
           emulator-options: -no-snapshot -no-window -gpu software -noaudio -no-boot-anim
-          script: bash scripts/capture_main_no_instrumentation.sh ${{ matrix.theme }}
+          script: bash scripts/capture_main_no_instrumentation.sh ${{ inputs.theme || '25' }}
       - name: Keep full PNG plus renderer diagnostics, even on a failed theme
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wen-mainactivity-theme-${{ matrix.theme }}-android15
+          name: wen-mainactivity-theme-${{ inputs.theme || '25' }}-android15
           path: build/owner-live-main-screens/
           retention-days: 14
           if-no-files-found: warn
