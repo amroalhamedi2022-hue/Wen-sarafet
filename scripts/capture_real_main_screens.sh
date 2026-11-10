@@ -48,12 +48,12 @@ fi
 src=/sdcard/Android/data/app.wensarafet.tracker.recovered.debug/files/owner-real-screens
 adb pull "$src/." build/owner-real-main-screens/
 total=$(find build/owner-real-main-screens -name '*.png' | wc -l)
-test "$total" -eq 20 || {
-    echo "Expected 20 genuine MainActivity PNGs; captured $total" >&2
+test "$total" -eq 12 || {
+    echo "Expected 12 genuine MainActivity PNGs (three gold themes); captured $total" >&2
     exit 1
 }
 for file in build/owner-real-main-screens/*.png; do
     test "$(stat -c '%s' "$file")" -gt 100000
 done
-echo "PASS: 20 full-resolution screenshots of protected MainActivity in isolated debug process."
+echo "PASS: 12 full-resolution screenshots of protected MainActivity in isolated debug process."
 ls -lh build/owner-real-main-screens/*.png
