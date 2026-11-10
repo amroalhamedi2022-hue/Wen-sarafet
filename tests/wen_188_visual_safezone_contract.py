@@ -114,7 +114,7 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "dec2d386f2c7dbada90649e568f74d81e35bf493"
+APPROVED_VISUAL_HOST_BLOB = "249de0deb388fb33598a81f438883fb95d8479e8"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
@@ -375,6 +375,33 @@ for forbidden in ("FinanceDbHelper", "SQLiteDatabase", "deleteTransaction(",
                   "insertTransaction(", "SmsCapture"):
     assert forbidden not in new_picker, "Unsafe theme UI addition: " + forbidden
 sanitized_host = sanitized_host.replace(new_picker, old_picker, 1)
+# The new dock no longer allows financial content to physically overlap
+# its captions. Undo ONLY viewport padding (no stored values, scroll queries,
+# gestures, routes, or account-card content) before comparing every byte.
+gold_shell_clearance = """LinearLayout shell = Ui.column(this);
+        // Gold floating dock must NEVER obscure a readable account/amount.
+        // Reserve only viewport space; DB queries and scroll data stay exact.
+        if (WenGoldGlassSurface.enabled(this))
+            shell.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));
+        root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));"""
+old_shell_clearance = """LinearLayout shell = Ui.column(this);
+        root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));"""
+assert sanitized_host.count(gold_shell_clearance) == 1, "Unreviewed Home visual inset"
+sanitized_host = sanitized_host.replace(gold_shell_clearance, old_shell_clearance, 1)
+gold_page_clearance = """WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
+        LinearLayout page=Ui.column(this);
+        // Identical visual clearance on Debts and Analytics. Scroll routing,
+        // navigation listeners and all financial content are unchanged.
+        if (WenGoldGlassSurface.enabled(this))
+            page.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));
+        primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));"""
+old_page_clearance = """WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
+        LinearLayout page=Ui.column(this);
+        primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));"""
+assert sanitized_host.count(gold_page_clearance) == 2, "Unreviewed Debts/Analytics visual inset"
+sanitized_host = sanitized_host.replace(gold_page_clearance, old_page_clearance)
+assert current_main.count("WenPremiumLayout.navigationClearance(this)") == 3
+
 # EXACT reversible gold-only layout changes, shared across every
 # primary page. The real backdrop is a passive View behind the same original
 # debt/analytics content and callbacks; these replacements MUST recover the
@@ -968,10 +995,13 @@ assert "NavigationLiquidMaterial.attach(lens, track)" in adapter
 assert "glass.setEnableDynamicBackground(premiumLiquid && !powerSave);" in native
 assert "glass.setEnableBackdropBlur(premiumLiquid && !powerSave);" in native
 assert "glass.setEnableChromaticAberration(premiumLiquid && !powerSave);" in native
-assert "glass.setDispersionStrength(premiumLiquid && !powerSave ? .065f : 0f);" in native
-assert "glass.setRefractionHeight((premiumLiquid ? 30f : 6f) * d);" in native
+assert "glass.setDispersionStrength(premiumLiquid && !powerSave ? .016f : 0f);" in native
+assert "glass.setRefractionHeight((premiumLiquid ? 24f : 6f) * d);" in native
 assert "View scene = findUnderlay(container);" in native
-assert "glass.setBackdropSource(scene != null ? scene : nav);" in native
+assert "View scene = findUnderlay(container);" in native
+assert "View goldBackdrop = nav.getRootView().findViewWithTag(" in native
+assert "glass.setBackdropSource(source != null ? source : nav);" in native
+assert "MIT_VIEW_GLASS_BACKDROP_BOUND source=" in native
 assert "if (premium) tabs.bringToFront();" in adapter
 assert "glass.setEnablePressEffect(false);" in native, "Original tab must remain gesture owner"
 assert "LIQUID_FOLLOW = .60f" in motion
@@ -1037,6 +1067,8 @@ assert "glass.setGlassTint(opticalTint, premiumLiquid ? .018f : .045f);" in nati
 layout_src = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenPremiumLayout.java").read_text(encoding="utf-8")
 assert "config.screenHeightDp < 800" in layout_src
 assert "dp(context, 86, 76)" in layout_src
+assert "navigationHeight(context)" in layout_src
+assert "static int navigationClearance(Context context)" in layout_src
 assert "WenPremiumLayout.navigationHeight(this)" in current_main
 assert "WenPremiumLayout.fabBottomOffset(this)" in current_main
 for forbidden in ("FinanceDbHelper", "SQLiteDatabase", "getAccounts(", "setOnClickListener",
