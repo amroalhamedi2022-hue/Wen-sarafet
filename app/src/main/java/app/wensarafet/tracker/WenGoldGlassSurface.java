@@ -38,6 +38,60 @@ final class WenGoldGlassSurface {
 
     private WenGoldGlassSurface() {}
 
+    // One coherent optical ink system for the golden header and all four
+    // navigation tabs. Drawables, labels and titles must share these colours.
+    static int navigationInk(int theme, boolean selected) {
+        switch (theme) {
+            case 25: return selected ? 0xFFFFE2A9 : 0xFFD4C6AE;
+            case 26: return selected ? 0xFFFFEAC8 : 0xFFCBC7BF;
+            case 27: return selected ? 0xFF5C4028 : 0xFF80694E;
+            default: return selected ? Ui.TEXT : Ui.MUTED;
+        }
+    }
+
+    static int headerTitleInk(int theme) {
+        switch (theme) {
+            case 25: return 0xFFFFE2A9;
+            case 26: return 0xFFFFEAC8;
+            case 27: return 0xFF5C4028;
+            default: return Ui.TEXT;
+        }
+    }
+
+    static int headerSecondaryInk(int theme) {
+        switch (theme) {
+            case 25: return 0xFFD4C6AE;
+            case 26: return 0xFFCBC7BF;
+            case 27: return 0xFF80694E;
+            default: return Ui.MUTED;
+        }
+    }
+
+    static int navigationLensTint(int theme) {
+        switch (theme) {
+            case 25: return 0xFFFFEDD1;
+            case 26: return 0xFFFFF1DB;
+            case 27: return 0xFFFFF9EC;
+            default: return Color.WHITE;
+        }
+    }
+
+    /**
+     * A single, non-interactive physical backdrop across Home, Debt and
+     * Analytics. Both header and cards sample this same real View; no
+     * financial data, click listeners or screen navigation is modified.
+     */
+    static void attachGoldBackdrop(FrameLayout root) {
+        if (!enabled(root.getContext())) return;
+        View backdrop = new View(root.getContext());
+        backdrop.setTag(BACKDROP_TAG);
+        backdrop.setBackground(Ui.glassScreenBackground(root.getContext()));
+        root.setBackground(null);
+        root.addView(backdrop, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
     static boolean enabled(Context context) {
         int theme=Ui.themeIndex(context);
         return theme >= 25 && theme <= 27;
