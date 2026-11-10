@@ -455,6 +455,18 @@ public final class MainActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.setBackground(Ui.glassScreenBackground(this));
         root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        if (WenGoldGlassSurface.enabled(this)) {
+            // A single real scene View behind every overlay, shared by
+            // header, balance and chart optics. No duplicate background
+            // snapshots or fabricated gradients in the glass children.
+            View goldBackdrop = new View(this);
+            goldBackdrop.setTag(WenGoldGlassSurface.BACKDROP_TAG);
+            goldBackdrop.setBackground(Ui.glassScreenBackground(this));
+            root.setBackground(null);
+            root.addView(goldBackdrop, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+        }
 
         LinearLayout shell = Ui.column(this);
         root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -666,6 +678,7 @@ public final class MainActivity extends Activity {
         }
         Ui.pressAnimation(addAccount); Ui.pressAnimation(settings);
         layers.addView(bar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        WenGoldGlassSurface.enhanceHeader(layers,24);
         wrapper.addView(layers, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 WenPremiumLayout.dp(this, 90, 54)));
         return wrapper;
@@ -995,7 +1008,7 @@ public final class MainActivity extends Activity {
                     : new LinearLayout.LayoutParams(Ui.dp(this, 178), Ui.dp(this, 98));
             cardParams.setMargins(Ui.dp(this, premium ? 4 : 6),
                     0, Ui.dp(this, premium ? 4 : 6), 0);
-            row.addView(card, cardParams);
+            row.addView(premium ? WenGoldGlassSurface.wrap(card,22) : card, cardParams);
         }
         if (premium) return row;
         scroll.addView(row);
@@ -1044,6 +1057,13 @@ public final class MainActivity extends Activity {
         TextView todayAmount = (TextView) ((LinearLayout) todayCard).getChildAt(1);
         TextView weekAmount = (TextView) ((LinearLayout) weekCard).getChildAt(1);
         TextView monthAmount = (TextView) ((LinearLayout) monthCard).getChildAt(1);
+        // Resolve original data-bearing TextViews BEFORE adding the passive
+        // glass hosts. Every amount, callback and currency stays unchanged.
+        if (WenGoldGlassSurface.enabled(this)) {
+            todayCard = WenGoldGlassSurface.wrap(todayCard,20);
+            weekCard = WenGoldGlassSurface.wrap(weekCard,20);
+            monthCard = WenGoldGlassSurface.wrap(monthCard,20);
+        }
         stats.addView(todayCard); stats.addView(weekCard); stats.addView(monthCard);
         todayCard.setOnClickListener(v -> showAnalyticsScreen());
         weekCard.setOnClickListener(v -> showAnalyticsScreen());
@@ -1063,7 +1083,7 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams chartParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 WenPremiumLayout.dp(this,240,150));
         chartParams.setMargins(0, Ui.dp(this, 10), 0, 0);
-        box.addView(chartCard, chartParams);
+        box.addView(WenGoldGlassSurface.wrap(chartCard,22), chartParams);
 
         Runnable updateOverview = () -> {
             long end = System.currentTimeMillis() + 1;
