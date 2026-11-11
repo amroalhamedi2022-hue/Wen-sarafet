@@ -73,6 +73,14 @@ transplant("    private void showFxTransferDialog() {",
            "    private void showTransactionTransferDialog")
 transplant('        content.addView(sectionTitle("النسخ الاحتياطي"',
            "        content.addView(backupCard);", True)
+# VISUAL ONLY owner-reviewed 2026-11-11: reconstruct five exact sandbox-parity changes to the already pinned strict-offline MainActivity.
+# Every patch anchor must occur exactly once, without modifying money/security/navigation handlers.
+expected = replace(expected, "        // Gold floating dock must NEVER obscure a readable account/amount.\n        // Reserve only viewport space; DB queries and scroll data stay exact.\n        if (WenGoldGlassSurface.enabled(this))\n            shell.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));", "        // Keep the scroll viewport full-height behind the floating navigation.\n        // The content itself receives a safe bottom spacer below; this allows\n        // real on-screen cards to show THROUGH the dock while scrolling.")
+expected = replace(expected, "        LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();\n        scroll.addView(content", "        LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();\n        if (WenGoldGlassSurface.enabled(this)) {\n            content.setPadding(content.getPaddingLeft(), content.getPaddingTop(),\n                    content.getPaddingRight(), Math.max(content.getPaddingBottom(),\n                            WenPremiumLayout.navigationClearance(this)));\n        }\n        scroll.addView(content")
+expected = replace(expected, "        final View topBarBackground = topBar.findViewWithTag(\"main_header_background\");\n        scroll.setOnScrollChangeListener", "        final View topBarBackground = topBar.findViewWithTag(\"main_header_background\");\n        final View topBarOptics = topBar.findViewWithTag(WenGoldGlassSurface.HEADER_GLASS_TAG);\n        final View topBarSpecular = topBar.findViewWithTag(WenGoldGlassSurface.HEADER_SPECULAR_TAG);\n        scroll.setOnScrollChangeListener")
+expected = replace(expected, "                topBarBackground.setAlpha(1f - progress * .84f);\n                topBarBackground.setElevation(progress > .02f ? 0f : Ui.dp(this, 7));", "                // The native LiquidGlassView and the specular overlay ALSO\n                // fade. Previously only the tiny underlying backing faded.\n                float initialBacking = WenGoldGlassSurface.enabled(this)\n                        ? (Ui.themeIndex(this) == 27 ? .15f : .12f) : 1f;\n                topBarBackground.setAlpha(initialBacking * (1f - progress * .94f));\n                if (topBarOptics != null) topBarOptics.setAlpha(1f - progress * .92f);\n                if (topBarSpecular != null) topBarSpecular.setAlpha(1f - progress * .92f);\n                topBarBackground.setElevation(progress > .02f ? 0f : Ui.dp(this, 7));")
+expected = replace(expected, "        nav.setElevation(Ui.dp(this, 12));\n\n        TextView home = navButton", "        nav.setElevation(Ui.dp(this, WenGoldGlassSurface.enabled(this) ? 5 : 12));\n\n        TextView home = navButton")
+
 assert expected == present(M), (
     "SAFE ZONE: cumulative MainActivity deviates from the fully reconstructed "
     "visual HEAD + reviewed strict-offline security overlay"
@@ -84,17 +92,40 @@ UI = P + "Ui.java"
 BUBBLE = "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java"
 assert present(UI) == at(NEUTRAL_UI, UI), "Unexpected visual/UI mutation"
 bubble = present(BUBBLE)
-assert bubble == at(NEUTRAL_BUBBLE, BUBBLE), "Unreviewed global FAB appearance mutation"
+reviewed_bubble = at(NEUTRAL_BUBBLE, BUBBLE)
+# Only four white-glow paint alpha factors change; geometry and press logic frozen.
+reviewed_bubble = replace(reviewed_bubble, "        opticalDepth.setAlpha((int)(alpha*(.84f+.16f*press)));", "        opticalDepth.setAlpha((int)(alpha*(.70f+.20f*press)));")
+reviewed_bubble = replace(reviewed_bubble, "        highlight.setAlpha((int)(alpha*(.66f+.15f*press)));", "        highlight.setAlpha((int)(alpha*(.45f+.20f*press)));")
+reviewed_bubble = replace(reviewed_bubble, "        caustic.setAlpha((int)(alpha*(.70f+.30f*press)));", "        caustic.setAlpha((int)(alpha*(.32f+.26f*press)));")
+reviewed_bubble = replace(reviewed_bubble, "        rainbow.setAlpha((int)(alpha*(.72f+.28f*press)));", "        rainbow.setAlpha((int)(alpha*(.46f+.34f*press)));")
+assert bubble == reviewed_bubble, "Unreviewed FAB source mutation outside approved optical-tone patch"
 original_bubble = at(VISUAL_BASE, BUBBLE)
 marker = "    public float getPress() { return press; }"
-assert bubble[bubble.index(marker):] == original_bubble[original_bubble.index(marker):], (
-    "FAB original press, click and draw contract was altered"
+end_press = "    @Override public void draw(Canvas c)"
+assert section(bubble, marker, end_press) == section(original_bubble, marker, end_press), (
+    "FAB input/press behavior must match the originally reviewed sandbox"
 )
 assert "fab.setBackground(Ui.glassFloatingAddBackground(this));" in expected
 assert "WenFabBubbleDrawable(" in present(UI)
 assert "new int[]{0x4CFFFFFF,0x1FFFFFFF,0x38FFFFFF}" in bubble
 assert "new int[]{0x94FFFFFF,0x38FFFFFF,0x75FFFFFF}" in bubble
 assert "return false; // Never steal existing FAB click/hold actions." in present(UI)
+
+# Other appearance-only files are frozen byte-for-byte against the reviewed
+# visual update commit, independent from the older security/financial baseline.
+VISUAL_REFRESH_AUDIT = "747a290300165a51d353e7092e18d2513608892e"
+VISUAL_REFRESH_PATHS = (
+    P + "NavigationVisualDecorator.java",
+    P + "ThemeCatalogue.java",
+    P + "WenGoldGlassSurface.java",
+    P + "WenPremiumLayout.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
+    "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java",
+)
+for path in VISUAL_REFRESH_PATHS:
+    assert present(path) == at(VISUAL_REFRESH_AUDIT, path), (
+        "Unreviewed visual delta outside eight-file 2026-11-11 review: " + path
+    )
 
 # All business and owner protection files are exact-source identical to the
 # independently passed visual baseline. No migrations, balance adjustments,
@@ -217,6 +248,7 @@ permitted = set(exact_security) | set(removed_network) | {
     P + "FinanceNotificationListener.java",
     "tests/otp_capture_contract.py",
 }
+permitted.update(VISUAL_REFRESH_PATHS)
 modified = set(git("diff", "--name-only", VISUAL_BASE, "HEAD").splitlines())
 assert modified <= permitted, "Unexpected cross-branch file changes: " + repr(sorted(modified - permitted))
 
