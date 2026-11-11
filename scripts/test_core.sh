@@ -85,6 +85,7 @@ python3 "$PROJECT_DIR/tests/fx_migration_audit.py"
 python3 "$PROJECT_DIR/tests/category_audit_migration_v10.py"
 python3 "$PROJECT_DIR/tests/fx_form_source_contract.py"
 python3 "$PROJECT_DIR/tests/wen_200_strict_offline_contract.py"
+python3 "$PROJECT_DIR/tests/otp_capture_contract.py"
 python3 "$PROJECT_DIR/tests/wen_211_integrated_offline_visual_contract.py"
 
 python3 "$PROJECT_DIR/tests/split_debt_schema_v11.py"
