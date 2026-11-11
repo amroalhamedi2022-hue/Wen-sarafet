@@ -160,7 +160,7 @@ for needle in (
 assert 'android:allowBackup="false"' in present("app/src/main/AndroidManifest.xml")
 assert 'isLocalDocumentUri(uri)' in present(M)
 assert '"MANUAL",System.currentTimeMillis()' in present(M)
-assert '"Code: 12345"' in present("tests/FinanceCoreTest.java")
+assert 'Code: 12345 For p2m' in present("tests/FinanceCoreTest.java")
 assert "R.drawable.icon_bop_mark" in present(M)
 assert "visualMotion.captureOriginalTabs" in present(M)
 assert "WenPremiumLayout.navigationClearance(this)" in present(M)
