@@ -35,6 +35,8 @@ import com.example.liquidglass.LiquidGlassView;
  */
 final class WenGoldGlassSurface {
     static final String BACKDROP_TAG = "wen_gold_background_source";
+    static final String HEADER_GLASS_TAG = "wen_gold_header_optics";
+    static final String HEADER_SPECULAR_TAG = "wen_gold_header_specular";
 
     private WenGoldGlassSurface() {}
 
@@ -155,11 +157,13 @@ final class WenGoldGlassSurface {
         oldBacking.setAlpha(Ui.themeIndex(header.getContext())==27 ? .15f : .12f);
         oldBacking.setElevation(0f);
         final LiquidGlassView glass=buildGlass(header.getContext(),radiusDp);
+        glass.setTag(HEADER_GLASS_TAG);
         header.addView(glass,1,new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
         View specular=new View(header.getContext());
         specular.setBackground(new Specular(header.getContext(),
                 Ui.themeIndex(header.getContext()),radiusDp));
+        specular.setTag(HEADER_SPECULAR_TAG);
         specular.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         header.addView(specular,2,new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
