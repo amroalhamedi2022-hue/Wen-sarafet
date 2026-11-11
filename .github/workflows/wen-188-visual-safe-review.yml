@@ -28,7 +28,7 @@ jobs:
           java-version: '17'
       - name: Guard exact 1.8.8 business-source and original callbacks
         run: |
-          python3 tests/wen_188_visual_safezone_contract.py
+          python3 tests/wen_211_integrated_offline_visual_contract.py
           python3 tests/financial_safe_zone_guard.py
       - name: Run original finance, debt, migration and security tests
         run: bash scripts/test_core.sh
