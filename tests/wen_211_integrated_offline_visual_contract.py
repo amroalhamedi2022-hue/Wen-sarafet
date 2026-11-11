@@ -199,6 +199,9 @@ permitted = set(exact_security) | set(removed_network) | {
     ".github/workflows/wen-main-physical-screens.yml",
     ".github/workflows/wen-real-main-screenshots.yml",
     "tests/wen_200_strict_offline_contract.py",
+    # Fully pinned in OTP_AUDIT above; no other finance/parser changes.
+    P + "TransactionParser.java",
+    "tests/FinanceCoreTest.java",
 }
 modified = set(git("diff", "--name-only", VISUAL_BASE, "HEAD").splitlines())
 assert modified <= permitted, "Unexpected cross-branch file changes: " + repr(sorted(modified - permitted))
