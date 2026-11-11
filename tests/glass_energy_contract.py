@@ -25,20 +25,25 @@ for forbidden in ["Handler", "Timer", "Thread", "Choreographer",
 assert engine.count("invalidateSelf()") == 2, "Only explicit alpha/filter changes may invalidate"
 for entry in ["glassHeaderBackground", "glassSoftBackground", "glassAccentBackground"]:
     assert "public static android.graphics.drawable.Drawable " + entry in ui
-assert ui.count("if (themeIndex(context) < 16)") == 3, "Non-Liquid themes must remain unchanged"
-assert "background.setBackground(Ui.glassHeaderBackground(this, 24));" in main
+for surface in ("glassHeaderBackground", "glassSoftBackground",
+                "glassBalanceBackground", "glassChartBackground"):
+    body = ui.split(surface + "(Context", 1)[1].split("\n    }", 1)[0]
+    assert "new app.wensarafet.glass.WenGlassDrawable" in body
+    assert "return layered" not in body, f"All retained themes use glass on {surface}"
+assert "background.setBackground(Ui.glassChromeBackground(this, 24));" in main
 assert "card.setBackground(Ui.glassBalanceBackground(this, 22));" in main
 assert "chartCard.setBackground(Ui.glassChartBackground(this, 22));" in main
 assert "card.setBackground(Ui.glassAccentBackground(this, 20));" in main
 
-assert "glassNavigationBackground(this," in main
-assert "WenGoldGlassSurface.enabled(this) ? 28 : 26" in main
-assert main.count("if (Ui.isUnifiedGlassTheme(this))") >= 3, "All primary tab bars must share translucent glass insets"
+assert "nav.setBackground(Ui.glassChromeBackground(this, 30))" in main
+assert main.count("primaryDockParams()") == 4, "All primary tabs share the same dock geometry"
+assert main.count("mountPrimaryScroll(") == 4
+assert "scroll.setClipToPadding(false);" in main
+assert "updateHeaderGlass(topBarBackground, scrollY);" in main
+assert "updateHeaderGlass(background, y);" in main
 assert "fab.setBackground(Ui.glassFloatingAddBackground(this));" in main, "FAB must use colourless glass on all themes"
 assert "view.getBackground() instanceof app.wensarafet.glass.WenFabBubbleDrawable" in ui
 assert "new app.wensarafet.glass.WenFabBubbleDrawable(" in ui
-assert "debtNavParams.setMargins" in main
-assert "analyticsNavParams.setMargins" in main
 assert "glassSelectedNavigationBackground(this, 18)" in main
 assert "glassActionBackground(this, 16, primary)" in main
 for block in [
@@ -58,7 +63,6 @@ assert "glassBalanceBackground(Context context" in ui
 assert "glassChartBackground(Context context" in ui
 assert "int first = mix(SURFACE, BRAND_SOFT, DARK ? .10f : .36f);" in ui
 assert main.count("chartCard.setBackground(Ui.glassChartBackground(this, 22));") == 2
-assert "if (!isLiquidTheme(context))" in ui
 assert "return index >= 16 && index < THEMES.length;" in ui
 assert "DARK = theme == 20 ||" in ui
 for name in ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"]:
@@ -84,7 +88,7 @@ assert "canvas.drawCircle(lensX, lensY, lensRadius, bubble);" in engine
 assert "canvas.drawRect(surface, ambient);" in engine
 assert "if (!lowPower && strong)" in engine
 assert "GlassMotion.bindPress(view, SKY)" in ui, "Restore sandbox finite pressure bubble"
-assert "WenFabBubbleDrawable(context, SKY, DARK)" in ui, "Restore circular original-Liquid FAB"
+assert "WenFabBubbleDrawable(context, DARK)" in ui, "Restore circular original-Liquid FAB"
 assert "liquid ? 2 : 4" in ui and "liquid ? 125 : 300" in ui, "Fast staged Liquid entrances"
 assert "setDuration(115)" in ui, "Gentle sandbox-style screen reveal"
 assert "if (isLiquidTheme(view.getContext()))" in ui

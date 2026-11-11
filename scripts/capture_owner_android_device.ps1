@@ -94,7 +94,7 @@ try {
             Start-Sleep -Milliseconds 400
             $optics = Invoke-Adb -Parts @("-s",$serial,"logcat","-d","-s",
                     "WenGlassProbe:I","WenRealPreview:I")
-            if ($optics.Contains("MIT_VIEW_GLASS_BACKDROP_BOUND source=gold-scene")) {
+            if ($optics -match "MIT_VIEW_GLASS_BACKDROP_BOUND source=(primary-scroll|gold-scene)") {
                 $isReady = $true
                 break
             }

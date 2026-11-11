@@ -96,10 +96,10 @@ capture() {
     # requests. Those synchronous ADB queries often froze the emulator after
     # the screen had already rendered, before screenshot capture could start.
     # This never accepts SplashScreen: the marker is emitted by the real
-    # four-tab MainActivity after its live gold-scene has been attached.
+    # four-tab MainActivity after the live backdrop has been attached.
     local ready=0
     for attempt in $(seq 1 30); do
-      if grep -Fq "MIT_VIEW_GLASS_BACKDROP_BOUND source=gold-scene" \
+      if grep -Eq "MIT_VIEW_GLASS_BACKDROP_BOUND source=(primary-scroll|gold-scene)" \
           "$SCREEN_DIR/live-renderer.log"; then
         ready=1
         break
@@ -107,7 +107,7 @@ capture() {
       sleep 0.5
     done
     if [ "$ready" -ne 1 ]; then
-      echo "ERROR: 15s expired before real MainActivity gold-scene optical attachment" >&2
+      echo "ERROR: 15s expired before real MainActivity backdrop attachment" >&2
       tail -n 40 "$SCREEN_DIR/live-renderer.log" >&2 || true
       exit 1
     fi

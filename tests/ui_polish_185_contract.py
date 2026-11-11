@@ -28,21 +28,21 @@ primary_nav=ui.split("private void bindPrimaryNavigationScroll(",1)[1].split(
 
 for screen,prefix in [(debt,"debt"),(analytics,"analytics")]:
     assert f"View {prefix}TopBar=mainTopBar();" in screen
-    assert f"View {prefix}Nav=bottomNavigation(TAB_{'DEBTS' if prefix=='debt' else 'ANALYTICS'});" in screen
+    assert f"View {prefix}Nav = bottomNavigation(TAB_{'DEBTS' if prefix=='debt' else 'ANALYTICS'});" in screen
     assert f"bindPrimaryNavigationScroll(scroll,{prefix}TopBar,{prefix}Nav)" in screen
     assert "FrameLayout primaryRoot=new FrameLayout(this);" in screen
-    assert "Gravity.BOTTOM" in screen and "primaryRoot.addView" in screen
+    assert f"primaryRoot.addView({prefix}Nav, primaryDockParams());" in screen
+    assert f"mountPrimaryScroll(primaryRoot, scroll, {prefix}TopBar);" in screen
     assert "setContentView(primaryRoot)" in screen
     assert "Ui.dp(this, 110)" in screen, "Bottom nav overlays need scroll bottom clearance"
 assert "main_header_background" in primary_nav
 assert "ValueAnimator.areAnimatorsEnabled()" in primary_nav
 assert "nav.setVisibility(View.INVISIBLE)" in primary_nav
 assert "nav.setVisibility(View.VISIBLE)" in primary_nav
-# The Liquid-only renderer replaces the header call, but legacy themes still
-# use the original layered background in the Ui factory.
+# Primary and secondary headers share the glass treatment across themes.
 assert "Ui.glassHeaderBackground(this,20)" in header
 factory=(root/"app/src/main/java/app/wensarafet/tracker/Ui.java").read_text(encoding="utf-8")
-assert "if (themeIndex(context) < 16) return layeredBackground(context, radiusDp);" in factory
+assert "return layeredBackground" not in factory.split("glassHeaderBackground(Context", 1)[1].split("glassSoftBackground", 1)[0]
 assert "setContentDescription(\"رجوع\")" in header
 assert "title.setAutoSizeTextTypeUniformWithConfiguration(16,22,1," in header
 

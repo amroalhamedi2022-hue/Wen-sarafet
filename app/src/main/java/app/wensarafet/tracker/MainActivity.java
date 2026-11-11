@@ -429,29 +429,9 @@ public final class MainActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.setBackground(Ui.glassScreenBackground(this));
         root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        if (WenGoldGlassSurface.enabled(this)) {
-            // A single real scene View behind every overlay, shared by
-            // header, balance and chart optics. No duplicate background
-            // snapshots or fabricated gradients in the glass children.
-            View goldBackdrop = new View(this);
-            goldBackdrop.setTag(WenGoldGlassSurface.BACKDROP_TAG);
-            android.graphics.drawable.Drawable existingScene = Ui.glassScreenBackground(this);
-            goldBackdrop.setBackground(existingScene);
-            root.setBackground(null);
-            root.addView(goldBackdrop, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT));
-        }
+        WenGoldGlassSurface.attachGoldBackdrop(root);
 
-        LinearLayout shell = Ui.column(this);
-        // Keep the scroll viewport full-height behind the floating navigation.
-        // The content itself receives a safe bottom spacer below; this allows
-        // real on-screen cards to show THROUGH the dock while scrolling.
-        root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         View topBar = mainTopBar();
-        shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                WenPremiumLayout.dp(this, 112, 74)));
-
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         // Decorative five-scene materials should never be obscured by the
@@ -459,31 +439,17 @@ public final class MainActivity extends Activity {
         if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(
                 Ui.themeIndex(this))) scroll.setVerticalScrollBarEnabled(false);
         LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();
-        if (WenGoldGlassSurface.enabled(this)) {
-            content.setPadding(content.getPaddingLeft(), content.getPaddingTop(),
-                    content.getPaddingRight(), Math.max(content.getPaddingBottom(),
-                            WenPremiumLayout.navigationClearance(this)));
-        }
-        scroll.addView(content, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        shell.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        scroll.addView(content, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        mountPrimaryScroll(root, scroll, topBar);
         View bottomNav = bottomNavigation(currentTab);
-        FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.navigationHeight(this), Gravity.BOTTOM);
-        // Floating glass navigation is visual-only; the underlying tabs stay unchanged.
-        if (Ui.isUnifiedGlassTheme(this)) {
-            // Owner reference: truly floating glass dock, preserving
-            // the original four tab callbacks and scroll routing.
-            int sideInset = WenPremiumLayout.navigationSideInsetDp(this);
-            navParams.setMargins(Ui.dp(this,sideInset),0,
-                    Ui.dp(this,sideInset),
-                    Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
-        }
-        root.addView(bottomNav, navParams);
+        root.addView(bottomNav, primaryDockParams());
 
         int fabPercent = Ui.homeIconScalePercent(this, "fab");
-        int fabSize = Math.max(Ui.dp(this, 46), Math.min(Ui.dp(this, 82), Ui.homeIconDp(this, "fab", 58)));
-        TextView fab = Ui.text(this, "+", 32f * fabPercent / 100f,
-                Ui.DARK ? Color.WHITE : Ui.TEXT, false);
+        int fabSize = Math.max(Ui.dp(this, 48), Math.min(Ui.dp(this, 82), Ui.homeIconDp(this, "fab", 54)));
+        TextView fab = Ui.text(this, "+", 29f * fabPercent / 100f,
+                Ui.TEXT, false);
+        fab.setIncludeFontPadding(false);
         fab.setGravity(Gravity.CENTER);
         // All themes share the same colourless optical bubble; the real
         // add action, original hit target and on-click behaviour are unchanged.
@@ -504,7 +470,7 @@ public final class MainActivity extends Activity {
             }
         });
         fab.setClipToOutline(true);
-        fab.setElevation(Ui.dp(this, 6));
+        fab.setElevation(Ui.dp(this, 3));
         fab.setContentDescription("إضافة عملية");
         fab.setTag("wen_intro_fab");
         fab.setOnClickListener(v -> {
@@ -521,27 +487,16 @@ public final class MainActivity extends Activity {
                 : (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START);
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(
                 fabSize, fabSize, Gravity.BOTTOM | fabGravity);
-        fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18),
+        int fabInset = WenPremiumLayout.fabSideInsetDp(this);
+        fabParams.setMargins(Ui.dp(this, fabInset), 0, Ui.dp(this, fabInset),
                 WenPremiumLayout.fabBottomOffset(this));
         root.addView(fab, fabParams);
         final boolean[] chromeHidden = {false};
         final int[] upwardTravel = {0};
         final View topBarBackground = topBar.findViewWithTag("main_header_background");
-        final View topBarOptics = topBar.findViewWithTag(WenGoldGlassSurface.HEADER_GLASS_TAG);
-        final View topBarSpecular = topBar.findViewWithTag(WenGoldGlassSurface.HEADER_SPECULAR_TAG);
         scroll.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
             int delta = scrollY - oldScrollY;
-            if (topBarBackground != null) {
-                float progress = Math.min(1f, scrollY / (float) Ui.dp(this, 72));
-                // The native LiquidGlassView and the specular overlay ALSO
-                // fade. Previously only the tiny underlying backing faded.
-                float initialBacking = WenGoldGlassSurface.enabled(this)
-                        ? (Ui.themeIndex(this) == 27 ? .15f : .12f) : 1f;
-                topBarBackground.setAlpha(initialBacking * (1f - progress * .94f));
-                if (topBarOptics != null) topBarOptics.setAlpha(1f - progress * .92f);
-                if (topBarSpecular != null) topBarSpecular.setAlpha(1f - progress * .92f);
-                topBarBackground.setElevation(progress > .02f ? 0f : Ui.dp(this, 7));
-            }
+            updateHeaderGlass(topBarBackground, scrollY);
             if (delta < 0) upwardTravel[0] += -delta; else if (delta > 0) upwardTravel[0] = 0;
             boolean hide = scrollY > Ui.dp(this, 48) && delta > Ui.dp(this, 1);
             boolean showAtTop = scrollY <= Ui.dp(this, 10);
@@ -591,25 +546,17 @@ public final class MainActivity extends Activity {
         FrameLayout layers = new FrameLayout(this);
         View background = new View(this);
         background.setTag("main_header_background");
-        background.setBackground(Ui.glassHeaderBackground(this, 24));
-        background.setElevation(Ui.dp(this, 7));
+        background.setBackground(Ui.glassChromeBackground(this, 24));
         layers.addView(background, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         LinearLayout bar = Ui.row(this);
         bar.setPadding(Ui.dp(this, WenPremiumLayout.compact(this)?14:18),
                 Ui.dp(this, WenPremiumLayout.compact(this)?5:12),
                 Ui.dp(this, WenPremiumLayout.compact(this)?12:14),
                 Ui.dp(this, WenPremiumLayout.compact(this)?5:10));
-        bar.setElevation(Ui.dp(this, 8));
 
         LinearLayout titles = Ui.column(this);
-        // Champagne is a pale gold surface; white ink becomes invisible.
-        // All other themes retain their established header contrast.
-        int headerInk = WenGoldGlassSurface.enabled(this)
-                ? WenGoldGlassSurface.headerTitleInk(Ui.themeIndex(this))
-                : Color.WHITE;
-        int headerSoftInk = WenGoldGlassSurface.enabled(this)
-                ? WenGoldGlassSurface.headerSecondaryInk(Ui.themeIndex(this))
-                : Color.rgb(225, 239, 235);
+        int headerInk = Ui.TEXT;
+        int headerSoftInk = Ui.DARK ? 0xFFE1E2E5 : Ui.TEXT;
         // Reuse the original 1.8.8 Sandbox screen-specific header identity:
         // the title/subtitle reflect the ACTIVE primary tab, not a fixed app name.
         String headerTitle;
@@ -656,13 +603,13 @@ public final class MainActivity extends Activity {
         addAccount.setGravity(Gravity.CENTER);
         addAccount.setContentDescription("إدارة الحسابات");
         addAccount.setTag("wen_intro_header_accounts");
-        addAccount.setBackground(Ui.rounded(Color.argb(42, 255, 255, 255), 20, this));
+        addAccount.setBackground(Ui.glassChromeBackground(this, 20));
         addAccount.setOnClickListener(v -> showAccountManagement());
         TextView settings = Ui.text(this, "⚙", headerIconText, headerInk, true);
         settings.setGravity(Gravity.CENTER);
         settings.setContentDescription("الإعدادات");
         settings.setTag("wen_intro_header_settings");
-        settings.setBackground(Ui.rounded(Color.argb(42, 255, 255, 255), 20, this));
+        settings.setBackground(Ui.glassChromeBackground(this, 20));
         settings.setOnClickListener(v -> showSettings());
         LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(headerIconSize, headerIconSize);
         settingsParams.setMargins(Ui.dp(this, 8), 0, 0, 0);
@@ -678,7 +625,6 @@ public final class MainActivity extends Activity {
         }
         Ui.pressAnimation(addAccount); Ui.pressAnimation(settings);
         layers.addView(bar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        WenGoldGlassSurface.enhanceHeader(layers,24);
         wrapper.addView(layers, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 WenPremiumLayout.dp(this, 90, 54)));
         return wrapper;
@@ -686,10 +632,8 @@ public final class MainActivity extends Activity {
 
     private LinearLayout bottomNavigation(int selectedTab) {
         LinearLayout nav = Ui.row(this);
-        nav.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 8));
-        nav.setBackground(Ui.glassNavigationBackground(this,
-                WenGoldGlassSurface.enabled(this) ? 28 : 26));
-        nav.setElevation(Ui.dp(this, WenGoldGlassSurface.enabled(this) ? 5 : 12));
+        nav.setBackground(Ui.glassChromeBackground(this, 30));
+        nav.setElevation(Ui.dp(this, 3));
 
         TextView home = navButton("🏠\nالرئيسية", selectedTab == TAB_HOME);
         TextView tx = navButton("📋\nالعمليات", selectedTab == TAB_TRANSACTIONS);
@@ -717,24 +661,42 @@ public final class MainActivity extends Activity {
         return nav;
     }
 
+    private void mountPrimaryScroll(FrameLayout root, ScrollView scroll, View topBar) {
+        int headerHeight = WenPremiumLayout.dp(this, 112, 74);
+        scroll.setTag(WenScreenVisualMotion.PRIMARY_SCROLL_TAG);
+        scroll.setPadding(0, headerHeight, 0, 0);
+        scroll.setClipToPadding(false);
+        root.addView(scroll, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        root.addView(topBar, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, headerHeight, Gravity.TOP));
+    }
+
+    private FrameLayout.LayoutParams primaryDockParams() {
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.navigationHeight(this),
+                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        int side = Ui.dp(this, WenPremiumLayout.navigationSideInsetDp(this));
+        params.setMargins(side, 0, side, Ui.dp(this, WenPremiumLayout.navigationBottomInsetDp(this)));
+        return params;
+    }
+
+    private void updateHeaderGlass(View background, int scrollY) {
+        // The content already draws into the space below this glass layer.
+        // Fade by distance, starting at the first nonzero scroll offset.
+        float travel = Math.max(0f, Math.min(1f, scrollY / (float) Ui.dp(this, 32)));
+        float fade = travel * (2f - travel);
+        background.setAlpha(1f - (Ui.DARK ? .34f : .43f) * fade);
+    }
+
     /** Keep primary-page navigation and header scroll behavior consistent. */
     private void bindPrimaryNavigationScroll(ScrollView scroll,View topBar,View nav) {
         final int[] upwardTravel={0};
         final boolean[] hidden={false};
         final View background=topBar.findViewWithTag("main_header_background");
-        final View goldOptic=topBar.findViewWithTag(WenGoldGlassSurface.HEADER_GLASS_TAG);
-        final View goldSpecular=topBar.findViewWithTag(WenGoldGlassSurface.HEADER_SPECULAR_TAG);
         scroll.setOnScrollChangeListener((v,x,y,oldX,oldY)->{
             int delta=y-oldY;
-            if(background!=null) {
-                float fade=Math.min(1f,y/(float)Ui.dp(this,72));
-                float baseAlpha=WenGoldGlassSurface.enabled(this)
-                        ? (Ui.themeIndex(this)==27?.15f:.12f):1f;
-                background.setAlpha(baseAlpha*(1f-fade*.94f));
-                if(goldOptic!=null)goldOptic.setAlpha(1f-fade*.92f);
-                if(goldSpecular!=null)goldSpecular.setAlpha(1f-fade*.92f);
-                background.setElevation(fade>.02f?0f:Ui.dp(this,7));
-            }
+            updateHeaderGlass(background, y);
             if(delta<0)upwardTravel[0]+=-delta;
             else if(delta>0)upwardTravel[0]=0;
             boolean hide=y>Ui.dp(this,48) && delta>Ui.dp(this,1);
@@ -827,8 +789,12 @@ public final class MainActivity extends Activity {
         content.addView(results);
         scroll.addView(content);
         page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        page.addView(bottomNavigation(TAB_TRANSACTIONS),
-                new LinearLayout.LayoutParams(-1,WenPremiumLayout.navigationHeight(this)));
+        LinearLayout.LayoutParams dockParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.navigationHeight(this));
+        int dockInset = Ui.dp(this, WenPremiumLayout.navigationSideInsetDp(this));
+        dockParams.setMargins(dockInset, 0, dockInset,
+                Ui.dp(this, WenPremiumLayout.navigationBottomInsetDp(this)));
+        page.addView(bottomNavigation(TAB_TRANSACTIONS), dockParams);
         setContentView(page);
         Calendar first=midnight(Calendar.getInstance());
         first.set(Calendar.DAY_OF_MONTH,1);
@@ -2202,15 +2168,7 @@ public final class MainActivity extends Activity {
         primaryRoot.setBackground(Ui.glassScreenBackground(this));
         primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
-        LinearLayout page=Ui.column(this);
-        // Identical visual clearance on Debts and Analytics. Scroll routing,
-        // navigation listeners and all financial content are unchanged.
-        if (WenGoldGlassSurface.enabled(this))
-            page.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));
-        primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View debtTopBar=mainTopBar();
-        page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                WenPremiumLayout.dp(this, 112, 74)));
         ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this);
         content.setPadding(Ui.dp(this, 16), Ui.dp(this, 10), Ui.dp(this, 16), Ui.dp(this, 110));
         content.addView(sectionTitle("دفتر الديون","أرصدة الديون وحركاتها"));
@@ -2250,15 +2208,10 @@ public final class MainActivity extends Activity {
         LinkedHashMap<Long,List<Models.DebtSummary>> closedPeople = groupDebtsByPerson(closed);
         content.addView(sectionTitle("المسددة والمغلقة", closed.isEmpty() ? "لا يوجد سجل بعد" : closedPeople.size() + " أشخاص"));
         for (List<Models.DebtSummary> personDebts : closedPeople.values()) content.addView(debtPersonCard(personDebts, true));
-        scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-        View debtNav=bottomNavigation(TAB_DEBTS);
-        FrameLayout.LayoutParams debtNavParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,WenPremiumLayout.navigationHeight(this),Gravity.BOTTOM);
-        if (Ui.isUnifiedGlassTheme(this)) debtNavParams.setMargins(
-                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),0,
-                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),
-                Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
-        primaryRoot.addView(debtNav,debtNavParams);
+        scroll.addView(content);
+        mountPrimaryScroll(primaryRoot, scroll, debtTopBar);
+        View debtNav = bottomNavigation(TAB_DEBTS);
+        primaryRoot.addView(debtNav, primaryDockParams());
         bindPrimaryNavigationScroll(scroll,debtTopBar,debtNav);
         setContentView(primaryRoot); Ui.animateScreen(primaryRoot); content.post(() -> Ui.animateChildren(content));
     }
@@ -2613,15 +2566,7 @@ public final class MainActivity extends Activity {
         primaryRoot.setBackground(Ui.glassScreenBackground(this));
         primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
-        LinearLayout page=Ui.column(this);
-        // Identical visual clearance on Debts and Analytics. Scroll routing,
-        // navigation listeners and all financial content are unchanged.
-        if (WenGoldGlassSurface.enabled(this))
-            page.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));
-        primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View analyticsTopBar=mainTopBar();
-        page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                WenPremiumLayout.dp(this, 112, 74)));
         ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 110));
         content.addView(sectionTitle("تحليل المصروفات","تقاريرك حسب العملة"));
         content.addView(Ui.text(this, "اختر عملة التحليل", 14, Ui.TEXT, true));
@@ -2714,15 +2659,10 @@ public final class MainActivity extends Activity {
             empty.emoji=available.emoji;empty.amountMinor=0;
             content.addView(categoryAnalysisRow(empty,max,monthStart.getTimeInMillis(),now));
         }
-        scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-        View analyticsNav=bottomNavigation(TAB_ANALYTICS);
-        FrameLayout.LayoutParams analyticsNavParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,WenPremiumLayout.navigationHeight(this),Gravity.BOTTOM);
-        if (Ui.isUnifiedGlassTheme(this)) analyticsNavParams.setMargins(
-                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),0,
-                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),
-                Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
-        primaryRoot.addView(analyticsNav,analyticsNavParams);
+        scroll.addView(content);
+        mountPrimaryScroll(primaryRoot, scroll, analyticsTopBar);
+        View analyticsNav = bottomNavigation(TAB_ANALYTICS);
+        primaryRoot.addView(analyticsNav, primaryDockParams());
         bindPrimaryNavigationScroll(scroll,analyticsTopBar,analyticsNav);
         setContentView(primaryRoot); Ui.animateScreen(primaryRoot);
     }

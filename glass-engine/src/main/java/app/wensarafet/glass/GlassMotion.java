@@ -30,7 +30,7 @@ public final class GlassMotion {
     private static final OvershootInterpolator RELEASE = new OvershootInterpolator(.76f);
     private static final OvershootInterpolator NAV_SPRING = new OvershootInterpolator(.40f);
     // Navigation-only sandbox material. Keep production/fallback tracking unchanged.
-    private static final float LIQUID_FOLLOW = .60f;
+    private static final float LIQUID_FOLLOW = .90f;
     private static final long LIQUID_RELEASE_MS = 265L;
     private static final OvershootInterpolator LIQUID_RELEASE = new OvershootInterpolator(.24f);
 
@@ -134,7 +134,7 @@ public final class GlassMotion {
         }
 
         private WenNavigationLensDrawable opticalLens() {
-            return lens.getBackground() instanceof WenNavigationLensDrawable
+            return materialBridge == null && lens.getBackground() instanceof WenNavigationLensDrawable
                     ? (WenNavigationLensDrawable) lens.getBackground() : null;
         }
 
@@ -181,6 +181,7 @@ public final class GlassMotion {
                 lens.animate().translationX(target).scaleX(1f).scaleY(1f)
                         .setDuration(materialBridge != null ? LIQUID_RELEASE_MS : 190)
                         .setInterpolator(materialBridge != null ? LIQUID_RELEASE : NAV_SPRING)
+                        .setUpdateListener(animation -> invalidateLensPosition(track))
                         .start();
             } else {
                 lens.setTranslationX(target); lens.setScaleX(1f); lens.setScaleY(1f);
@@ -221,7 +222,9 @@ public final class GlassMotion {
                         // inflated until release, with no repeating animator.
                         lens.animate().translationX(fingerLensX(view.getLeft()+event.getX()))
                                 .scaleX(1f).scaleY(1f).setDuration(160)
-                                .setInterpolator(COMPRESS).start();
+                                .setInterpolator(COMPRESS)
+                                .setUpdateListener(animation -> invalidateLensPosition(track))
+                                .start();
                     } else if (lens.getWidth()>0) {
                         lens.setTranslationX(fingerLensX(view.getLeft()+event.getX()));
                     }
@@ -242,7 +245,6 @@ public final class GlassMotion {
                         return true;
                     }
                     cancelled=false;
-                    int previousHover = hovered;
                     hovered=nearest(x);
                     if (optic != null) optic.move(x);
                     if (materialBridge != null) materialBridge.follow(x);
@@ -259,6 +261,7 @@ public final class GlassMotion {
                         float fluidX = lens.getTranslationX()
                                 + (destination - lens.getTranslationX()) * follow;
                         lens.setTranslationX(fluidX);
+                        invalidateLensPosition(track);
                         if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
                             lens.setScaleX(1f); lens.setScaleY(1f);
                         }
@@ -454,7 +457,7 @@ public final class GlassMotion {
 
     /** A single shared lens follows actual RTL/LTR tab coordinates, no fixed x. */
     public static void slideLens(FrameLayout container, View lens, View[] tabs,
-                                 int previousIndex, int selectedIndex) {
+                                 int previousIndex, int selectedIndex, float progress) {
         if (tabs.length == 0 || selectedIndex < 0 || selectedIndex >= tabs.length) return;
         container.post(() -> {
             if (container.getWindowToken() == null) return;
@@ -469,30 +472,37 @@ public final class GlassMotion {
             lens.animate().cancel();
             lens.setTranslationY(selected.getTop());
             float targetX = selected.getLeft();
-            boolean canSlide = previousIndex >= 0 && previousIndex < tabs.length
-                    && previousIndex != selectedIndex
-                    && ValueAnimator.areAnimatorsEnabled() && !lowPower(container.getContext());
-            if (!canSlide) {
+            if (previousIndex >= 0 && previousIndex < tabs.length
+                    && previousIndex != selectedIndex) {
+                float startX = tabs[previousIndex].getLeft();
+                lens.setTranslationX(startX + (targetX - startX) * progress);
+                settleLens(container, lens, targetX);
+            } else {
                 lens.setTranslationX(targetX);
-                // The shared physical lens and the parent's optical crown must
-                // agree even if the page was selected by a content swipe.
-                container.postInvalidateOnAnimation();
-                return;
+                invalidateLensPosition(container);
             }
-            lens.setTranslationX(tabs[previousIndex].getLeft());
-            // A new Activity view hierarchy is created on each swipe/tap.
-            // Its refracting crown is painted by the parent track in dispatchDraw.
-            // Child translation animations alone do not guarantee that custom
-            // parent foregrounds are invalidated on every hardware frame.
-            lens.animate().translationX(targetX).setDuration(225)
-                    .setInterpolator(NAV_SPRING)
-                    .setUpdateListener(animation -> container.postInvalidateOnAnimation())
-                    .withEndAction(() -> {
-                        if (!lens.isAttachedToWindow()) return;
-                        lens.setTranslationX(targetX);
-                        container.postInvalidateOnAnimation();
-                    }).start();
         });
+    }
+
+    private static void invalidateLensPosition(FrameLayout track) {
+        if (track instanceof WenNavigationTrack) {
+            ((WenNavigationTrack) track).invalidateLensPosition();
+        } else {
+            track.postInvalidateOnAnimation();
+        }
+    }
+
+    public static void settleLens(FrameLayout container, View lens, float targetX) {
+        lens.animate().cancel();
+        if (!ValueAnimator.areAnimatorsEnabled() || lowPower(container.getContext())) {
+            lens.setTranslationX(targetX);
+            invalidateLensPosition(container);
+            return;
+        }
+        lens.animate().translationX(targetX).setDuration(165)
+                .setInterpolator(COMPRESS)
+                .setUpdateListener(animation -> invalidateLensPosition(container))
+                .start();
     }
 
     /** No timers, allocations, or CPU work in draw(); one cached gradient per touch. */

@@ -20,30 +20,26 @@ final class WenPremiumLayout {
     }
 
     static int navigationHeight(Context context) {
-        return WenGoldGlassSurface.enabled(context)
-                ? dp(context, 72, 68) : Ui.dp(context, 72);
+        return Ui.dp(context, 60);
     }
 
     static int navigationSideInsetDp(Context context) {
-        return WenGoldGlassSurface.enabled(context) ? 16 : 10;
+        int widthDp = context.getResources().getConfiguration().screenWidthDp;
+        // Keep four usable tabs on narrow screens and cap the dock on tablets.
+        int preferredInset = Math.max(22, (widthDp - 344) / 2);
+        return Math.min(preferredInset, Math.max(0, (widthDp - 240) / 2));
     }
 
     static int navigationBottomInsetDp(Context context) {
-        return WenGoldGlassSurface.enabled(context) ? 10 : 8;
+        return 10;
+    }
+
+    static int fabSideInsetDp(Context context) {
+        return Math.min(30, Math.max(16, navigationSideInsetDp(context)));
     }
 
     static int fabBottomOffset(Context context) {
-        // Leave a visible gap above the taller dock, never cover a tab label.
-        return WenGoldGlassSurface.enabled(context)
-                ? dp(context, 100, 94) : Ui.dp(context, 88);
-    }
-
-    static int navigationClearance(Context context) {
-        // The floating capsule is an OVERLAY, not a content row. Reserve the
-        // capsule + its lower inset + a breathing gap so bank-account values
-        // do not appear through the tab labels at rest.
-        if (!WenGoldGlassSurface.enabled(context)) return 0;
         return navigationHeight(context)
-                + Ui.dp(context, navigationBottomInsetDp(context) + 8);
+                + Ui.dp(context, navigationBottomInsetDp(context) + 12);
     }
 }
