@@ -17,6 +17,7 @@ import android.graphics.drawable.Drawable;
 public final class WenFabBubbleDrawable extends Drawable {
     private final float density;
     private final boolean dark;
+    // Theme-free neutral glass: original constructor signature preserved.
     private final int accent;
     private final int premiumTheme;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -65,61 +66,27 @@ public final class WenFabBubbleDrawable extends Drawable {
         float side=Math.min(bounds.width(),bounds.height());
         circle.set(bounds.centerX()-side*.475f,bounds.centerY()-side*.475f,
                 bounds.centerX()+side*.475f,bounds.centerY()+side*.475f);
-        // Neutral, light-transmitting body. The old nearly opaque blue gradient
-        // looked like a plastic action button instead of a curved glass lens.
-        // Five distinct glass bodies: keep the original Sandbox bubble's
-        // precise round silhouette, hold morph, rim and highlight geometry.
-        // Only the colour/refraction spectrum changes per approved scene.
-        if (premiumTheme >= 25 && premiumTheme <= 29) {
-            final int[] material;
-            final int glow;
-            final int depth;
-            final int edge;
-            switch (premiumTheme) {
-                case 25: // Royal Dark Gold
-                    material = new int[]{0xE18A5A2B,0xD9FFC66B,0xDF8A5428};
-                    glow=0xAEFFE0A1; depth=0x666A401B; edge=0xEEFFE3AE; break;
-                case 26: // Imperial Dark Gold
-                    material = new int[]{0xD96F5E48,0xDFF5CF8F,0xE07A5C35};
-                    glow=0xB3FFE1B8; depth=0x624D402B; edge=0xEEFFEDC7; break;
-                case 27: // Champagne Gold
-                    material = new int[]{0xEFFFF4DF,0xF2F0C58C,0xE6E9BB7F};
-                    glow=0xA9FFFFFF; depth=0x65B78855; edge=0xEEFFFCF2; break;
-                case 28: // Orange-Green Glass
-                    material = new int[]{0xD579B896,0xE0FFD08A,0xC6579974};
-                    glow=0xB3FFF0BC; depth=0x653A704E; edge=0xE4FFFFFF; break;
-                default: // Pink-Violet Glass
-                    material = new int[]{0xE7AD59DC,0xE9FF7DC7,0xD65A42C4};
-                    glow=0xBEFFBDF1; depth=0x644A277B; edge=0xE9FFFFFF; break;
-            }
-            fill.setShader(new LinearGradient(circle.left,circle.top,
-                    circle.right,circle.bottom,material,
-                    new float[]{0f,.51f,1f},Shader.TileMode.CLAMP));
-            opticalDepth.setShader(new RadialGradient(
-                    circle.centerX()-circle.width()*.24f,
-                    circle.centerY()-circle.height()*.28f,
-                    Math.max(1f,circle.width()*.78f),
-                    new int[]{glow,0x28FFFFFF,depth},
-                    new float[]{0f,.44f,1f},Shader.TileMode.CLAMP));
-            rim.setColor(edge);
-            halo.setColor(premiumTheme==25||premiumTheme==26||premiumTheme==27
-                    ? 0xA8FFDB98 : premiumTheme==28 ? 0xA4FFE2A8 : 0xA8FFD5FB);
-            inner.setColor(premiumTheme<=27 ? 0xA4FFEEC3 : 0xB8FFFFFF);
-        } else {
-        fill.setShader(new LinearGradient(circle.left, circle.top,
-                circle.right, circle.bottom,
-                new int[]{dark ? 0xC65E638E : 0xD9FFFFFF,
-                          dark ? 0x865D76B9 : 0x8BD5EFFF,
-                          dark ? 0xBA33427E : 0xB0A4BCEB},
-                new float[]{0f, .51f, 1f}, Shader.TileMode.CLAMP));
+        // The add button is NEUTRAL liquid glass across EVERY theme. It
+        // borrows the brightness of its surroundings, never the palette hue.
+        // Only white/grey transmittance, optical depth and specular geometry
+        // belong to this passive drawable; hitbox and press logic stay intact.
+        fill.setShader(new LinearGradient(circle.left,circle.top,
+                circle.right,circle.bottom,
+                dark
+                    ? new int[]{0x4CFFFFFF,0x1FFFFFFF,0x38FFFFFF}
+                    : new int[]{0x94FFFFFF,0x38FFFFFF,0x75FFFFFF},
+                new float[]{0f,.50f,1f},Shader.TileMode.CLAMP));
         opticalDepth.setShader(new RadialGradient(
-                circle.centerX() - circle.width() * .22f,
-                circle.centerY() - circle.height() * .28f,
-                Math.max(1f, circle.width() * .77f),
-                new int[]{0xA2FFFFFF, 0x2BFFFFFF,
-                        dark ? 0x42233169 : 0x3C5276A9},
-                new float[]{0f, .43f, 1f}, Shader.TileMode.CLAMP));
-        }
+                circle.centerX()-circle.width()*.24f,
+                circle.centerY()-circle.height()*.28f,
+                Math.max(1f,circle.width()*.78f),
+                dark
+                    ? new int[]{0x65FFFFFF,0x10FFFFFF,0x36000000}
+                    : new int[]{0x8FFFFFFF,0x0AFFFFFF,0x22909090},
+                new float[]{0f,.43f,1f},Shader.TileMode.CLAMP));
+        rim.setColor(dark ? 0xCCFFFFFF : 0xE8FFFFFF);
+        halo.setColor(dark ? 0x55FFFFFF : 0x64FFFFFF);
+        inner.setColor(dark ? 0x75FFFFFF : 0xB0FFFFFF);
         highlight.setShader(new LinearGradient(circle.left,circle.top,
                 circle.left,circle.bottom,
                 new int[]{0xDFFFFFFF, 0x46FFFFFF, 0x00FFFFFF},
