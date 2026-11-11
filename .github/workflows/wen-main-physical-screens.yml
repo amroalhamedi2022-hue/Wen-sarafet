@@ -41,7 +41,7 @@ jobs:
           gradle-version: '8.10.2'
       - name: Audit protected original bank logos and finance source BEFORE disposable debug modifications
         run: |
-          python3 tests/wen_188_visual_safezone_contract.py
+          python3 tests/wen_211_integrated_offline_visual_contract.py
           python3 tests/financial_safe_zone_guard.py
       - name: Compile disposable visual-debug APK BEFORE starting emulator
         env:
