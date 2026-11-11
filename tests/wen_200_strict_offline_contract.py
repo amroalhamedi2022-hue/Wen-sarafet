@@ -9,7 +9,7 @@ sms=(app/"java/app/wensarafet/tracker/SmsCaptureReceiver.java").read_text(encodi
 nt=(app/"java/app/wensarafet/tracker/FinanceNotificationListener.java").read_text(encoding="utf-8")
 db=(app/"java/app/wensarafet/tracker/FinanceDbHelper.java").read_text(encoding="utf-8")
 gradle=(root/"app/build.gradle").read_text(encoding="utf-8")
-assert 'versionCode 28' in gradle and 'versionName "2.0"' in gradle
+assert 'versionCode 29' in gradle and 'versionName "2.1"' in gradle
 assert 'applicationId "app.wensarafet.tracker"' in gradle
 assert 'android.permission.INTERNET' not in manifest
 assert 'android.permission.ACCESS_NETWORK_STATE' not in manifest
