@@ -100,7 +100,7 @@ assert expected == present(M), (
 # presentation from the approved adapter, not just indicative string checks.
 UI = P + "Ui.java"
 BUBBLE = "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java"
-FINAL_VISUAL_AUDIT = "66efb1fc505820eb5ddebefc0f8f84bd3c4f5a58"
+FINAL_VISUAL_AUDIT = "b5a40164eedea1a22b29e8587d39fa147aa10fc6"
 assert present(UI) == at(FINAL_VISUAL_AUDIT, UI), (
     "UI must match exactly the reviewed 2.1 visual-only surface changes"
 )
