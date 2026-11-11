@@ -225,8 +225,6 @@ public final class Ui {
      * dozens of transactions can scroll without multiple GPU offscreen passes.
      */
     public static android.graphics.drawable.Drawable glassListBackground(Context context, int radiusDp) {
-        if (isReferenceGlassTheme(context))
-            return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.CARD);
         // Thousands of transaction rows must NOT allocate a native blur View
         // or run AGSL. One inexpensive clipped translucent GradientDrawable
         // per row shares the same palette, rounded outline and highlight.
