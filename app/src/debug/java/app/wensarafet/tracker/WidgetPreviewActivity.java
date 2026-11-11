@@ -44,9 +44,9 @@ public final class WidgetPreviewActivity extends Activity {
             int glass = "bop".equals(action) ? R.drawable.widget_crystal_quick_bop :
                 "palpay".equals(action) ? R.drawable.widget_crystal_quick_palpay :
                 R.drawable.widget_crystal_quick_jawwal;
-            int icon = "bop".equals(action) ? R.drawable.icon_bop_mark :
-                "palpay".equals(action) ? R.drawable.icon_palpay_mark :
-                R.drawable.icon_jawwal_pay_mark;
+            int icon = "bop".equals(action) ? R.drawable.icon_bop_widget_soft :
+                "palpay".equals(action) ? R.drawable.icon_palpay_widget_soft :
+                R.drawable.icon_jawwal_pay_widget_soft;
             r.setImageViewResource(R.id.widget_crystal_glass, glass);
             r.setImageViewResource(R.id.widget_background_image, icon);
             r.setTextViewText(R.id.widget_title, theme);

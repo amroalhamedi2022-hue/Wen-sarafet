@@ -13,8 +13,8 @@
  <LinearLayout android:layout_width="0dp" android:layout_height="match_parent"
  android:layout_weight="1" android:orientation="vertical" android:gravity="center"
  android:paddingLeft="2dp" android:paddingRight="2dp">
- <ImageView android:layout_width="43dp" android:layout_height="43dp" android:layout_gravity="center_horizontal" android:scaleType="fitCenter"
- android:src="@drawable/icon_jawwal_pay_widget_soft" android:contentDescription="Jawwal Pay"/>
+ <ImageView android:layout_width="54dp" android:layout_height="54dp" android:layout_gravity="center_horizontal" android:scaleType="fitCenter"
+ android:src="@drawable/icon_jawwal_pay_widget_soft" android:alpha="0.87" android:contentDescription="Jawwal Pay"/>
  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center"
  android:text="Jawwal Pay" android:textColor="#F8FAFF" android:fontFamily="sans-serif-medium"
  android:textSize="11.5sp" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
@@ -28,8 +28,8 @@
  <LinearLayout android:layout_width="0dp" android:layout_height="match_parent"
  android:layout_weight="1" android:orientation="vertical" android:gravity="center"
  android:paddingLeft="2dp" android:paddingRight="2dp">
- <ImageView android:layout_width="43dp" android:layout_height="43dp" android:layout_gravity="center_horizontal" android:scaleType="fitCenter"
- android:src="@drawable/icon_bop_widget_soft" android:contentDescription="بنك فلسطين"/>
+ <ImageView android:layout_width="54dp" android:layout_height="54dp" android:layout_gravity="center_horizontal" android:scaleType="fitCenter"
+ android:src="@drawable/icon_bop_widget_soft" android:alpha="0.87" android:contentDescription="بنك فلسطين"/>
  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center"
  android:text="بنك فلسطين" android:textColor="#F8FAFF" android:fontFamily="sans-serif-medium"
  android:textSize="11.5sp" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>

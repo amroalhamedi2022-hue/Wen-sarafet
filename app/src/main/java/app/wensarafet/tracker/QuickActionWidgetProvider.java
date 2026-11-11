@@ -27,10 +27,15 @@ public class QuickActionWidgetProvider extends AppWidgetProvider {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_quick_action);
             views.setTextViewText(R.id.widget_title, title());
             views.setTextViewText(R.id.widget_subtitle, subtitle());
-            views.setImageViewResource(R.id.widget_background_image, iconResource());
+            // Place original transparent brand artwork on the optical glass;
+            // avoid the previous opaque brand-coloured app-icon squares.
+            int crystalLogo = "bop".equals(action()) ? R.drawable.icon_bop_widget_soft :
+                    "palpay".equals(action()) ? R.drawable.icon_palpay_widget_soft :
+                            R.drawable.icon_jawwal_pay_widget_soft;
+            views.setImageViewResource(R.id.widget_background_image, crystalLogo);
             views.setImageViewResource(R.id.widget_crystal_glass, crystalMaterial(action()));
             views.setTextViewText(R.id.widget_brand_word, brandWord());
-            views.setViewVisibility(R.id.widget_brand_word, brandWord().isEmpty() ? View.GONE : View.VISIBLE);
+            views.setViewVisibility(R.id.widget_brand_word, View.GONE); // artwork already contains brand word
             boolean active = LicenseManager.isActivated(context);
             if (!active) views.setTextViewText(R.id.widget_subtitle, "اضغط لتفعيل التطبيق");
             Intent intent = active ? new Intent(context, QuickActionActivity.class).putExtra("action", action())
