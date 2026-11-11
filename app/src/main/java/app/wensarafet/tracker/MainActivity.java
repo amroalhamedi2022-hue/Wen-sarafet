@@ -504,14 +504,12 @@ public final class MainActivity extends Activity {
 
         int fabPercent = Ui.homeIconScalePercent(this, "fab");
         int fabSize = Math.max(Ui.dp(this, 46), Math.min(Ui.dp(this, 82), Ui.homeIconDp(this, "fab", 58)));
-        TextView fab = Ui.text(this, "+", 32f * fabPercent / 100f, Color.WHITE, false);
+        TextView fab = Ui.text(this, "+", 32f * fabPercent / 100f,
+                Ui.DARK ? Color.WHITE : Ui.TEXT, false);
         fab.setGravity(Gravity.CENTER);
-        // Two new reference themes render a circular optical material here.
-        // The original add callback, size, position and hold feedback are unchanged.
-        fab.setBackground(Ui.isReferenceGlassTheme(this)
-                ? Ui.glassFloatingAddBackground(this)
-                : (Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
-                : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this)));
+        // All themes share the same colourless optical bubble; the real
+        // add action, original hit target and on-click behaviour are unchanged.
+        fab.setBackground(Ui.glassFloatingAddBackground(this));
         // A hard circular outline (from Sandbox 1.8.8) prevents Android's
         // rectangular default shadow/ripple on Pixel and MIUI renderers.
         // Does NOT change the click/hold action or hitbox.
