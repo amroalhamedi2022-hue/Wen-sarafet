@@ -121,9 +121,11 @@ public final class ReferenceThemesInstrumentedTest {
             assertEquals("Round royal plus remains transparent outside the rim",
                     0, Color.alpha(fab.getPixel(0, 0)));
             int gold = fab.getPixel(80, 80);
-            assertEquals(255, Color.alpha(gold));
-            assertTrue("The Royal Gold button should actually look gold",
-                    Color.red(gold) > Color.blue(gold) && Color.green(gold) > Color.blue(gold));
+            assertTrue("The neutral FAB remains readable but translucent",
+                    Color.alpha(gold) > 100);
+            assertTrue("Neutral FAB must not reintroduce a gold/orange tint",
+                    Math.abs(Color.red(gold) - Color.blue(gold)) < 18
+                            && Math.abs(Color.green(gold) - Color.blue(gold)) < 18);
             backdrop.recycle();
             nav.recycle();
             fab.recycle();
@@ -166,10 +168,10 @@ public final class ReferenceThemesInstrumentedTest {
                 // translucent. It must remain readable, not opaque plastic.
                 assertTrue("Original circular optical bubble must remain legible",
                         Color.alpha(plus.getPixel(70, 70)) > 215);
-                assertTrue("Navigation glass is readable", Color.alpha(
-                        nav.getPixel(220, 44)) > 200);
-                assertTrue("Balance tiles keep a readable fill", Color.alpha(
-                        card.getPixel(190, 75)) > 220);
+                assertTrue("Floating nav remains visible without an opaque block",
+                        Color.alpha(nav.getPixel(220, 44)) > 60);
+                assertTrue("Balance tiles keep readable translucent material",
+                        Color.alpha(card.getPixel(190, 75)) > 75);
                 assertNotEquals("Ambient backdrop must have depth",
                         background.getPixel(65, 75), background.getPixel(400, 730));
                 assertNotEquals("Shimmering glass must not be flat",
@@ -188,7 +190,7 @@ public final class ReferenceThemesInstrumentedTest {
             final int selectedTheme = theme;
             onUi(() -> underTheme(selectedTheme, () -> {
                 Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
-                int expectedHeight = Ui.dp(ctx, WenPremiumLayout.compact(ctx) ? 76 : 86);
+                int expectedHeight = Ui.dp(ctx, WenPremiumLayout.compact(ctx) ? 68 : 72);
                 assertEquals("Consistent floating dock height on all primary screens",
                         expectedHeight, WenPremiumLayout.navigationHeight(ctx));
                 assertEquals(16, WenPremiumLayout.navigationSideInsetDp(ctx));
@@ -215,17 +217,15 @@ public final class ReferenceThemesInstrumentedTest {
                 assertEquals("Only one shared glass track", 1, dock.getChildCount());
                 for (int i = 0; i < tabs.length; i++) {
                     TextView tab = tabs[i];
-                    assertEquals("Emoji replaced, Arabic retained", labels[i],
-                            tab.getText().toString());
+                    assertEquals("Original familiar icon and Arabic label preserved",
+                            emojis[i] + "\n" + labels[i], tab.getText().toString());
                     assertEquals("Icon/label typography has one scene-specific ink",
                             WenGoldGlassSurface.navigationInk(selectedTheme, i == 0),
                             tab.getCurrentTextColor());
-                    assertNotNull(tab.getCompoundDrawables()[1]);
-                    assertEquals("Premium glyph intrinsic size must never regress",
-                            Ui.dp(ctx, 29),
-                            tab.getCompoundDrawables()[1].getIntrinsicWidth());
+                    assertNull("No replacement vector icon hides the original",
+                            tab.getCompoundDrawables()[1]);
                     assertTrue("Touchable tab too short", tab.getMinHeight() >= Ui.dp(ctx, 48));
-                    assertEquals("Single-line Arabic label", 1, tab.getMaxLines());
+                    assertEquals("Original two-line symbol + label", 2, tab.getMaxLines());
                 }
                 tabs[2].performClick();
                 assertArrayEquals("Original navigation listeners remain attached",
@@ -242,4 +242,21 @@ public final class ReferenceThemesInstrumentedTest {
         }
     }
 
+
+    @Test public void allOriginalAndGoldThemesReturnToPickerWithoutChangingIds() {
+        onUi(() -> {
+            Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            ThemeCatalogue.restoreUserHidden(context);
+            assertEquals(30, Ui.THEME_NAMES.length);
+            for (int i = 0; i <= 27; i++) {
+                assertTrue("Theme " + i + " should remain selectable",
+                        ThemeCatalogue.isVisible(context, i));
+            }
+            assertEquals(28, ThemeCatalogue.visibleCount(context));
+            assertFalse("Retired orange/green remains hidden",
+                    ThemeCatalogue.isVisible(context, 28));
+            assertFalse("Retired violet/pink remains hidden",
+                    ThemeCatalogue.isVisible(context, 29));
+        });
+    }
 }
