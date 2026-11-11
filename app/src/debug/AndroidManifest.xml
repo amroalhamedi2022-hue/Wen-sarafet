@@ -2,7 +2,9 @@
 <!-- Sandbox avoids duplicate private financial notification/SMS collection. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove"/>
+    <!-- This is a removal marker, not a request for telephony hardware. -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove"
+        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware"/>
     <application>
         <receiver android:name="app.wensarafet.tracker.SmsCaptureReceiver" tools:node="remove"/>
         <service android:name="app.wensarafet.tracker.FinanceNotificationListener" tools:node="remove"/>
