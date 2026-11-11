@@ -76,6 +76,7 @@ public final class FinanceCoreTest {
         if (!TransactionParser.isVerificationMessage("رمز التأكيد الخاص بك هو 428191")) throw new AssertionError("Arabic OTP detection");
         if (!TransactionParser.isVerificationMessage("كود الدخول إلى حسابك 428191")) throw new AssertionError("Arabic login-code detection");
         if (!TransactionParser.isVerificationMessage("Your verification code is 428191")) throw new AssertionError("English OTP detection");
+        if (!TransactionParser.isVerificationMessage("Code: 12345 For p2m for a maximum amount of: 2.00ILS.")) throw new AssertionError("wallet Code: OTP detection");
         if (!TransactionParser.isVerificationMessage("Your one-time passcode is 428191")) throw new AssertionError("English passcode detection");
         if (TransactionParser.isVerificationMessage("حوالة صادرة من حسابك بمبلغ 66.24 دولار. رصيدكم المتوفر هو 129.6")) throw new AssertionError("financial message is not OTP");
         parsed("JAWAL", "amro ibrahim sewilm alhamidi has transferred an amount of ILS 150.00 to your account.", 15_000L, "ILS", FinanceRules.TRANSFER);
