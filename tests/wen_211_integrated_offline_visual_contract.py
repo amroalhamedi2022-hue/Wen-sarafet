@@ -105,7 +105,7 @@ protected = (
     P + "AppIntegrity.java", P + "LicenseManager.java",
     P + "AppLockManager.java", P + "SecurePinStore.java",
     P + "BackupCrypto.java", P + "BackupArchiveVerifier.java",
-    P + "SmsCaptureReceiver.java", P + "FinanceNotificationListener.java",
+    P + "SmsCaptureReceiver.java",
     "app/build.gradle", "settings.gradle"
 )
 for name in protected:
@@ -155,6 +155,18 @@ assert 'CaptureEngine.handle' in present(P + "SmsCaptureReceiver.java")
 assert 'CaptureEngine.handle' in present(P + "FinanceNotificationListener.java")
 assert 'TransactionParser.isVerificationMessage(clean)' in present(P + "CaptureEngine.java")
 
+# The ONLY Android notification change is a second, early OTP gate before
+# prefixing title. Freeze the entire class at the audited privacy commit.
+OTP_NOTIFICATION_AUDIT = "d662a41c75522ba56b3c2393a086951e83a0ccbb"
+notifier = P + "FinanceNotificationListener.java"
+assert present(notifier) == at(OTP_NOTIFICATION_AUDIT, notifier), (
+    "SAFE ZONE: notification capture changed beyond reviewed OTP-only fix"
+)
+assert present(notifier).index("isVerificationMessage(body)") < (
+    present(notifier).index('body = title + " — " + body;')
+)
+
+
 
 removed_network = (
     P + "BopRateFetcher.java", P + "BopIndicativeRate.java",
@@ -202,6 +214,8 @@ permitted = set(exact_security) | set(removed_network) | {
     # Fully pinned in OTP_AUDIT above; no other finance/parser changes.
     P + "TransactionParser.java",
     "tests/FinanceCoreTest.java",
+    P + "FinanceNotificationListener.java",
+    "tests/otp_capture_contract.py",
 }
 modified = set(git("diff", "--name-only", VISUAL_BASE, "HEAD").splitlines())
 assert modified <= permitted, "Unexpected cross-branch file changes: " + repr(sorted(modified - permitted))
