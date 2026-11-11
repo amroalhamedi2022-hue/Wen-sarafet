@@ -16,12 +16,19 @@ public class QuickActionWidgetProvider extends AppWidgetProvider {
     protected int iconResource() { return R.mipmap.ic_launcher; }
     protected String brandWord() { return ""; }
 
+    private static int crystalMaterial(String action) {
+        if ("bop".equals(action)) return R.drawable.widget_crystal_quick_bop;
+        if ("palpay".equals(action)) return R.drawable.widget_crystal_quick_palpay;
+        return R.drawable.widget_crystal_quick_jawwal;
+    }
+
     @Override public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         for (int id : ids) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_quick_action);
             views.setTextViewText(R.id.widget_title, title());
             views.setTextViewText(R.id.widget_subtitle, subtitle());
             views.setImageViewResource(R.id.widget_background_image, iconResource());
+            views.setImageViewResource(R.id.widget_crystal_glass, crystalMaterial(action()));
             views.setTextViewText(R.id.widget_brand_word, brandWord());
             views.setViewVisibility(R.id.widget_brand_word, brandWord().isEmpty() ? View.GONE : View.VISIBLE);
             boolean active = LicenseManager.isActivated(context);
