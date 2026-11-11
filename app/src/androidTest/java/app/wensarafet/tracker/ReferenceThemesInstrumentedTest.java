@@ -138,7 +138,13 @@ public final class ReferenceThemesInstrumentedTest {
             assertFalse(Ui.isReferenceGlassTheme(ctx));
             assertFalse(Ui.isLiquidTheme(ctx));
             assertEquals("زمرد نعناعي", Ui.THEME_NAMES[0]);
-            assertTrue(Ui.glassScreenBackground(ctx) instanceof android.graphics.drawable.ColorDrawable);
+            assertTrue(Ui.isUnifiedGlassTheme(ctx));
+            assertTrue(Ui.glassScreenBackground(ctx)
+                    instanceof app.wensarafet.glass.WenGlassBackdropDrawable);
+            assertTrue(Ui.glassHeaderBackground(ctx,24)
+                    instanceof app.wensarafet.glass.WenGlassDrawable);
+            assertTrue(Ui.glassNavigationBackground(ctx,26)
+                    instanceof app.wensarafet.glass.WenGlassDrawable);
         }));
         onUi(() -> underTheme(20, () -> {
             Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
