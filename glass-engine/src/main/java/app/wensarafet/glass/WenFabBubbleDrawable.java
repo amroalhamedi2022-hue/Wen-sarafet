@@ -119,18 +119,18 @@ public final class WenFabBubbleDrawable extends Drawable {
         c.drawCircle(mx,my,radius+ density*(1.8f+press*2.8f),halo);
         fill.setAlpha((int)(alpha*(1f-.08f*press)));
         c.drawCircle(mx,my,radius,fill);
-        opticalDepth.setAlpha((int)(alpha*(.84f+.16f*press)));
+        opticalDepth.setAlpha((int)(alpha*(.70f+.20f*press)));
         c.drawCircle(mx,my,radius, opticalDepth);
         glint.set(mx-radius*.68f,my-radius*.76f,mx+radius*.58f,my-radius*.04f);
-        highlight.setAlpha((int)(alpha*(.66f+.15f*press)));
+        highlight.setAlpha((int)(alpha*(.45f+.20f*press)));
         c.drawOval(glint,highlight);
         reflection.set(mx-radius*.85f, my-radius*.85f,
                 mx+radius*.85f, my+radius*.85f);
-        caustic.setAlpha((int)(alpha*(.70f+.30f*press)));
+        caustic.setAlpha((int)(alpha*(.32f+.26f*press)));
         c.drawOval(reflection,caustic);
         rim.setAlpha((int)(alpha*(.88f+.12f*press)));
         c.drawCircle(mx,my,radius-density*.6f,rim);
-        rainbow.setAlpha((int)(alpha*(.72f+.28f*press)));
+        rainbow.setAlpha((int)(alpha*(.46f+.34f*press)));
         c.drawCircle(mx,my,radius-density*2.1f,rainbow);
         inner.setAlpha((int)(alpha*(.65f+.28f*press)));
         c.drawCircle(mx,my,radius-density*4f,inner);
