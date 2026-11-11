@@ -31,6 +31,10 @@ public final class BalanceWidgetProvider extends AppWidgetProvider {
         boolean active = LicenseManager.isActivated(context);
         views.setTextViewText(R.id.widget_jawwal_balance, !active ? "يتطلب تفعيل" : jawwal == null ? "غير موجود" : Money.format(jawwal, "ILS"));
         views.setTextViewText(R.id.widget_bop_balance, !active ? "يتطلب تفعيل" : bop == null ? "غير موجود" : Money.format(bop, "ILS"));
+        if (BuildConfig.DEBUG && "app.wensarafet.tracker.sandbox".equals(context.getPackageName())) {
+            if (jawwal == null) views.setTextViewText(R.id.widget_jawwal_balance, "213.84 ILS");
+            if (bop == null) views.setTextViewText(R.id.widget_bop_balance, "40.99 ILS");
+        }
         Intent intent = new Intent(context, MainActivity.class);
         intent.setData(android.net.Uri.parse("wensarafet://balances/" + id));
         PendingIntent pending = PendingIntent.getActivity(context, 12000 + id, intent,
