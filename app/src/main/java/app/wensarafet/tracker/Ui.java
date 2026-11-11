@@ -120,7 +120,6 @@ public final class Ui {
     public static android.graphics.drawable.Drawable glassHeaderBackground(Context context, int radiusDp) {
         if (isReferenceGlassTheme(context))
             return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.HEADER);
-        if (themeIndex(context) < 16) return layeredBackground(context, radiusDp);
         return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
                 mix(BRAND_DARK, BRAND, .12f), BRAND, SKY, true);
     }
@@ -128,7 +127,6 @@ public final class Ui {
     public static android.graphics.drawable.Drawable glassSoftBackground(Context context, int radiusDp) {
         if (isReferenceGlassTheme(context))
             return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.CARD);
-        if (themeIndex(context) < 16) return layeredSoftBackground(context, radiusDp);
         int upper = DARK ? mix(SURFACE, BRAND, .10f) : mix(BRAND_SOFT, SURFACE, .32f);
         int lower = DARK ? mix(SURFACE, SKY, .16f) : mix(BRAND_SOFT, SKY, .08f);
         return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
@@ -139,7 +137,6 @@ public final class Ui {
     public static android.graphics.drawable.Drawable glassBalanceBackground(Context context, int radiusDp) {
         if (isReferenceGlassTheme(context))
             return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.CARD);
-        if (!isLiquidTheme(context)) return layeredSoftBackground(context, radiusDp);
         int top = DARK ? mix(SURFACE, BRAND, .20f) : mix(BRAND_SOFT, BRAND, .34f);
         int bottom = DARK ? mix(SURFACE, SKY, .13f) : mix(BRAND_SOFT, SKY, .05f);
         return new app.wensarafet.glass.WenGlassDrawable(context,
@@ -150,7 +147,6 @@ public final class Ui {
     public static android.graphics.drawable.Drawable glassChartBackground(Context context, int radiusDp) {
         if (isReferenceGlassTheme(context))
             return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.CARD);
-        if (!isLiquidTheme(context)) return layeredSoftBackground(context, radiusDp);
         int top = DARK ? mix(SURFACE, BRAND, .12f) : mix(BRAND_SOFT, BRAND, .22f);
         int bottom = DARK ? mix(SURFACE, SKY, .16f) : mix(BRAND_SOFT, SKY, .20f);
         return new app.wensarafet.glass.WenGlassDrawable(context,
@@ -165,7 +161,7 @@ public final class Ui {
         // The existing FAB is the only consumer of accent radius 24. Keep
         // every card, button, and the three newer reference palettes intact.
         if (themeIndex(context) >= 16 && themeIndex(context) <= 21 && radiusDp == 24)
-            return new app.wensarafet.glass.WenFabBubbleDrawable(context, SKY, DARK);
+            return new app.wensarafet.glass.WenFabBubbleDrawable(context, DARK);
         return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
                 mix(BRAND_DARK, BRAND, .18f), mix(BRAND, VIOLET, .28f), SKY, true);
     }
@@ -193,7 +189,7 @@ public final class Ui {
         // One shared colourless glass FAB for EVERY theme (legacy + premium).
         // The original account icons, navigation and actions remain unchanged.
         return new app.wensarafet.glass.WenFabBubbleDrawable(
-                context, Color.WHITE, DARK, -1);
+                context, DARK);
     }
 
     private static android.graphics.drawable.Drawable referenceGlass(Context context,
@@ -237,6 +233,16 @@ public final class Ui {
         plate.setStroke(Math.max(1, dp(context, 1)),
                 DARK ? Color.argb(70, 232, 235, 255) : Color.argb(148, 255, 255, 255));
         return plate;
+    }
+
+    /** Neutral glass used by the floating primary chrome over every palette. */
+    static GradientDrawable glassChromeBackground(Context context, int radiusDp) {
+        GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                DARK ? new int[]{0xB3303030, 0xBC161616, 0xCF222222}
+                     : new int[]{0xEDFFFFFF, 0xBFFFFFFF, 0xDAFFFFFF});
+        glass.setCornerRadius(dp(context, radiusDp));
+        glass.setStroke(Math.max(1, dp(context, 1)), DARK ? 0x55FFFFFF : 0xC2FFFFFF);
+        return glass;
     }
 
     public static android.graphics.drawable.Drawable glassNavigationBackground(Context context, int radiusDp) {
@@ -511,23 +517,11 @@ public final class Ui {
     public static void pressAnimation(View view) {
         if (isLiquidTheme(view.getContext())
                 || view.getBackground() instanceof app.wensarafet.glass.WenFabBubbleDrawable) {
-            // Restore the sandbox's true circular FAB pressure-morph, only
-            // for the original glass palettes 16–21. Its listener NEVER
-            // consumes input; the exact original click and long-click remain.
+            // The circular FAB uses the same press response in every theme.
             if (view.getBackground() instanceof app.wensarafet.glass.WenFabBubbleDrawable
                     && (view.isClickable() || view.isLongClickable())) {
                 final app.wensarafet.glass.WenFabBubbleDrawable bubble =
                         (app.wensarafet.glass.WenFabBubbleDrawable) view.getBackground();
-                // A lightweight over-glyph optical crown from the sandbox.
-                // ViewOverlay is visual-only and cannot receive any touch.
-                final app.wensarafet.glass.WenFabOpticalCrownDrawable crown =
-                        new app.wensarafet.glass.WenFabOpticalCrownDrawable(
-                                view.getResources().getDisplayMetrics().density);
-                crown.setBounds(0, 0, view.getWidth(), view.getHeight());
-                view.getOverlay().add(crown);
-                view.addOnLayoutChangeListener((v, left, top, right, bottom,
-                        oldLeft, oldTop, oldRight, oldBottom) ->
-                        crown.setBounds(0, 0, right - left, bottom - top));
                 final android.animation.ValueAnimator[] morph = {null};
                 view.setOnTouchListener((v, e) -> {
                     final int action = e.getActionMasked();
@@ -538,7 +532,6 @@ public final class Ui {
                     if (morph[0] != null) morph[0].cancel();
                     if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
                         bubble.setPress(0f);
-                        crown.setPress(0f);
                         v.setScaleX(1f);
                         v.setScaleY(1f);
                         return false;
@@ -550,24 +543,18 @@ public final class Ui {
                     morph[0].addUpdateListener(a -> {
                         float t = (Float) a.getAnimatedValue();
                         bubble.setPress(t);
-                        crown.setPress(t);
                     });
                     morph[0].start();
                     v.animate().cancel();
-                    v.animate().scaleX(down ? .94f : 1f).scaleY(down ? .94f : 1f)
+                    v.animate().scaleX(down ? .96f : 1f).scaleY(down ? .96f : 1f)
                             .setDuration(down ? 90L : 225L).start();
                     return false; // Never steal existing FAB click/hold actions.
                 });
                 view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
-                    @Override public void onViewAttachedToWindow(View v) {
-                        crown.setBounds(0, 0, v.getWidth(), v.getHeight());
-                        v.getOverlay().add(crown);
-                    }
+                    @Override public void onViewAttachedToWindow(View v) {}
                     @Override public void onViewDetachedFromWindow(View v) {
                         if (morph[0] != null) morph[0].cancel();
                         bubble.setPress(0f);
-                        crown.setPress(0f);
-                        v.getOverlay().remove(crown);
                         v.animate().cancel();
                         v.setScaleX(1f);
                         v.setScaleY(1f);

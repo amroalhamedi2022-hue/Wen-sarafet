@@ -7,6 +7,7 @@ two independently reviewed, pinned predecessors. Exact comparison rejects
 even a one-character undeclared change to finance, DB or authorization logic.
 Run with Git full history (actions/checkout fetch-depth: 0).
 """
+import hashlib
 from pathlib import Path
 import subprocess
 
@@ -18,6 +19,7 @@ NEUTRAL_BUBBLE = "cd3731f2d50b4fd5a1436ded3cbcdc4c94776840"
 SECURITY_BASE = "3ce3542df5eb6079646e1eee3bdc929cc6730133"
 P = "app/src/main/java/app/wensarafet/tracker/"
 M = P + "MainActivity.java"
+RELEASE_BASE = "19bc7621bf2621d4d89b18d2d91e29a4f558ff8c"
 
 
 def git(*args):
@@ -91,7 +93,7 @@ expected = replace(expected, "        if (Ui.isLiquidTheme(this)) analyticsNavPa
 expected = replace(expected, "        final View background=topBar.findViewWithTag(\"main_header_background\");\n        scroll.setOnScrollChangeListener", "        final View background=topBar.findViewWithTag(\"main_header_background\");\n        final View goldOptic=topBar.findViewWithTag(WenGoldGlassSurface.HEADER_GLASS_TAG);\n        final View goldSpecular=topBar.findViewWithTag(WenGoldGlassSurface.HEADER_SPECULAR_TAG);\n        scroll.setOnScrollChangeListener")
 expected = replace(expected, "                background.setAlpha(1f-fade*.84f);\n                background.setElevation(fade>.02f?0f:Ui.dp(this,7));", "                float baseAlpha=WenGoldGlassSurface.enabled(this)\n                        ? (Ui.themeIndex(this)==27?.15f:.12f):1f;\n                background.setAlpha(baseAlpha*(1f-fade*.94f));\n                if(goldOptic!=null)goldOptic.setAlpha(1f-fade*.92f);\n                if(goldSpecular!=null)goldSpecular.setAlpha(1f-fade*.92f);\n                background.setElevation(fade>.02f?0f:Ui.dp(this,7));")
 
-assert expected == present(M), (
+assert expected == at(RELEASE_BASE, M), (
     "SAFE ZONE: cumulative MainActivity deviates from the fully reconstructed "
     "visual HEAD + reviewed strict-offline security overlay"
 )
@@ -101,10 +103,10 @@ assert expected == present(M), (
 UI = P + "Ui.java"
 BUBBLE = "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java"
 FINAL_VISUAL_AUDIT = "f5211774e58b50addcce054f85427643d0acaf3e"
-assert present(UI) == at(FINAL_VISUAL_AUDIT, UI), (
+assert at(RELEASE_BASE, UI) == at(FINAL_VISUAL_AUDIT, UI), (
     "UI must match exactly the reviewed 2.1 visual-only surface changes"
 )
-bubble = present(BUBBLE)
+bubble = at(RELEASE_BASE, BUBBLE)
 reviewed_bubble = at(NEUTRAL_BUBBLE, BUBBLE)
 # Only four white-glow paint alpha factors change; geometry and press logic frozen.
 reviewed_bubble = replace(reviewed_bubble, "        opticalDepth.setAlpha((int)(alpha*(.84f+.16f*press)));", "        opticalDepth.setAlpha((int)(alpha*(.70f+.20f*press)));")
@@ -149,9 +151,54 @@ VISUAL_REFRESH_PATHS = (
     "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java",
 )
 for path in VISUAL_REFRESH_PATHS:
-    assert present(path) == at(VISUAL_REFRESH_AUDIT, path), (
+    assert at(RELEASE_BASE, path) == at(VISUAL_REFRESH_AUDIT, path), (
         "Unreviewed visual delta outside eight-file 2026-11-11 review: " + path
     )
+
+# The previous release remains fully reproducible above. Pin this visual
+# update by exact file bytes while all other visual files stay on that release.
+REFINEMENT_SHA256 = {
+    "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java":
+        "c1398e1c8d642ef04ad1283089299c6ba1f4a0c08d490895395847258833565e",
+    "app/src/main/java/app/wensarafet/tracker/MainActivity.java":
+        "4b313ee0058d01da0bce3a04b22a4ad10a3d0453afbb1c4fe277f1b98119f12a",
+    "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java":
+        "330135f1cda3fc570b593a77c623a3242ac7a01e09f713ff379beb5eabf23032",
+    "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java":
+        "e379339cb13ad9fad10e54f14adfa13c026dafef01e9d0576cefff7ba9b9870c",
+    "app/src/main/java/app/wensarafet/tracker/Ui.java":
+        "dfdefa0db2944c094cdf9a1f12ba79a616dad1c8e489a3803d5727d1c34b32c7",
+    "app/src/main/java/app/wensarafet/tracker/WenGoldGlassSurface.java":
+        "22f2f80f34d0c51f06d0d659b70123e4bdacff3078bec10e5dc7bb6298196e4b",
+    "app/src/main/java/app/wensarafet/tracker/WenPremiumLayout.java":
+        "f260ed3372b95ff9ce811afcc211f30054752db761217ecf20f3eaa6afc4e0f8",
+    "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java":
+        "ec34cbafc3afcc940e2987b0a39bd9b29d59950029b2d38c211b17cab8b1cb63",
+    "glass-engine/src/main/java/app/wensarafet/glass/GlassMotion.java":
+        "299b98c3647f29cc4d39c4bb1979b50365d23a0cf5128225db021225cdb956ba",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java":
+        "38a709218671b6a79d98a377540cc420d6243d3bf57c9d813387d5115041d078",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenNavigationLensDrawable.java":
+        "ea13ce9781675ba864000156b1cf2406c629398d0348788e2eb7e4ec174e473f",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenNavigationTrack.java":
+        "057e8a4c19686ff67ac36c2aa2a7fd6e0d4fef5c34c38592d82c7078727ea087",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenOpticalNavigationOverlay.java":
+        "40d1de4de7ba806af6a5cb2a97f034b44f7aca198d07a4d2b44d20578f6f0f26",
+    "scripts/capture_main_no_instrumentation.sh":
+        "76e488173ed7f4790888db2c8df3ba8ce71093cc5057f35ae50b9528a4c80abd",
+    "scripts/capture_owner_android_device.ps1":
+        "177e76d2a164ba692c2e6e37f8a1cbbe17491a2375d9df16fdc9335afaaf8c44",
+    "tests/glass_energy_contract.py":
+        "af977d5e19a85bc42a7a162bedf67b28b605f25cf95a54614deb443361b2d0c1",
+    "tests/ui_polish_185_contract.py":
+        "611394c7981b51bc2adb52f45a3d1ff9e52389915769a98470796167473dacd6",
+}
+for path, expected_sha in REFINEMENT_SHA256.items():
+    actual_sha = hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
+    assert actual_sha == expected_sha, "Unreviewed visual file bytes: " + path
+for path in VISUAL_REFRESH_PATHS:
+    if path not in REFINEMENT_SHA256:
+        assert present(path) == at(RELEASE_BASE, path), "Unreviewed change: " + path
 
 # All business and owner protection files are exact-source identical to the
 # independently passed visual baseline. No migrations, balance adjustments,
@@ -271,7 +318,7 @@ assert '"MANUAL",System.currentTimeMillis()' in present(M)
 assert 'Code: 12345 For p2m' in present("tests/FinanceCoreTest.java")
 assert "R.drawable.icon_bop_mark" in present(M)
 assert "visualMotion.captureOriginalTabs" in present(M)
-assert "WenPremiumLayout.navigationClearance(this)" in present(M)
+assert "primaryDockParams()" in present(M)
 assert "WenGoldGlassSurface.attachGoldBackdrop(primaryRoot)" in present(M)
 
 # All existing non-security code must be unchanged from latest visual branch.
@@ -297,8 +344,9 @@ permitted = set(exact_security) | set(removed_network) | {
     "tests/otp_capture_contract.py",
 }
 permitted.update(VISUAL_REFRESH_PATHS)
+permitted.update(REFINEMENT_SHA256)
 modified = set(git("diff", "--name-only", VISUAL_BASE, "HEAD").splitlines())
 assert modified <= permitted, "Unexpected cross-branch file changes: " + repr(sorted(modified - permitted))
 
-print("PASS: cumulative MainActivity byte-exact; finance/auth/SQLite/logo unchanged; "
+print("PASS: cumulative MainActivity and glass updates pinned; finance/auth/SQLite/logo unchanged; "
       "neutral glass across themes; strict offline source and manifest verified.")

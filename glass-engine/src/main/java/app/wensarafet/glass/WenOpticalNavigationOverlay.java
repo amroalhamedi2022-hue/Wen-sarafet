@@ -62,21 +62,21 @@ public final class WenOpticalNavigationOverlay extends View {
         // An attached, non-touchable View is composited above the tab glyphs
         // and always receives invalidate() from the UI renderer.
         // Almost transparent coating: never cover the real underlying tab glyph.
-        body.setColor(dark ? 0x2F8C91B0 : 0x27FFFFFF);
+        body.setColor(dark ? 0x2F919191 : 0x27FFFFFF);
         refractedEdge.setStyle(Paint.Style.STROKE);
         refractedEdge.setStrokeWidth(density * 6.5f);
         reflectedLight.setStyle(Paint.Style.STROKE);
         reflectedLight.setStrokeWidth(density * 2.4f);
         shadowLine.setStyle(Paint.Style.STROKE);
         shadowLine.setStrokeWidth(density * 1.1f);
-        shadowLine.setColor(dark ? 0x8C22253C : 0x5B34456C);
+        shadowLine.setColor(dark ? 0x8C252525 : 0x5B454545);
         spectrum.setStyle(Paint.Style.STROKE);
         spectrum.setStrokeWidth(density * 1.85f);
         caustic.setStyle(Paint.Style.STROKE);
         caustic.setStrokeWidth(density * 3.1f);
-        caustic.setColor(dark ? 0xA0ADDFFF : 0x9EFFFFFF);
+        caustic.setColor(dark ? 0xA0FFFFFF : 0x9EFFFFFF);
         specular.setColor(0xDFFFFFFF);
-        rim.setColor(dark ? 0xD8F2F3FF : 0xEEFFFFFF);
+        rim.setColor(dark ? 0xD8F3F3F3 : 0xEEFFFFFF);
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(density * 1.6f);
         innerRim.setColor(dark ? 0x8FFFFFFF : 0xC0FFFFFF);

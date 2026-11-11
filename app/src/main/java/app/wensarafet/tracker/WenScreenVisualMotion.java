@@ -32,6 +32,7 @@ import java.util.function.Consumer;
 public final class WenScreenVisualMotion {
     private static final PathInterpolator SOFT = new PathInterpolator(.18f,.78f,.22f,1f);
     private static final PathInterpolator RELEASE = new PathInterpolator(.2f,.8f,.2f,1f);
+    static final String PRIMARY_SCROLL_TAG = "wen_primary_scroll";
     private static final int HOME = 0, LAST_TAB = 3;
     private final Context context;
     private TextView[] originalTabs;
@@ -44,6 +45,7 @@ public final class WenScreenVisualMotion {
     private boolean tracking, dragging;
     private float startX, startY;
     private int swipeStartTab;
+    private float swipeProgress;
 
     public WenScreenVisualMotion(Context context) { this.context = context; }
 
@@ -137,19 +139,6 @@ public final class WenScreenVisualMotion {
         });
     }
 
-    /** Same finite 240ms glass top-bar entrance as the sandbox.
-     * The real header still owns all its original account/settings buttons. */
-    private void revealTopChrome(View page) {
-        if (!animate() || page == null) return;
-        View header = page.findViewWithTag("main_header_background");
-        if (header == null) return;
-        header.animate().cancel();
-        header.setAlpha(.86f);
-        header.setTranslationY(-Ui.dp(context, 10));
-        header.animate().alpha(1f).translationY(0f).setDuration(160L)
-                .setInterpolator(RELEASE).start();
-    }
-
     private void introIcons(View page) {
         if (!firstPrimaryIcons) return;
         firstPrimaryIcons = false;
@@ -216,7 +205,6 @@ public final class WenScreenVisualMotion {
         if (firstPrimaryIcons) {
             lastPrimaryTab = tab;
             showImmediately(host, previous, next);
-            revealTopChrome(next);
             introIcons(next);
             return true;
         }
@@ -226,16 +214,18 @@ public final class WenScreenVisualMotion {
         // Single outgoing page removed immediately: avoid two full-screen
         // finance pages continuously composited by the GPU.
         showImmediately(host, previous, next);
-        revealTopChrome(next);
         if (direction == 0) {
             next.setAlpha(.94f);
             next.setTranslationY(Ui.dp(context,3));
             next.animate().alpha(1f).translationY(0f).setDuration(115L)
                     .setInterpolator(RELEASE).start();
         } else {
-            next.setTranslationX(-direction*Ui.dp(context,46));
-            next.animate().translationX(0f).setDuration(190L)
-                    .setInterpolator(SOFT).start();
+            View content = next.findViewWithTag(PRIMARY_SCROLL_TAG);
+            if (content != null) {
+                content.setTranslationX(-direction * Ui.dp(context, 34));
+                content.animate().translationX(0f).setDuration(165L)
+                        .setInterpolator(SOFT).start();
+            }
         }
         return true;
     }
@@ -258,13 +248,19 @@ public final class WenScreenVisualMotion {
         return false;
     }
 
-    private void resetSwipe(View screen) {
+    private void resetSwipe(View screen, boolean committed) {
+        if (dragging && originalTabs != null) {
+            NavigationVisualDecorator.endSwipe(originalTabs, swipeStartTab, swipeProgress, committed);
+        }
         tracking = false;
         dragging = false;
-        if (screen != null && screen.getTranslationX() != 0f) {
-            screen.animate().cancel();
-            if (!animate()) screen.setTranslationX(0f);
-            else screen.animate().translationX(0f).setDuration(160L).start();
+        swipeProgress = 0f;
+        View content = screen == null ? null : screen.findViewWithTag(PRIMARY_SCROLL_TAG);
+        if (content != null && content.getTranslationX() != 0f) {
+            content.animate().cancel();
+            if (!animate()) content.setTranslationX(0f);
+            else content.animate().translationX(0f).setDuration(165L)
+                    .setInterpolator(RELEASE).start();
         }
     }
 
@@ -279,12 +275,12 @@ public final class WenScreenVisualMotion {
         int action=event.getActionMasked();
         if (!Ui.isLiquidTheme(context) || !allowed || host == null || screen == null
                 || originalTabs == null || tab < HOME || tab > LAST_TAB) {
-            if (tracking || dragging) resetSwipe(screen);
+            if (tracking || dragging) resetSwipe(screen, false);
             return false;
         }
         switch (action) {
             case MotionEvent.ACTION_DOWN:
-                resetSwipe(screen);
+                resetSwipe(screen, false);
                 startX = event.getX();
                 startY = event.getY();
                 swipeStartTab=tab;
@@ -294,14 +290,14 @@ public final class WenScreenVisualMotion {
                 return false;
             case MotionEvent.ACTION_POINTER_DOWN:
             case MotionEvent.ACTION_CANCEL:
-                resetSwipe(screen);
+                resetSwipe(screen, false);
                 return false;
             case MotionEvent.ACTION_MOVE:
                 if (!tracking || swipeStartTab!=tab) return dragging;
                 float dx=event.getX()-startX,dy=event.getY()-startY;
                 if (!dragging) {
                     if (Math.abs(dy)>Ui.dp(context,22) && Math.abs(dy)>Math.abs(dx)) {
-                        resetSwipe(screen);
+                        resetSwipe(screen, false);
                         return false;
                     }
                     int target=tab+(dx>0f ? 1 : -1);
@@ -318,8 +314,17 @@ public final class WenScreenVisualMotion {
                 }
                 if (dragging) {
                     float limit=Ui.dp(context,84);
-                    screen.animate().cancel();
-                    screen.setTranslationX(Math.max(-limit,Math.min(limit,dx*.26f)));
+                    View content = screen.findViewWithTag(PRIMARY_SCROLL_TAG);
+                    if (content != null && animate()) {
+                        content.animate().cancel();
+                        content.setTranslationX(Math.max(-limit, Math.min(limit, dx * .26f)));
+                    }
+                    int preview = tab + (dx > 0f ? 1 : -1);
+                    boolean valid = preview >= HOME && preview <= LAST_TAB;
+                    swipeProgress = valid ? Math.max(0f, Math.min(1f,
+                            (Math.abs(dx) - Ui.dp(context, 48)) / Ui.dp(context, 70))) : 0f;
+                    NavigationVisualDecorator.followSwipe(originalTabs, tab,
+                            valid ? preview : tab, swipeProgress);
                     return true;
                 }
                 return false;
@@ -330,14 +335,11 @@ public final class WenScreenVisualMotion {
                 }
                 int target=tab+(event.getX()>startX ? 1 : -1);
                 float distance=Math.abs(event.getX()-startX);
-                resetSwipe(screen);
-                if (distance>=Ui.dp(context,70) && target>=HOME && target<=LAST_TAB) {
-                    TextView destination=originalTabs[target];
-                    if (destination!=null && destination.isAttachedToWindow()) {
-                        destination.performClick();
-                        return true;
-                    }
-                }
+                TextView destination = distance >= Ui.dp(context, 70)
+                        && target >= HOME && target <= LAST_TAB ? originalTabs[target] : null;
+                boolean committed = destination != null && destination.isAttachedToWindow();
+                resetSwipe(screen, committed);
+                if (committed) destination.performClick();
                 return true;
             default:
                 return dragging;

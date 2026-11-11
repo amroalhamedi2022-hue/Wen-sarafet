@@ -2,7 +2,6 @@ package app.wensarafet.tracker;
 
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.ColorFilter;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
@@ -12,11 +11,8 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
-import android.os.PowerManager;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewOutlineProvider;
-import android.graphics.Outline;
 import android.widget.FrameLayout;
 
 import com.example.liquidglass.LiquidGlassView;
@@ -35,13 +31,10 @@ import com.example.liquidglass.LiquidGlassView;
  */
 final class WenGoldGlassSurface {
     static final String BACKDROP_TAG = "wen_gold_background_source";
-    static final String HEADER_GLASS_TAG = "wen_gold_header_optics";
-    static final String HEADER_SPECULAR_TAG = "wen_gold_header_specular";
 
     private WenGoldGlassSurface() {}
 
-    // One coherent optical ink system for the golden header and all four
-    // navigation tabs. Drawables, labels and titles must share these colours.
+    // Preserve the palette-specific text colors above the neutral dock.
     static int navigationInk(int theme, boolean selected) {
         switch (theme) {
             case 25: return selected ? 0xFFFFE2A9 : 0xFFD4C6AE;
@@ -51,36 +44,9 @@ final class WenGoldGlassSurface {
         }
     }
 
-    static int headerTitleInk(int theme) {
-        switch (theme) {
-            case 25: return 0xFFFFE2A9;
-            case 26: return 0xFFFFEAC8;
-            case 27: return 0xFF5C4028;
-            default: return Ui.TEXT;
-        }
-    }
-
-    static int headerSecondaryInk(int theme) {
-        switch (theme) {
-            case 25: return 0xFFD4C6AE;
-            case 26: return 0xFFCBC7BF;
-            case 27: return 0xFF80694E;
-            default: return Ui.MUTED;
-        }
-    }
-
-    static int navigationLensTint(int theme) {
-        switch (theme) {
-            case 25: return 0xFFFFEDD1;
-            case 26: return 0xFFFFF1DB;
-            case 27: return 0xFFFFF9EC;
-            default: return Color.WHITE;
-        }
-    }
-
     /**
      * A single, non-interactive physical backdrop across Home, Debt and
-     * Analytics. Both header and cards sample this same real View; no
+     * Analytics. Gold cards sample this same real View; no
      * financial data, click listeners or screen navigation is modified.
      */
     static void attachGoldBackdrop(FrameLayout root) {
@@ -134,7 +100,7 @@ final class WenGoldGlassSurface {
         content.setElevation(0f);
         // Repeated statistic tiles keep true shader refraction and edge light,
         // but avoid six simultaneous expensive live-blur/aberration passes.
-        LiquidGlassView glass=buildGlass(context,radiusDp,false);
+        LiquidGlassView glass=buildGlass(context,radiusDp);
         host.addView(glass,new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
         View specular=new View(context);
@@ -150,46 +116,20 @@ final class WenGoldGlassSurface {
         return host;
     }
 
-    /** Existing header: keep its original button/text hierarchy untouched. */
-    static void enhanceHeader(FrameLayout header,int radiusDp) {
-        if (!enabled(header.getContext()) || header.getChildCount()<2) return;
-        // The old opaque gold header backing would otherwise cover every
-        // moving pixel sampled by the library. Keep only a faint warm wash.
-        View oldBacking=header.getChildAt(0);
-        oldBacking.setAlpha(Ui.themeIndex(header.getContext())==27 ? .15f : .12f);
-        oldBacking.setElevation(0f);
-        final LiquidGlassView glass=buildGlass(header.getContext(),radiusDp,true);
-        glass.setTag(HEADER_GLASS_TAG);
-        header.addView(glass,1,new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
-        View specular=new View(header.getContext());
-        specular.setBackground(new Specular(header.getContext(),
-                Ui.themeIndex(header.getContext()),radiusDp));
-        specular.setTag(HEADER_SPECULAR_TAG);
-        specular.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        header.addView(specular,2,new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
-        bindBackdrop(header,glass);
-    }
-
-    private static LiquidGlassView buildGlass(Context context,int radiusDp,
-            boolean fullOptics) {
+    private static LiquidGlassView buildGlass(Context context, int radiusDp) {
         LiquidGlassView glass=new LiquidGlassView(context);
         glass.setClickable(false);
         glass.setFocusable(false);
         glass.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        PowerManager power=(PowerManager)context.getSystemService(Context.POWER_SERVICE);
-        boolean economical=power!=null && power.isPowerSaveMode();
         final float density=context.getResources().getDisplayMetrics().density;
         final int theme=Ui.themeIndex(context);
         // Native SDF lens is a single GPU pass on Android 13+. Do not insert
         // bitmap snapshots, per-frame shader allocations or animation timers.
         glass.setUseShaderPipeline(true);
-        glass.setEnableDynamicBackground(!economical && fullOptics);
-        glass.setEnableBackdropBlur(!economical && fullOptics);
-        glass.setBlurAmount(!economical && fullOptics
-                ? (theme==27 ? .082f : .068f) : 0f);
-        glass.setEnableChromaticAberration(!economical && fullOptics);
+        glass.setEnableDynamicBackground(false);
+        glass.setEnableBackdropBlur(false);
+        glass.setBlurAmount(0f);
+        glass.setEnableChromaticAberration(false);
         glass.setEnablePressEffect(false);
         glass.setEnableShadow(false);
         glass.setEnableEdgeHighlight(true);
@@ -197,10 +137,10 @@ final class WenGoldGlassSurface {
         glass.setBevelWidth((theme==27 ? 12.0f : 14.0f)*density);
         glass.setRefractionHeight((theme==27 ? 28f : 35f)*density);
         glass.setRefractionFalloff(2.35f);
-        glass.setDispersionStrength(!economical && fullOptics ? .048f : 0f);
+        glass.setDispersionStrength(0f);
         glass.setDisplacementScale(35f);
         glass.setEdgeSoftness(2.0f*density);
-        glass.setAberrationIntensity(!economical && fullOptics ? .38f : 0f);
+        glass.setAberrationIntensity(0f);
         glass.setSaturation(111f);
         glass.setGlassTint(theme==27?0xFFFFEAD1:0xFFFFD6A0,
                 theme==27?.018f:.020f);

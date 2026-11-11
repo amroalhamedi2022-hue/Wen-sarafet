@@ -23,6 +23,7 @@ public final class WenNavigationTrack extends FrameLayout {
         void morph(float fraction);
         void follow(float pointerX);
         void reset();
+        void positionChanged();
         /** The glass caustic is painted AFTER glyphs in the SAME track canvas. */
         void drawForeground(Canvas canvas);
     }
@@ -34,6 +35,12 @@ public final class WenNavigationTrack extends FrameLayout {
 
     public GlassGestureBridge getGlassGestureBridge() {
         return externalGlassActive ? externalGlassBridge : null;
+    }
+
+    public void invalidateLensPosition() {
+        GlassGestureBridge bridge = getGlassGestureBridge();
+        if (bridge != null) bridge.positionChanged();
+        postInvalidateOnAnimation();
     }
 
     public WenNavigationTrack(Context context, boolean dark) {

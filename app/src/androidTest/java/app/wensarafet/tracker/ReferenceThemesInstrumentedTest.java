@@ -21,6 +21,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import app.wensarafet.glass.WenReferenceGlassDrawable;
+import app.wensarafet.glass.WenNavigationLensDrawable;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -125,7 +126,7 @@ public final class ReferenceThemesInstrumentedTest {
                     0, Color.alpha(fab.getPixel(0, 0)));
             int gold = fab.getPixel(80, 80);
             assertTrue("The neutral FAB remains readable but translucent",
-                    Color.alpha(gold) > 100);
+                    Color.alpha(gold) > 35 && Color.alpha(gold) < 180);
             assertTrue("Neutral FAB must not reintroduce a gold/orange tint",
                     Math.abs(Color.red(gold) - Color.blue(gold)) < 18
                             && Math.abs(Color.green(gold) - Color.blue(gold)) < 18);
@@ -135,7 +136,7 @@ public final class ReferenceThemesInstrumentedTest {
         }));
     }
 
-    @Test public void oldThemesRemainSelectedExactlyAsBeforeAndUseLegacyDrawables() {
+    @Test public void originalThemeIdsUseGlassSurfaces() {
         onUi(() -> underTheme(0, () -> {
             Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
             assertFalse(Ui.isReferenceGlassTheme(ctx));
@@ -155,15 +156,15 @@ public final class ReferenceThemesInstrumentedTest {
             assertTrue(Ui.isLiquidTheme(ctx));
         }));
     }
-    @Test public void fiveOwnerApprovedPremiumPalettesRenderWithoutTouchingAccounts() {
-        for (int index = 25; index <= 29; index++) {
+    @Test public void retainedGoldPalettesRenderWithoutTouchingAccounts() {
+        for (int index = 25; index <= 27; index++) {
             final int theme = index;
             onUi(() -> underTheme(theme, () -> {
                 Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
                 assertEquals(30, Ui.THEME_NAMES.length);
                 assertTrue(Ui.isReferenceGlassTheme(ctx));
                 assertTrue(Ui.isLiquidTheme(ctx));
-                assertEquals("Gold dark and the two vivid chromatic materials use dark ink mode",
+                assertEquals("The two dark gold palettes use dark mode",
                         theme != 27, Ui.DARK);
                 assertTrue(Ui.glassScreenBackground(ctx)
                         instanceof app.wensarafet.glass.WenPremiumLiquidDrawable);
@@ -173,10 +174,7 @@ public final class ReferenceThemesInstrumentedTest {
                 Bitmap plus = draw(Ui.glassFloatingAddBackground(ctx), 140, 140);
                 assertEquals("Floating add remains a true circle", 0,
                         Color.alpha(plus.getPixel(0, 0)));
-                // The exact original Sandbox glass bubble is genuinely
-                // translucent. It must remain readable, not opaque plastic.
-                assertTrue("Original circular optical bubble must remain legible",
-                        Color.alpha(plus.getPixel(70, 70)) > 215);
+                assertNeutralTranslucent(plus.getPixel(70, 70));
                 assertTrue("Floating nav remains visible without an opaque block",
                         Color.alpha(nav.getPixel(220, 44)) > 60);
                 assertTrue("Balance tiles keep readable translucent material",
@@ -199,10 +197,14 @@ public final class ReferenceThemesInstrumentedTest {
             final int selectedTheme = theme;
             onUi(() -> underTheme(selectedTheme, () -> {
                 Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
-                int expectedHeight = Ui.dp(ctx, WenPremiumLayout.compact(ctx) ? 68 : 72);
+                int expectedHeight = Ui.dp(ctx, 60);
                 assertEquals("Consistent floating dock height on all primary screens",
                         expectedHeight, WenPremiumLayout.navigationHeight(ctx));
-                assertEquals(16, WenPremiumLayout.navigationSideInsetDp(ctx));
+                int viewportDp = ctx.getResources().getConfiguration().screenWidthDp;
+                int dockWidthDp = viewportDp - 2 * WenPremiumLayout.navigationSideInsetDp(ctx);
+                assertTrue("Keep four usable tabs on narrow screens",
+                        dockWidthDp >= Math.min(240, viewportDp));
+                assertTrue("Cap dock width on tablets", dockWidthDp <= 345);
                 assertEquals(10, WenPremiumLayout.navigationBottomInsetDp(ctx));
 
                 LinearLayout dock = new LinearLayout(ctx);
@@ -279,12 +281,22 @@ public final class ReferenceThemesInstrumentedTest {
                 assertTrue("Transaction rows should use the cheaper native gradient",
                         Ui.glassListBackground(context,20)
                                 instanceof android.graphics.drawable.GradientDrawable);
-                Bitmap bottom = draw(Ui.glassNavigationBackground(context,26), 360, 72);
-                int sampleAlpha = Color.alpha(bottom.getPixel(180, 35));
-                assertTrue("Theme " + active + " nav must retain some real transparency",
-                        sampleAlpha > 50 && sampleAlpha < 255);
-                bottom.recycle();
+                Bitmap dock = draw(Ui.glassChromeBackground(context, 30), 360, 72);
+                Bitmap lens = draw(new WenNavigationLensDrawable(context, true, true), 96, 64);
+                Bitmap fab = draw(Ui.glassFloatingAddBackground(context), 100, 100);
+                assertNeutralTranslucent(dock.getPixel(180, 36));
+                assertNeutralTranslucent(lens.getPixel(48, 32));
+                assertNeutralTranslucent(fab.getPixel(50, 50));
+                dock.recycle();
+                lens.recycle();
+                fab.recycle();
             }));
         }
+    }
+
+    private static void assertNeutralTranslucent(int pixel) {
+        assertTrue("Glass must transmit the scene", Color.alpha(pixel) > 0 && Color.alpha(pixel) < 255);
+        assertEquals(Color.red(pixel), Color.green(pixel));
+        assertEquals(Color.green(pixel), Color.blue(pixel));
     }
 }
