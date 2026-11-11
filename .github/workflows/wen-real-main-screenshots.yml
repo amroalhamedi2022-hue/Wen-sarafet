@@ -42,7 +42,7 @@ jobs:
           gradle-version: '8.10.2'
       - name: Exact Safe Zone and original account logo guards
         run: |
-          python3 tests/wen_188_visual_safezone_contract.py
+          python3 tests/wen_211_integrated_offline_visual_contract.py
           python3 tests/financial_safe_zone_guard.py
       - name: Build disposable DEBUG app with the original MainActivity
         env:
