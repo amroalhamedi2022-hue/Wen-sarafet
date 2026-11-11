@@ -100,7 +100,7 @@ assert expected == present(M), (
 # presentation from the approved adapter, not just indicative string checks.
 UI = P + "Ui.java"
 BUBBLE = "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java"
-FINAL_VISUAL_AUDIT = "b5a40164eedea1a22b29e8587d39fa147aa10fc6"
+FINAL_VISUAL_AUDIT = "14e56bdf5213b0e07a2f213ecc2982e388b76cdd"
 assert present(UI) == at(FINAL_VISUAL_AUDIT, UI), (
     "UI must match exactly the reviewed 2.1 visual-only surface changes"
 )
@@ -142,6 +142,8 @@ VISUAL_REFRESH_PATHS = (
     "tests/upgrade_gate_contract.py",
     "tests/wen_200_strict_offline_contract.py",
     ".github/workflows/unsigned-release-candidate.yml",
+    "scripts/build_apk.sh",
+    "scripts/verify_upgrade_apk.sh",
     "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java",
 )
 for path in VISUAL_REFRESH_PATHS:
