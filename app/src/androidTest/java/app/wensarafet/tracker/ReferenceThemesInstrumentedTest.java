@@ -265,4 +265,23 @@ public final class ReferenceThemesInstrumentedTest {
                     ThemeCatalogue.isVisible(context, 29));
         });
     }
+
+    /** Optical surfaces and native list-cost gate for every retained selectable theme. */
+    @Test public void allTwentyEightSelectableThemesRenderTranslucentGlassWithoutNativeRowBlur() {
+        for (int theme = 0; theme <= 27; theme++) {
+            final int active = theme;
+            onUi(() -> underTheme(active, () -> {
+                Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+                assertTrue("All retained themes use glass chrome", Ui.isUnifiedGlassTheme(context));
+                assertTrue("Transaction rows should use the cheaper native gradient",
+                        Ui.glassListBackground(context,20)
+                                instanceof android.graphics.drawable.GradientDrawable);
+                Bitmap bottom = draw(Ui.glassNavigationBackground(context,26), 360, 72);
+                int sampleAlpha = Color.alpha(bottom.getPixel(180, 35));
+                assertTrue("Theme " + active + " nav must retain some real transparency",
+                        sampleAlpha > 50 && sampleAlpha < 255);
+                bottom.recycle();
+            }));
+        }
+    }
 }
