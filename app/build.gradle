@@ -3,6 +3,7 @@ plugins { id "com.android.application" }
 android {
     namespace "app.wensarafet.tracker"
     compileSdk 35
+    buildFeatures { buildConfig true }
 
     defaultConfig {
         applicationId "app.wensarafet.tracker"
@@ -34,7 +35,11 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), rootProject.file("proguard-rules.pro")
             if (signingConfigs.findByName("release")) signingConfig signingConfigs.release
         }
-        debug { applicationIdSuffix ".recovered.debug" }
+        debug {
+            // Safe parallel installation: NEVER use the owner's original certificate.
+            applicationIdSuffix ".sandbox"
+            versionNameSuffix "-sandbox"
+        }
     }
 
     compileOptions {

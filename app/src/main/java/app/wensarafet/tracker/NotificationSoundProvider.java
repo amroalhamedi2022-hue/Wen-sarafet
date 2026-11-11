@@ -16,7 +16,7 @@ import java.io.IOException;
  * No user data, contacts, license, PIN or database content is exposed.
  */
 public final class NotificationSoundProvider extends ContentProvider {
-    public static final String AUTHORITY="app.wensarafet.tracker.notification-sounds";
+    public static final String AUTHORITY=BuildConfig.APPLICATION_ID+".notification-sounds";
     private static final String DIR="notification_tones";
     public static Uri uri(String type) {
         if(!valid(type))throw new IllegalArgumentException("نوع إشعار غير صالح");

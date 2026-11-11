@@ -18,6 +18,8 @@ public final class LicenseManager {
     }
 
     public static boolean isActivated(Context context) {
+        // Experimental parallel-install edition only; does not change production activation.
+        if (BuildConfig.DEBUG && "app.wensarafet.tracker.sandbox".equals(context.getPackageName())) return true;
         if (!AppIntegrity.isTrusted(context) || !InstallationIdentity.provesPossession(context)) return false;
         String token = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(TOKEN, null);
         return token != null && verify(context, token);

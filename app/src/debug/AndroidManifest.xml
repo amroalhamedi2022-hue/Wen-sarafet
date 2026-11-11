@@ -1,33 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Debug builds use a separate package and must not collide with the installed production sound provider. -->
+<!-- Sandbox avoids duplicate private financial notification/SMS collection. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <application
-        android:label="وين صرفت - اختبار"
-        tools:replace="android:label">
-        <provider
-            android:name=".NotificationSoundProvider"
-            android:authorities="app.wensarafet.tracker.recovered.debug.notification-sounds"
-            tools:replace="android:authorities" />
-        <activity
-            android:name=".ContactPickerSmokeActivity"
-            android:exported="true"
-            android:label="اختبار جهات الاتصال">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <!-- Screenshot-only material fixture, never compiled into release APK. -->
-        <activity
-            android:name=".VisualPreviewActivity"
-            android:exported="true"
-            android:screenOrientation="portrait"
-            android:label="Visual Preview" />
-        <!-- Debug-only theme command for genuine MainActivity captures. -->
-        <receiver
-            android:name=".OwnerThemeCaptureReceiver"
-            android:exported="true"
-            android:label="Owner visual capture theme" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove"/>
+    <application>
+        <receiver android:name="app.wensarafet.tracker.SmsCaptureReceiver" tools:node="remove"/>
+        <service android:name="app.wensarafet.tracker.FinanceNotificationListener" tools:node="remove"/>
+        <receiver android:name="app.wensarafet.tracker.BootReceiver" tools:node="remove"/>
     </application>
 </manifest>

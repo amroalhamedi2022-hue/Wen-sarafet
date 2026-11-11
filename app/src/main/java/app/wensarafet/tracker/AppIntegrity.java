@@ -14,6 +14,8 @@ final class AppIntegrity {
     private AppIntegrity() {}
 
     static boolean isTrusted(Context context) {
+        // Sandbox/debug identity only. Release builds still require original signer.
+        if (BuildConfig.DEBUG && "app.wensarafet.tracker.sandbox".equals(context.getPackageName())) return true;
         try {
             if (!PACKAGE_NAME.equals(context.getPackageName())) return false;
             ApplicationInfo app = context.getApplicationInfo();

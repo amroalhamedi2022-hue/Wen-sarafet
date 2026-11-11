@@ -52,7 +52,7 @@
         <!-- Only the five locally synthesized audio clips are public; no app data is exposed. -->
         <provider
             android:name=".NotificationSoundProvider"
-            android:authorities="app.wensarafet.tracker.notification-sounds"
+            android:authorities="${applicationId}.notification-sounds"
             android:exported="true"
             android:grantUriPermissions="true" />
 

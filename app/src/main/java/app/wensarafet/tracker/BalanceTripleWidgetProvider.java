@@ -33,6 +33,12 @@ public final class BalanceTripleWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_triple_jawwal_balance, active ? value(jawwal) : "يتطلب تفعيل");
         views.setTextViewText(R.id.widget_triple_bop_balance, active ? value(bop) : "يتطلب تفعيل");
         views.setTextViewText(R.id.widget_triple_palpay_balance, active ? value(palpay) : "يتطلب تفعيل");
+        if (BuildConfig.DEBUG && "app.wensarafet.tracker.sandbox".equals(context.getPackageName())) {
+            // Demo-only placeholders if no local sandbox balances exist.
+            if (palpay == null) views.setTextViewText(R.id.widget_triple_palpay_balance, "0.00 ILS");
+            if (jawwal == null) views.setTextViewText(R.id.widget_triple_jawwal_balance, "213.84 ILS");
+            if (bop == null) views.setTextViewText(R.id.widget_triple_bop_balance, "40.99 ILS");
+        }
         Intent intent = new Intent(context, MainActivity.class);
         intent.setData(android.net.Uri.parse("wensarafet://balances-all/" + id));
         PendingIntent pending = PendingIntent.getActivity(context, 13000 + id, intent,
