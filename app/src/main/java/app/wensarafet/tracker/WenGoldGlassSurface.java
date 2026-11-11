@@ -132,7 +132,9 @@ final class WenGoldGlassSurface {
         // Only the passive visual elevation changes; host still forwards
         // original accessibility and click behavior to its real content.
         content.setElevation(0f);
-        LiquidGlassView glass=buildGlass(context,radiusDp);
+        // Repeated statistic tiles keep true shader refraction and edge light,
+        // but avoid six simultaneous expensive live-blur/aberration passes.
+        LiquidGlassView glass=buildGlass(context,radiusDp,false);
         host.addView(glass,new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
         View specular=new View(context);
@@ -156,7 +158,7 @@ final class WenGoldGlassSurface {
         View oldBacking=header.getChildAt(0);
         oldBacking.setAlpha(Ui.themeIndex(header.getContext())==27 ? .15f : .12f);
         oldBacking.setElevation(0f);
-        final LiquidGlassView glass=buildGlass(header.getContext(),radiusDp);
+        final LiquidGlassView glass=buildGlass(header.getContext(),radiusDp,true);
         glass.setTag(HEADER_GLASS_TAG);
         header.addView(glass,1,new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
@@ -170,7 +172,8 @@ final class WenGoldGlassSurface {
         bindBackdrop(header,glass);
     }
 
-    private static LiquidGlassView buildGlass(Context context,int radiusDp) {
+    private static LiquidGlassView buildGlass(Context context,int radiusDp,
+            boolean fullOptics) {
         LiquidGlassView glass=new LiquidGlassView(context);
         glass.setClickable(false);
         glass.setFocusable(false);
@@ -183,9 +186,10 @@ final class WenGoldGlassSurface {
         // bitmap snapshots, per-frame shader allocations or animation timers.
         glass.setUseShaderPipeline(true);
         glass.setEnableDynamicBackground(!economical);
-        glass.setEnableBackdropBlur(!economical);
-        glass.setBlurAmount(!economical ? (theme==27 ? .082f : .068f) : 0f);
-        glass.setEnableChromaticAberration(!economical);
+        glass.setEnableBackdropBlur(!economical && fullOptics);
+        glass.setBlurAmount(!economical && fullOptics
+                ? (theme==27 ? .082f : .068f) : 0f);
+        glass.setEnableChromaticAberration(!economical && fullOptics);
         glass.setEnablePressEffect(false);
         glass.setEnableShadow(false);
         glass.setEnableEdgeHighlight(true);
@@ -193,10 +197,10 @@ final class WenGoldGlassSurface {
         glass.setBevelWidth((theme==27 ? 12.0f : 14.0f)*density);
         glass.setRefractionHeight((theme==27 ? 28f : 35f)*density);
         glass.setRefractionFalloff(2.35f);
-        glass.setDispersionStrength(!economical ? .048f : 0f);
+        glass.setDispersionStrength(!economical && fullOptics ? .048f : 0f);
         glass.setDisplacementScale(35f);
         glass.setEdgeSoftness(2.0f*density);
-        glass.setAberrationIntensity(!economical ? .38f : 0f);
+        glass.setAberrationIntensity(!economical && fullOptics ? .38f : 0f);
         glass.setSaturation(111f);
         glass.setGlassTint(theme==27?0xFFFFEAD1:0xFFFFD6A0,
                 theme==27?.018f:.020f);
