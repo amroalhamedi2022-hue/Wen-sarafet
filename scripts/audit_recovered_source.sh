@@ -23,7 +23,7 @@ PY
 version_code="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*$/\1/p' app/build.gradle | head -1)"
 version_name="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\1/p' app/build.gradle | head -1)"
 [[ "$version_code" =~ ^[0-9]+$ && "$version_code" -ge 16 ]]
-[[ "$version_name" =~ ^(1[.](8[.][0-9]+|9)|2[.]0)$ ]]
+[[ "$version_name" =~ ^(1[.](8[.][0-9]+|9)|2[.](0|1))$ ]]
 grep -q 'android:layout_width="60dp"' app/src/main/res/layout/widget_balances.xml
 grep -q 'android:layout_width="54dp"' app/src/main/res/layout/widget_balances_triple.xml
 grep -q 'isVerificationMessage' app/src/main/java/app/wensarafet/tracker/CaptureEngine.java
@@ -35,7 +35,7 @@ grep -q '@color/widget_quick_title' app/src/main/res/layout/widget_quick_action.
 
 ! grep -R --exclude='audit_recovered_source.sh' -E 'WenSarafetTest2026|MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg' .
 ! find . -type f \( -name '*.jks' -o -name '*.keystore' \) | grep -q .
-# Prevent any runtime Internet permission in the full-featured 2.0 app.
+# Prevent any runtime Internet permission in the full-featured 2.1 app.
 # Keep direct dialing and unrestricted package enumeration disallowed.
 ! grep -Fq 'android.permission.INTERNET' app/src/main/AndroidManifest.xml
 grep -q 'android:allowBackup="false"' app/src/main/AndroidManifest.xml
