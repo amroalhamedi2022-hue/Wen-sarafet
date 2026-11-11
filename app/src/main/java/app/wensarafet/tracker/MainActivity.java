@@ -470,8 +470,8 @@ public final class MainActivity extends Activity {
         FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.navigationHeight(this), Gravity.BOTTOM);
         // Floating glass navigation is visual-only; the underlying tabs stay unchanged.
-        if (Ui.isLiquidTheme(this)) {
-            // Owner reference: truly floating 16dp inset, preserving
+        if (Ui.isUnifiedGlassTheme(this)) {
+            // Owner reference: truly floating glass dock, preserving
             // the original four tab callbacks and scroll routing.
             int sideInset = WenPremiumLayout.navigationSideInsetDp(this);
             navParams.setMargins(Ui.dp(this,sideInset),0,
@@ -711,7 +711,7 @@ public final class MainActivity extends Activity {
             nav.addView(item,navParams);
         }
         // Visual-only; keep every original 1.8.8 tab callback untouched.
-        if (Ui.isLiquidTheme(this))
+        if (Ui.isUnifiedGlassTheme(this))
             NavigationVisualDecorator.install(nav,
                     new TextView[]{home, tx, debts, analytics}, selectedTab);
         return nav;
@@ -722,11 +722,17 @@ public final class MainActivity extends Activity {
         final int[] upwardTravel={0};
         final boolean[] hidden={false};
         final View background=topBar.findViewWithTag("main_header_background");
+        final View goldOptic=topBar.findViewWithTag(WenGoldGlassSurface.HEADER_GLASS_TAG);
+        final View goldSpecular=topBar.findViewWithTag(WenGoldGlassSurface.HEADER_SPECULAR_TAG);
         scroll.setOnScrollChangeListener((v,x,y,oldX,oldY)->{
             int delta=y-oldY;
             if(background!=null) {
                 float fade=Math.min(1f,y/(float)Ui.dp(this,72));
-                background.setAlpha(1f-fade*.84f);
+                float baseAlpha=WenGoldGlassSurface.enabled(this)
+                        ? (Ui.themeIndex(this)==27?.15f:.12f):1f;
+                background.setAlpha(baseAlpha*(1f-fade*.94f));
+                if(goldOptic!=null)goldOptic.setAlpha(1f-fade*.92f);
+                if(goldSpecular!=null)goldSpecular.setAlpha(1f-fade*.92f);
                 background.setElevation(fade>.02f?0f:Ui.dp(this,7));
             }
             if(delta<0)upwardTravel[0]+=-delta;
@@ -2248,7 +2254,7 @@ public final class MainActivity extends Activity {
         View debtNav=bottomNavigation(TAB_DEBTS);
         FrameLayout.LayoutParams debtNavParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,WenPremiumLayout.navigationHeight(this),Gravity.BOTTOM);
-        if (Ui.isLiquidTheme(this)) debtNavParams.setMargins(
+        if (Ui.isUnifiedGlassTheme(this)) debtNavParams.setMargins(
                 Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),0,
                 Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),
                 Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
@@ -2712,7 +2718,7 @@ public final class MainActivity extends Activity {
         View analyticsNav=bottomNavigation(TAB_ANALYTICS);
         FrameLayout.LayoutParams analyticsNavParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,WenPremiumLayout.navigationHeight(this),Gravity.BOTTOM);
-        if (Ui.isLiquidTheme(this)) analyticsNavParams.setMargins(
+        if (Ui.isUnifiedGlassTheme(this)) analyticsNavParams.setMargins(
                 Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),0,
                 Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),
                 Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
