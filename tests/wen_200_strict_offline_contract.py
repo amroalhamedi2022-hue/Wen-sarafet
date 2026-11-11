@@ -1,4 +1,4 @@
-"""Protect the latest owner-approved 2.0 source from network capability regressions; no APK build."""
+"""Protect the latest owner-approved 2.1 source from network capability regressions; no APK build."""
 from pathlib import Path
 import xml.etree.ElementTree as ET
 root=Path(__file__).resolve().parents[1]
@@ -32,4 +32,4 @@ for name in ("BopRateFetcher","DriveBackupManager","DriveBackupPublication"):
     assert not (app/f"java/app/wensarafet/tracker/{name}.java").exists()
 for path in (app/"res").rglob("*.xml"):
     ET.parse(path)
-print("PASS: 2.0 finance, bank, visual preserved; network & cloud sync absent")
+print("PASS: 2.1 finance, bank, visual preserved; network & cloud sync absent")
