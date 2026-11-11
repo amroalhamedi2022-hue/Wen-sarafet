@@ -185,7 +185,7 @@ final class WenGoldGlassSurface {
         // Native SDF lens is a single GPU pass on Android 13+. Do not insert
         // bitmap snapshots, per-frame shader allocations or animation timers.
         glass.setUseShaderPipeline(true);
-        glass.setEnableDynamicBackground(!economical);
+        glass.setEnableDynamicBackground(!economical && fullOptics);
         glass.setEnableBackdropBlur(!economical && fullOptics);
         glass.setBlurAmount(!economical && fullOptics
                 ? (theme==27 ? .082f : .068f) : 0f);
