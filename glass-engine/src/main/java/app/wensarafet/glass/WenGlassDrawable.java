@@ -113,7 +113,11 @@ public final class WenGlassDrawable extends Drawable {
         // Every shader, path and rect is cached when the size changes, not on draw().
         // Keep the actual background visible through the frosted material.
         // Opaque branded gradients made every card look like flat blue plastic.
-        final int bodyAlpha = strong ? 202 : 221;
+        // Transparent shader material: keep backdrop visible, especially
+        // with cards layered above the ambient scene. Header has denser ink
+        // support; card / balance layers transmit more light.
+        final int bodyAlpha = strong ? (lowPower ? 206 : 190)
+                : (lowPower ? 184 : 146);
         fill.setShader(new LinearGradient(surface.left, surface.top,
                 surface.right, surface.bottom,
                 new int[]{opacity(blend(startColor, Color.WHITE, strong ? .22f : .12f), bodyAlpha),
