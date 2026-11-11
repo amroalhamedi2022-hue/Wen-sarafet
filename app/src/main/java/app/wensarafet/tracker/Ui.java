@@ -189,7 +189,10 @@ public final class Ui {
     }
 
     public static android.graphics.drawable.Drawable glassFloatingAddBackground(Context context) {
-        return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.FAB);
+        // One shared colourless glass FAB for EVERY theme (legacy + premium).
+        // The original account icons, navigation and actions remain unchanged.
+        return new app.wensarafet.glass.WenFabBubbleDrawable(
+                context, Color.WHITE, DARK, -1);
     }
 
     private static android.graphics.drawable.Drawable referenceGlass(Context context,
@@ -259,13 +262,16 @@ public final class Ui {
     private Ui() {}
 
     public static void applyTheme(Context context) {
-        int theme = context.getSharedPreferences("appearance", Context.MODE_PRIVATE).getInt("theme", 0);
-        if (theme < 0 || theme >= THEMES.length) theme = 0;
+        // Load through the visual-only compatibility resolver: retained old
+        // preset 28/29 never paints again, even on an update install.
+        int theme = themeIndex(context);
+        if (theme < 0 || theme >= THEMES.length) theme = 25;
         // Midnight Aurora is intentionally dark even when the device uses light mode.
         // The Activity already derives system-bar contrast and native dialog theme from DARK.
         // The three new light palettes remain legible on dark-mode phones;
         // all prior 25 themes keep their original dark-mode behaviour.
         DARK = theme == 20 || theme == 24 || theme == 25 || theme == 26
+                || theme == 28 || theme == 29
                 || (theme < 25 && (context.getResources().getConfiguration().uiMode
                         & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES);
         int[] p = THEMES[theme];
@@ -288,11 +294,19 @@ public final class Ui {
     }
 
     public static int themeIndex(Context context) {
-        return context.getSharedPreferences("appearance", Context.MODE_PRIVATE).getInt("theme", 0);
+        int persisted = context.getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .getInt("theme", 0);
+        // Retired colourful presets are VISUAL-ONLY aliases of Royal Dark.
+        // Do not rewrite unrelated appearance prefs or the finance database.
+        // Preserves stable IDs for old saved sessions and safe update installs.
+        if (persisted == 28 || persisted == 29) return 25;
+        return persisted;
     }
 
     public static void saveTheme(Context context, int index) {
-        if (index < 0 || index >= THEMES.length) index = 0;
+        // Never allow selecting either retired non-gold theme via stale UI.
+        if (index == 28 || index == 29) index = 25;
+        if (index < 0 || index >= THEMES.length) index = 25;
         context.getSharedPreferences("appearance", Context.MODE_PRIVATE).edit().putInt("theme", index).apply();
         applyTheme(context);
     }
@@ -476,7 +490,8 @@ public final class Ui {
     }
 
     public static void pressAnimation(View view) {
-        if (isLiquidTheme(view.getContext())) {
+        if (isLiquidTheme(view.getContext())
+                || view.getBackground() instanceof app.wensarafet.glass.WenFabBubbleDrawable) {
             // Restore the sandbox's true circular FAB pressure-morph, only
             // for the original glass palettes 16–21. Its listener NEVER
             // consumes input; the exact original click and long-click remain.

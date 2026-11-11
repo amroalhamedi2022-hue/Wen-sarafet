@@ -1,0 +1,68 @@
+name: Wen owner visual emulator screenshots
+# DEBUG-ONLY preview fixtures are not the authenticated MainActivity.
+# Opt-in solely when diagnosing glass rendering; never burn emulator minutes
+# or claim fixture PNGs are genuine screens after an ordinary code commit.
+on:
+  pull_request:
+    types: [labeled]
+    branches: [release/wen-2.0-premium-original-signer-20261105]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android35-owner-preview:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'wen-qa-debug-fixture'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Assert owner Safe Zone unchanged
+        run: |
+          python3 tests/wen_188_visual_safezone_contract.py
+          python3 tests/financial_safe_zone_guard.py
+      - name: Enable KVM on hosted emulator
+        run: |
+          sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -e /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Render three approved gold materials on Android 15 and capture PNG screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 3072M
+          heap-size: 512M
+          disk-size: 1536M
+          sdcard-path-or-size: 128M
+          disable-animations: false
+          emulator-boot-timeout: 600
+          script: bash scripts/capture_visual_preview.sh
+      - name: Upload screenshots of emulator-rendered real Android glass materials
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wen-owner-visual-preview-android15
+          path: build/visual-screenshots/*.png
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Label screenshot fixture clearly
+        run: |
+          echo "These PNGs are Android emulator screenshots of the DEBUG-ONLY"
+          echo "VisualPreviewActivity using production Ui/Glass drawable classes."
+          echo "They contain synthetic values, not user accounts. They are NOT"
+          echo "actual authenticated MainActivity screenshots or final release QA."

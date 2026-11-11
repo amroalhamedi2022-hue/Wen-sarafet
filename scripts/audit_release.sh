@@ -24,14 +24,15 @@ grep -Fq "package: name='app.wensarafet.tracker' versionCode='$source_code' vers
 grep -q "package: name='app.wensarafet.admin'" <<<"$generator_badging"
 
 main_permissions="$(grep '^uses-permission:' <<<"$main_badging" || true)"
-# INTERNET is approved only for the optional BOP indicative USD/ILS quote.
-grep -Fq "android.permission.INTERNET" <<<"$main_permissions"
+# Never allow the app package to open network sockets.
+! grep -Fq "android.permission.INTERNET" <<<"$main_permissions"
+! grep -Fq "android.permission.ACCESS_NETWORK_STATE" <<<"$main_permissions"
 ! grep -Eq 'CALL_PHONE|BIND_ACCESSIBILITY_SERVICE|QUERY_ALL_PACKAGES' <<<"$main_permissions"
 ! grep -q '^uses-permission:' <<<"$generator_badging"
 
 main_manifest="$($BUILD_TOOLS/aapt2 dump xmltree --file AndroidManifest.xml "$MAIN_APK")"
 generator_manifest="$($BUILD_TOOLS/aapt2 dump xmltree --file AndroidManifest.xml "$GENERATOR_APK")"
-grep -q 'allowBackup.*=true' <<<"$main_manifest"
+grep -q 'allowBackup.*=false' <<<"$main_manifest"
 # Android's omitted release debuggable attribute also means false. Never allow true.
 grep -q 'debuggable false' "$PROJECT_DIR/app/build.gradle"
 ! grep -Eq 'debuggable.*=true' <<<"$main_manifest"

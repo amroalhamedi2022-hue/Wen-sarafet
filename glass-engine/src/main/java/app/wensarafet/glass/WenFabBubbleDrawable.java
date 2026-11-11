@@ -17,7 +17,9 @@ import android.graphics.drawable.Drawable;
 public final class WenFabBubbleDrawable extends Drawable {
     private final float density;
     private final boolean dark;
+    // Theme-free neutral glass: original constructor signature preserved.
     private final int accent;
+    private final int premiumTheme;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint inner = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint highlight = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -33,6 +35,13 @@ public final class WenFabBubbleDrawable extends Drawable {
     private int alpha=255;
 
     public WenFabBubbleDrawable(Context context, int accentColor, boolean darkTheme) {
+        this(context, accentColor, darkTheme, -1);
+    }
+
+    /** Exact Sandbox optics and geometry, theme-specific spectral materials. */
+    public WenFabBubbleDrawable(Context context, int accentColor, boolean darkTheme,
+                                int premiumTheme) {
+        this.premiumTheme = premiumTheme;
         density=context.getResources().getDisplayMetrics().density;
         dark=darkTheme;
         accent=accentColor;
@@ -57,21 +66,27 @@ public final class WenFabBubbleDrawable extends Drawable {
         float side=Math.min(bounds.width(),bounds.height());
         circle.set(bounds.centerX()-side*.475f,bounds.centerY()-side*.475f,
                 bounds.centerX()+side*.475f,bounds.centerY()+side*.475f);
-        // Neutral, light-transmitting body. The old nearly opaque blue gradient
-        // looked like a plastic action button instead of a curved glass lens.
-        fill.setShader(new LinearGradient(circle.left, circle.top,
-                circle.right, circle.bottom,
-                new int[]{dark ? 0xC65E638E : 0xD9FFFFFF,
-                          dark ? 0x865D76B9 : 0x8BD5EFFF,
-                          dark ? 0xBA33427E : 0xB0A4BCEB},
-                new float[]{0f, .51f, 1f}, Shader.TileMode.CLAMP));
+        // The add button is NEUTRAL liquid glass across EVERY theme. It
+        // borrows the brightness of its surroundings, never the palette hue.
+        // Only white/grey transmittance, optical depth and specular geometry
+        // belong to this passive drawable; hitbox and press logic stay intact.
+        fill.setShader(new LinearGradient(circle.left,circle.top,
+                circle.right,circle.bottom,
+                dark
+                    ? new int[]{0x4CFFFFFF,0x1FFFFFFF,0x38FFFFFF}
+                    : new int[]{0x94FFFFFF,0x38FFFFFF,0x75FFFFFF},
+                new float[]{0f,.50f,1f},Shader.TileMode.CLAMP));
         opticalDepth.setShader(new RadialGradient(
-                circle.centerX() - circle.width() * .22f,
-                circle.centerY() - circle.height() * .28f,
-                Math.max(1f, circle.width() * .77f),
-                new int[]{0xA2FFFFFF, 0x2BFFFFFF,
-                        dark ? 0x42233169 : 0x3C5276A9},
-                new float[]{0f, .43f, 1f}, Shader.TileMode.CLAMP));
+                circle.centerX()-circle.width()*.24f,
+                circle.centerY()-circle.height()*.28f,
+                Math.max(1f,circle.width()*.78f),
+                dark
+                    ? new int[]{0x65FFFFFF,0x10FFFFFF,0x36000000}
+                    : new int[]{0x8FFFFFFF,0x0AFFFFFF,0x22909090},
+                new float[]{0f,.43f,1f},Shader.TileMode.CLAMP));
+        rim.setColor(dark ? 0xCCFFFFFF : 0xE8FFFFFF);
+        halo.setColor(dark ? 0x55FFFFFF : 0x64FFFFFF);
+        inner.setColor(dark ? 0x75FFFFFF : 0xB0FFFFFF);
         highlight.setShader(new LinearGradient(circle.left,circle.top,
                 circle.left,circle.bottom,
                 new int[]{0xDFFFFFFF, 0x46FFFFFF, 0x00FFFFFF},

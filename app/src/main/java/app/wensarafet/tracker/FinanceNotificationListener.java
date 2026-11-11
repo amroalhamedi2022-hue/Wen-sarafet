@@ -19,6 +19,11 @@ public final class FinanceNotificationListener extends NotificationListenerServi
         String big = value(extras.getCharSequence(Notification.EXTRA_BIG_TEXT));
         String text = value(extras.getCharSequence(Notification.EXTRA_TEXT));
         String body = !big.isEmpty() ? big : text;
+        // Check the original notification body BEFORE prepending the provider
+        // title; "Jawwal Pay — Code: ..." would otherwise defeat ^Code: OTP
+        // filtering and risk persisting a one-time code in the local inbox.
+        if (TransactionParser.isVerificationMessage(body)
+                || TransactionParser.isVerificationMessage(title)) return;
         if (!title.isEmpty() && !body.startsWith(title)) body = title + " — " + body;
         CaptureEngine.handle(this, provider, "NOTIFICATION", pkg, body, sbn.getPostTime());
     }

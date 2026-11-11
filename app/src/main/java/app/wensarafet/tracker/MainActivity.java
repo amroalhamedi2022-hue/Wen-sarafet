@@ -75,7 +75,6 @@ public final class MainActivity extends Activity {
     private boolean startupResolved;
     private long backgroundAt;
     private char[] pendingBackupPassword;
-    private char[] pendingDrivePassword;
     private String pendingNotificationType;
     private FrameLayout screenHost;
     private View activeScreen;
@@ -85,7 +84,6 @@ public final class MainActivity extends Activity {
     private static final int CREATE_BACKUP = 7301;
     private static final int OPEN_BACKUP = 7302;
     private static final int PICK_NOTIFICATION_SOUND = 7303;
-    private static final int OPEN_DRIVE_FOLDER = 7304;
 
     /**
      * Keeps one stable Activity content host and transitions screens inside it.
@@ -287,8 +285,6 @@ public final class MainActivity extends Activity {
     @Override protected void onStop() {
         super.onStop();
         backgroundAt = System.currentTimeMillis();
-        if (authenticated && db != null && DriveBackupManager.linked(this))
-            DriveBackupManager.syncAsync(this, false, null);
     }
 
     @Override protected void onNewIntent(Intent intent) {
@@ -326,22 +322,13 @@ public final class MainActivity extends Activity {
             pendingNotificationType = null;
             return;
         }
-        if (requestCode == OPEN_DRIVE_FOLDER) {
-            if (resultCode == RESULT_OK && data != null && data.getData() != null && pendingDrivePassword != null) {
-                try {
-                    DriveBackupManager.link(this, data.getData(), new String(pendingDrivePassword));
-                    Toast.makeText(this, "جاري مزامنة النسخة المشفّرة…", Toast.LENGTH_LONG).show();
-                    DriveBackupManager.syncAsync(this, true, (ok, message) -> Toast.makeText(this, message, Toast.LENGTH_LONG).show());
-                } catch (Exception error) {
-                    Toast.makeText(this, "تعذرت المزامنة: " + error.getMessage(), Toast.LENGTH_LONG).show();
-                }
-            }
-            if (pendingDrivePassword != null) Arrays.fill(pendingDrivePassword, '\0');
-            pendingDrivePassword = null;
-            return;
-        }
         if (resultCode != RESULT_OK || data == null || data.getData() == null) { clearPendingBackupPassword(); return; }
         Uri uri = data.getData();
+        if ((requestCode == CREATE_BACKUP || requestCode == OPEN_BACKUP) && !isLocalDocumentUri(uri)) {
+            clearPendingBackupPassword();
+            Toast.makeText(this, "اختر التخزين المحلي للهاتف فقط؛ التخزين السحابي ممنوع.", Toast.LENGTH_LONG).show();
+            return;
+        }
         if (requestCode == CREATE_BACKUP && pendingBackupPassword != null) {
             try {
                 if (db != null) db.close();
@@ -357,6 +344,15 @@ public final class MainActivity extends Activity {
         } else if (requestCode == OPEN_BACKUP) {
             showRestoreBackupDialog(uri);
         }
+    }
+
+    /** Reject cloud document providers even if the system picker offers them. */
+    private boolean isLocalDocumentUri(Uri uri) {
+        if (uri == null || !"content".equals(uri.getScheme())) return false;
+        String authority = uri.getAuthority();
+        return "com.android.externalstorage.documents".equals(authority)
+                || "com.android.providers.downloads.documents".equals(authority)
+                || "com.android.providers.media.documents".equals(authority);
     }
 
     private void clearPendingBackupPassword() {
@@ -380,28 +376,6 @@ public final class MainActivity extends Activity {
             Intent create = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
                     .setType("application/octet-stream").putExtra(Intent.EXTRA_TITLE, "Wen-Sarafet-" + date + ".wsb");
             startActivityForResult(create, CREATE_BACKUP);
-        })); dialog.show();
-    }
-
-    private void showDriveLinkDialog() {
-        LinearLayout form = Ui.column(this); form.setPadding(Ui.dp(this, 20), 0, Ui.dp(this, 20), Ui.dp(this, 8));
-        form.addView(Ui.text(this, "اختر كلمة سر للنسخة المشفّرة، ثم اختر مجلدًا داخل Google Drive من شاشة الملفات.", 12, Ui.MUTED, false));
-        EditText password = input("كلمة سر النسخة — 6 خانات أو أكثر");
-        password.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        EditText confirm = input("تأكيد كلمة السر");
-        confirm.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        form.addView(password, fieldParams()); form.addView(confirm, fieldParams());
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("ربط Google Drive").setView(form)
-                .setNegativeButton("إلغاء", null).setPositiveButton("اختيار المجلد", null).create();
-        dialog.setOnShowListener(x -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String first = password.getText().toString();
-            if (first.length() < 6) { password.setError("اكتب 6 خانات على الأقل"); return; }
-            if (!first.equals(confirm.getText().toString())) { confirm.setError("كلمتا السر غير متطابقتين"); return; }
-            pendingDrivePassword = first.toCharArray(); dialog.dismiss();
-            Intent tree = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
-                            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
-            startActivityForResult(tree, OPEN_DRIVE_FOLDER);
         })); dialog.show();
     }
 
@@ -455,41 +429,96 @@ public final class MainActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.setBackground(Ui.glassScreenBackground(this));
         root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        if (WenGoldGlassSurface.enabled(this)) {
+            // A single real scene View behind every overlay, shared by
+            // header, balance and chart optics. No duplicate background
+            // snapshots or fabricated gradients in the glass children.
+            View goldBackdrop = new View(this);
+            goldBackdrop.setTag(WenGoldGlassSurface.BACKDROP_TAG);
+            android.graphics.drawable.Drawable existingScene = Ui.glassScreenBackground(this);
+            goldBackdrop.setBackground(existingScene);
+            root.setBackground(null);
+            root.addView(goldBackdrop, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+        }
 
         LinearLayout shell = Ui.column(this);
+        // Gold floating dock must NEVER obscure a readable account/amount.
+        // Reserve only viewport space; DB queries and scroll data stay exact.
+        if (WenGoldGlassSurface.enabled(this))
+            shell.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));
         root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         View topBar = mainTopBar();
-        shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
+        shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 112, 74)));
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
+        // Decorative five-scene materials should never be obscured by the
+        // thick transient MIUI/Android scroll indicator. Scrolling still works.
+        if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(
+                Ui.themeIndex(this))) scroll.setVerticalScrollBarEnabled(false);
         LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();
         scroll.addView(content, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         shell.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         View bottomNav = bottomNavigation(currentTab);
-        FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72), Gravity.BOTTOM);
+        FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.navigationHeight(this), Gravity.BOTTOM);
         // Floating glass navigation is visual-only; the underlying tabs stay unchanged.
-        if (Ui.isLiquidTheme(this)) navParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));
+        if (Ui.isLiquidTheme(this)) {
+            // Owner reference: truly floating 16dp inset, preserving
+            // the original four tab callbacks and scroll routing.
+            int sideInset = WenPremiumLayout.navigationSideInsetDp(this);
+            navParams.setMargins(Ui.dp(this,sideInset),0,
+                    Ui.dp(this,sideInset),
+                    Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
+        }
         root.addView(bottomNav, navParams);
 
         int fabPercent = Ui.homeIconScalePercent(this, "fab");
         int fabSize = Math.max(Ui.dp(this, 46), Math.min(Ui.dp(this, 82), Ui.homeIconDp(this, "fab", 58)));
-        TextView fab = Ui.text(this, "+", 32f * fabPercent / 100f, Color.WHITE, false);
+        TextView fab = Ui.text(this, "+", 32f * fabPercent / 100f,
+                Ui.DARK ? Color.WHITE : Ui.TEXT, false);
         fab.setGravity(Gravity.CENTER);
-        // Two new reference themes render a circular optical material here.
-        // The original add callback, size, position and hold feedback are unchanged.
-        fab.setBackground(Ui.isReferenceGlassTheme(this)
-                ? Ui.glassFloatingAddBackground(this)
-                : (Ui.isLiquidTheme(this) ? Ui.glassAccentBackground(this, 24)
-                : Ui.gradient(Ui.BRAND, Ui.VIOLET, 24, this)));
-        fab.setElevation(Ui.dp(this, 8));
+        // All themes share the same colourless optical bubble; the real
+        // add action, original hit target and on-click behaviour are unchanged.
+        fab.setBackground(Ui.glassFloatingAddBackground(this));
+        // A hard circular outline (from Sandbox 1.8.8) prevents Android's
+        // rectangular default shadow/ripple on Pixel and MIUI renderers.
+        // Does NOT change the click/hold action or hitbox.
+        fab.setForeground(null);
+        fab.setStateListAnimator(null);
+        fab.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override public void getOutline(View view, android.graphics.Outline outline) {
+                int side = Math.min(view.getWidth(), view.getHeight());
+                if (side > 0) {
+                    int x = (view.getWidth()-side)/2;
+                    int y = (view.getHeight()-side)/2;
+                    outline.setOval(x, y, x+side, y+side);
+                } else outline.setOval(0,0,1,1);
+            }
+        });
+        fab.setClipToOutline(true);
+        fab.setElevation(Ui.dp(this, 6));
+        fab.setContentDescription("إضافة عملية");
         fab.setTag("wen_intro_fab");
         fab.setOnClickListener(v -> {
             if (Ui.isLiquidTheme(this)) visualMotion.markFabTap(v, screenHost);
             showAddTransaction(); // exact same original action, still immediate
         });
-        FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));
-        fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18), Ui.dp(this, 88));
+        // Absolute LEFT/RIGHT is essential on an RTL root: START maps to the
+        // right side, contrary to the user's saved home_fab_right preference.
+        // Five approved premium scenes restore the reference FAB on the LEFT
+        // by default; an explicit user choice of right stays honoured.
+        int fabGravity = app.wensarafet.glass.WenPremiumLiquidDrawable
+                .supports(Ui.themeIndex(this))
+                ? (Ui.homeFabOnRight(this) ? Gravity.RIGHT : Gravity.LEFT)
+                : (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START);
+        FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(
+                fabSize, fabSize, Gravity.BOTTOM | fabGravity);
+        fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18),
+                WenPremiumLayout.fabBottomOffset(this));
         root.addView(fab, fabParams);
         final boolean[] chromeHidden = {false};
         final int[] upwardTravel = {0};
@@ -545,6 +574,7 @@ public final class MainActivity extends Activity {
 
     private View mainTopBar() {
         LinearLayout wrapper = Ui.column(this);
+        wrapper.setTag("wen_top_chrome");
         wrapper.setPadding(Ui.dp(this, 14), Ui.dp(this, 10), Ui.dp(this, 14), Ui.dp(this, 10));
         FrameLayout layers = new FrameLayout(this);
         View background = new View(this);
@@ -553,12 +583,47 @@ public final class MainActivity extends Activity {
         background.setElevation(Ui.dp(this, 7));
         layers.addView(background, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         LinearLayout bar = Ui.row(this);
-        bar.setPadding(Ui.dp(this, 18), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 10));
+        bar.setPadding(Ui.dp(this, WenPremiumLayout.compact(this)?14:18),
+                Ui.dp(this, WenPremiumLayout.compact(this)?5:12),
+                Ui.dp(this, WenPremiumLayout.compact(this)?12:14),
+                Ui.dp(this, WenPremiumLayout.compact(this)?5:10));
         bar.setElevation(Ui.dp(this, 8));
 
         LinearLayout titles = Ui.column(this);
-        TextView title = Ui.text(this, "وين صرفت؟", 25, Color.WHITE, true);
-        TextView subtitle = Ui.text(this, "أموالك واضحة، وخصوصيتك محفوظة", 11, Color.rgb(225, 239, 235), false);
+        // Champagne is a pale gold surface; white ink becomes invisible.
+        // All other themes retain their established header contrast.
+        int headerInk = WenGoldGlassSurface.enabled(this)
+                ? WenGoldGlassSurface.headerTitleInk(Ui.themeIndex(this))
+                : Color.WHITE;
+        int headerSoftInk = WenGoldGlassSurface.enabled(this)
+                ? WenGoldGlassSurface.headerSecondaryInk(Ui.themeIndex(this))
+                : Color.rgb(225, 239, 235);
+        // Reuse the original 1.8.8 Sandbox screen-specific header identity:
+        // the title/subtitle reflect the ACTIVE primary tab, not a fixed app name.
+        String headerTitle;
+        String headerSubtitle;
+        switch (currentTab) {
+            case TAB_TRANSACTIONS:
+                headerTitle = "كل العمليات";
+                headerSubtitle = "سجل المصروفات والدخل والتحويلات";
+                break;
+            case TAB_DEBTS:
+                headerTitle = "الديون";
+                headerSubtitle = "الأرصدة المستحقة وسجل السداد";
+                break;
+            case TAB_ANALYTICS:
+                headerTitle = "التحليلات";
+                headerSubtitle = "تقارير الإنفاق والميزانيات";
+                break;
+            default:
+                // Exact approved identity from the owner's five references.
+                headerTitle = "وين صرفت؟";
+                headerSubtitle = "أموالك واضحة، وخصوصيتك محفوظة";
+                break;
+        }
+        TextView title = Ui.text(this, headerTitle,
+                WenPremiumLayout.compact(this)?21:25, headerInk, true);
+        TextView subtitle = Ui.text(this, headerSubtitle, 11, headerSoftInk, false);
         // Keep labels and controls inside the fixed header on compact RTL screens.
         title.setSingleLine(true);
         subtitle.setSingleLine(true);
@@ -572,14 +637,16 @@ public final class MainActivity extends Activity {
         int headerIconSize = Math.max(Ui.dp(this, 32), Math.min(Ui.dp(this, 62), Ui.homeIconDp(this, "header", 42)));
         if(getResources().getConfiguration().screenWidthDp < 390)
             headerIconSize=Math.min(headerIconSize,Ui.dp(this,48));
+        if (WenPremiumLayout.compact(this))
+            headerIconSize=Math.min(headerIconSize,Ui.dp(this,38));
         float headerIconText = Math.min(31f, 21f * headerPercent / 100f);
-        TextView addAccount = Ui.text(this, "▦", headerIconText, Color.WHITE, true);
+        TextView addAccount = Ui.text(this, "▦", headerIconText, headerInk, true);
         addAccount.setGravity(Gravity.CENTER);
         addAccount.setContentDescription("إدارة الحسابات");
         addAccount.setTag("wen_intro_header_accounts");
         addAccount.setBackground(Ui.rounded(Color.argb(42, 255, 255, 255), 20, this));
         addAccount.setOnClickListener(v -> showAccountManagement());
-        TextView settings = Ui.text(this, "⚙", headerIconText, Color.WHITE, true);
+        TextView settings = Ui.text(this, "⚙", headerIconText, headerInk, true);
         settings.setGravity(Gravity.CENTER);
         settings.setContentDescription("الإعدادات");
         settings.setTag("wen_intro_header_settings");
@@ -599,14 +666,17 @@ public final class MainActivity extends Activity {
         }
         Ui.pressAnimation(addAccount); Ui.pressAnimation(settings);
         layers.addView(bar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        wrapper.addView(layers, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 90)));
+        WenGoldGlassSurface.enhanceHeader(layers,24);
+        wrapper.addView(layers, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 90, 54)));
         return wrapper;
     }
 
     private LinearLayout bottomNavigation(int selectedTab) {
         LinearLayout nav = Ui.row(this);
         nav.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 8));
-        nav.setBackground(Ui.glassNavigationBackground(this, 26));
+        nav.setBackground(Ui.glassNavigationBackground(this,
+                WenGoldGlassSurface.enabled(this) ? 28 : 26));
         nav.setElevation(Ui.dp(this, 12));
 
         TextView home = navButton("🏠\nالرئيسية", selectedTab == TAB_HOME);
@@ -740,7 +810,7 @@ public final class MainActivity extends Activity {
         scroll.addView(content);
         page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         page.addView(bottomNavigation(TAB_TRANSACTIONS),
-                new LinearLayout.LayoutParams(-1,Ui.dp(this,72)));
+                new LinearLayout.LayoutParams(-1,WenPremiumLayout.navigationHeight(this)));
         setContentView(page);
         Calendar first=midnight(Calendar.getInstance());
         first.set(Calendar.DAY_OF_MONTH,1);
@@ -877,35 +947,59 @@ public final class MainActivity extends Activity {
 
     private View sectionTitle(String titleValue, String subtitleValue) {
         LinearLayout row = Ui.row(this);
-        row.setPadding(Ui.dp(this, 18), Ui.dp(this, 18), Ui.dp(this, 18), Ui.dp(this, 10));
+        row.setPadding(Ui.dp(this, 18), WenPremiumLayout.dp(this,18,6),
+                Ui.dp(this, 18), WenPremiumLayout.dp(this,10,4));
         TextView title = Ui.text(this, titleValue, 17, Ui.TEXT, true);
         TextView subtitle = Ui.text(this, subtitleValue, 12, Ui.MUTED, false);
         subtitle.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        row.addView(title, new LinearLayout.LayoutParams(0, Ui.dp(this, 36), 1));
-        row.addView(subtitle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(this, 36)));
+        row.addView(title, new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,36,24), 1));
+        row.addView(subtitle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                WenPremiumLayout.dp(this,36,24)));
         return row;
     }
 
     private View balanceCards() {
-        HorizontalScrollView scroll = new HorizontalScrollView(this);
-        scroll.setHorizontalScrollBarEnabled(false);
+        // Premium references place ILS / USD / JOD in the SAME viewport.
+        // The original fixed 178dp horizontal scroller clips JOD on phones
+        // (3 * 178dp + 36dp margins > 390dp viewport). Legacy themes retain
+        // their existing horizontally scrollable presentation unchanged.
+        boolean premium = app.wensarafet.glass.WenPremiumLiquidDrawable
+                .supports(Ui.themeIndex(this));
+        HorizontalScrollView scroll = premium ? null : new HorizontalScrollView(this);
+        if (scroll != null) scroll.setHorizontalScrollBarEnabled(false);
         LinearLayout row = Ui.row(this);
         row.setPadding(Ui.dp(this, 12), 0, Ui.dp(this, 12), Ui.dp(this, 4));
         Map<String, Long> totals = db.getTotals();
         for (String currency : Arrays.asList("ILS", "USD", "JOD")) {
             LinearLayout card = Ui.column(this);
-            card.setPadding(Ui.dp(this, 16), Ui.dp(this, 14), Ui.dp(this, 16), Ui.dp(this, 14));
+            int hPadding = premium ? 9 : 16;
+            int vPadding = WenPremiumLayout.compact(this) ? 7 : premium ? 12 : 14;
+            card.setPadding(Ui.dp(this, hPadding), Ui.dp(this, vPadding),
+                    Ui.dp(this, hPadding), Ui.dp(this, vPadding));
             card.setBackground(Ui.glassBalanceBackground(this, 22));
             card.setElevation(Ui.dp(this, 2));
-            card.addView(Ui.text(this, currency, 13, Ui.DARK ? Ui.TEXT : Ui.BRAND_DARK, true));
-            TextView amount = Ui.text(this, Money.format(totals.get(currency), currency), 20, Ui.TEXT, true);
-            LinearLayout.LayoutParams amountParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            amountParams.topMargin = Ui.dp(this, 8);
+            card.addView(Ui.text(this, currency, premium ? 11 : 13,
+                    Ui.DARK ? Ui.TEXT : Ui.BRAND_DARK, true));
+            TextView amount = Ui.text(this, Money.format(totals.get(currency), currency),
+                    premium ? 17 : 20, Ui.TEXT, true);
+            if (premium) {
+                amount.setMaxLines(1);
+                amount.setSingleLine(true);
+                amount.setAutoSizeTextTypeUniformWithConfiguration(11, 17, 1,
+                        android.util.TypedValue.COMPLEX_UNIT_SP);
+            }
+            LinearLayout.LayoutParams amountParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            amountParams.topMargin = Ui.dp(this, premium ? 5 : 8);
             card.addView(amount, amountParams);
-            LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(Ui.dp(this, 178), Ui.dp(this, 98));
-            cardParams.setMargins(Ui.dp(this, 6), 0, Ui.dp(this, 6), 0);
-            row.addView(card, cardParams);
+            LinearLayout.LayoutParams cardParams = premium
+                    ? new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,90,58), 1f)
+                    : new LinearLayout.LayoutParams(Ui.dp(this, 178), Ui.dp(this, 98));
+            cardParams.setMargins(Ui.dp(this, premium ? 4 : 6),
+                    0, Ui.dp(this, premium ? 4 : 6), 0);
+            row.addView(premium ? WenGoldGlassSurface.wrap(card,22) : card, cardParams);
         }
+        if (premium) return row;
         scroll.addView(row);
         return scroll;
     }
@@ -915,7 +1009,8 @@ public final class MainActivity extends Activity {
         box.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), 0);
 
         LinearLayout header = Ui.row(this);
-        header.addView(Ui.text(this, "نظرة على مصروفك", 18, Ui.TEXT, true), new LinearLayout.LayoutParams(0, Ui.dp(this, 42), 1));
+        header.addView(Ui.text(this, "نظرة على مصروفك", 18, Ui.TEXT, true),
+                new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,42,32), 1));
         LinearLayout currencies = Ui.row(this);
         Map<TextView, String> currencyChips = new LinkedHashMap<>();
         for (String code : Arrays.asList("ILS", "USD", "JOD")) {
@@ -931,7 +1026,7 @@ public final class MainActivity extends Activity {
         header.addView(currencies);
         box.addView(header);
         TextView currencyHint = Ui.text(this, "عملة الرسم — اضغط ILS أو USD أو JOD للتبديل", 11, Ui.MUTED, false);
-        currencyHint.setPadding(Ui.dp(this, 3), 0, Ui.dp(this, 3), Ui.dp(this, 8));
+        currencyHint.setPadding(Ui.dp(this,3), 0, Ui.dp(this,3), WenPremiumLayout.dp(this,8,4));
         box.addView(currencyHint);
 
         Calendar day = Calendar.getInstance();
@@ -951,6 +1046,13 @@ public final class MainActivity extends Activity {
         TextView todayAmount = (TextView) ((LinearLayout) todayCard).getChildAt(1);
         TextView weekAmount = (TextView) ((LinearLayout) weekCard).getChildAt(1);
         TextView monthAmount = (TextView) ((LinearLayout) monthCard).getChildAt(1);
+        // Resolve original data-bearing TextViews BEFORE adding the passive
+        // glass hosts. Every amount, callback and currency stays unchanged.
+        if (WenGoldGlassSurface.enabled(this)) {
+            todayCard = WenGoldGlassSurface.wrap(todayCard,20);
+            weekCard = WenGoldGlassSurface.wrap(weekCard,20);
+            monthCard = WenGoldGlassSurface.wrap(monthCard,20);
+        }
         stats.addView(todayCard); stats.addView(weekCard); stats.addView(monthCard);
         todayCard.setOnClickListener(v -> showAnalyticsScreen());
         weekCard.setOnClickListener(v -> showAnalyticsScreen());
@@ -964,11 +1066,13 @@ public final class MainActivity extends Activity {
         chartCard.setElevation(Ui.dp(this, 2));
         chartCard.addView(Ui.text(this, "مصاريف الأيام السبعة", 15, Ui.TEXT, true));
         FrameLayout chartHost = new FrameLayout(this);
-        chartCard.addView(chartHost, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 190)));
+        chartCard.addView(chartHost, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this,190,98)));
         chartCard.setOnClickListener(v -> showAnalyticsScreen()); Ui.pressAnimation(chartCard);
-        LinearLayout.LayoutParams chartParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 240));
+        LinearLayout.LayoutParams chartParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this,240,150));
         chartParams.setMargins(0, Ui.dp(this, 10), 0, 0);
-        box.addView(chartCard, chartParams);
+        box.addView(WenGoldGlassSurface.wrap(chartCard,22), chartParams);
 
         Runnable updateOverview = () -> {
             long end = System.currentTimeMillis() + 1;
@@ -991,14 +1095,20 @@ public final class MainActivity extends Activity {
 
     private View statCard(String label, String amount) {
         LinearLayout card = Ui.column(this);
-        card.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 7));
+        card.setPadding(Ui.dp(this,12), WenPremiumLayout.dp(this,8,4),
+                Ui.dp(this,12), WenPremiumLayout.dp(this,7,3));
         card.setBackground(Ui.glassAccentBackground(this, 20));
         card.setElevation(Ui.dp(this, 3));
-        card.addView(Ui.text(this, label, 12, Color.rgb(239, 244, 255), false));
-        TextView amountView = Ui.text(this, amount, 20, Color.WHITE, true);
+        // Contrast is material-specific, not dictated by a universal white label.
+        // Ivory champagne and peach/mint cards require dark readable ink.
+        int cardInk = (Ui.themeIndex(this) == 27)
+                ? 0xFF453329 : Color.WHITE;
+        card.addView(Ui.text(this, label, 12, cardInk, false));
+        TextView amountView = Ui.text(this, amount, 20, cardInk, true);
         amountView.setAutoSizeTextTypeUniformWithConfiguration(13, 20, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
         card.addView(amountView);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, Ui.dp(this, 78), 1);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
+                WenPremiumLayout.dp(this,78,51), 1);
         params.setMargins(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
         card.setLayoutParams(params);
         return card;
@@ -1028,12 +1138,14 @@ public final class MainActivity extends Activity {
 
     private View accountCard(Models.Account account) {
         LinearLayout card = Ui.row(this);
-        card.setPadding(Ui.dp(this, 15), Ui.dp(this, 13), Ui.dp(this, 15), Ui.dp(this, 13));
+        card.setPadding(Ui.dp(this,15), WenPremiumLayout.dp(this,13,7),
+                Ui.dp(this,15), WenPremiumLayout.dp(this,13,7));
         card.setBackground(Ui.glassListBackground(this, 18));
         card.setElevation(Ui.dp(this, 1));
 
         View icon = accountIcon(account);
         int iconSize = Ui.homeIconDp(this, "accounts", 44);
+        if (WenPremiumLayout.compact(this)) iconSize=Math.min(iconSize, Ui.dp(this,34));
         if (Ui.iconsOnRight(this)) card.addView(icon, new LinearLayout.LayoutParams(iconSize, iconSize));
 
         LinearLayout labels = Ui.column(this);
@@ -1056,8 +1168,10 @@ public final class MainActivity extends Activity {
         }
         if (!Ui.iconsOnRight(this)) card.addView(icon, new LinearLayout.LayoutParams(iconSize, iconSize));
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(Ui.dp(this, compactAccountCard?98:72), iconSize + Ui.dp(this, 26)));
-        params.setMargins(Ui.dp(this, 16), Ui.dp(this, 5), Ui.dp(this, 16), Ui.dp(this, 5));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(WenPremiumLayout.dp(this,compactAccountCard?98:72,
+                compactAccountCard?74:52), iconSize + WenPremiumLayout.dp(this,26,14)));
+        params.setMargins(Ui.dp(this,16), WenPremiumLayout.dp(this,5,3),
+                Ui.dp(this,16), WenPremiumLayout.dp(this,5,3));
         card.setLayoutParams(params);
         card.setOnClickListener(v -> showAccountDetails(account));
         Ui.pressAnimation(card);
@@ -1521,30 +1635,11 @@ public final class MainActivity extends Activity {
         EditText rate=input("سعر الصرف الفعلي");
         rate.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
         form.addView(rate,fieldParams());
-        LinearLayout rateButtons=Ui.row(this);
-        Button saveRate=miniButton("حفظ");
-        Button refreshRate=miniButton("تحديث أونلاين");
-        LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,Ui.dp(this,44),1);
-        left.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
-        rateButtons.addView(saveRate,left);
-        LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,Ui.dp(this,44),1);
-        right.setMargins(Ui.dp(this,5),0,Ui.dp(this,5),0);
-        rateButtons.addView(refreshRate,right);
-        form.addView(rateButtons,fieldParams());
-        TextView rateStatus=Ui.text(this,"السعر يدوي حتى تحميل تسعيرة إرشادية من بنك فلسطين",12,Ui.MUTED,false);
-        form.addView(rateStatus,fieldParams());
-        final boolean[] verifiedOnline={false};
-        final long[] onlineTime={0L};
-        final String[] onlineValue={""};
-        final boolean[] loadingQuote={false};
-        final boolean[] dialogVisible={true};
-        final boolean[] autoAttemptedThisDialog={false};
-        final Runnable[] onPairChanged={null};
-        final android.content.SharedPreferences onlinePrefs=getSharedPreferences("fx_online_rates",MODE_PRIVATE);
+        Button saveRate=miniButton("حفظ السعر اليدوي");
+        form.addView(saveRate,fieldParams());
         TextView preview=Ui.text(this,"",15,Ui.BRAND,true);
         form.addView(preview,fieldParams());
-        TextView warning=Ui.text(this,"أدخل السعر الفعلي من البنك أو المحفظة. التسعيرة المنشورة إرشادية ولا تحلّ محل السعر المدخل دون موافقتك.",11,Ui.MUTED,false);
-        form.addView(warning,fieldParams());
+        form.addView(Ui.text(this,"يتم إدخال سعر الصرف يدويًا فقط. لا توجد أي اتصالات بالشبكة.",11,Ui.MUTED,false),fieldParams());
         Runnable recalc=()->{
             int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
             if(si<0 || di<0)return;
@@ -1555,82 +1650,13 @@ public final class MainActivity extends Activity {
                 preview.setText("سيُخصم "+Money.format(n,a.currency)+" ويُضاف "+Money.format(converted,b.currency));
             } catch(Exception error){preview.setText("أدخل المبلغ والسعر الصحيحين");}
         };
-        // Never overwrite a manually entered rate when accounts are reselected.
         Runnable loadSavedRate=()->{
             int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
             if(si<0 || di<0)return;
             String key=accounts.get(si).currency+"_"+accounts.get(di).currency;
             rate.setText(getSharedPreferences("fx_manual_rates",MODE_PRIVATE).getString(key,""));
-            verifiedOnline[0]=false;onlineValue[0]="";onlineTime[0]=0L;
-            if("USD_ILS".equals(key)){
-                String oldQuote=onlinePrefs.getString("USD_ILS_rate","");
-                long oldTime=onlinePrefs.getLong("USD_ILS_at",0L);
-                if(!oldQuote.isEmpty() && oldTime>0){
-                    rateStatus.setText("تسعيرة بنك فلسطين الإرشادية: "+oldQuote+" شيكل/دولار • "+
-                        new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.ROOT).format(new Date(oldTime))+" • اضغط للمراجعة");
-                }else rateStatus.setText("تسعيرة بنك فلسطين غير متوفرة؛ يمكنك إدخال السعر يدويًا");
-            }else rateStatus.setText("سعر يدوي لهذا الزوج من العملات");
             recalc.run();
-            if(onPairChanged[0]!=null)onPairChanged[0].run();
         };
-        Runnable confirmCachedRate=()->{
-            int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
-            if(si<0 || di<0 || !"USD".equals(accounts.get(si).currency) || !"ILS".equals(accounts.get(di).currency))return;
-            final String quote=onlinePrefs.getString("USD_ILS_rate","");
-            final long checked=onlinePrefs.getLong("USD_ILS_at",0L);
-            if(quote.isEmpty() || checked<=0)return;
-            new AlertDialog.Builder(this).setTitle("تسعيرة بنك فلسطين (شراء الدولار)")
-                .setMessage("كل 1 USD ≈ "+quote+" ILS (إرشادي). تاريخ الجلب: "+
-                    new SimpleDateFormat("yyyy-MM-dd HH:mm",Locale.ROOT).format(new Date(checked))+". السعر الفعلي ورسوم التحويل قد تختلف.")
-                .setNegativeButton("احتفظ بالسعر المكتوب",null)
-                .setPositiveButton("استخدام السعر",(d,w)->{
-                    rate.setText(quote);verifiedOnline[0]=true;onlineTime[0]=checked;onlineValue[0]=quote;
-                    rateStatus.setText("تم اختيار السعر الإرشادي. تأكد من السعر الفعلي قبل تأكيد التحويل.");
-                }).show();
-        };
-        rateStatus.setOnClickListener(v->confirmCachedRate.run());
-        // true: explicit refresh opens the quote confirmation; false: silent daily refresh.
-        java.util.function.Consumer<Boolean> downloadOnline=manual->{
-            int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
-            if(si<0 || di<0)return;
-            Models.Account a=accounts.get(si),b=accounts.get(di);
-            if(!"USD".equals(a.currency)||!"ILS".equals(b.currency)){
-                if(manual)Toast.makeText(this,"سعر البنك الأونلاين متاح من USD إلى ILS فقط",Toast.LENGTH_LONG).show();
-                return;
-            }
-            if(loadingQuote[0])return;
-            loadingQuote[0]=true;refreshRate.setEnabled(false);
-            rateStatus.setText("جارٍ جلب التسعيرة الإرشادية من بنك فلسطين...");
-            new Thread(()->{
-                try{
-                    final String quote=BopRateFetcher.fetchBuyUsdIls();final long fetchedAt=System.currentTimeMillis();
-                    runOnUiThread(()->{
-                        loadingQuote[0]=false;refreshRate.setEnabled(true);
-                        onlinePrefs.edit().putString("USD_ILS_rate",quote).putLong("USD_ILS_at",fetchedAt).apply();
-                        if(!dialogVisible[0])return;
-                        int activeSource=source.getSelectedItemPosition(),activeDestination=destination.getSelectedItemPosition();
-                        if(activeSource<0 || activeDestination<0 || !"USD".equals(accounts.get(activeSource).currency)
-                                || !"ILS".equals(accounts.get(activeDestination).currency))return;
-                        rateStatus.setText("تسعيرة البنك الإرشادية: "+quote+" شيكل/دولار • اضغط للمراجعة");
-                        if(manual)confirmCachedRate.run();
-                    });
-                }catch(Exception error){runOnUiThread(()->{
-                    loadingQuote[0]=false;refreshRate.setEnabled(true);
-                    if(dialogVisible[0])rateStatus.setText("لم تتوفر تسعيرة موثوقة من البنك؛ أدخل السعر الفعلي يدويًا");
-                });}
-            },"wen-bop-rate-fetch").start();
-        };
-        onPairChanged[0]=()->{
-            int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
-            if(si<0 || di<0 || !"USD".equals(accounts.get(si).currency) || !"ILS".equals(accounts.get(di).currency))return;
-            if(autoAttemptedThisDialog[0] || loadingQuote[0])return;
-            long lastFetched=onlinePrefs.getLong("USD_ILS_at",0L);
-            if(FxRateRefreshPolicy.needsDailyRefresh(lastFetched,System.currentTimeMillis(),
-                    java.util.TimeZone.getDefault())){
-                autoAttemptedThisDialog[0]=true;downloadOnline.accept(false);
-            }
-        };
-        refreshRate.setOnClickListener(v->downloadOnline.accept(true));
         saveRate.setOnClickListener(v->{
             try{
                 int si=source.getSelectedItemPosition(),di=destination.getSelectedItemPosition();
@@ -1638,7 +1664,7 @@ public final class MainActivity extends Activity {
                 String key=accounts.get(si).currency+"_"+accounts.get(di).currency;
                 FxTransferMath.destinationMinor(100,rate.getText().toString());
                 getSharedPreferences("fx_manual_rates",MODE_PRIVATE).edit().putString(key,rate.getText().toString().trim()).apply();
-                Toast.makeText(this,"تم حفظ السعر المدخل لهذا الزوج",Toast.LENGTH_SHORT).show();
+                Toast.makeText(this,"تم حفظ السعر اليدوي لهذا الزوج",Toast.LENGTH_SHORT).show();
             }catch(Exception err){Toast.makeText(this,"أدخل سعر صرف صالحًا أولًا",Toast.LENGTH_SHORT).show();}
         });
         source.setOnItemSelectedListener(new SimpleItemSelected(loadSavedRate));
@@ -1663,13 +1689,11 @@ public final class MainActivity extends Activity {
                 Models.Account from=accounts.get(source.getSelectedItemPosition()),to=accounts.get(destination.getSelectedItemPosition());
                 Long minor=Money.parseMinor(amount.getText().toString());
                 if(minor==null || minor<=0)throw new IllegalArgumentException("أدخل المبلغ");
-                boolean onlineSelected=verifiedOnline[0] && rate.getText().toString().trim().equals(onlineValue[0]);
                 db.addFxTransfer(from.id,to.id,minor,rate.getText().toString(),
-                        onlineSelected?"BOP_INDICATIVE_BUY_USER_CONFIRMED":"MANUAL",onlineSelected?onlineTime[0]:System.currentTimeMillis());
+                        "MANUAL",System.currentTimeMillis());
                 dialog.dismiss();Toast.makeText(this,"تم التحويل بين الحسابين",Toast.LENGTH_SHORT).show();showMain(false);
             }catch(Exception error){Toast.makeText(this,error.getMessage()==null?"فشل التحويل":error.getMessage(),Toast.LENGTH_LONG).show();}
         }));
-        dialog.setOnDismissListener(d->dialogVisible[0]=false);
         dialog.show();loadSavedRate.run();
 
     }
@@ -1730,19 +1754,24 @@ public final class MainActivity extends Activity {
 
     private View pageHeader(String titleValue, Runnable backAction) {
         LinearLayout wrapper=Ui.column(this);
+        wrapper.setTag("wen_top_chrome");
         wrapper.setPadding(Ui.dp(this,14),Ui.dp(this,5),
                 Ui.dp(this,14),Ui.dp(this,5));
         LinearLayout bar=Ui.row(this);
         bar.setPadding(Ui.dp(this,14),0,Ui.dp(this,14),0);
         bar.setBackground(Ui.glassHeaderBackground(this,20));
         bar.setElevation(Ui.dp(this,6));
-        TextView back=Ui.text(this,"‹",32,Color.WHITE,false);
+        // Mirror the header's material-aware typography in the original
+        // Sandbox back/title chrome; do not alter the back callback.
+        int headerInk = Ui.themeIndex(this) == 27 ? 0xFF65421F : Color.WHITE;
+        TextView back=Ui.text(this,"‹",32,headerInk,false);
         back.setGravity(Gravity.CENTER);
         back.setContentDescription("رجوع");
         back.setBackground(Ui.rounded(Color.argb(40,255,255,255),12,this));
         back.setOnClickListener(v->backAction.run());
+        Ui.pressAnimation(back);
         bar.addView(back,new LinearLayout.LayoutParams(Ui.dp(this,46),Ui.dp(this,46)));
-        TextView title=Ui.text(this,titleValue,22,Color.WHITE,true);
+        TextView title=Ui.text(this,titleValue,22,headerInk,true);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);
         title.setAutoSizeTextTypeUniformWithConfiguration(16,22,1,
@@ -1761,19 +1790,69 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 30));
 
-        content.addView(sectionTitle("مظهر التطبيق", Ui.THEME_NAMES.length + " تنسيقًا • يتبع وضع الجوال"));
-        HorizontalScrollView themeScroll = new HorizontalScrollView(this); themeScroll.setHorizontalScrollBarEnabled(false);
+        content.addView(sectionTitle("مظهر التطبيق",
+                ThemeCatalogue.visibleCount(this) + " Themes • English names"));
+        HorizontalScrollView themeScroll = new HorizontalScrollView(this);
+        themeScroll.setHorizontalScrollBarEnabled(false);
         LinearLayout themeRow = Ui.row(this);
         int currentTheme = Ui.themeIndex(this);
         for (int i = 0; i < Ui.THEME_NAMES.length; i++) {
+            if (!ThemeCatalogue.isVisible(this, i)) continue;
             final int index = i;
-            LinearLayout card = Ui.column(this); card.setGravity(Gravity.CENTER);
-            card.setBackground(new AuroraDrawable(Ui.themePreviewColors(i), Ui.dp(this, 20)));
-            TextView name = Ui.text(this, (i == currentTheme ? "✓ " : "") + Ui.THEME_NAMES[i], 14, Color.WHITE, true); name.setGravity(Gravity.CENTER);
-            card.addView(name); card.setOnClickListener(v -> { Ui.saveTheme(this, index); recreate(); }); Ui.pressAnimation(card);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(Ui.dp(this, 132), Ui.dp(this, 82)); p.setMargins(Ui.dp(this, 5), 0, Ui.dp(this, 5), 0); themeRow.addView(card, p);
+            FrameLayout tile = new FrameLayout(this);
+            LinearLayout card = Ui.column(this);
+            card.setGravity(Gravity.CENTER);
+            // Premium swatches must use the SAME production glass shader
+            // as the actual page; a flat AuroraDrawable would mislead owners.
+            if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(i)) {
+                card.setBackground(new app.wensarafet.glass.WenPremiumLiquidDrawable(
+                        this, i,
+                        app.wensarafet.glass.WenReferenceGlassDrawable.Surface.HEADER,
+                        i != 27));
+            } else {
+                card.setBackground(new AuroraDrawable(Ui.themePreviewColors(i), Ui.dp(this, 20)));
+            }
+            TextView name = Ui.text(this, (i == currentTheme ? "✓ " : "")
+                    + ThemeCatalogue.displayName(i), 13,
+                    i == 27 ? 0xFF56351E : Color.WHITE, true);
+            name.setGravity(Gravity.CENTER);
+            name.setPadding(Ui.dp(this, 9), Ui.dp(this, 6),
+                    Ui.dp(this, 9), Ui.dp(this, 5));
+            card.addView(name);
+            card.setOnClickListener(v -> { Ui.saveTheme(this, index); recreate(); });
+            Ui.pressAnimation(card);
+            tile.addView(card, new FrameLayout.LayoutParams(-1, -1));
+            if (index != currentTheme) {
+                TextView remove = Ui.text(this, "×", 17, Color.WHITE, true);
+                remove.setGravity(Gravity.CENTER);
+                remove.setBackground(Ui.rounded(0x88342325, 14, this));
+                remove.setContentDescription("Delete " + ThemeCatalogue.displayName(index));
+                FrameLayout.LayoutParams removeParams = new FrameLayout.LayoutParams(
+                        Ui.dp(this, 28), Ui.dp(this, 28), Gravity.TOP | Gravity.START);
+                removeParams.setMargins(Ui.dp(this, 3), Ui.dp(this, 3), 0, 0);
+                tile.addView(remove, removeParams);
+                remove.setOnClickListener(v -> new AlertDialog.Builder(this)
+                        .setTitle("حذف " + ThemeCatalogue.displayName(index))
+                        .setMessage("سيُزال من القائمة فقط، ويمكن استعادته لاحقًا.")
+                        .setNegativeButton("إلغاء", null)
+                        .setPositiveButton("حذف", (dialog, which) -> {
+                            if (ThemeCatalogue.hide(this, index)) showSettings();
+                        }).show());
+                Ui.pressAnimation(remove);
+            }
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
+                    Ui.dp(this, 132), Ui.dp(this, 82));
+            p.setMargins(Ui.dp(this, 5), 0, Ui.dp(this, 5), 0);
+            themeRow.addView(tile, p);
         }
-        themeScroll.addView(themeRow); content.addView(themeScroll);
+        themeScroll.addView(themeRow);
+        content.addView(themeScroll);
+        Button restoreThemes = actionButton("استعادة الثيمات المحذوفة", false);
+        restoreThemes.setOnClickListener(v -> {
+            ThemeCatalogue.restoreUserHidden(this);
+            showSettings();
+        });
+        content.addView(restoreThemes);
 
         content.addView(sectionTitle("تخصيص الواجهة", "مكان واحد ومنظّم لإعدادات الصفحة الرئيسية"));
         LinearLayout layoutCard = Ui.row(this); layoutCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
@@ -1834,25 +1913,10 @@ public final class MainActivity extends Activity {
         content.addView(sectionTitle("صوت واهتزاز الإشعارات", "إعداد مستقل لكل نوع"));
         content.addView(notificationSettingsCard());
 
-        content.addView(sectionTitle("النسخ الاحتياطي", "Google + ملف مشفّر"));
+        content.addView(sectionTitle("النسخ الاحتياطي", "محلي ومشفّر فقط"));
         LinearLayout backupCard = Ui.column(this); backupCard.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12));
         backupCard.setBackground(Ui.rounded(Ui.SURFACE, 20, this)); backupCard.setElevation(Ui.dp(this, 3));
-        boolean driveLinked = DriveBackupManager.linked(this);
-        backupCard.addView(Ui.text(this, driveLinked ? "Google Drive مربوط — تُحدّث نسخة مشفّرة تلقائيًا عند مغادرة التطبيق." :
-                "اربط مجلدًا داخل Google Drive من شاشة الملفات لحفظ نسخة مشفّرة قابلة للاستعادة.", 12, Ui.MUTED, false));
-        if (driveLinked) {
-            Button syncDrive = actionButton("مزامنة Google Drive الآن", true);
-            syncDrive.setOnClickListener(v -> { Toast.makeText(this,"جاري مزامنة النسخة المشفّرة…",Toast.LENGTH_SHORT).show(); DriveBackupManager.syncAsync(this,true,(ok,message)->Toast.makeText(this,message,Toast.LENGTH_LONG).show()); });
-            backupCard.addView(syncDrive, fieldParams());
-            Button unlinkDrive = actionButton("إلغاء ربط Google Drive", false);
-            unlinkDrive.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("إلغاء ربط Google Drive؟")
-                    .setMessage("لن تُحذف النسخة الموجودة في Drive، لكن التطبيق سيتوقف عن تحديثها تلقائيًا.")
-                    .setNegativeButton("تراجع",null).setPositiveButton("إلغاء الربط",(d,w)->{DriveBackupManager.unlink(this);showSettings();}).show());
-            backupCard.addView(unlinkDrive, fieldParams());
-        } else {
-            Button linkDrive = actionButton("ربط Google Drive", true); linkDrive.setOnClickListener(v -> showDriveLinkDialog());
-            backupCard.addView(linkDrive, fieldParams());
-        }
+        backupCard.addView(Ui.text(this,"النسخ والاستعادة من التخزين المحلي فقط، دون مزامنة سحابية.",12,Ui.MUTED,false));
         Button createBackup = actionButton("إنشاء نسخة مشفّرة", true); createBackup.setBackground(Ui.gradient(Ui.BRAND, Ui.SKY, 16, this));
         createBackup.setOnClickListener(v -> showCreateBackupDialog()); backupCard.addView(createBackup, fieldParams());
         Button restoreBackup = actionButton("استعادة نسخة", false); restoreBackup.setOnClickListener(v -> {
@@ -2119,10 +2183,16 @@ public final class MainActivity extends Activity {
         FrameLayout primaryRoot=new FrameLayout(this);
         primaryRoot.setBackground(Ui.glassScreenBackground(this));
         primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
         LinearLayout page=Ui.column(this);
+        // Identical visual clearance on Debts and Analytics. Scroll routing,
+        // navigation listeners and all financial content are unchanged.
+        if (WenGoldGlassSurface.enabled(this))
+            page.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));
         primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View debtTopBar=mainTopBar();
-        page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));
+        page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 112, 74)));
         ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this);
         content.setPadding(Ui.dp(this, 16), Ui.dp(this, 10), Ui.dp(this, 16), Ui.dp(this, 110));
         content.addView(sectionTitle("دفتر الديون","أرصدة الديون وحركاتها"));
@@ -2165,8 +2235,11 @@ public final class MainActivity extends Activity {
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         View debtNav=bottomNavigation(TAB_DEBTS);
         FrameLayout.LayoutParams debtNavParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM);
-        if (Ui.isLiquidTheme(this)) debtNavParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));
+                ViewGroup.LayoutParams.MATCH_PARENT,WenPremiumLayout.navigationHeight(this),Gravity.BOTTOM);
+        if (Ui.isLiquidTheme(this)) debtNavParams.setMargins(
+                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),0,
+                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),
+                Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
         primaryRoot.addView(debtNav,debtNavParams);
         bindPrimaryNavigationScroll(scroll,debtTopBar,debtNav);
         setContentView(primaryRoot); Ui.animateScreen(primaryRoot); content.post(() -> Ui.animateChildren(content));
@@ -2521,10 +2594,16 @@ public final class MainActivity extends Activity {
         FrameLayout primaryRoot=new FrameLayout(this);
         primaryRoot.setBackground(Ui.glassScreenBackground(this));
         primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
         LinearLayout page=Ui.column(this);
+        // Identical visual clearance on Debts and Analytics. Scroll routing,
+        // navigation listeners and all financial content are unchanged.
+        if (WenGoldGlassSurface.enabled(this))
+            page.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));
         primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));
         View analyticsTopBar=mainTopBar();
-        page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112)));
+        page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 112, 74)));
         ScrollView scroll = new ScrollView(this); LinearLayout content = Ui.column(this); content.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 110));
         content.addView(sectionTitle("تحليل المصروفات","تقاريرك حسب العملة"));
         content.addView(Ui.text(this, "اختر عملة التحليل", 14, Ui.TEXT, true));
@@ -2620,8 +2699,11 @@ public final class MainActivity extends Activity {
         scroll.addView(content); page.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         View analyticsNav=bottomNavigation(TAB_ANALYTICS);
         FrameLayout.LayoutParams analyticsNavParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM);
-        if (Ui.isLiquidTheme(this)) analyticsNavParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));
+                ViewGroup.LayoutParams.MATCH_PARENT,WenPremiumLayout.navigationHeight(this),Gravity.BOTTOM);
+        if (Ui.isLiquidTheme(this)) analyticsNavParams.setMargins(
+                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),0,
+                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),
+                Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
         primaryRoot.addView(analyticsNav,analyticsNavParams);
         bindPrimaryNavigationScroll(scroll,analyticsTopBar,analyticsNav);
         setContentView(primaryRoot); Ui.animateScreen(primaryRoot);

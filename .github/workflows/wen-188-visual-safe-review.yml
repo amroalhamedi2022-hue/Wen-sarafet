@@ -28,7 +28,7 @@ jobs:
           java-version: '17'
       - name: Guard exact 1.8.8 business-source and original callbacks
         run: |
-          python3 tests/wen_188_visual_safezone_contract.py
+          python3 tests/wen_211_integrated_offline_visual_contract.py
           python3 tests/financial_safe_zone_guard.py
       - name: Run original finance, debt, migration and security tests
         run: bash scripts/test_core.sh
@@ -63,7 +63,6 @@ jobs:
           text=Path("/tmp/wen-188-visual-permissions.txt").read_text()
           actual=set(re.findall(r"uses-permission:\s+name='([^']+)'",text))
           expected={
-              "android.permission.INTERNET",
               "android.permission.POST_NOTIFICATIONS",
               "android.permission.RECEIVE_BOOT_COMPLETED",
               "android.permission.SCHEDULE_EXACT_ALARM",
@@ -71,7 +70,7 @@ jobs:
               "android.permission.USE_BIOMETRIC",
           }
           assert actual == expected, f"SAFE ZONE: unexpected APK permissions {sorted(actual ^ expected)}"
-          print("PASS: release package/version and exact permissions unchanged")
+          print("PASS: 2.0 package/version and exact offline permission set")
           PY
           sha256sum "$APK"
       - name: Upload original-package unsigned visual review

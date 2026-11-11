@@ -25,6 +25,11 @@ public final class TransactionParser {
             "|(?:رصيدكم\\s+المتوفر|رصيدك\\s+المتوفر|الرصيد\\s+المتوفر|الرصيد\\s+الحالي|الرصيد\\s+بعد\\s+العملية)\\s*(?:هو|هو:|:)?\\s*" + NUM);
     private static final Pattern VERIFICATION = Pattern.compile("(?i)(?:(?:رمز|كود)\\s*(?:ال)?(?:تحقق|تأكيد|تاكيد|دخول|أمان|امان|مصادقة)|(?:كلمة\\s*(?:ال)?مرور|رقم\\s*سري)\\s*(?:مؤقتة?|لمرة\\s*واحدة)|verification\\s*code|confirmation\\s*code|security\\s*code|login\\s*code|authorization\\s*code|one[- ]?time\\s*(?:password|passcode)|(?:your|the)\\s+code\\s*(?:is|:)|\\bOTP\\b)");
 
+    // Owner privacy contract: ANY wallet SMS starting with "Code:" is OTP,
+    // including alphabetic, short, long and localized-colon forms. Reject
+    // before CaptureEngine opens FinanceDbHelper or persists raw message text.
+    private static final Pattern CODE_PREFIX = Pattern.compile("(?i)^code\\s*[:：]");
+
     private TransactionParser() {}
 
     public static Result parse(String provider, String raw) {
@@ -48,7 +53,14 @@ public final class TransactionParser {
     }
 
     public static boolean isVerificationMessage(String raw) {
-        return raw != null && VERIFICATION.matcher(normalize(raw)).find();
+        if (raw == null) return false;
+        String normalized = normalize(raw);
+        // Some wallet verification texts begin with "Code: 12345" instead of "OTP".
+        // Reject these messages before writing any raw message into the local ledger.
+        return CODE_PREFIX.matcher(normalized).find()
+                || VERIFICATION.matcher(normalized).find()
+                || java.util.regex.Pattern.compile("(?i)\\bcode\\s*:\\s*\\d{4,8}\\b").matcher(normalized).find()
+                || java.util.regex.Pattern.compile("(?i)\\bp2m\\b.{0,90}\\b(?:code|maximum|account owner)\\b").matcher(normalized).find();
     }
 
     private static void findAmount(String text, Result out) {

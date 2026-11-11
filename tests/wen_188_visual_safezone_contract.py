@@ -12,11 +12,15 @@ SETTINGS = "settings.gradle"
 ALLOWED = {
     MAIN, APP_GRADLE, SETTINGS, "gradle.properties", "proguard-rules.pro",
     "app/src/main/java/app/wensarafet/tracker/Ui.java",
+    "app/src/main/java/app/wensarafet/tracker/ThemeCatalogue.java",
     "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java",
     "app/src/androidTest/java/app/wensarafet/tracker/WenVisualMotionInstrumentedTest.java",
     "app/src/main/AndroidManifest.xml",
     "app/src/main/java/app/wensarafet/tracker/NavigationVisualDecorator.java",
+    "app/src/main/java/app/wensarafet/tracker/WenPremiumTabIconDrawable.java",
+    "app/src/main/java/app/wensarafet/tracker/WenPremiumLayout.java",
     "app/src/main/java/app/wensarafet/tracker/NavigationLiquidMaterial.java",
+    "app/src/main/java/app/wensarafet/tracker/WenGoldGlassSurface.java",
     "app/src/main/java/app/wensarafet/tracker/SplitRemainderUi.java",
     "app/src/main/java/app/wensarafet/tracker/SplitRemainderRules.java",
     "tests/SplitRemainderRulesTest.java",
@@ -32,6 +36,20 @@ ALLOWED = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenFabOpticalCrownDrawable.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenThemeArtDirection.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumCaustics.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumSunlight.java",
+    "app/src/androidTest/java/app/wensarafet/tracker/RealMainScreenCaptureTest.java",
+    ".github/workflows/wen-real-main-screenshots.yml",
+    "scripts/capture_real_main_screens.sh",
+    "app/src/debug/java/app/wensarafet/tracker/OwnerThemeCaptureReceiver.java",
+    "scripts/capture_main_no_instrumentation.sh",
+    # CI-only screenshot integrity guard; no app sources, DB or money logic.
+    "scripts/validate_native_capture.py",
+    "scripts/capture_owner_android_device.ps1",
+    "tests/test_native_capture_integrity.py",
+    ".github/workflows/core-rules.yml",
+    ".github/workflows/wen-main-physical-screens.yml",
     "docs/design/WEN_190_FIVE_PREMIUM_LIQUID_HANDOFF_20261105.md",
     "docs/releases/WEN_200_PREMIUM_INTEGRATION_HANDOFF_20261105.md",
     "docs/WEN_SARAFET_REPAIR_AND_DEVELOPMENT_PLAN_2026-10-23.md",
@@ -45,6 +63,12 @@ ALLOWED = {
     "tests/original_180_upgrade_contract.py",
     "tests/upgrade_gate_contract.py",
     "docs/design/WEN_190_REFERENCE_THEMES_20261105.md",
+    "docs/design/WEN_20261106_OWNER_VISUAL_PARITY_PLAN.md",
+    "app/src/androidTest/java/app/wensarafet/tracker/ThemeCatalogueInstrumentedTest.java",
+    ".github/workflows/wen-visual-screenshots.yml",
+    "app/src/debug/AndroidManifest.xml",
+    "app/src/debug/java/app/wensarafet/tracker/VisualPreviewActivity.java",
+    "scripts/capture_visual_preview.sh",
     "tests/glass_energy_contract.py",
     "tests/wen_190_visual_motion_contract.py",
     "tests/batch22_category_budget_icon_contract.py",
@@ -69,6 +93,21 @@ MAIN_ONLY_PLAN = "docs/WEN_SARAFET_REPAIR_AND_DEVELOPMENT_PLAN_2026-10-23.md"
 assert (ROOT / MAIN_ONLY_PLAN).read_text(encoding="utf-8") == git(
     "show", f"283112f4bedaf2e07dd7370e581f84e14959710e:{MAIN_ONLY_PLAN}"
 ), "SAFE ZONE: existing official development plan unexpectedly changed"
+# Original account identity art is SHA-1 pinned at the 1.8.8 Sandbox:
+# do not allow a preview mock or theme refactor to replace PNG assets.
+ORIGINAL_LOGOS = {
+    "app/src/main/res/drawable-nodpi/icon_bop_mark.png":
+        "d71006e0eba4cedcd1d04b2217eeef4911b83808",
+    "app/src/main/res/drawable-nodpi/icon_jawwal_pay_mark.png":
+        "0516bd77381b48b87c404e613c908405812d7b88",
+    "app/src/main/res/drawable-nodpi/icon_palpay_mark.png":
+        "d09932adbc59a39b4ba5b8d52a7350f7aa4ba1a8",
+}
+for logo_path, vetted_blob in ORIGINAL_LOGOS.items():
+    assert git("hash-object",logo_path).strip() == vetted_blob, (
+        "SAFE ZONE: original account icon PNG unexpectedly changed: "+logo_path
+    )
+
 required = {MAIN, APP_GRADLE, SETTINGS}
 assert required <= changed, f"Visual adapter incomplete: {sorted(required - changed)}"
 
@@ -80,10 +119,341 @@ current_main = (ROOT / MAIN).read_text(encoding="utf-8")
 # delegation, screen reveal/screen swipe hooks, and non-semantic View tags.
 # The original protected callbacks/finance methods are not edited. Any future
 # change to MainActivity, including new feature work, must re-audit this SHA.
-APPROVED_VISUAL_HOST_BLOB = "bf6163c8464c8cb99189e962ee35fdbeb1c5f8ae"
+APPROVED_VISUAL_HOST_BLOB = "249de0deb388fb33598a81f438883fb95d8479e8"
 assert git("hash-object", MAIN).strip() == APPROVED_VISUAL_HOST_BLOB, (
     "SAFE ZONE: MainActivity differs from the manually audited visual-only host patch"
 )
+# Compare the whole 300K Java host byte-for-byte with the verified 2.0
+# release candidate after reversing ONLY three strictly visual modifications.
+# No finance, auth, routing or original callback can slip through this gate.
+PRE_THEME_CATALOGUE = "caf2f6eeac3a5a34fc688b21544902d7ccd13e71"
+previous_host = git("show", f"{PRE_THEME_CATALOGUE}:{MAIN}")
+sanitized_host = current_main
+
+def revert_visual_section(current, old, from_current, from_old, until):
+    assert current.count(from_current) == old.count(from_old) == 1
+    assert current.count(until) == old.count(until) == 1
+    fresh = current[current.index(from_current):current.index(until)]
+    historical = old[old.index(from_old):old.index(until)]
+    return current.replace(fresh, historical, 1)
+
+# Strictly presentational floating-navigation inset and radius:
+# original tab click handlers, activity routes and selection state are unchanged.
+gold_nav_margin = """        if (Ui.isLiquidTheme(this)) {
+            // Owner reference: truly floating 16dp inset, preserving
+            // the original four tab callbacks and scroll routing.
+            int sideInset = WenPremiumLayout.navigationSideInsetDp(this);
+            navParams.setMargins(Ui.dp(this,sideInset),0,
+                    Ui.dp(this,sideInset),
+                    Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));
+        }"""
+legacy_nav_margin = """        if (Ui.isLiquidTheme(this)) navParams.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));"""
+gold_nav_radius = """nav.setBackground(Ui.glassNavigationBackground(this,
+                WenGoldGlassSurface.enabled(this) ? 28 : 26));"""
+legacy_nav_radius = "nav.setBackground(Ui.glassNavigationBackground(this, 26));"
+for optical, historic in ((gold_nav_margin,legacy_nav_margin),
+                          (gold_nav_radius,legacy_nav_radius)):
+    assert sanitized_host.count(optical) == 1, "Unreviewed bottom bar appearance"
+    sanitized_host = sanitized_host.replace(optical,historic,1)
+# Preserve tab routes byte-for-byte; only layout and glass are in scope.
+for route in (
+    "home.setOnClickListener(v -> showMain(false));",
+    "tx.setOnClickListener(v -> showMain(true));",
+    "debts.setOnClickListener(v -> showDebtsScreen(FinanceRules.DEBT_RECEIVABLE));",
+    "analytics.setOnClickListener(v -> showAnalyticsScreen());",
+):
+    assert current_main.count(route) == 1, "Navigation route changed"
+
+# New gold-only screen background is a passive view placed before the
+# original shell; no finance callbacks, layout actions, or input routing.
+# Revert exactly this one visual layer before the full MainActivity diff.
+original_scene = """        root.setBackground(Ui.glassScreenBackground(this));
+        root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        LinearLayout shell = Ui.column(this);"""
+gold_scene = """        root.setBackground(Ui.glassScreenBackground(this));
+        root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        if (WenGoldGlassSurface.enabled(this)) {
+            // A single real scene View behind every overlay, shared by
+            // header, balance and chart optics. No duplicate background
+            // snapshots or fabricated gradients in the glass children.
+            View goldBackdrop = new View(this);
+            goldBackdrop.setTag(WenGoldGlassSurface.BACKDROP_TAG);
+            android.graphics.drawable.Drawable existingScene = Ui.glassScreenBackground(this);
+            goldBackdrop.setBackground(existingScene);
+            root.setBackground(null);
+            root.addView(goldBackdrop, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+
+        LinearLayout shell = Ui.column(this);"""
+assert sanitized_host.count(gold_scene) == 1
+sanitized_host = sanitized_host.replace(gold_scene, original_scene, 1)
+
+# Only the top-bar VIEW method is ported from the owner's 1.8.8 Sandbox.
+# Every action callback remains the original handler, and the full Java file
+# remains protected by APPROVED_VISUAL_HOST_BLOB above.
+for callback in (
+    "addAccount.setOnClickListener(v -> showAccountManagement());",
+    "settings.setOnClickListener(v -> showSettings());",
+):
+    assert current_main.count(callback) == 1, "Protected header action changed"
+for title in ("كل العمليات", "الديون", "التحليلات", "الرئيسية"):
+    assert title in current_main, "Missing Sandbox per-screen heading: " + title
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "    private View mainTopBar()", "    private View mainTopBar()",
+    "    private LinearLayout bottomNavigation("
+)
+# Original Sandbox subpage chrome keeps its original back-action delegate,
+# but now supports champagne contrast and a finite press response.
+assert current_main.count("back.setOnClickListener(v->backAction.run());") == 1
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "    private View pageHeader(", "    private View pageHeader(",
+    "    private void showSettings()"
+)
+# FAB bubble rendering and clipping ONLY: its existing transaction callback
+# and screen placement are byte-for-byte restored in this comparison.
+assert current_main.count("showAddTransaction(); // exact same original action, still immediate") == 1
+assert 'fab.setStateListAnimator(null);' in current_main
+assert 'fab.setClipToOutline(true);' in current_main
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "        // A hard circular outline (from Sandbox 1.8.8)",
+    "        fab.setElevation(Ui.dp(this, 8));",
+    '        fab.setTag("wen_intro_fab");'
+)
+
+# RTL position correction affects only the premium FAB alignment, and
+# preserves the owner's stored side preference and original click action.
+old_fab_position = "        FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(fabSize, fabSize, Gravity.BOTTOM | (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START));"
+premium_fab_position = """        // Absolute LEFT/RIGHT is essential on an RTL root: START maps to the
+        // right side, contrary to the user's saved home_fab_right preference.
+        // Five approved premium scenes restore the reference FAB on the LEFT
+        // by default; an explicit user choice of right stays honoured.
+        int fabGravity = app.wensarafet.glass.WenPremiumLiquidDrawable
+                .supports(Ui.themeIndex(this))
+                ? (Ui.homeFabOnRight(this) ? Gravity.RIGHT : Gravity.LEFT)
+                : (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START);
+        FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(
+                fabSize, fabSize, Gravity.BOTTOM | fabGravity);"""
+assert previous_host.count(old_fab_position) == 1
+assert sanitized_host.count(premium_fab_position) == 1
+sanitized_host = sanitized_host.replace(premium_fab_position, old_fab_position, 1)
+
+# One purely visual setting hides the thick scrollbar on the five
+# premium materials; it does not alter scroll listeners or event dispatch.
+old_scrollbar = """        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();"""
+premium_scrollbar = """        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        // Decorative five-scene materials should never be obscured by the
+        // thick transient MIUI/Android scroll indicator. Scrolling still works.
+        if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(
+                Ui.themeIndex(this))) scroll.setVerticalScrollBarEnabled(false);
+        LinearLayout content = showTransactions ? transactionsContent(1000) : homeContent();"""
+assert sanitized_host.count(premium_scrollbar) == 1
+sanitized_host = sanitized_host.replace(premium_scrollbar, old_scrollbar, 1)
+
+# Real reference parity: three currency cards must remain visible together.
+# This transformation touches only width, padding and TextView appearance.
+# No currency, money computation, database lookup or click routing may change.
+balance_start = "    private View balanceCards() {"
+balance_end = "    private View spendingDashboard() {"
+premium_balance = sanitized_host[sanitized_host.index(balance_start):sanitized_host.index(balance_end)]
+legacy_balance = previous_host[previous_host.index(balance_start):previous_host.index(balance_end)]
+for required_balance in (
+    'Map<String, Long> totals = db.getTotals();',
+    'Arrays.asList("ILS", "USD", "JOD")',
+    'Money.format(totals.get(currency), currency)',
+    'Ui.glassBalanceBackground(this, 22)',
+    'if (premium) return row;',
+    'new LinearLayout.LayoutParams(0, WenPremiumLayout.dp(this,90,58), 1f)',
+    'WenGoldGlassSurface.wrap(card,22)',
+):
+    assert premium_balance.count(required_balance) == 1, "Unreviewed balance content/layout: " + required_balance
+for blocked_balance in ("db.update", "db.delete", "db.insert", "showAddTransaction(",
+                        "LicenseManager", "setOnClickListener", "Sqlite"):
+    assert blocked_balance not in premium_balance, "Safe Zone violated by balance layout: " + blocked_balance
+assert premium_balance != legacy_balance
+sanitized_host = sanitized_host.replace(premium_balance, legacy_balance, 1)
+
+# Nav/FAB vertical offsets are position-only; preserve the original click,
+# side preference, screen routing and accessibility hitboxes.
+premium_nav_frame = """FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, WenPremiumLayout.navigationHeight(this), Gravity.BOTTOM);"""
+old_nav_frame = """FrameLayout.LayoutParams navParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 72), Gravity.BOTTOM);"""
+premium_fab_margin = """fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18),
+                WenPremiumLayout.fabBottomOffset(this));"""
+old_fab_margin = """fabParams.setMargins(Ui.dp(this, 18), 0, Ui.dp(this, 18), Ui.dp(this, 88));"""
+for visual, old in ((premium_nav_frame,old_nav_frame),(premium_fab_margin,old_fab_margin)):
+    assert sanitized_host.count(visual) == 1
+    sanitized_host = sanitized_host.replace(visual,old,1)
+
+# Extra-short reference viewport metrics: solely View dimension changes,
+# not data queries, debt logic, callbacks or installed app preferences.
+old_header_height = """shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));"""
+new_header_height = """shell.addView(topBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 112, 74)));"""
+assert sanitized_host.count(new_header_height) == 1
+sanitized_host = sanitized_host.replace(new_header_height, old_header_height, 1)
+
+# Section heading is entirely presentational.
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "    private View sectionTitle(", "    private View sectionTitle(",
+    "    private View balanceCards("
+)
+# The 7-day chart / three expense cards preserve every expense value and
+# analytics click; only their heights/visual margins differ.
+report_start = "    private View spendingDashboard() {"
+report_end = "    private View statCard("
+report_view = sanitized_host[sanitized_host.index(report_start):sanitized_host.index(report_end)]
+report_base = previous_host[previous_host.index(report_start):previous_host.index(report_end)]
+for call in ('getExpenseTotal(', 'getTransactions(', 'showAnalyticsScreen()',
+             'statCard("مصاريف اليوم"', 'statCard("آخر 7 أيام"',
+             'statCard("هذا الشهر"'):
+    assert report_view.count(call) == report_base.count(call), (
+        "Protected analytics call or expenditure data changed: " + call)
+# Finance values are read from original TextViews BEFORE adding overlays.
+assert 'todayCard = WenGoldGlassSurface.wrap(todayCard,20);' in report_view
+assert 'weekCard = WenGoldGlassSurface.wrap(weekCard,20);' in report_view
+assert 'monthCard = WenGoldGlassSurface.wrap(monthCard,20);' in report_view
+assert 'box.addView(WenGoldGlassSurface.wrap(chartCard,22), chartParams);' in report_view
+assert report_view[report_view.index("        Runnable updateOverview = () -> {"):] == report_base[
+    report_base.index("        Runnable updateOverview = () -> {"):], (
+    "Protected chart data update callbacks changed"
+)
+sanitized_host = sanitized_host.replace(report_view, report_base, 1)
+
+# Account rows keep EXACT balance expression, original account icon mapper,
+# click handler and detail screen. Only padding/height are altered.
+account_start = "    private View accountCard(Models.Account account) {"
+account_end = "    private void showAccountDetails("
+account_view = sanitized_host[sanitized_host.index(account_start):sanitized_host.index(account_end)]
+account_base = previous_host[previous_host.index(account_start):previous_host.index(account_end)]
+for call in ('Money.format(account.balanceMinor, account.currency)',
+             'View icon = accountIcon(account);',
+             'card.setOnClickListener(v -> showAccountDetails(account));',
+             'Ui.pressAnimation(card);'):
+    assert account_view.count(call) == account_base.count(call) == 1, (
+        "Protected account content or handler changed: " + call)
+sanitized_host = sanitized_host.replace(account_view, account_base, 1)
+
+# The existing statistic's readable ink correction remains tracked below.
+# Its two short-viewport metric declarations are reversed byte-for-byte.
+card_padding_current = """card.setPadding(Ui.dp(this,12), WenPremiumLayout.dp(this,8,4),
+                Ui.dp(this,12), WenPremiumLayout.dp(this,7,3));"""
+card_padding_original = """card.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 7));"""
+metric_current = """LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
+                WenPremiumLayout.dp(this,78,51), 1);"""
+metric_original = """LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, Ui.dp(this, 78), 1);"""
+for current, legacy in ((card_padding_current, card_padding_original),
+                         (metric_current, metric_original)):
+    assert sanitized_host.count(current) == 1
+    sanitized_host = sanitized_host.replace(current, legacy, 1)
+
+# Stats remain the original view/click handlers and amounts, only ink changes.
+sanitized_host = revert_visual_section(
+    sanitized_host, previous_host,
+    "        // Contrast is material-specific, not dictated by a universal white label.",
+    "        card.addView(Ui.text(this, label, 12, Color.rgb(239, 244, 255), false));",
+    "        amountView.setAutoSizeTextTypeUniformWithConfiguration("
+)
+
+theme_start = '        content.addView(sectionTitle("مظهر التطبيق",'
+theme_end = '        content.addView(sectionTitle("تخصيص الواجهة",'
+assert previous_host.count(theme_start) == sanitized_host.count(theme_start) == 1
+assert previous_host.count(theme_end) == sanitized_host.count(theme_end) == 1
+new_picker = sanitized_host[sanitized_host.index(theme_start):sanitized_host.index(theme_end)]
+old_picker = previous_host[previous_host.index(theme_start):previous_host.index(theme_end)]
+for approved in ("ThemeCatalogue.visibleCount(this)", "ThemeCatalogue.displayName(i)",
+                 "ThemeCatalogue.isVisible(this, i)", "ThemeCatalogue.hide(this, index)",
+                 "ThemeCatalogue.restoreUserHidden(this)", "Ui.saveTheme(this, index)",
+                 'setPositiveButton("حذف"', "index != currentTheme"):
+    assert approved in new_picker, "Missing owner-approved theme action: " + approved
+for forbidden in ("FinanceDbHelper", "SQLiteDatabase", "deleteTransaction(",
+                  "showAddTransaction(", "getBalance(", "showDebtsScreen(",
+                  "insertTransaction(", "SmsCapture"):
+    assert forbidden not in new_picker, "Unsafe theme UI addition: " + forbidden
+sanitized_host = sanitized_host.replace(new_picker, old_picker, 1)
+# The new dock no longer allows financial content to physically overlap
+# its captions. Undo ONLY viewport padding (no stored values, scroll queries,
+# gestures, routes, or account-card content) before comparing every byte.
+gold_shell_clearance = """LinearLayout shell = Ui.column(this);
+        // Gold floating dock must NEVER obscure a readable account/amount.
+        // Reserve only viewport space; DB queries and scroll data stay exact.
+        if (WenGoldGlassSurface.enabled(this))
+            shell.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));
+        root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));"""
+old_shell_clearance = """LinearLayout shell = Ui.column(this);
+        root.addView(shell, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));"""
+assert sanitized_host.count(gold_shell_clearance) == 1, "Unreviewed Home visual inset"
+sanitized_host = sanitized_host.replace(gold_shell_clearance, old_shell_clearance, 1)
+gold_page_clearance = """WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
+        LinearLayout page=Ui.column(this);
+        // Identical visual clearance on Debts and Analytics. Scroll routing,
+        // navigation listeners and all financial content are unchanged.
+        if (WenGoldGlassSurface.enabled(this))
+            page.setPadding(0,0,0,WenPremiumLayout.navigationClearance(this));
+        primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));"""
+old_page_clearance = """WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
+        LinearLayout page=Ui.column(this);
+        primaryRoot.addView(page,new FrameLayout.LayoutParams(-1,-1));"""
+assert sanitized_host.count(gold_page_clearance) == 2, "Unreviewed Debts/Analytics visual inset"
+sanitized_host = sanitized_host.replace(gold_page_clearance, old_page_clearance)
+assert current_main.count("WenPremiumLayout.navigationClearance(this)") == 3
+
+# EXACT reversible gold-only layout changes, shared across every
+# primary page. The real backdrop is a passive View behind the same original
+# debt/analytics content and callbacks; these replacements MUST recover the
+# entire 2.0 MainActivity source byte-for-byte.
+assert current_main.count("WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);") == 2
+assert current_main.count("WenPremiumLayout.navigationHeight(this)") == 4
+gold_root = """primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        WenGoldGlassSurface.attachGoldBackdrop(primaryRoot);
+        LinearLayout page=Ui.column(this);"""
+legacy_root = """primaryRoot.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        LinearLayout page=Ui.column(this);"""
+assert sanitized_host.count(gold_root) == 2, "Gold backdrop may only wrap debt/analytics"
+sanitized_host = sanitized_host.replace(gold_root, legacy_root)
+gold_debt_header = """page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 112, 74)));"""
+old_debt_header = """page.addView(debtTopBar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 112)));"""
+gold_analytics_header = """page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                WenPremiumLayout.dp(this, 112, 74)));"""
+old_analytics_header = """page.addView(analyticsTopBar,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,112)));"""
+for gold, old in ((gold_debt_header, old_debt_header),
+                  (gold_analytics_header, old_analytics_header)):
+    assert sanitized_host.count(gold) == 1, "Unreviewed gold primary screen header size"
+    sanitized_host = sanitized_host.replace(gold, old, 1)
+for page in ("debt", "analytics"):
+    variable = page + "NavParams"
+    gold_navigation = ("""FrameLayout.LayoutParams {variable} = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,WenPremiumLayout.navigationHeight(this),Gravity.BOTTOM);
+        if (Ui.isLiquidTheme(this)) {variable}.setMargins(
+                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),0,
+                Ui.dp(this,WenPremiumLayout.navigationSideInsetDp(this)),
+                Ui.dp(this,WenPremiumLayout.navigationBottomInsetDp(this)));""").replace("{variable}", variable)
+    old_navigation = ("""FrameLayout.LayoutParams {variable} = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,Ui.dp(this,72),Gravity.BOTTOM);
+        if (Ui.isLiquidTheme(this)) {variable}.setMargins(Ui.dp(this,10),0,Ui.dp(this,10),Ui.dp(this,8));""").replace("{variable}", variable)
+    assert sanitized_host.count(gold_navigation) == 1, (
+        "Unreviewed " + page + " original navigation view layout"
+    )
+    sanitized_host = sanitized_host.replace(gold_navigation, old_navigation, 1)
+gold_insights_navigation = "new LinearLayout.LayoutParams(-1,WenPremiumLayout.navigationHeight(this)));"
+old_insights_navigation = "new LinearLayout.LayoutParams(-1,Ui.dp(this,72)));"
+assert sanitized_host.count(gold_insights_navigation) == 1
+sanitized_host = sanitized_host.replace(gold_insights_navigation, old_insights_navigation, 1)
+
+assert sanitized_host == previous_host, (
+    "SAFE ZONE: MainActivity differs beyond approved theme picker, header and metric text"
+)
+
 SOURCE_190 = "283112f4bedaf2e07dd7370e581f84e14959710e"
 main_pre_visual_host = git("show", f"{SOURCE_190}:{MAIN}")
 assert main_pre_visual_host != current_main, "Missing staged optical host transfer"
@@ -427,6 +797,12 @@ expected_energy = expected_energy.replace(
 assert "WenFabBubbleDrawable(context, SKY, DARK)" in ui, "Restore circular original-Liquid FAB"
 assert "liquid ? 2 : 10" in ui and "liquid ? 125 : 300" in ui, "Fast staged Liquid entrances"
 assert "setDuration(115)" in ui, "Gentle sandbox-style screen reveal"''')
+# Preserve the historical legacy 26dp nav while enforcing the 28dp
+# gold-only owner reference. No callback or navigation destination changes.
+expected_energy = expected_energy.replace(
+    'assert "glassNavigationBackground(this, 26)" in main',
+    '''assert "glassNavigationBackground(this," in main
+assert "WenGoldGlassSurface.enabled(this) ? 28 : 26" in main''')
 expected_energy = expected_energy.replace(
     'assert "if (isLiquidTheme(v.getContext()))" in ui',
     'assert "if (isLiquidTheme(view.getContext()))" in ui')
@@ -453,7 +829,8 @@ ui_path = "app/src/main/java/app/wensarafet/tracker/Ui.java"
 PREMIUM_SOURCE = "ea61bb7a266652751fe9c08f321e0721350df1ea"
 original_190_ui = git("show", f"{PREMIUM_SOURCE}:{ui_path}")
 visual_only_methods = (
-    "glassAccentBackground", "animateScreen", "animateChildren", "pressAnimation",
+    "glassAccentBackground", "glassFloatingAddBackground",
+    "animateScreen", "animateChildren", "pressAnimation",
 )
 
 def omit_visual_method_bodies(java):
@@ -477,8 +854,56 @@ def omit_visual_method_bodies(java):
         java = java[:start] + "    /* preserved visual helper: " + name + " */" + java[pos:]
     return java
 
-assert omit_visual_method_bodies(new_ui) == omit_visual_method_bodies(original_190_ui), (
-    "SAFE ZONE: non-visual Ui class or palettes changed during sandbox migration"
+# One precisely approved appearance-only toggle allows the two vivid
+# owner reference palettes to display legible WHITE text on dark-glass scenes.
+# Remove it before the complete class comparison; every legacy 0-24 theme,
+# preference, financial helper and palette remains byte-identical.
+old_contrast = "DARK = theme == 20 || theme == 24 || theme == 25 || theme == 26"
+new_contrast = old_contrast + chr(10) + "                || theme == 28 || theme == 29"
+assert new_ui.count(new_contrast) == 1, (
+    "SAFE ZONE: unexpected changes to premium dark/glass scene condition"
+)
+normalized_ui = new_ui.replace(new_contrast, old_contrast, 1)
+# Safely retire only the two non-gold visual IDs. These exact three replacements
+# are the ONLY changes allowed to legacy theme handling; palettes 0-27 and
+# preferences unrelated to "theme" remain byte-identical.
+retirement_changes = [
+    (
+        """        // Load through the visual-only compatibility resolver: retained old
+        // preset 28/29 never paints again, even on an update install.
+        int theme = themeIndex(context);
+        if (theme < 0 || theme >= THEMES.length) theme = 25;""",
+        """        int theme = context.getSharedPreferences("appearance", Context.MODE_PRIVATE).getInt("theme", 0);
+        if (theme < 0 || theme >= THEMES.length) theme = 0;"""
+    ),
+    (
+        """    public static int themeIndex(Context context) {
+        int persisted = context.getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .getInt("theme", 0);
+        // Retired colourful presets are VISUAL-ONLY aliases of Royal Dark.
+        // Do not rewrite unrelated appearance prefs or the finance database.
+        // Preserves stable IDs for old saved sessions and safe update installs.
+        if (persisted == 28 || persisted == 29) return 25;
+        return persisted;
+    }""",
+        """    public static int themeIndex(Context context) {
+        return context.getSharedPreferences("appearance", Context.MODE_PRIVATE).getInt("theme", 0);
+    }"""
+    ),
+    (
+        """    public static void saveTheme(Context context, int index) {
+        // Never allow selecting either retired non-gold theme via stale UI.
+        if (index == 28 || index == 29) index = 25;
+        if (index < 0 || index >= THEMES.length) index = 25;""",
+        """    public static void saveTheme(Context context, int index) {
+        if (index < 0 || index >= THEMES.length) index = 0;"""
+    ),
+]
+for fresh, original in retirement_changes:
+    assert normalized_ui.count(fresh) == 1, "Unauthorised theme migration change"
+    normalized_ui = normalized_ui.replace(fresh, original, 1)
+assert omit_visual_method_bodies(normalized_ui) == omit_visual_method_bodies(original_190_ui), (
+    "SAFE ZONE: non-visual Ui class or legacy palettes changed during appearance work"
 )
 for marker in (
     "WenFabBubbleDrawable(context, SKY, DARK)",
@@ -490,18 +915,35 @@ for marker in (
 ):
     assert marker in new_ui, "Missing sandbox visual-only transfer: " + marker
 
-for graphic in (
-    "WenGlassDrawable.java",
-    "WenFabBubbleDrawable.java",
-):
-    location = "glass-engine/src/main/java/app/wensarafet/glass/" + graphic
-    expected = git("show", f"{SANDBOX_SOURCE}:{location}")
-    actual = (ROOT / location).read_text(encoding="utf-8")
-    assert actual == expected, "SAFE ZONE: visual source must match vetted sandbox exactly: " + graphic
-    for protected in ("FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
-                      "LicenseManager", "SmsCaptureReceiver", "SandboxMode",
-                      "setOnClickListener(", "setOnLongClickListener("):
-        assert protected not in actual, "SAFE ZONE: drawing file references protected behaviour"
+# The original Sandbox generic glass renderer MUST remain exactly intact.
+graphic = "WenGlassDrawable.java"
+location = "glass-engine/src/main/java/app/wensarafet/glass/" + graphic
+assert (ROOT / location).read_text(encoding="utf-8") == git(
+    "show", f"{SANDBOX_SOURCE}:{location}"
+), "SAFE ZONE: original Sandbox glass renderer changed"
+
+# Premiums 25–29 need correct GOLD/GREEN/VIOLET materials instead of the
+# Sandbox BLUE button. Pin the single audited drawing-only blob, and prove the
+# original hit/hold animation, draw and opacity methods are byte-identical.
+location = "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java"
+bubble = (ROOT / location).read_text(encoding="utf-8")
+vetted_bubble_blob = "d26043c8e787937776d1fca546919e2646605238"
+assert git("hash-object", location).strip() == vetted_bubble_blob, (
+    "SAFE ZONE: unreviewed original FAB drawable modifications"
+)
+original_bubble = git("show", f"{SANDBOX_SOURCE}:{location}")
+legacy_methods = "    public float getPress() { return press; }"
+assert bubble[bubble.index(legacy_methods):] == original_bubble[
+    original_bubble.index(legacy_methods):], (
+    "SAFE ZONE: original FAB press/hold/draw contract altered"
+)
+for value in ("case 25:", "case 26:", "case 27:", "case 28:",
+              "default: // Pink-Violet Glass"):
+    assert value in bubble, "Approved five-theme FAB material absent: " + value
+for protected in ("FinanceDbHelper", "SQLiteDatabase", "AppLockManager",
+                  "LicenseManager", "SmsCaptureReceiver", "SandboxMode",
+                  "setOnClickListener(", "setOnLongClickListener("):
+    assert protected not in bubble, "SAFE ZONE: decorative FAB source references protected behaviour"
 
 # Strictly isolate new on-screen transitions from all protected business methods.
 screen_motion = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenScreenVisualMotion.java").read_text(encoding="utf-8")
@@ -552,11 +994,140 @@ assert "if (tapEligible && hovered == originIndex)" in motion, "Selected tab tap
 assert "tapEligible=false;" in motion, "Dragging away and back cannot trigger accidental refresh"
 assert "tabs[hovered].performClick();" in motion.split("if (hovered == selected)", 1)[1].split("} else {",1)[0], "Selected tap no longer invokes original callback"
 assert "NavigationLiquidMaterial.attach(lens, track)" in adapter
-assert "glass.setEnableChromaticAberration(false);" in native
-assert "glass.setDispersionStrength(0f);" in native
+# The premium lens now samples the genuine scrolling underlay and uses
+# physically visible edge refraction instead of inactive 0-value optics.
+# Older themes retain the original restrained settings via ternary fallback.
+assert "glass.setEnableDynamicBackground(premiumLiquid && !powerSave);" in native
+assert "glass.setEnableBackdropBlur(premiumLiquid && !powerSave);" in native
+assert "glass.setEnableChromaticAberration(premiumLiquid && !powerSave);" in native
+assert "glass.setDispersionStrength(premiumLiquid && !powerSave ? .016f : 0f);" in native
+assert "glass.setRefractionHeight((premiumLiquid ? 24f : 6f) * d);" in native
+assert "View scene = findUnderlay(container);" in native
+assert "View scene = findUnderlay(container);" in native
+assert "View goldBackdrop = nav.getRootView().findViewWithTag(" in native
+assert "glass.setBackdropSource(source != null ? source : nav);" in native
+assert "MIT_VIEW_GLASS_BACKDROP_BOUND source=" in native
+assert "if (premium) tabs.bringToFront();" in adapter
+assert "glass.setEnablePressEffect(false);" in native, "Original tab must remain gesture owner"
 assert "LIQUID_FOLLOW = .60f" in motion
 assert "LIQUID_RELEASE_MS = 265L" in motion
 assert "NAV_LIQUID_STRETCH_ACTIVE" in native
+
+# Android 13 emulator revealed a fatal LinearGradient constructor error:
+# a five-colour array with only four positions crashes before the first frame.
+# Statistically audit ALL twenty real gradient stop arrays before shipping.
+import re
+direction_src = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenThemeArtDirection.java").read_text(encoding="utf-8")
+stop_pairs = list(re.finditer(
+    r"new int\[\]\{([^}]+)\}\s*,\s*new float\[\]\{([^}]+)\}",
+    direction_src
+))
+assert len(stop_pairs) == 20, "Prematurely removed one of the 20 themed shader stop arrays"
+for pair in stop_pairs:
+    shades = [value.strip() for value in pair.group(1).split(",") if value.strip()]
+    positions = [float(value.strip().rstrip("fF"))
+                 for value in pair.group(2).split(",") if value.strip()]
+    assert len(shades) == len(positions), (
+        "ANDROID RENDER CRASH: gradient shades/positions length mismatch"
+    )
+    assert positions[0] == 0.0 and positions[-1] == 1.0, (
+        "Android shader positions must span 0..1"
+    )
+    assert all(a < b for a,b in zip(positions, positions[1:])), (
+        "Android shader positions must be strictly increasing"
+    )
+print("PASS: all 20 premium gradient stop arrays valid (5 independent scenes)")
+
+# Audit caustic renderer's UI-only API surface; no event handlers, timers,
+# draw-loop allocations, network or links to the application's Safe Zone.
+optical_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumCaustics.java").read_text(encoding="utf-8")
+for unsafe in ("FinanceDbHelper", "SQLiteDatabase", "getAccounts(", "OnClickListener",
+               "OnTouchListener", "onDraw(", "Handler(", "postDelayed(", "new Thread(",
+               "requestLayout(", "BitmapFactory", "HttpURLConnection", "AssetManager"):
+    assert unsafe not in optical_source, "Optics incorrectly modified business logic: "+unsafe
+for contract in ("void configure(", "void draw(Canvas canvas)", "case 25:", "case 26:",
+                 "case 27:", "case 28:", "default:", "drawRays = false"):
+    assert contract in optical_source, (
+        "Premium optics owner-specific contract missing: "+contract
+    )
+
+# Premium tab glyphs are inert vector drawables, never replacement actions.
+tab_glyph = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenPremiumTabIconDrawable.java").read_text(encoding="utf-8")
+assert "extends Drawable" in tab_glyph
+for shape in ("case 0:", "case 1:", "case 2:", "default:"):
+    assert shape in tab_glyph, "Premium icon shape missing: "+shape
+for illegal in ("FinanceDbHelper", "SQLiteDatabase", "setOnClickListener",
+                "setOnTouchListener", "setOnLongClickListener", "HttpURLConnection"):
+    assert illegal not in tab_glyph, "Premium glyph enters Safe Zone: "+illegal
+assert "new WenPremiumTabIconDrawable" in adapter, "Premium nav doesn't use original vector icon mapping"
+assert "int glyphSize = Ui.dp(context, 29);" in adapter
+assert "item.setMinHeight(Ui.dp(context, 48));" in adapter
+assert "item.setAutoSizeTextTypeUniformWithConfiguration(" in adapter
+assert "dim=Ui.dp(context, 29);" in tab_glyph
+assert "WenGoldGlassSurface.navigationInk(theme, selected)" in tab_glyph
+assert "glass.setGlassTint(opticalTint, premiumLiquid ? .018f : .045f);" in native
+
+# A viewport size selector may ONLY inspect device configuration and the
+# current visual index, never account state, persistence or navigation.
+layout_src = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenPremiumLayout.java").read_text(encoding="utf-8")
+assert "config.screenHeightDp < 800" in layout_src
+assert "dp(context, 86, 76)" in layout_src
+assert "navigationHeight(context)" in layout_src
+assert "static int navigationClearance(Context context)" in layout_src
+assert "WenPremiumLayout.navigationHeight(this)" in current_main
+assert "WenPremiumLayout.fabBottomOffset(this)" in current_main
+for forbidden in ("FinanceDbHelper", "SQLiteDatabase", "getAccounts(", "setOnClickListener",
+                  "getSharedPreferences(", "saveTheme(", "new Thread("):
+    assert forbidden not in layout_src, "Premium size adapter entered protected logic"
+
+# Android 13+ optional GPU solar-field shader: only the BACKDROP can
+# instantiate it. Pre-33/low-power devices continue using the Canvas fallback.
+solar_source = (ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumSunlight.java").read_text(encoding="utf-8")
+for ray_contract in ('Build.VERSION.SDK_INT >= 33', 'new RuntimeShader(FRAGMENT)',
+                     'void configure(', 'void draw(Canvas canvas, RectF bounds)',
+                     'canvas.isHardwareAccelerated()', 'shader.setFloatUniform'):
+    assert ray_contract in solar_source, "Optional optical shader contract missing: "+ray_contract
+for prohibited in ('FinanceDbHelper', 'SQLiteDatabase', 'OnClickListener', 'Handler(',
+                   'postDelayed(', 'HttpURLConnection', 'new Thread(', 'getSharedPreferences('):
+    assert prohibited not in solar_source, "Solar shader touches protected area: "+prohibited
+# Android AGSL requires *premultiplied* alpha. Without RGB*alpha a
+# nominal 10% sunlight beam renders at near-full RGB, causing neon washout.
+assert 'half3(uColor*opacity),half(opacity)' in solar_source, (
+    "AGSL premultiplied-alpha regression: bright full-screen overexposure"
+)
+assert 'half3(uColor),half(clamp(glow' not in solar_source
+premium_shader_host=(ROOT / "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java").read_text(encoding="utf-8")
+assert 'kind == WenReferenceGlassDrawable.Surface.BACKDROP' in premium_shader_host
+assert 'sunField = ' in premium_shader_host
+
+# A single inert gold optical material contains no financial, storage,
+# navigation, activation, network, or event-handler business logic. Confirm
+# fast-path paints and card content layering remain passive.
+gold_surface = (ROOT / "app/src/main/java/app/wensarafet/tracker/WenGoldGlassSurface.java").read_text(encoding="utf-8")
+for required in ('class WenGoldGlassSurface', 'static void attachGoldBackdrop(',
+                 'static int navigationInk(', 'static int headerTitleInk(',
+                 'LiquidGlassView glass',
+                 'setBackdropSource(target)', 'glass.setEnableBackdropBlur(!economical)',
+                 'glass.setEnableDynamicBackground(!economical)',
+                 'host.addView(content', 'void enhanceHeader(',
+                 'radiusDp*density', 'bounds.height()*.15f'):
+    assert required in gold_surface, "Gold material contract missing: "+required
+for forbidden in ('FinanceDbHelper', 'SQLiteDatabase', 'AccountRepository',
+                  'SmsCaptureReceiver', 'AppLockManager', 'LicenseManager',
+                  'setOnClickListener(', 'setOnTouchListener(', 'postDelayed(',
+                  'HttpURLConnection', 'getSharedPreferences('):
+    assert forbidden not in gold_surface, "Gold material crossed Safe Zone: "+forbidden
+for method in ('void draw(Canvas canvas)',):
+    assert method in gold_surface
+
+# Only three approved GOLD scenes remain visible. Legacy selection state
+# remains stable until manually changed; obsolete 28/29 cannot be restored.
+catalogue = (ROOT / "app/src/main/java/app/wensarafet/tracker/ThemeCatalogue.java").read_text(encoding="utf-8")
+assert 'if (themeIndex >= 28) return false;' in catalogue
+assert 'if (themeIndex < 25) return Ui.themeIndex(context) == themeIndex;' in catalogue
+for gold_name in ('"Royal Dark"', '"Imperial Dark"', '"Champagne Light"'):
+    assert gold_name in catalogue
+assert '"Orange Green"' not in catalogue and '"Pink Violet"' not in catalogue
 
 # Checksums of every remaining tracked file, including money, SQLite,
 # SMS notifications, protected signing/biometric and all resource files,
