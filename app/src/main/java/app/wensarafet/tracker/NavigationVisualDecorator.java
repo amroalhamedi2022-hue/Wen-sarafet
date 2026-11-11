@@ -3,6 +3,9 @@ package app.wensarafet.tracker;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.RelativeSizeSpan;
 import android.util.TypedValue;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
@@ -109,15 +112,22 @@ public final class NavigationVisualDecorator {
                         ? WenGoldGlassSurface.navigationInk(premiumIndex, i == selected)
                         : (i == selected ? Color.WHITE : 0xFFF6E6FF);
                 item.setTextColor(ink);
+                // Restore the ORIGINAL 1.8.8 emoji symbols and Arabic tab names.
+                // A span enlarges only the symbol, not the whole dock or hitbox.
                 String original = item.getText().toString();
-                int lineBreak = original.lastIndexOf('\n');
-                if (lineBreak >= 0) item.setText(original.substring(lineBreak + 1));
+                int lineBreak = original.indexOf('\n');
+                if (lineBreak > 0) {
+                    SpannableString originalLabel = new SpannableString(original);
+                    originalLabel.setSpan(new RelativeSizeSpan(1.30f), 0,
+                            lineBreak, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    item.setText(originalLabel);
+                }
                 item.setGravity(Gravity.CENTER);
                 item.setTextDirection(View.TEXT_DIRECTION_LOCALE);
                 item.setTypeface(Typeface.create(
                         i == selected ? "sans-serif-medium" : "sans-serif",
                         Typeface.NORMAL));
-                item.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+                item.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
                 item.setAutoSizeTextTypeUniformWithConfiguration(
                         12, 14, 1, TypedValue.COMPLEX_UNIT_SP);
                 item.setIncludeFontPadding(false);
@@ -125,14 +135,12 @@ public final class NavigationVisualDecorator {
                 item.setPadding(Ui.dp(context, 2), Ui.dp(context, 3),
                         Ui.dp(context, 2), Ui.dp(context, 3));
                 item.setMinHeight(Ui.dp(context, 48));
-                WenPremiumTabIconDrawable glyph =
-                        new WenPremiumTabIconDrawable(context, premiumIndex,
-                                i, i == selected);
-                int glyphSize = Ui.dp(context, 29);
-                glyph.setBounds(0, 0, glyphSize, glyphSize);
-                item.setCompoundDrawables(null, glyph, null, null);
-                item.setCompoundDrawablePadding(Ui.dp(context, 3));
-                item.setSingleLine(true);
+                // The newer vector set replaced the familiar tab symbols.
+                // Reuse their existing original emoji TextViews instead.
+                item.setCompoundDrawables(null, null, null, null);
+                item.setCompoundDrawablePadding(0);
+                item.setSingleLine(false);
+                item.setMaxLines(2);
                 item.setEllipsize(android.text.TextUtils.TruncateAt.END);
             } else if (Ui.isReferenceGlassTheme(context)) {
                 // Only appearance changes; the original navigation actions,
