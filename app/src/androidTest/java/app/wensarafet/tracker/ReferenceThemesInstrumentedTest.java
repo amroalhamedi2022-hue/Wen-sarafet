@@ -87,7 +87,9 @@ public final class ReferenceThemesInstrumentedTest {
             Bitmap circle = draw(Ui.glassFloatingAddBackground(ctx), 160, 160);
             assertEquals("Outside the round plus button must remain transparent",
                     0, Color.alpha(circle.getPixel(0, 0)));
-            assertEquals(255, Color.alpha(circle.getPixel(80, 80)));
+            assertTrue("Neutral bubble transmits the actual background",
+                    Color.alpha(circle.getPixel(80, 80)) > 100
+                            && Color.alpha(circle.getPixel(80, 80)) < 255);
             Bitmap bg = draw(Ui.glassScreenBackground(ctx), 480, 800);
             assertTrue("Golden Bloom uses a warm colour palette",
                     Color.red(bg.getPixel(80, 60)) > Color.blue(bg.getPixel(80, 60)));
