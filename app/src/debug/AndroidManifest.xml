@@ -1,33 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Debug builds use a separate package and must not collide with the installed production sound provider. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-    <application
-        android:label="وين صرفت - اختبار"
-        tools:replace="android:label">
-        <provider
-            android:name=".NotificationSoundProvider"
-            android:authorities="app.wensarafet.tracker.recovered.debug.notification-sounds"
-            tools:replace="android:authorities" />
-        <activity
-            android:name=".ContactPickerSmokeActivity"
-            android:exported="true"
-            android:label="اختبار جهات الاتصال">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <!-- No SMS collection or financial notification listener in a parallel test copy. -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove"
+        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware"/>
+    <application>
+        <receiver android:name="app.wensarafet.tracker.SmsCaptureReceiver" tools:node="remove"/>
+        <receiver android:name="app.wensarafet.tracker.BootReceiver" tools:node="remove"/>
+        <service android:name="app.wensarafet.tracker.FinanceNotificationListener" tools:node="remove"/>
+        <activity android:name="app.wensarafet.tracker.WidgetPreviewActivity"
+            android:exported="true" android:theme="@style/AppTheme" android:label="Widget Lab">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Screenshot-only material fixture, never compiled into release APK. -->
-        <activity
-            android:name=".VisualPreviewActivity"
-            android:exported="true"
-            android:screenOrientation="portrait"
-            android:label="Visual Preview" />
-        <!-- Debug-only theme command for genuine MainActivity captures. -->
-        <receiver
-            android:name=".OwnerThemeCaptureReceiver"
-            android:exported="true"
-            android:label="Owner visual capture theme" />
     </application>
 </manifest>

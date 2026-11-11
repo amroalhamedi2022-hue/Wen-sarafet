@@ -14,6 +14,8 @@ final class AppIntegrity {
     private AppIntegrity() {}
 
     static boolean isTrusted(Context context) {
+        // Debug sandbox only. This shortcut MUST NEVER be merged into production.
+        if (BuildConfig.DEBUG && "app.wensarafet.tracker.sandbox".equals(context.getPackageName())) return true;
         try {
             if (!PACKAGE_NAME.equals(context.getPackageName())) return false;
             ApplicationInfo app = context.getApplicationInfo();
