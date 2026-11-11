@@ -1,6 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <gradient android:angle="0" android:startColor="#FF233521" android:centerColor="#FF302A25" android:endColor="#FF3B2030" />
-    <corners android:radius="22dp" />
-    <stroke android:width="1dp" android:color="#35FFFFFF" />
-</shape>
+<!-- Dark Crystal: semi-transparent wallpaper-friendly widget glass, no platform blur dependency. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape android:shape="rectangle">
+        <gradient android:angle="0" android:startColor="#D91A3548" android:centerColor="#BF1D2836" android:endColor="#D82E1D36"/>
+        <corners android:radius="27dp"/>
+        <stroke android:width="1dp" android:color="#A8C8F3FF"/>
+    </shape></item>
+    <item android:left="2dp" android:right="2dp" android:top="2dp" android:bottom="39dp">
+        <shape android:shape="rectangle">
+            <gradient android:angle="270" android:startColor="#42F4FCFF" android:centerColor="#13E4F4FF" android:endColor="#00FFFFFF"/>
+            <corners android:radius="25dp"/>
+        </shape>
+    </item>
+    <item android:left="2dp" android:right="2dp" android:top="45dp" android:bottom="2dp">
+        <shape android:shape="rectangle">
+            <gradient android:angle="90" android:startColor="#405DDAF2" android:endColor="#00FFFFFF"/>
+            <corners android:radius="25dp"/>
+        </shape>
+    </item>
+    <item android:left="8dp" android:right="8dp" android:top="2dp" android:height="1dp" android:gravity="top">
+        <shape android:shape="rectangle">
+            <solid android:color="#A5EBFAFF"/>
+            <corners android:radius="1dp"/>
+        </shape>
+    </item>
+</layer-list>

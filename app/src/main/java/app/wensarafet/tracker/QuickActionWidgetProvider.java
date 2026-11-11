@@ -16,12 +16,22 @@ public class QuickActionWidgetProvider extends AppWidgetProvider {
     protected int iconResource() { return R.mipmap.ic_launcher; }
     protected String brandWord() { return ""; }
 
+    // Widget-only optical choice; original action() and PendingIntent behavior unchanged.
+    private static int crystalBackground(String action) {
+        if ("palpay".equals(action)) return R.drawable.widget_crystal_quick_palpay;
+        if ("bop".equals(action)) return R.drawable.widget_crystal_quick_bop;
+        if ("jawwal_friend".equals(action) || "jawwal_merchant".equals(action))
+            return R.drawable.widget_crystal_quick_jawwal;
+        return R.drawable.widget_crystal_quick_base;
+    }
+
     @Override public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         for (int id : ids) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_quick_action);
             views.setTextViewText(R.id.widget_title, title());
             views.setTextViewText(R.id.widget_subtitle, subtitle());
             views.setImageViewResource(R.id.widget_background_image, iconResource());
+            views.setImageViewResource(R.id.widget_crystal_glass, crystalBackground(action()));
             views.setTextViewText(R.id.widget_brand_word, brandWord());
             views.setViewVisibility(R.id.widget_brand_word, brandWord().isEmpty() ? View.GONE : View.VISIBLE);
             boolean active = LicenseManager.isActivated(context);
