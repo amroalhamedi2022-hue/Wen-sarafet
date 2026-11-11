@@ -33,7 +33,7 @@ assert "card.setBackground(Ui.glassAccentBackground(this, 20));" in main
 
 assert "glassNavigationBackground(this," in main
 assert "WenGoldGlassSurface.enabled(this) ? 28 : 26" in main
-assert main.count("if (Ui.isLiquidTheme(this))") >= 3, "All primary tab bars need Liquid-only floating insets"
+assert main.count("if (Ui.isUnifiedGlassTheme(this))") >= 3, "All primary tab bars must share translucent glass insets"
 assert "fab.setBackground(Ui.glassFloatingAddBackground(this));" in main, "FAB must use colourless glass on all themes"
 assert "view.getBackground() instanceof app.wensarafet.glass.WenFabBubbleDrawable" in ui
 assert "new app.wensarafet.glass.WenFabBubbleDrawable(" in ui
@@ -56,7 +56,7 @@ for helper in ["glassListBackground", "glassNavigationBackground",
 assert "new GradientDrawable(GradientDrawable.Orientation.TL_BR" in ui
 assert "glassBalanceBackground(Context context" in ui
 assert "glassChartBackground(Context context" in ui
-assert "int first = mix(SURFACE, BRAND_SOFT, DARK ? .10f : .64f);" in ui
+assert "int first = mix(SURFACE, BRAND_SOFT, DARK ? .10f : .36f);" in ui
 assert main.count("chartCard.setBackground(Ui.glassChartBackground(this, 22));") == 2
 assert "if (!isLiquidTheme(context))" in ui
 assert "return index >= 16 && index < THEMES.length;" in ui
@@ -79,13 +79,13 @@ assert "innerBorder.set(surface)" in engine
 assert "showLens = false;" in engine, "Sandbox cards must not render unrelated floating orbs"
 assert "prismRim.setShader(new LinearGradient" in engine, "Restore fine optical rim"
 assert "crown.setShader(new LinearGradient" in engine, "Restore pearly crown"
-assert "final int bodyAlpha = strong ? 202 : 221;" in engine, "Keep actual background visible through glass"
+assert "final int bodyAlpha = strong ? (lowPower ? 206 : 190)" in engine, "Keep actual background visible through glass"
 assert "canvas.drawCircle(lensX, lensY, lensRadius, bubble);" in engine
 assert "canvas.drawRect(surface, ambient);" in engine
 assert "if (!lowPower && strong)" in engine
 assert "GlassMotion.bindPress(view, SKY)" in ui, "Restore sandbox finite pressure bubble"
 assert "WenFabBubbleDrawable(context, SKY, DARK)" in ui, "Restore circular original-Liquid FAB"
-assert "liquid ? 2 : 10" in ui and "liquid ? 125 : 300" in ui, "Fast staged Liquid entrances"
+assert "liquid ? 2 : 4" in ui and "liquid ? 125 : 300" in ui, "Fast staged Liquid entrances"
 assert "setDuration(115)" in ui, "Gentle sandbox-style screen reveal"
 assert "if (isLiquidTheme(view.getContext()))" in ui
 assert "if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return false;" in ui

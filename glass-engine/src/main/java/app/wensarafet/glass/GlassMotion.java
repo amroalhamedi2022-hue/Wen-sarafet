@@ -190,9 +190,6 @@ public final class GlassMotion {
         @Override public boolean onTouch(View view, MotionEvent event) {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    android.util.Log.i("WenGlassProbe", "DOWN tab=" + originIndex
-                            + " lensWidth=" + lens.getWidth()
-                            + " optic=" + (optic != null));
                     tracking=true; cancelled=false; hovered=originIndex;
                     tapEligible=true;
                     downX=event.getX(); downY=event.getY();
@@ -219,7 +216,6 @@ public final class GlassMotion {
                     // the first MOVE, so hold/stretch has stable direction.
                     if (materialBridge != null)
                         materialBridge.follow(view.getLeft()+event.getX());
-                    android.util.Log.i("WenGlassProbe", "DOWN_MORPH completed");
                     if (ValueAnimator.areAnimatorsEnabled() && !lowPower(view.getContext())) {
                         // Press creates a compact rounded bubble; hold leaves it
                         // inflated until release, with no repeating animator.
@@ -248,8 +244,6 @@ public final class GlassMotion {
                     cancelled=false;
                     int previousHover = hovered;
                     hovered=nearest(x);
-                    if (hovered != previousHover)
-                        android.util.Log.i("WenGlassProbe", "HOVER tab=" + hovered);
                     if (optic != null) optic.move(x);
                     if (materialBridge != null) materialBridge.follow(x);
                     float move=Math.abs(event.getX()-downX);
@@ -271,8 +265,6 @@ public final class GlassMotion {
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
-                    android.util.Log.i("WenGlassProbe", "UP tab=" + originIndex
-                            + " tracking=" + tracking);
                     if(!tracking) return true;
                     tracking=false;
                     // A transient excursion during MOVE must not veto an inside
@@ -282,9 +274,6 @@ public final class GlassMotion {
                         return true;
                     }
                     hovered=nearest(origin.getLeft()+event.getX());
-                    android.util.Log.i("WenGlassProbe", "UP_TARGET tab=" + hovered
-                            + " from=" + selected + " releasedX="
-                            + (origin.getLeft()+event.getX()));
                     if (hovered == selected) {
                         returnToSelected();
                         // Critical 1.8.8 parity: tapping the ALREADY selected
@@ -306,8 +295,6 @@ public final class GlassMotion {
                     return true;
                 case MotionEvent.ACTION_CANCEL:
                 case MotionEvent.ACTION_POINTER_DOWN:
-                    android.util.Log.i("WenGlassProbe", "NAV_GESTURE_INTERRUPTED action="
-                            + event.getActionMasked() + " tab=" + originIndex);
                     tracking=false; cancelled=true;
                     returnToSelected();
                     return true;

@@ -3,6 +3,9 @@ package app.wensarafet.tracker;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.RelativeSizeSpan;
 import android.util.TypedValue;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
@@ -40,7 +43,7 @@ public final class NavigationVisualDecorator {
 
     public static void install(LinearLayout nav, TextView[] originalTabs, int selected) {
         if (nav == null || originalTabs == null || originalTabs.length != 4
-                || !Ui.isLiquidTheme(nav.getContext())) return;
+                || !Ui.isUnifiedGlassTheme(nav.getContext())) return;
         final Context context = nav.getContext();
         NavState state = NAV_STATES.get(context);
         if (state == null) {
@@ -61,31 +64,10 @@ public final class NavigationVisualDecorator {
         tabs.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         tabs.setTag("wen_glass_tab_content");
 
-        GradientDrawable sampledPlate = new GradientDrawable();
-        sampledPlate.setColor(Ui.DARK ? 0xFF30394C : 0xFFF8FBFF);
-        sampledPlate.setCornerRadius(Ui.dp(context, 26));
-        if (premium) {
-            // The track itself owns the curved glass. Avoid any second
-            // opaque plate which would break the lens' true refraction.
-            tabs.setBackground(null);
-        } else if (Ui.isReferenceGlassTheme(context)) {
-            // The old opaque #F8FBFF plate would completely conceal both
-            // reference palettes under the native refractive lens.
-            int reference = Ui.themeIndex(context);
-            boolean prism = reference == 22;
-            boolean royal = reference == 24;
-            GradientDrawable palettePlate = new GradientDrawable(
-                    GradientDrawable.Orientation.TL_BR,
-                    prism ? new int[]{0xE24F246F, 0xE16C2E9B, 0xDF793BBA}
-                            : royal ? new int[]{0xF51B1C23, 0xF0493923, 0xF31D2029}
-                            : new int[]{0xF7FFE8CC, 0xF3FFE2BE, 0xF1F9DAC6});
-            palettePlate.setCornerRadius(Ui.dp(context, 26));
-            palettePlate.setStroke(Ui.dp(context, 1),
-                    royal ? 0xC5D4A962 : prism ? 0x88FFFFFF : 0xD8FFFFFF);
-            tabs.setBackground(palettePlate);
-        } else {
-            tabs.setBackground(sampledPlate);
-        }
+        // Unified optical contract for every selectable palette. The actual
+        // floating dock owns the material; a second opaque tab plate would
+        // conceal scrolling content and defeat native refraction.
+        tabs.setBackground(null);
 
         nav.removeAllViews();
         if (premium) {
@@ -102,6 +84,18 @@ public final class NavigationVisualDecorator {
             TextView item = originalTabs[i];
             item.setBackground(null); // One shared lens, never stacked pills.
             item.setSelected(i == selected);
+            if (!premium) {
+                // Keep original Unicode symbols for every legacy/reference
+                // theme; only enlarge the glyph slightly within its own line.
+                String original = item.getText().toString();
+                int lineBreak = original.indexOf('\n');
+                if (lineBreak > 0) {
+                    SpannableString originalLabel = new SpannableString(original);
+                    originalLabel.setSpan(new RelativeSizeSpan(1.20f), 0,
+                            lineBreak, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    item.setText(originalLabel);
+                }
+            }
             if (premium) {
                 // One calibrated palette from screen header through nav label
                 // and vector stroke: no Android emoji or unrelated blue pill.
@@ -109,15 +103,22 @@ public final class NavigationVisualDecorator {
                         ? WenGoldGlassSurface.navigationInk(premiumIndex, i == selected)
                         : (i == selected ? Color.WHITE : 0xFFF6E6FF);
                 item.setTextColor(ink);
+                // Restore the ORIGINAL 1.8.8 emoji symbols and Arabic tab names.
+                // A span enlarges only the symbol, not the whole dock or hitbox.
                 String original = item.getText().toString();
-                int lineBreak = original.lastIndexOf('\n');
-                if (lineBreak >= 0) item.setText(original.substring(lineBreak + 1));
+                int lineBreak = original.indexOf('\n');
+                if (lineBreak > 0) {
+                    SpannableString originalLabel = new SpannableString(original);
+                    originalLabel.setSpan(new RelativeSizeSpan(1.30f), 0,
+                            lineBreak, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    item.setText(originalLabel);
+                }
                 item.setGravity(Gravity.CENTER);
                 item.setTextDirection(View.TEXT_DIRECTION_LOCALE);
                 item.setTypeface(Typeface.create(
                         i == selected ? "sans-serif-medium" : "sans-serif",
                         Typeface.NORMAL));
-                item.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+                item.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
                 item.setAutoSizeTextTypeUniformWithConfiguration(
                         12, 14, 1, TypedValue.COMPLEX_UNIT_SP);
                 item.setIncludeFontPadding(false);
@@ -125,14 +126,12 @@ public final class NavigationVisualDecorator {
                 item.setPadding(Ui.dp(context, 2), Ui.dp(context, 3),
                         Ui.dp(context, 2), Ui.dp(context, 3));
                 item.setMinHeight(Ui.dp(context, 48));
-                WenPremiumTabIconDrawable glyph =
-                        new WenPremiumTabIconDrawable(context, premiumIndex,
-                                i, i == selected);
-                int glyphSize = Ui.dp(context, 29);
-                glyph.setBounds(0, 0, glyphSize, glyphSize);
-                item.setCompoundDrawables(null, glyph, null, null);
-                item.setCompoundDrawablePadding(Ui.dp(context, 3));
-                item.setSingleLine(true);
+                // The newer vector set replaced the familiar tab symbols.
+                // Reuse their existing original emoji TextViews instead.
+                item.setCompoundDrawables(null, null, null, null);
+                item.setCompoundDrawablePadding(0);
+                item.setSingleLine(false);
+                item.setMaxLines(2);
                 item.setEllipsize(android.text.TextUtils.TruncateAt.END);
             } else if (Ui.isReferenceGlassTheme(context)) {
                 // Only appearance changes; the original navigation actions,
@@ -162,10 +161,11 @@ public final class NavigationVisualDecorator {
         lens.setClickable(false);
         lens.setFocusable(false);
         lens.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        // Neutral refractive lens at every theme index: no coloured halo or
+        // opaque circle over the saved account/tab palette.
         lens.setBackground(new WenNavigationLensDrawable(context,
-                premium ? 0x99FFFFFF : Ui.BRAND_SOFT,
-                premium ? (Ui.DARK ? 0xB83D424A : 0xE5FFFFFF) : Ui.SURFACE,
-                premium ? 0xC5FFFFFF : Ui.SKY, Ui.DARK));
+                0x99FFFFFF, Ui.DARK ? 0xB83D424A : 0xD8FFFFFF,
+                0xC5FFFFFF, Ui.DARK));
         track.addView(lens, new FrameLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.TOP | Gravity.LEFT));
 
@@ -182,8 +182,7 @@ public final class NavigationVisualDecorator {
             // The liquid lens now refracts the actual SCROLL BACKDROP, so
             // tab icons/Arabic labels must sit above the glass to remain crisp.
             // Legacy materials retain their prior original draw order.
-            if (premium) tabs.bringToFront();
-            else lens.bringToFront();
+            tabs.bringToFront();
         } else if (track.getOptic() != null) {
             track.getOptic().bringToFront();
         }

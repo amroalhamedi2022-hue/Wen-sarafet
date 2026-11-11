@@ -78,15 +78,15 @@ public final class WenReferenceGlassDrawable extends Drawable {
                 case BACKDROP: return dark
                         ? new int[]{0xFF311449, 0xFF34225D, 0xFF121936}
                         : new int[]{0xFFF8C2EC, 0xFFE7B9FA, 0xFFDAD6FF};
-                case HEADER: return new int[]{0xFFB72BD4, 0xFFE044BE, 0xFF633DD2};
+                case HEADER: return new int[]{0xA9B72BD4, 0xB8E044BE, 0xA9633DD2};
                 case NAVIGATION: return dark
-                        ? new int[]{0xEC451A70, 0xEC642485, 0xED56299B}
-                        : new int[]{0xEE813EAC, 0xEB7931B5, 0xED5643AD};
+                        ? new int[]{0xA2451A70, 0xAF642485, 0xA756299B}
+                        : new int[]{0xA9813EAC, 0xA57931B5, 0xA85643AD};
                 case FAB: return new int[]{0xFFD92DAB, 0xFFAB3DD3, 0xFF7845DA};
                 case ACCENT: return new int[]{0xFFA648E0, 0xFFCD62E9, 0xFFEB79BE};
                 default: return dark
-                        ? new int[]{0xFF342342, 0xFF2B2447, 0xFF25223C}
-                        : new int[]{0xFDFDF3FF, 0xF9FFF5FD, 0xF9F1EAFF};
+                        ? new int[]{0xCE342342, 0xC52B2447, 0xC025223C}
+                        : new int[]{0xD8FDF3FF, 0xD3FFF5FD, 0xCEF1EAFF};
             }
         }
         if (royal) {
@@ -97,30 +97,30 @@ public final class WenReferenceGlassDrawable extends Drawable {
                 case BACKDROP: return new int[]{
                         0xFF121418, 0xFF191715, 0xFF282015, 0xFF17191C, 0xFF0C1018};
                 case HEADER: return new int[]{
-                        0xFF513B21, 0xFFC59B51, 0xFFF3DDA4, 0xFF9E6D29, 0xFF352B1F};
+                        0xAA513B21, 0xB1C59B51, 0xB7F3DDA4, 0xAA9E6D29, 0xA5352B1F};
                 case NAVIGATION: return new int[]{
-                        0xEC171B23, 0xEE3A3022, 0xF2A87932, 0xEE30271B, 0xED121824};
+                        0xA0171B23, 0xA93A3022, 0xB0A87932, 0xA430271B, 0xA0121824};
                 case FAB: return new int[]{
                         0xFF86601F, 0xFFE0B963, 0xFFFFF0BE, 0xFFBB8633, 0xFF684516};
                 case ACCENT: return new int[]{
                         0xFF886122, 0xFFDBB66B, 0xFFFFE9AC, 0xFFC18A37, 0xFF654721};
                 default: return new int[]{
-                        0xF924252A, 0xFC34302D, 0xFB443A28, 0xFD292B31, 0xFA1B2029};
+                        0xCD24252A, 0xD034302D, 0xD3443A28, 0xD0292B31, 0xCB1B2029};
             }
         }
         switch (surface) {
             case BACKDROP: return dark
                     ? new int[]{0xFF33231E, 0xFF3C292B, 0xFF202B28}
                     : new int[]{0xFFFFDEB8, 0xFFFFE9C6, 0xFFDBEADA};
-            case HEADER: return new int[]{0xFFC47A3E, 0xFFEBA95B, 0xFFC76B61};
+            case HEADER: return new int[]{0xABC47A3E, 0xB6EBA95B, 0xAAC76B61};
             case NAVIGATION: return dark
-                    ? new int[]{0xF0A16C49, 0xF08D625A, 0xF06D7767}
-                    : new int[]{0xF3FFE6C9, 0xF1FFD1A5, 0xF3EED6B9};
+                    ? new int[]{0xA6A16C49, 0xAD8D625A, 0xA66D7767}
+                    : new int[]{0xA8FFE6C9, 0xB0FFD1A5, 0xA8EED6B9};
             case FAB: return new int[]{0xFFCB7D43, 0xFFF9BE71, 0xFFBE7153};
             case ACCENT: return new int[]{0xFFF1A85D, 0xFFF9C783, 0xFFEBA389};
             default: return dark
-                    ? new int[]{0xFF3F352F, 0xFF352E2D, 0xFF2B302B}
-                    : new int[]{0xFDFFF9EC, 0xFCFFF4E3, 0xFAF5F9EF};
+                    ? new int[]{0xCC3F352F, 0xC6352E2D, 0xC12B302B}
+                    : new int[]{0xD7FFF9EC, 0xD2FFF4E3, 0xCEF5F9EF};
         }
     }
 
@@ -137,7 +137,7 @@ public final class WenReferenceGlassDrawable extends Drawable {
         if (rect.isEmpty()) return;
         float w = bounds.width(), h = bounds.height();
         radius = scene() ? 0f : surface == Surface.FAB || surface == Surface.NAVIGATION
-                ? h / 2f : Math.min(26f * density, Math.min(w, h) * .28f);
+                ? h / 2f : Math.min(32f * density, Math.min(w, h) * .35f);
         shape.addRoundRect(bounds, radius, radius, Path.Direction.CW);
         int[] c = stops();
         base.setShader(new LinearGradient(bounds.left, bounds.top,

@@ -114,12 +114,12 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         int[] p = PALETTES[index - ROYAL_DARK];
         // Transparent glass, not a flat tinted plastic card. Gold stats stay
         // slightly denser to protect white text; champagne keeps dark ink.
-        final int cardAlpha = index == CHAMPAGNE ? 156
-                : index == IMPERIAL_DARK ? 147 : index == ROYAL_DARK ? 140
+        final int cardAlpha = index == CHAMPAGNE ? 138
+                : index == IMPERIAL_DARK ? 122 : index == ROYAL_DARK ? 117
                 : index == ORANGE_GREEN ? 165 : 168;
-        final int headerAlpha = index == CHAMPAGNE ? 165
-                : index == ORANGE_GREEN || index == PURPLE_PINK ? 191 : 158;
-        final int navAlpha = index == CHAMPAGNE ? 154 : 143;
+        final int headerAlpha = index == CHAMPAGNE ? 136
+                : index == ORANGE_GREEN || index == PURPLE_PINK ? 191 : 128;
+        final int navAlpha = index == CHAMPAGNE ? 116 : 98;
         switch (surface) {
             case BACKDROP:
                 return new int[]{p[0], blend(p[0], p[1], .66f), p[1],
@@ -155,7 +155,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         silhouette.reset();
         if (r.isEmpty()) return;
         float w=box.width(), h=box.height();
-        radius=backdrop()?0f:chrome()?h*.5f:Math.min(28f*d,Math.min(w,h)*.30f);
+        radius=backdrop()?0f:chrome()?h*.5f:Math.min(32f*d,Math.min(w,h)*.35f);
         silhouette.addRoundRect(box,radius,radius,Path.Direction.CW);
         base.setShader(new LinearGradient(box.left,box.top,box.right,box.bottom,
                 stops(),new float[]{0f,.24f,.50f,.77f,1f},Shader.TileMode.CLAMP));

@@ -33,12 +33,10 @@ public final class ThemeCatalogue {
 
     public static boolean isVisible(Context context, int themeIndex) {
         if (themeIndex < 0 || themeIndex >= ENGLISH_NAMES.length) return false;
-        // Final owner scope: TWO black gold designs plus ONE ivory-gold.
-        // Permanently retire 28/29 from selection and restoration.
-        // An already active older theme is shown for manual switching,
-        // without changing the owner's account or security preferences.
+        // Reopen the original catalogue: keep every saved ID 0-27 selectable.
+        // The two explicitly retired experiments 28/29 stay unavailable.
+        // User-hidden themes remain hidden until the Restore action is tapped.
         if (themeIndex >= 28) return false;
-        if (themeIndex < 25) return Ui.themeIndex(context) == themeIndex;
         return !context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getBoolean(HIDDEN_PREFIX + themeIndex, false);
     }
@@ -69,6 +67,6 @@ public final class ThemeCatalogue {
         for (int i = 0; i < ENGLISH_NAMES.length; i++)
             edit.remove(HIDDEN_PREFIX + i);
         edit.apply();
-        // Older additions 22-24 stay retired regardless of restore.
+        // Restores all selectable original and gold themes (0-27), never 28/29.
     }
 }

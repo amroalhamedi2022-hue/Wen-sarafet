@@ -1,4 +1,4 @@
-"""Protect the latest owner-approved 2.0 source from network capability regressions; no APK build."""
+"""Protect the latest owner-approved 2.1 source from network capability regressions; no APK build."""
 from pathlib import Path
 import xml.etree.ElementTree as ET
 root=Path(__file__).resolve().parents[1]
@@ -9,7 +9,7 @@ sms=(app/"java/app/wensarafet/tracker/SmsCaptureReceiver.java").read_text(encodi
 nt=(app/"java/app/wensarafet/tracker/FinanceNotificationListener.java").read_text(encoding="utf-8")
 db=(app/"java/app/wensarafet/tracker/FinanceDbHelper.java").read_text(encoding="utf-8")
 gradle=(root/"app/build.gradle").read_text(encoding="utf-8")
-assert 'versionCode 28' in gradle and 'versionName "2.0"' in gradle
+assert 'versionCode 29' in gradle and 'versionName "2.1"' in gradle
 assert 'applicationId "app.wensarafet.tracker"' in gradle
 assert 'android.permission.INTERNET' not in manifest
 assert 'android.permission.ACCESS_NETWORK_STATE' not in manifest
@@ -32,4 +32,4 @@ for name in ("BopRateFetcher","DriveBackupManager","DriveBackupPublication"):
     assert not (app/f"java/app/wensarafet/tracker/{name}.java").exists()
 for path in (app/"res").rglob("*.xml"):
     ET.parse(path)
-print("PASS: 2.0 finance, bank, visual preserved; network & cloud sync absent")
+print("PASS: 2.1 finance, bank, visual preserved; network & cloud sync absent")

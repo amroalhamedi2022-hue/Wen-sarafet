@@ -160,7 +160,8 @@ public final class Ui {
     public static android.graphics.drawable.Drawable glassAccentBackground(Context context, int radiusDp) {
         if (isReferenceGlassTheme(context))
             return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.ACCENT);
-        if (themeIndex(context) < 16) return gradient(BRAND_DARK, BRAND, radiusDp, context);
+        if (themeIndex(context) < 16) return new app.wensarafet.glass.WenGlassDrawable(
+                context, dp(context, Math.max(20, radiusDp)), BRAND_DARK, BRAND, SKY, true);
         // The existing FAB is the only consumer of accent radius 24. Keep
         // every card, button, and the three newer reference palettes intact.
         if (themeIndex(context) >= 16 && themeIndex(context) <= 21 && radiusDp == 24)
@@ -174,7 +175,7 @@ public final class Ui {
     public static android.graphics.drawable.Drawable glassScreenBackground(Context context) {
         if (isReferenceGlassTheme(context))
             return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.BACKDROP);
-        if (!isLiquidTheme(context)) return new android.graphics.drawable.ColorDrawable(BACKGROUND);
+        if (!isUnifiedGlassTheme(context)) return new android.graphics.drawable.ColorDrawable(BACKGROUND);
         return new app.wensarafet.glass.WenGlassBackdropDrawable(context,
                 BACKGROUND, SKY, BRAND, DARK);
     }
@@ -205,7 +206,14 @@ public final class Ui {
                 selected, surface, DARK);
     }
 
-    /** Liquid designs are opt-in; existing non-Liquid themes are byte-for-byte visual fallbacks. */
+    /** All stored selectable presets share the same visual glass contract.
+     * The original isLiquidTheme gate below still limits expensive motions. */
+    public static boolean isUnifiedGlassTheme(Context context) {
+        int index = themeIndex(context);
+        return index >= 0 && index <= 27;
+    }
+
+    /** Motion-only gate: legacy palettes do not acquire heavy page transitions. */
     public static boolean isLiquidTheme(Context context) {
         int index = themeIndex(context);
         return index >= 16 && index < THEMES.length;
@@ -217,23 +225,25 @@ public final class Ui {
      * dozens of transactions can scroll without multiple GPU offscreen passes.
      */
     public static android.graphics.drawable.Drawable glassListBackground(Context context, int radiusDp) {
-        if (isReferenceGlassTheme(context))
-            return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.CARD);
-        if (!isLiquidTheme(context)) return rounded(SURFACE, radiusDp, context);
-        int first = mix(SURFACE, BRAND_SOFT, DARK ? .10f : .64f);
-        int second = mix(SURFACE, SKY, DARK ? .07f : .11f);
+        // Thousands of transaction rows must NOT allocate a native blur View
+        // or run AGSL. One inexpensive clipped translucent GradientDrawable
+        // per row shares the same palette, rounded outline and highlight.
+        int first = mix(SURFACE, BRAND_SOFT, DARK ? .10f : .36f);
+        int second = mix(SURFACE, SKY, DARK ? .08f : .11f);
         GradientDrawable plate = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{first, second});
-        plate.setCornerRadius(dp(context, radiusDp));
+                new int[]{Color.argb(DARK ? 188 : 196, Color.red(first), Color.green(first), Color.blue(first)),
+                        Color.argb(DARK ? 174 : 185, Color.red(second), Color.green(second), Color.blue(second))});
+        plate.setCornerRadius(dp(context, Math.max(20, radiusDp)));
         plate.setStroke(Math.max(1, dp(context, 1)),
-                DARK ? Color.argb(62, 232, 235, 255) : Color.argb(176, 255, 255, 255));
+                DARK ? Color.argb(70, 232, 235, 255) : Color.argb(148, 255, 255, 255));
         return plate;
     }
 
     public static android.graphics.drawable.Drawable glassNavigationBackground(Context context, int radiusDp) {
         if (isReferenceGlassTheme(context))
             return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.NAVIGATION);
-        if (!isLiquidTheme(context)) return new android.graphics.drawable.ColorDrawable(SURFACE);
+        // Even the 16 original palettes now use the floating translucent
+        // navigation material; no opaque legacy plate remains behind the lens.
         // Always passive: scroll may translate/fade the bar, but never drives a glass clock.
         int first = DARK ? mix(SURFACE, BRAND, .16f) : mix(SURFACE, BRAND_SOFT, .60f);
         int second = DARK ? mix(SURFACE, SKY, .12f) : mix(SURFACE, SKY, .18f);
@@ -244,7 +254,7 @@ public final class Ui {
     public static android.graphics.drawable.Drawable glassSelectedNavigationBackground(Context context, int radiusDp) {
         if (isReferenceGlassTheme(context))
             return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.ACCENT);
-        if (!isLiquidTheme(context)) return rounded(BRAND_SOFT, radiusDp, context);
+        if (!isUnifiedGlassTheme(context)) return rounded(BRAND_SOFT, radiusDp, context);
         return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
                 BRAND_SOFT, mix(BRAND_SOFT, SKY, DARK ? .12f : .20f), BRAND, false);
     }
@@ -254,7 +264,7 @@ public final class Ui {
             return referenceGlass(context, primary
                     ? app.wensarafet.glass.WenReferenceGlassDrawable.Surface.ACCENT
                     : app.wensarafet.glass.WenReferenceGlassDrawable.Surface.CARD);
-        if (!isLiquidTheme(context)) return rounded(primary ? BRAND : BRAND_SOFT, radiusDp, context);
+        if (!isUnifiedGlassTheme(context)) return rounded(primary ? BRAND : BRAND_SOFT, radiusDp, context);
         if (!primary) return glassSelectedNavigationBackground(context, radiusDp);
         return glassAccentBackground(context, radiusDp);
     }
@@ -403,12 +413,21 @@ public final class Ui {
         return Color.rgb(red, green, blue);
     }
 
-    public static AuroraDrawable layeredBackground(Context context, int radiusDp) {
-        return new AuroraDrawable(themePreviewColors(themeIndex(context)), dp(context, radiusDp));
+    // All legacy headers, balances and summary panels use a lightweight
+    // cached-shader glass Drawable. Preserve existing preset IDs, palette,
+    // titles and every click callback; no bitmap capture or idle redraw timer.
+    public static android.graphics.drawable.Drawable layeredBackground(Context context, int radiusDp) {
+        return new app.wensarafet.glass.WenGlassDrawable(context,
+                dp(context, Math.max(22, radiusDp)),
+                mix(BRAND_DARK, BRAND, .17f), BRAND, SKY, true);
     }
 
-    public static AuroraDrawable layeredSoftBackground(Context context, int radiusDp) {
-        return new AuroraDrawable(themeSoftColors(themeIndex(context)), dp(context, radiusDp), true);
+    public static android.graphics.drawable.Drawable layeredSoftBackground(Context context, int radiusDp) {
+        return new app.wensarafet.glass.WenGlassDrawable(context,
+                dp(context, Math.max(22, radiusDp)),
+                DARK ? mix(SURFACE, BRAND, .13f) : mix(BRAND_SOFT, SURFACE, .17f),
+                DARK ? mix(SURFACE, SKY, .12f) : mix(SURFACE, BRAND_SOFT, .22f),
+                SKY, false);
     }
 
     public static TextView text(Context context, String value, float sp, int color, boolean bold) {
@@ -466,7 +485,7 @@ public final class Ui {
         view.setAlpha(0f);
         view.setTranslationX(dp(view.getContext(), 18));
         view.setScaleX(0.992f); view.setScaleY(0.992f);
-        view.animate().alpha(1f).translationX(0).scaleX(1f).scaleY(1f).setDuration(360)
+        view.animate().alpha(1f).translationX(0).scaleX(1f).scaleY(1f).setDuration(215)
                 .setInterpolator(new PathInterpolator(0.2f, 0.8f, 0.2f, 1f)).start();
     }
 
@@ -476,7 +495,7 @@ public final class Ui {
         // two cards quickly instead of stacking ten 300ms transitions.
         // Every child remains present and enabled. Legacy 0–15: unchanged.
         boolean liquid = isLiquidTheme(group.getContext());
-        int count = Math.min(group.getChildCount(), liquid ? 2 : 10);
+        int count = Math.min(group.getChildCount(), liquid ? 2 : 4);
         for (int i = 0; i < count; i++) {
             View child = group.getChildAt(i);
             child.animate().cancel();

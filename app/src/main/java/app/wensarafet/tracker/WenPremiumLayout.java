@@ -21,7 +21,7 @@ final class WenPremiumLayout {
 
     static int navigationHeight(Context context) {
         return WenGoldGlassSurface.enabled(context)
-                ? dp(context, 86, 76) : Ui.dp(context, 72);
+                ? dp(context, 72, 68) : Ui.dp(context, 72);
     }
 
     static int navigationSideInsetDp(Context context) {
@@ -35,7 +35,7 @@ final class WenPremiumLayout {
     static int fabBottomOffset(Context context) {
         // Leave a visible gap above the taller dock, never cover a tab label.
         return WenGoldGlassSurface.enabled(context)
-                ? dp(context, 114, 104) : Ui.dp(context, 88);
+                ? dp(context, 100, 94) : Ui.dp(context, 88);
     }
 
     static int navigationClearance(Context context) {

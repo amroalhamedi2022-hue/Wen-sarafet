@@ -114,7 +114,7 @@ public final class WenScreenVisualMotion {
             try {
                 Animator reveal = ViewAnimationUtils.createCircularReveal(animated, cx, cy,
                         closing ? r : fabRadius, closing ? fabRadius : r);
-                reveal.setDuration(360L);
+                reveal.setDuration(265L);
                 reveal.setInterpolator(SOFT);
                 final boolean[] cleaned = {false};
                 AnimatorListenerAdapter clean = new AnimatorListenerAdapter() {
@@ -146,7 +146,7 @@ public final class WenScreenVisualMotion {
         header.animate().cancel();
         header.setAlpha(.86f);
         header.setTranslationY(-Ui.dp(context, 10));
-        header.animate().alpha(1f).translationY(0f).setDuration(240L)
+        header.animate().alpha(1f).translationY(0f).setDuration(160L)
                 .setInterpolator(RELEASE).start();
     }
 
@@ -174,7 +174,7 @@ public final class WenScreenVisualMotion {
                 View icon = icons.get(i);
                 if (icon.isAttachedToWindow())
                     icon.animate().alpha(1f).scaleX(1f).scaleY(1f)
-                            .translationY(0f).setStartDelay(i*22L).setDuration(290L)
+                            .translationY(0f).setStartDelay(i*14L).setDuration(190L)
                             .setInterpolator(RELEASE).start();
             }
         });
