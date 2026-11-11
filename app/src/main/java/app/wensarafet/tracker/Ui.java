@@ -189,14 +189,10 @@ public final class Ui {
     }
 
     public static android.graphics.drawable.Drawable glassFloatingAddBackground(Context context) {
-        // Restore the exact curved optical bubble used by the isolated
-        // 1.8.8 Sandbox. The five premium themes inherit its actual layered
-        // silhouette, transparent corners, hold morph and specular crown.
-        // Other reference and original Liquid presets remain unchanged.
-        if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(themeIndex(context)))
-            return new app.wensarafet.glass.WenFabBubbleDrawable(
-                    context, SKY, DARK, themeIndex(context));
-        return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.FAB);
+        // One shared colourless glass FAB for EVERY theme (legacy + premium).
+        // The original account icons, navigation and actions remain unchanged.
+        return new app.wensarafet.glass.WenFabBubbleDrawable(
+                context, Color.WHITE, DARK, -1);
     }
 
     private static android.graphics.drawable.Drawable referenceGlass(Context context,
@@ -494,7 +490,8 @@ public final class Ui {
     }
 
     public static void pressAnimation(View view) {
-        if (isLiquidTheme(view.getContext())) {
+        if (isLiquidTheme(view.getContext())
+                || view.getBackground() instanceof app.wensarafet.glass.WenFabBubbleDrawable) {
             // Restore the sandbox's true circular FAB pressure-morph, only
             // for the original glass palettes 16–21. Its listener NEVER
             // consumes input; the exact original click and long-click remain.
