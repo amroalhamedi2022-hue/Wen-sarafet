@@ -126,10 +126,10 @@ for path, sha in logos.items():
 # Import only the reviewed original SECURITY file contents; no older visual
 # or financial source can be smuggled in through these shared paths.
 exact_security = (
-    "app/src/main/AndroidManifest.xml", P + "TransactionParser.java",
+    "app/src/main/AndroidManifest.xml",
     "app/src/main/res/xml/backup_rules.xml",
     "app/src/main/res/xml/data_extraction_rules.xml",
-    "tests/FinanceCoreTest.java", "tests/fx_form_source_contract.py",
+    "tests/fx_form_source_contract.py",
     "tests/source_repository_guard.py",
     "scripts/audit_recovered_source.sh", "scripts/audit_release.sh",
     "docs/security/WEN_200_STRICT_OFFLINE_OVERLAY_2026-11-06.md",
@@ -138,6 +138,23 @@ for path in exact_security:
     assert present(path) == at(SECURITY_BASE, path), (
         "Reviewed strict-offline source unexpectedly diverged: " + path
     )
+
+# A *single* reviewed security enhancement expands "Code:" OTP rejection
+# beyond the old numeric 4–8 digit heuristic. Pin both entire source files
+# after adding positive and negative regression fixtures; other finance logic
+# remains byte-identical to the previously approved security snapshot.
+OTP_AUDIT = "a88abf5042ef9b7e9cf6c0c1a2020a78f1570b97"
+for path in (P + "TransactionParser.java", "tests/FinanceCoreTest.java"):
+    assert present(path) == at(OTP_AUDIT, path), (
+        "SAFE ZONE: OTP parser or finance regression tests changed beyond the reviewed patch: " + path
+    )
+assert 'CODE_PREFIX.matcher(normalized).find()' in present(P + "TransactionParser.java")
+assert 'CODE： ABC123' in present("tests/FinanceCoreTest.java")
+assert 'Code: short' in present("tests/FinanceCoreTest.java")
+assert 'CaptureEngine.handle' in present(P + "SmsCaptureReceiver.java")
+assert 'CaptureEngine.handle' in present(P + "FinanceNotificationListener.java")
+assert 'TransactionParser.isVerificationMessage(clean)' in present(P + "CaptureEngine.java")
+
 
 removed_network = (
     P + "BopRateFetcher.java", P + "BopIndicativeRate.java",
