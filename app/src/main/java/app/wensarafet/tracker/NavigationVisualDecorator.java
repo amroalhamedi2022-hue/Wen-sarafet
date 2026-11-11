@@ -161,10 +161,11 @@ public final class NavigationVisualDecorator {
         lens.setClickable(false);
         lens.setFocusable(false);
         lens.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        // Neutral refractive lens at every theme index: no coloured halo or
+        // opaque circle over the saved account/tab palette.
         lens.setBackground(new WenNavigationLensDrawable(context,
-                premium ? 0x99FFFFFF : Ui.BRAND_SOFT,
-                premium ? (Ui.DARK ? 0xB83D424A : 0xE5FFFFFF) : Ui.SURFACE,
-                premium ? 0xC5FFFFFF : Ui.SKY, Ui.DARK));
+                0x99FFFFFF, Ui.DARK ? 0xB83D424A : 0xD8FFFFFF,
+                0xC5FFFFFF, Ui.DARK));
         track.addView(lens, new FrameLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.TOP | Gravity.LEFT));
 
@@ -181,8 +182,7 @@ public final class NavigationVisualDecorator {
             // The liquid lens now refracts the actual SCROLL BACKDROP, so
             // tab icons/Arabic labels must sit above the glass to remain crisp.
             // Legacy materials retain their prior original draw order.
-            if (premium) tabs.bringToFront();
-            else lens.bringToFront();
+            tabs.bringToFront();
         } else if (track.getOptic() != null) {
             track.getOptic().bringToFront();
         }
