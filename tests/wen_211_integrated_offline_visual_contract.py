@@ -100,7 +100,7 @@ assert expected == present(M), (
 # presentation from the approved adapter, not just indicative string checks.
 UI = P + "Ui.java"
 BUBBLE = "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java"
-FINAL_VISUAL_AUDIT = "0c562edf4bd1548bf4c3ea8d1dd6ab5a533c3509"
+FINAL_VISUAL_AUDIT = "f5211774e58b50addcce054f85427643d0acaf3e"
 assert present(UI) == at(FINAL_VISUAL_AUDIT, UI), (
     "UI must match exactly the reviewed 2.1 visual-only surface changes"
 )
@@ -145,6 +145,7 @@ VISUAL_REFRESH_PATHS = (
     "scripts/build_apk.sh",
     "scripts/verify_upgrade_apk.sh",
     "scripts/sign_verified_upgrade.sh",
+    "scripts/audit_recovered_source.sh",
     "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java",
 )
 for path in VISUAL_REFRESH_PATHS:
@@ -196,9 +197,22 @@ exact_security = (
     "app/src/main/res/xml/data_extraction_rules.xml",
     "tests/fx_form_source_contract.py",
     "tests/source_repository_guard.py",
-    "scripts/audit_recovered_source.sh", "scripts/audit_release.sh",
+    "scripts/audit_release.sh",
     "docs/security/WEN_200_STRICT_OFFLINE_OVERLAY_2026-11-06.md",
 )
+# The recovered-source audit changes ONLY the whitelist for 2.1 and a
+# version-only comment. All strict offline/secret assertions remain intact.
+recovered_audit = "scripts/audit_recovered_source.sh"
+expected_audit = at(SECURITY_BASE, recovered_audit)
+expected_audit = replace(expected_audit,
+    '[[ "$version_name" =~ ^(1[.](8[.][0-9]+|9)|2[.]0)$ ]]',
+    '[[ "$version_name" =~ ^(1[.](8[.][0-9]+|9)|2[.](0|1))$ ]]')
+expected_audit = expected_audit.replace(
+    'Prevent any runtime Internet permission in the full-featured 2.0 app.',
+    'Prevent any runtime Internet permission in the full-featured 2.1 app.')
+assert present(recovered_audit) == expected_audit, (
+    "SAFE ZONE: recovered source audit changed beyond 2.1 release metadata")
+
 for path in exact_security:
     assert present(path) == at(SECURITY_BASE, path), (
         "Reviewed strict-offline source unexpectedly diverged: " + path
