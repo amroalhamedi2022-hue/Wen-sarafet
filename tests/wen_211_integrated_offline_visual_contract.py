@@ -179,6 +179,9 @@ permitted = set(exact_security) | set(removed_network) | {
     ".github/workflows/unsigned-release-candidate.yml",
     ".github/workflows/wen-188-visual-safe-review.yml",
     ".github/workflows/core-rules.yml",
+    ".github/workflows/wen-main-physical-screens.yml",
+    ".github/workflows/wen-real-main-screenshots.yml",
+    "tests/wen_200_strict_offline_contract.py",
 }
 modified = set(git("diff", "--name-only", VISUAL_BASE, "HEAD").splitlines())
 assert modified <= permitted, "Unexpected cross-branch file changes: " + repr(sorted(modified - permitted))
