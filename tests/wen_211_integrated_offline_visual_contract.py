@@ -81,6 +81,16 @@ expected = replace(expected, "        final View topBarBackground = topBar.findV
 expected = replace(expected, "                topBarBackground.setAlpha(1f - progress * .84f);\n                topBarBackground.setElevation(progress > .02f ? 0f : Ui.dp(this, 7));", "                // The native LiquidGlassView and the specular overlay ALSO\n                // fade. Previously only the tiny underlying backing faded.\n                float initialBacking = WenGoldGlassSurface.enabled(this)\n                        ? (Ui.themeIndex(this) == 27 ? .15f : .12f) : 1f;\n                topBarBackground.setAlpha(initialBacking * (1f - progress * .94f));\n                if (topBarOptics != null) topBarOptics.setAlpha(1f - progress * .92f);\n                if (topBarSpecular != null) topBarSpecular.setAlpha(1f - progress * .92f);\n                topBarBackground.setElevation(progress > .02f ? 0f : Ui.dp(this, 7));")
 expected = replace(expected, "        nav.setElevation(Ui.dp(this, 12));\n\n        TextView home = navButton", "        nav.setElevation(Ui.dp(this, WenGoldGlassSurface.enabled(this) ? 5 : 12));\n\n        TextView home = navButton")
 
+
+# 2.1 optical parity changes are limited to these six exact markup-only
+# edits. Financial and navigation click handlers remain the original lines.
+expected = replace(expected, "        if (Ui.isLiquidTheme(this)) {\n            // Owner reference: truly floating 16dp inset, preserving", "        if (Ui.isUnifiedGlassTheme(this)) {\n            // Owner reference: truly floating glass dock, preserving")
+expected = replace(expected, "        if (Ui.isLiquidTheme(this))\n            NavigationVisualDecorator.install(nav,", "        if (Ui.isUnifiedGlassTheme(this))\n            NavigationVisualDecorator.install(nav,")
+expected = replace(expected, "        if (Ui.isLiquidTheme(this)) debtNavParams.setMargins(", "        if (Ui.isUnifiedGlassTheme(this)) debtNavParams.setMargins(")
+expected = replace(expected, "        if (Ui.isLiquidTheme(this)) analyticsNavParams.setMargins(", "        if (Ui.isUnifiedGlassTheme(this)) analyticsNavParams.setMargins(")
+expected = replace(expected, "        final View background=topBar.findViewWithTag(\"main_header_background\");\n        scroll.setOnScrollChangeListener", "        final View background=topBar.findViewWithTag(\"main_header_background\");\n        final View goldOptic=topBar.findViewWithTag(WenGoldGlassSurface.HEADER_GLASS_TAG);\n        final View goldSpecular=topBar.findViewWithTag(WenGoldGlassSurface.HEADER_SPECULAR_TAG);\n        scroll.setOnScrollChangeListener")
+expected = replace(expected, "                background.setAlpha(1f-fade*.84f);\n                background.setElevation(fade>.02f?0f:Ui.dp(this,7));", "                float baseAlpha=WenGoldGlassSurface.enabled(this)\n                        ? (Ui.themeIndex(this)==27?.15f:.12f):1f;\n                background.setAlpha(baseAlpha*(1f-fade*.94f));\n                if(goldOptic!=null)goldOptic.setAlpha(1f-fade*.92f);\n                if(goldSpecular!=null)goldSpecular.setAlpha(1f-fade*.92f);\n                background.setElevation(fade>.02f?0f:Ui.dp(this,7));")
+
 assert expected == present(M), (
     "SAFE ZONE: cumulative MainActivity deviates from the fully reconstructed "
     "visual HEAD + reviewed strict-offline security overlay"
@@ -90,7 +100,10 @@ assert expected == present(M), (
 # presentation from the approved adapter, not just indicative string checks.
 UI = P + "Ui.java"
 BUBBLE = "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java"
-assert present(UI) == at(NEUTRAL_UI, UI), "Unexpected visual/UI mutation"
+FINAL_VISUAL_AUDIT = "10532a4e0f67077fa5500bcd3c28f9c0c5b030ed"
+assert present(UI) == at(FINAL_VISUAL_AUDIT, UI), (
+    "UI must match exactly the reviewed 2.1 visual-only surface changes"
+)
 bubble = present(BUBBLE)
 reviewed_bubble = at(NEUTRAL_BUBBLE, BUBBLE)
 # Only four white-glow paint alpha factors change; geometry and press logic frozen.
@@ -113,13 +126,18 @@ assert "return false; // Never steal existing FAB click/hold actions." in presen
 
 # Other appearance-only files are frozen byte-for-byte against the reviewed
 # visual update commit, independent from the older security/financial baseline.
-VISUAL_REFRESH_AUDIT = "747a290300165a51d353e7092e18d2513608892e"
+VISUAL_REFRESH_AUDIT = FINAL_VISUAL_AUDIT
 VISUAL_REFRESH_PATHS = (
     P + "NavigationVisualDecorator.java",
     P + "ThemeCatalogue.java",
     P + "WenGoldGlassSurface.java",
     P + "WenPremiumLayout.java",
     "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
+    "glass-engine/src/main/java/app/wensarafet/glass/WenGlassDrawable.java",
+    "tests/glass_energy_contract.py",
+    "tests/original_180_upgrade_contract.py",
+    "tests/upgrade_gate_contract.py",
+    ".github/workflows/unsigned-release-candidate.yml",
     "app/src/androidTest/java/app/wensarafet/tracker/ReferenceThemesInstrumentedTest.java",
 )
 for path in VISUAL_REFRESH_PATHS:
@@ -137,12 +155,21 @@ protected = (
     P + "AppLockManager.java", P + "SecurePinStore.java",
     P + "BackupCrypto.java", P + "BackupArchiveVerifier.java",
     P + "SmsCaptureReceiver.java",
-    "app/build.gradle", "settings.gradle"
+    "settings.gradle"
 )
 for name in protected:
     assert present(name) == at(VISUAL_BASE, name), (
         "SAFE ZONE: protected code changed: " + name
     )
+
+# Only the release version increments; application ID, signing, protections,
+# min/target SDK, dependency graph and Gradle signing configuration are frozen.
+original_gradle = at(VISUAL_BASE, "app/build.gradle")
+release_gradle = replace(original_gradle, "        versionCode 28\n        versionName \"2.0\"",
+                         "        versionCode 29\n        versionName \"2.1\"")
+assert present("app/build.gradle") == release_gradle, (
+    "SAFE ZONE: release Gradle changed beyond 2.1/code29 increment"
+)
 logos = {
     "app/src/main/res/drawable-nodpi/icon_bop_mark.png":
         "d71006e0eba4cedcd1d04b2217eeef4911b83808",
@@ -229,7 +256,7 @@ assert "WenGoldGlassSurface.attachGoldBackdrop(primaryRoot)" in present(M)
 # All existing non-security code must be unchanged from latest visual branch.
 # Paths covered above are independently pinned; no other changes allowed.
 permitted = set(exact_security) | set(removed_network) | {
-    M, UI, BUBBLE, "scripts/test_core.sh",
+    M, UI, BUBBLE, "app/build.gradle", "scripts/test_core.sh",
     "tests/BopIndicativeRateTest.java", "tests/FxRateRefreshPolicyTest.java",
     "tests/DriveBackupPublicationTest.java",
     "tests/drive_backup_publication_contract.py",
