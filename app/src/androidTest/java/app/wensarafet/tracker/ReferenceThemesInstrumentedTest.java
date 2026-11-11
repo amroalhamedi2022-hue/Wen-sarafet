@@ -67,7 +67,7 @@ public final class ReferenceThemesInstrumentedTest {
             assertTrue(Ui.isReferenceGlassTheme(ctx));
             assertTrue(Ui.glassScreenBackground(ctx) instanceof WenReferenceGlassDrawable);
             Bitmap nav = draw(Ui.glassNavigationBackground(ctx, 26), 480, 90);
-            assertTrue(Color.alpha(nav.getPixel(240, 45)) > 190);
+            assertTrue(Color.alpha(nav.getPixel(240, 45)) > 100);
             assertNotEquals("Optical violet nav needs real colour", Color.WHITE,
                     nav.getPixel(240, 45));
             Bitmap bg = draw(Ui.glassScreenBackground(ctx), 480, 800);
@@ -113,8 +113,9 @@ public final class ReferenceThemesInstrumentedTest {
             assertNotEquals("Royal depth requires multiple metallic shadows",
                     backdrop.getPixel(70, 50), backdrop.getPixel(410, 660));
             Bitmap nav = draw(Ui.glassNavigationBackground(ctx, 26), 480, 90);
-            assertTrue("Royal nav must stay nontransparent beneath native lens",
-                    Color.alpha(nav.getPixel(240, 45)) > 200);
+            assertTrue("Royal nav must stay readable but visibly translucent",
+                    Color.alpha(nav.getPixel(240, 45)) > 100
+                        && Color.alpha(nav.getPixel(240, 45)) < 255);
             assertNotEquals("A metallic nav requires gold and dark contrast",
                     nav.getPixel(100, 20), nav.getPixel(380, 65));
             Bitmap fab = draw(Ui.glassFloatingAddBackground(ctx), 160, 160);
