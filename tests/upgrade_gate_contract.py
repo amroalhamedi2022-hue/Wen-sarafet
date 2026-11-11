@@ -55,7 +55,7 @@ case "$2" in
       *current-184*) code=20 ;;
       *current-185*) code=21 ;;
       *current-187*) code=23 ;;
-      *same-as-current*) code=29 ;;
+      *same-as-current*) code=23 ;;
       *current-188*) code=24 ;;
       *current-189*) code=25 ;;
       *current-190*) code=27 ;;
