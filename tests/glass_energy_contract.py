@@ -33,7 +33,7 @@ assert "card.setBackground(Ui.glassAccentBackground(this, 20));" in main
 
 assert "glassNavigationBackground(this," in main
 assert "WenGoldGlassSurface.enabled(this) ? 28 : 26" in main
-assert main.count("if (Ui.isLiquidTheme(this))") >= 3, "All primary tab bars need Liquid-only floating insets"
+assert main.count("if (Ui.isUnifiedGlassTheme(this))") >= 3, "All primary tab bars must share translucent glass insets"
 assert "fab.setBackground(Ui.glassFloatingAddBackground(this));" in main, "FAB must use colourless glass on all themes"
 assert "view.getBackground() instanceof app.wensarafet.glass.WenFabBubbleDrawable" in ui
 assert "new app.wensarafet.glass.WenFabBubbleDrawable(" in ui
