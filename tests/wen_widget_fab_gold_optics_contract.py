@@ -36,5 +36,22 @@ for name in ("jawwal","palpay","bop"):
     assert "vector" in glass and "android:strokeWidth" in glass
 gradle=get("app/build.gradle")
 assert 'applicationIdSuffix ".sandbox"' in gradle
-assert 'versionName "2.2.1"' in gradle
+assert 'versionName "2.2.2"' in gradle
 print("PASS: widget zoom/rim; one-tone FAB; golden cached optics; original widget ids; 2.2.1 sandbox")
+
+# Regression gate: both balance layouts must allocate almost all available
+# vertical space to artwork, not fix it at 54dp / 47dp.
+for name in ("widget_balances.xml", "widget_balances_triple.xml"):
+    layout=get("app/src/main/res/layout/"+name)
+    assert layout.count('android:layout_weight="1"') >= (4 if name=="widget_balances.xml" else 6), (
+        "Each balance logo should adapt to the host height")
+    assert layout.count('android:scaleX="1.15"') == (2 if name=="widget_balances.xml" else 3)
+activity=get("app/src/main/java/app/wensarafet/tracker/MainActivity.java")
+assert "fab.setElevation(0f)" in activity
+assert "fabBlurController.refreshIfDue()" in activity
+assert "RenderEffect.createBlurEffect" in activity
+frost=get("app/src/main/java/app/wensarafet/tracker/WenFabBackdropBlur.java")
+assert "scroll.draw(c)" in frost and "Bitmap.createBitmap(w,h" in frost
+assert "FileOutputStream" not in frost and "getExternalFilesDir" not in frost
+assert "lastFrame < 200L" in frost
+print("PASS: balance logos flexible; 4dp real FAB backdrop blur; no FAB outer shadow")
