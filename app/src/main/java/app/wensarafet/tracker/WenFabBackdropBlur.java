@@ -66,10 +66,21 @@ final class WenFabBackdropBlur {
             premiumBackdrop.draw(c);
             c.restoreToCount(saveBackdrop);
         }
-        int sub=c.save();
-        c.translate(scroll.getLeft(), scroll.getTop());
-        scroll.draw(c);
-        c.restoreToCount(sub);
+        // Golden and other liquid scenes already contain heavyweight layered
+        // optics. Never re-draw their whole ScrollView into a software bitmap;
+        // the tiny frosted FAB can sample the existing static backdrop instead.
+        // This also prevents extra per-gesture work on 120Hz gold themes.
+        if (!Ui.isLiquidTheme(root.getContext())) {
+            int sub=c.save();
+            c.translate(scroll.getLeft(), scroll.getTop());
+            try {
+                scroll.draw(c);
+            } catch (RuntimeException unsupportedCanvas) {
+                // Cosmetic blur must never crash finance UI on unusual devices.
+            } finally {
+                c.restoreToCount(sub);
+            }
+        }
         c.restoreToCount(saved);
         frosted.invalidate();
     }
