@@ -15,6 +15,8 @@ import android.graphics.drawable.Drawable;
  */
 public final class WenFabBubbleDrawable extends Drawable {
     private final float density;
+    private final float bodyOpacity;
+    private final float rimOpacity;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float press;
@@ -23,8 +25,10 @@ public final class WenFabBubbleDrawable extends Drawable {
 
     public WenFabBubbleDrawable(Context context, boolean dark) {
         density = context.getResources().getDisplayMetrics().density;
-        fill.setColor(dark ? 0xA83D4248 : 0xB5F5FAFD);
-        rim.setColor(dark ? 0xA8EAF2FA : 0xB1FFFFFF);
+        fill.setColor(dark ? 0xFF3D4248 : 0xFFF5FAFD);
+        rim.setColor(dark ? 0xFFEAF2FA : 0xFFFFFFFF);
+        bodyOpacity = dark ? .55f : .66f;
+        rimOpacity = dark ? .64f : .69f;
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(Math.max(density * 0.85f, 1f));
     }
@@ -49,8 +53,8 @@ public final class WenFabBubbleDrawable extends Drawable {
         if (radius <= 0f) return;
         // Subtle opacity shift is UNIFORM across the complete circle during hold.
         // It cannot introduce a white spot or fractured optical interior.
-        fill.setAlpha(Math.round(alpha * (1f - .08f * press)));
-        rim.setAlpha(Math.round(alpha * (.82f + .12f * press)));
+        fill.setAlpha(Math.round(alpha * bodyOpacity * (1f - .08f * press)));
+        rim.setAlpha(Math.round(alpha * rimOpacity * (.82f + .12f * press)));
         canvas.drawCircle(centerX, centerY, radius, fill);
         canvas.drawCircle(centerX, centerY, radius, rim);
     }
