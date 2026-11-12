@@ -500,8 +500,14 @@ public final class MainActivity extends Activity {
         fabBlur.setClipToOutline(true);
         fabBlur.setOutlineProvider(fab.getOutlineProvider());
         fabBlur.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(
-                Ui.dp(this, 4), Ui.dp(this, 4),
+                Ui.dp(this, 5), Ui.dp(this, 5),
                 android.graphics.Shader.TileMode.CLAMP));
+        // Neutral-frosted lens: bank icons behind the FAB must never stain
+        // the clear button magenta/green. This filter affects ONLY the small
+        // in-memory FAB background sample, not the actual account artwork.
+        android.graphics.ColorMatrix frostNeutral = new android.graphics.ColorMatrix();
+        frostNeutral.setSaturation(.08f);
+        fabBlur.setColorFilter(new android.graphics.ColorMatrixColorFilter(frostNeutral));
         fabBlur.setAlpha(.90f);
         fabBlur.setClickable(false);
         fabBlur.setFocusable(false);
