@@ -11,8 +11,8 @@ db=(app/"java/app/wensarafet/tracker/FinanceDbHelper.java").read_text(encoding="
 gradle=(root/"app/build.gradle").read_text(encoding="utf-8")
 # Accept strictly increasing release versions; never weaken offline/network checks.
 import re
-mcode=re.search(r"versionCode\\s+(\\d+)", gradle)
-mname=re.search(r'versionName\\s+"(\\d+)\\.(\\d+)\\.(\\d+)"', gradle)
+mcode=re.search(r"versionCode\s+(\d+)", gradle)
+mname=re.search(r'versionName\s+"(\d+)\.(\d+)\.(\d+)"', gradle)
 assert mcode and int(mcode.group(1)) >= 29
 assert mname and tuple(int(x) for x in mname.groups()) >= (2,1,0)
 assert 'applicationId "app.wensarafet.tracker"' in gradle
