@@ -27,7 +27,7 @@ public final class WenFabBubbleDrawable extends Drawable {
         density = context.getResources().getDisplayMetrics().density;
         fill.setColor(dark ? 0xFF343D47 : 0xFFF8FCFF);
         rim.setColor(dark ? 0xFFC8DAE6 : 0xFFEAF7FF);
-        bodyOpacity = dark ? .53f : .53f;
+        bodyOpacity = dark ? .78f : .82f;
         rimOpacity = dark ? .58f : .56f;
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(Math.max(density * 0.85f, 1f));

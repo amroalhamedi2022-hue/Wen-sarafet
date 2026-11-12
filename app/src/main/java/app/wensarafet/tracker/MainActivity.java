@@ -508,7 +508,7 @@ public final class MainActivity extends Activity {
         android.graphics.ColorMatrix frostNeutral = new android.graphics.ColorMatrix();
         frostNeutral.setSaturation(.08f);
         fabBlur.setColorFilter(new android.graphics.ColorMatrixColorFilter(frostNeutral));
-        fabBlur.setAlpha(.90f);
+        fabBlur.setAlpha(1f);
         fabBlur.setClickable(false);
         fabBlur.setFocusable(false);
         FrameLayout.LayoutParams blurParams = new FrameLayout.LayoutParams(
