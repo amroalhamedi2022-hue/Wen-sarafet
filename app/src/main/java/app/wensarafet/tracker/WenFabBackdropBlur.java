@@ -4,7 +4,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
-import android.os.SystemClock;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -16,7 +15,7 @@ import android.widget.ScrollView;
  * its ImageView; it DOES NOT blur the FAB's + glyph or its uniform glass tint.
  *
  * No View root snapshot, no storage, no network, no financial callbacks.
- * Refresh at most five times per second while scrolling, reusing one bitmap.
+ * Refresh after scroll settles, reusing one bitmap to avoid extra work mid-gesture.
  */
 final class WenFabBackdropBlur {
     private final FrameLayout root;
@@ -25,7 +24,7 @@ final class WenFabBackdropBlur {
     private final ImageView frosted;
     private Bitmap sample;
     private Canvas sampleCanvas;
-    private long lastFrame;
+    private final Runnable idleRefresh = this::refresh;
 
     WenFabBackdropBlur(FrameLayout root, ScrollView scroll, View fab, ImageView frosted) {
         this.root = root;
@@ -35,10 +34,10 @@ final class WenFabBackdropBlur {
     }
 
     void refreshIfDue() {
-        long now=SystemClock.uptimeMillis();
-        if (now-lastFrame < 200L) return;
-        lastFrame=now;
-        refresh();
+        // No screenshot work in the active 60/90/120Hz scroll path.
+        // The latest scroll position wins when gestures settle.
+        frosted.removeCallbacks(idleRefresh);
+        frosted.postDelayed(idleRefresh, 130L);
     }
 
     void refresh() {

@@ -53,5 +53,5 @@ assert "RenderEffect.createBlurEffect" in activity
 frost=get("app/src/main/java/app/wensarafet/tracker/WenFabBackdropBlur.java")
 assert "scroll.draw(c)" in frost and "Bitmap.createBitmap(w,h" in frost
 assert "FileOutputStream" not in frost and "getExternalFilesDir" not in frost
-assert "lastFrame < 200L" in frost
+assert "postDelayed(idleRefresh, 130L)" in frost and "removeCallbacks(idleRefresh)" in frost
 print("PASS: balance logos flexible; 4dp real FAB backdrop blur; no FAB outer shadow")
