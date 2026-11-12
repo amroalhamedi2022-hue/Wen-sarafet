@@ -451,8 +451,8 @@ public final class MainActivity extends Activity {
                 Ui.TEXT, false);
         fab.setIncludeFontPadding(false);
         fab.setGravity(Gravity.CENTER);
-        // All themes share the same colourless optical bubble; the real
-        // add action, original hit target and on-click behaviour are unchanged.
+        // This is a one-pass live translucent glass surface. The underlying
+        // real background stays visible and in motion; only visuals change.
         fab.setBackground(Ui.glassFloatingAddBackground(this));
         // A hard circular outline (from Sandbox 1.8.8) prevents Android's
         // rectangular default shadow/ripple on Pixel and MIUI renderers.
@@ -470,7 +470,9 @@ public final class MainActivity extends Activity {
             }
         });
         fab.setClipToOutline(true);
-        fab.setElevation(Ui.dp(this, 3));
+        // A raised Android shadow produced the thick grey double-ring in the
+        // owner's screenshot. The matte rim comes solely from the FAB drawable.
+        fab.setElevation(0f);
         fab.setContentDescription("إضافة عملية");
         fab.setTag("wen_intro_fab");
         fab.setOnClickListener(v -> {
@@ -490,6 +492,9 @@ public final class MainActivity extends Activity {
         int fabInset = WenPremiumLayout.fabSideInsetDp(this);
         fabParams.setMargins(Ui.dp(this, fabInset), 0, Ui.dp(this, fabInset),
                 WenPremiumLayout.fabBottomOffset(this));
+        // True live-translucent glass: no detached bitmap or frozen backdrop.
+        // Underlying cards scroll directly behind the semi-transparent bubble
+        // every frame with zero offscreen capture or extra view.
         root.addView(fab, fabParams);
         final boolean[] chromeHidden = {false};
         final int[] upwardTravel = {0};
