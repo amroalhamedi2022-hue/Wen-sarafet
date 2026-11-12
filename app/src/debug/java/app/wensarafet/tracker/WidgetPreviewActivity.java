@@ -81,7 +81,7 @@ public final class WidgetPreviewActivity extends Activity {
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(14),dp(32),dp(14),dp(24));
         add(content, heading("DARK CRYSTAL  ·  WIDGET LAB", 16f), -1, -2, 6);
-        add(content, heading("Actual Android RemoteViews preview • sandbox 2.2.2", 11f), -1, -2, 28);
+        add(content, heading("Actual Android RemoteViews preview • sandbox 2.2.3", 11f), -1, -2, 28);
         add(content, inflated(R.layout.widget_balances, "", ""), 300, 158, 22);
         add(content, inflated(R.layout.widget_balances_triple, "", ""), 320, 142, 22);
         LinearLayout row = new LinearLayout(this);

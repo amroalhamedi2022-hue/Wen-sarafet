@@ -38,3 +38,6 @@ Android requires a valid APK signature even for testing. The previous sandbox AP
 - For production port: new files `MainActivity.java` and `WenFabBackdropBlur.java` are UI-only, but use conflict-aware/manual port to the actual latest production source. Never cherry-pick the sandbox branch or migrate signing or finance files.
 
 - Visual QA on real Android 15 widget/main screenshots exposed pink brand logo bleeding through the new FAB. Final neutral-frost fix: only FAB's 5dp blurred snapshot is desaturated to 8%; actual bank icons remain original; uniform white/charcoal fill set to 53% opacity, no internal glare or light spots.
+
+## Sandbox 2.2.3 GOLD performance safety hotfix
+The actual emulator gold-theme screenshot could not be completed on the x86 runner while the FAB sampled the entire live scroll. The new `WenFabBackdropBlur` samples only the already-available *static backdrop* for liquid and gold themes (16+), avoiding a second software render of dozens of cards, reducing load and preventing a potential unsupported rendering route. For legacy themes 0–15 it still samples the small scroll region on idle. No source/authority/financial logic change. Bump to versionCode 33 / versionName 2.2.3 to ensure in-place upgrade even if an earlier 2.2.2 test was installed.

@@ -36,7 +36,7 @@ for name in ("jawwal","palpay","bop"):
     assert "vector" in glass and "android:strokeWidth" in glass
 gradle=get("app/build.gradle")
 assert 'applicationIdSuffix ".sandbox"' in gradle
-assert 'versionName "2.2.2"' in gradle
+assert 'versionName "2.2.3"' in gradle
 print("PASS: widget zoom/rim; one-tone FAB; golden cached optics; original widget ids; 2.2.1 sandbox")
 
 # Regression gate: both balance layouts must allocate almost all available
@@ -52,6 +52,7 @@ assert "fabBlurController.refreshIfDue()" in activity
 assert "RenderEffect.createBlurEffect" in activity
 frost=get("app/src/main/java/app/wensarafet/tracker/WenFabBackdropBlur.java")
 assert "scroll.draw(c)" in frost and "Bitmap.createBitmap(w,h" in frost
+assert "if (!Ui.isLiquidTheme(root.getContext()))" in frost
 assert "FileOutputStream" not in frost and "getExternalFilesDir" not in frost
 assert "postDelayed(idleRefresh, 130L)" in frost and "removeCallbacks(idleRefresh)" in frost
 print("PASS: balance logos flexible; 4dp real FAB backdrop blur; no FAB outer shadow")
