@@ -30,7 +30,7 @@ for name, id in (
 ):
     layout=get("app/src/main/res/layout/"+name)
     assert ('android:id="@+id/'+id+'"') in layout
-    assert layout.count('android:scaleX="1.16"') == (2 if id=="widget_balance_root" else 3)
+    assert layout.count('android:scaleX="1.15"') == (2 if id=="widget_balance_root" else 3)
 for name in ("jawwal","palpay","bop"):
     glass=get("app/src/main/res/drawable/widget_crystal_quick_"+name+".xml")
     assert "vector" in glass and "android:strokeWidth" in glass
