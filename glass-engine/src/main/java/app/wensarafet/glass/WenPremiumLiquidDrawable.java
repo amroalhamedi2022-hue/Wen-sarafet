@@ -86,7 +86,11 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         lowPower = (power != null && power.isPowerSaveMode())
                 || (manager != null && manager.isLowRamDevice());
+        // The full-screen AGSL sunlight pass was duplicated over two cached
+        // bloom gradients in the gold themes. Their static gradient art stays
+        // intact while avoiding the extra fullscreen fragment shader cost.
         sunField = kind == WenReferenceGlassDrawable.Surface.BACKDROP
+                && !(theme >= ROYAL_DARK && theme <= CHAMPAGNE)
                 ? new WenPremiumSunlight(lowPower) : null;
         rim.setStyle(Paint.Style.STROKE);
         bevel.setStyle(Paint.Style.STROKE);
