@@ -1,4 +1,4 @@
-"""Protect the latest owner-approved 2.1 source from network capability regressions; no APK build."""
+"""Protect approved strictly-offline source across later visual-only releases; no APK build."""
 from pathlib import Path
 import xml.etree.ElementTree as ET
 root=Path(__file__).resolve().parents[1]
@@ -9,7 +9,12 @@ sms=(app/"java/app/wensarafet/tracker/SmsCaptureReceiver.java").read_text(encodi
 nt=(app/"java/app/wensarafet/tracker/FinanceNotificationListener.java").read_text(encoding="utf-8")
 db=(app/"java/app/wensarafet/tracker/FinanceDbHelper.java").read_text(encoding="utf-8")
 gradle=(root/"app/build.gradle").read_text(encoding="utf-8")
-assert 'versionCode 29' in gradle and 'versionName "2.1"' in gradle
+# Accept strictly increasing release versions; never weaken offline/network checks.
+import re
+mcode=re.search(r"versionCode\\s+(\\d+)", gradle)
+mname=re.search(r'versionName\\s+"(\\d+)\\.(\\d+)\\.(\\d+)"', gradle)
+assert mcode and int(mcode.group(1)) >= 29
+assert mname and tuple(int(x) for x in mname.groups()) >= (2,1,0)
 assert 'applicationId "app.wensarafet.tracker"' in gradle
 assert 'android.permission.INTERNET' not in manifest
 assert 'android.permission.ACCESS_NETWORK_STATE' not in manifest
@@ -32,4 +37,4 @@ for name in ("BopRateFetcher","DriveBackupManager","DriveBackupPublication"):
     assert not (app/f"java/app/wensarafet/tracker/{name}.java").exists()
 for path in (app/"res").rglob("*.xml"):
     ET.parse(path)
-print("PASS: 2.1 finance, bank, visual preserved; network & cloud sync absent")
+print("PASS: finance, bank, visual and no-network rules preserved on current version")
