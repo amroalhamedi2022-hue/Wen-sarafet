@@ -451,8 +451,8 @@ public final class MainActivity extends Activity {
                 Ui.TEXT, false);
         fab.setIncludeFontPadding(false);
         fab.setGravity(Gravity.CENTER);
-        // All themes share the same colourless optical bubble; the real
-        // add action, original hit target and on-click behaviour are unchanged.
+        // This is a one-pass live translucent glass surface. The underlying
+        // real background stays visible and in motion; only visuals change.
         fab.setBackground(Ui.glassFloatingAddBackground(this));
         // A hard circular outline (from Sandbox 1.8.8) prevents Android's
         // rectangular default shadow/ripple on Pixel and MIUI renderers.
@@ -492,41 +492,16 @@ public final class MainActivity extends Activity {
         int fabInset = WenPremiumLayout.fabSideInsetDp(this);
         fabParams.setMargins(Ui.dp(this, fabInset), 0, Ui.dp(this, fabInset),
                 WenPremiumLayout.fabBottomOffset(this));
-        // Render a *real*, subtle 4dp backdrop blur beneath the translucent FAB.
-        // Capture only the small FAB-sized region of the scroll content; never
-        // the full screen, and never save account contents to disk.
-        android.widget.ImageView fabBlur = new android.widget.ImageView(this);
-        fabBlur.setScaleType(android.widget.ImageView.ScaleType.FIT_XY);
-        fabBlur.setClipToOutline(true);
-        fabBlur.setOutlineProvider(fab.getOutlineProvider());
-        fabBlur.setRenderEffect(android.graphics.RenderEffect.createBlurEffect(
-                Ui.dp(this, 5), Ui.dp(this, 5),
-                android.graphics.Shader.TileMode.CLAMP));
-        // Neutral-frosted lens: bank icons behind the FAB must never stain
-        // the clear button magenta/green. This filter affects ONLY the small
-        // in-memory FAB background sample, not the actual account artwork.
-        android.graphics.ColorMatrix frostNeutral = new android.graphics.ColorMatrix();
-        frostNeutral.setSaturation(.08f);
-        fabBlur.setColorFilter(new android.graphics.ColorMatrixColorFilter(frostNeutral));
-        fabBlur.setAlpha(1f);
-        fabBlur.setClickable(false);
-        fabBlur.setFocusable(false);
-        FrameLayout.LayoutParams blurParams = new FrameLayout.LayoutParams(
-                fabSize, fabSize, Gravity.BOTTOM | fabGravity);
-        blurParams.setMargins(Ui.dp(this, fabInset), 0, Ui.dp(this, fabInset),
-                WenPremiumLayout.fabBottomOffset(this));
-        root.addView(fabBlur, blurParams);
+        // True live-translucent glass: no detached bitmap or frozen backdrop.
+        // Underlying cards scroll directly behind the semi-transparent bubble
+        // every frame with zero offscreen capture or extra view.
         root.addView(fab, fabParams);
-        WenFabBackdropBlur fabBlurController =
-                new WenFabBackdropBlur(root, scroll, fab, fabBlur);
-        root.post(fabBlurController::refresh);
         final boolean[] chromeHidden = {false};
         final int[] upwardTravel = {0};
         final View topBarBackground = topBar.findViewWithTag("main_header_background");
         scroll.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
             int delta = scrollY - oldScrollY;
             updateHeaderGlass(topBarBackground, scrollY);
-            fabBlurController.refreshIfDue();
             if (delta < 0) upwardTravel[0] += -delta; else if (delta > 0) upwardTravel[0] = 0;
             boolean hide = scrollY > Ui.dp(this, 48) && delta > Ui.dp(this, 1);
             boolean showAtTop = scrollY <= Ui.dp(this, 10);
@@ -540,12 +515,10 @@ public final class MainActivity extends Activity {
                     bottomNav.setVisibility(View.INVISIBLE);
                     fab.animate().cancel();
                     fab.setTranslationY(Ui.dp(this, 70));
-                    fabBlur.setTranslationY(Ui.dp(this, 70));
                 } else {
                     bottomNav.animate().translationY(Ui.dp(this, 76)).alpha(0f).setDuration(220)
                             .withEndAction(() -> { if (chromeHidden[0]) bottomNav.setVisibility(View.INVISIBLE); }).start();
                     fab.animate().translationY(Ui.dp(this, 70)).setDuration(220).start();
-                    fabBlur.animate().translationY(Ui.dp(this, 70)).setDuration(220).start();
                 }
             } else if ((showAtTop || showWhileAscending) && chromeHidden[0]) {
                 chromeHidden[0] = false;
@@ -557,13 +530,11 @@ public final class MainActivity extends Activity {
                     bottomNav.setTranslationY(0f);
                     fab.animate().cancel();
                     fab.setTranslationY(0f);
-                    fabBlur.setTranslationY(0f);
                 } else {
                     bottomNav.setAlpha(0f);
                     bottomNav.setTranslationY(Ui.dp(this, 76));
                     bottomNav.animate().translationY(0f).alpha(1f).setDuration(220).start();
                     fab.animate().translationY(0f).setDuration(220).start();
-                    fabBlur.animate().translationY(0f).setDuration(220).start();
                 }
             }
         });
