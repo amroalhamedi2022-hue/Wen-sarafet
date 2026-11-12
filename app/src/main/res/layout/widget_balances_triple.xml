@@ -13,7 +13,7 @@
  android:layout_weight="1" android:orientation="vertical" android:gravity="center"
  android:paddingLeft="2dp" android:paddingRight="2dp">
  <ImageView android:layout_width="47dp" android:layout_height="47dp" android:layout_gravity="center_horizontal" android:scaleType="fitCenter"
- android:src="@drawable/icon_palpay_widget_soft" android:alpha="0.87" android:contentDescription="PalPay"/>
+ android:src="@drawable/icon_palpay_widget_soft" android:alpha="0.94" android:scaleX="1.16" android:scaleY="1.16" android:contentDescription="PalPay"/>
  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center"
  android:text="PalPay" android:textColor="#F8FAFF" android:fontFamily="sans-serif-medium"
  android:textSize="10.5sp" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
@@ -25,7 +25,7 @@
  android:layout_weight="1" android:orientation="vertical" android:gravity="center"
  android:paddingLeft="2dp" android:paddingRight="2dp">
  <ImageView android:layout_width="47dp" android:layout_height="47dp" android:layout_gravity="center_horizontal" android:scaleType="fitCenter"
- android:src="@drawable/icon_jawwal_pay_widget_soft" android:alpha="0.87" android:contentDescription="Jawwal Pay"/>
+ android:src="@drawable/icon_jawwal_pay_widget_soft" android:alpha="0.94" android:scaleX="1.16" android:scaleY="1.16" android:contentDescription="Jawwal Pay"/>
  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center"
  android:text="Jawwal Pay" android:textColor="#F8FAFF" android:fontFamily="sans-serif-medium"
  android:textSize="10.5sp" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>
@@ -38,7 +38,7 @@
  android:layout_weight="1" android:orientation="vertical" android:gravity="center"
  android:paddingLeft="2dp" android:paddingRight="2dp">
  <ImageView android:layout_width="47dp" android:layout_height="47dp" android:layout_gravity="center_horizontal" android:scaleType="fitCenter"
- android:src="@drawable/icon_bop_widget_soft" android:alpha="0.87" android:contentDescription="بنك فلسطين"/>
+ android:src="@drawable/icon_bop_widget_soft" android:alpha="0.94" android:scaleX="1.16" android:scaleY="1.16" android:contentDescription="بنك فلسطين"/>
  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center"
  android:text="بنك فلسطين" android:textColor="#F8FAFF" android:fontFamily="sans-serif-medium"
  android:textSize="10.5sp" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false"/>

@@ -69,7 +69,7 @@ public final class WidgetPreviewActivity extends Activity {
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(14),dp(32),dp(14),dp(24));
         add(content, heading("DARK CRYSTAL  ·  WIDGET LAB", 16f), -1, -2, 6);
-        add(content, heading("Actual Android RemoteViews preview • sandbox 2.2", 11f), -1, -2, 28);
+        add(content, heading("Actual Android RemoteViews preview • sandbox 2.2.1", 11f), -1, -2, 28);
         add(content, inflated(R.layout.widget_balances, "", ""), 300, 158, 22);
         add(content, inflated(R.layout.widget_balances_triple, "", ""), 320, 142, 22);
         LinearLayout row = new LinearLayout(this);
@@ -90,6 +90,25 @@ public final class WidgetPreviewActivity extends Activity {
         row2.addView(jaw1,p2);
         row2.addView(jaw2,new LinearLayout.LayoutParams(dp(136),dp(145)));
         add(content,row2,-1,-2,22);
+        // Debug-only real drawable samples: verifies the FAB has NO internal
+        // white radial light. The production FAB has the exact same Drawable.
+        add(content, heading("FLAT GLASS FAB  ·  LIGHT / DARK", 11f), -1, -2, 8);
+        LinearLayout fabSamples = new LinearLayout(this);
+        fabSamples.setGravity(Gravity.CENTER);
+        fabSamples.setOrientation(LinearLayout.HORIZONTAL);
+        TextView lightFab = heading("+", 28f);
+        lightFab.setTextColor(0xFF23404F);
+        lightFab.setIncludeFontPadding(false);
+        lightFab.setBackground(new app.wensarafet.glass.WenFabBubbleDrawable(this, false));
+        TextView darkFab = heading("+", 28f);
+        darkFab.setTextColor(Color.WHITE);
+        darkFab.setIncludeFontPadding(false);
+        darkFab.setBackground(new app.wensarafet.glass.WenFabBubbleDrawable(this, true));
+        LinearLayout.LayoutParams fp1 = new LinearLayout.LayoutParams(dp(66), dp(66));
+        fp1.rightMargin = dp(25);
+        fabSamples.addView(lightFab, fp1);
+        fabSamples.addView(darkFab, new LinearLayout.LayoutParams(dp(66), dp(66)));
+        add(content, fabSamples, -1, -2, 18);
         add(content, heading("UI optics and wallet logic in main app are unchanged.", 11f),-1,-2,4);
         scroll.addView(content);
         root.addView(scroll);

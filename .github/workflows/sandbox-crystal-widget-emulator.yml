@@ -35,6 +35,8 @@ jobs:
               }
           }
           GRADLE
+      - name: Source-only widget and golden frame-budget regression
+        run: python3 tests/wen_widget_fab_gold_optics_contract.py
       - name: Compile visual sandbox
         run: gradle :app:assembleDebug --no-daemon --console=plain
       - name: KVM permissions
