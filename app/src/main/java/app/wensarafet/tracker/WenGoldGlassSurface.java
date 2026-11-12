@@ -11,6 +11,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LayerDrawable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -69,36 +70,18 @@ final class WenGoldGlassSurface {
         Context context=content.getContext();
         if (!enabled(context)) return content;
 
-        FrameLayout host=new FrameLayout(context);
-        // Preserve caller-provided LinearLayout.LayoutParams, weight and
-        // margins exactly, especially the three financial statistic cards.
-        ViewGroup.LayoutParams originalParams=content.getLayoutParams();
-        if(originalParams!=null)host.setLayoutParams(originalParams);
-        host.setClipChildren(false);
-        host.setClipToPadding(false);
-        host.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-
-        // On the three golden themes the previous layout mounted a dedicated
-        // native LiquidGlassView per statistic/account/chart tile. Each one
-        // sampled the backdrop, which caused expensive overlapping GPU passes
-        // during scroll, especially on Android 13. The existing premium
-        // background Drawable already caches its shader on bounds changes.
-        // Re-use that drawable with one inexpensive specular edge instead.
-        // No database state, listeners, text or original card geometry changes.
+        // Existing hierarchy used a nested FrameLayout + an extra specular
+        // View per card. Combine those exact visual layers inside the CARD's
+        // background itself: fewer View nodes, measure/layout passes and
+        // render nodes, same paint order behind the data-bearing children.
         Drawable original=content.getBackground();
-        if (original != null) host.setBackground(original.mutate());
-        content.setBackground(null);
-        content.setElevation(0f);
-        View specular=new View(context);
-        specular.setBackground(new Specular(context,Ui.themeIndex(context),radiusDp));
-        specular.setClickable(false);
-        specular.setFocusable(false);
-        specular.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        host.addView(specular,new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
-        host.addView(content,new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
-        return host;
+        if(original==null)return content;
+        Drawable optics=new Specular(context,Ui.themeIndex(context),radiusDp);
+        LayerDrawable preservedOptics=new LayerDrawable(
+                new Drawable[]{original.mutate(),optics});
+        content.setBackground(preservedOptics);
+        content.setElevation(0f); // the original optical host had no elevation
+        return content;
     }
 
     /** Paint only top 15% + one perimeter stroke; cached until bounds change. */

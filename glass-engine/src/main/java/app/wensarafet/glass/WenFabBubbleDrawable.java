@@ -9,66 +9,63 @@ import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 
 /**
- * Owner-approved flat clear-glass FAB. One uniform translucent fill, one quiet
- * perimeter stroke, and NO internal radial highlight, caustic, bloom or shader.
- * Touch and navigation listeners stay in Ui/MainActivity, unchanged.
+ * Lightweight live-through FAB lens. Its transparent center is composited
+ * directly over the CURRENT pixels behind the button on every frame.
+ * No stored backdrop, frozen image, blur layer, internal glare or gradient.
+ * The optically soft ~1dp edge is anti-aliased; not a 5dp Gaussian blur.
+ * The original press/getPress contract remains unchanged.
  */
 public final class WenFabBubbleDrawable extends Drawable {
+    private final Paint glass = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final float density;
-    private final float bodyOpacity;
-    private final float rimOpacity;
-    private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final float glassOpacity;
+    private final float edgeOpacity;
+    private float cx,cy,radius;
     private float press;
-    private int alpha = 255;
-    private float centerX, centerY, radius;
+    private int alpha=255;
 
     public WenFabBubbleDrawable(Context context, boolean dark) {
-        density = context.getResources().getDisplayMetrics().density;
-        fill.setColor(dark ? 0xFF343D47 : 0xFFF8FCFF);
-        rim.setColor(dark ? 0xFFC8DAE6 : 0xFFEAF7FF);
-        bodyOpacity = dark ? .78f : .82f;
-        rimOpacity = dark ? .58f : .56f;
-        rim.setStyle(Paint.Style.STROKE);
-        rim.setStrokeWidth(Math.max(density * 0.85f, 1f));
+        density=context.getResources().getDisplayMetrics().density;
+        // Low-opacity neutral tint: the underlying text/cards remain LIVE.
+        // Never baked into a screenshot, and no colored theme paint is added.
+        glass.setColor(dark?0xFFF0F5F8:0xFFFFFFFF);
+        edge.setColor(dark?0xFFE2EDF3:0xFFFFFFFF);
+        glassOpacity=dark?.17f:.15f;
+        edgeOpacity=dark?.46f:.52f;
+        edge.setStyle(Paint.Style.STROKE);
+        edge.setStrokeWidth(Math.max(1f,.85f*density));
     }
 
-    @Override protected void onBoundsChange(Rect bounds) {
-        centerX = bounds.exactCenterX();
-        centerY = bounds.exactCenterY();
-        radius = Math.max(0f, Math.min(bounds.width(), bounds.height()) * .5f
-                - Math.max(1f, density * 1.35f));
+    @Override protected void onBoundsChange(Rect b) {
+        cx=b.exactCenterX();
+        cy=b.exactCenterY();
+        radius=Math.max(0f,Math.min(b.width(),b.height())*.5f-1.2f*density);
     }
 
-    public float getPress() { return press; }
-
+    public float getPress(){return press;}
     public void setPress(float fraction) {
-        float next = Math.max(0f, Math.min(1f, fraction));
-        if (Math.abs(next - press) < .005f) return;
-        press = next;
-        invalidateSelf();
+        float next=Math.max(0f,Math.min(1f,fraction));
+        if(Math.abs(next-press)<.005f)return;
+        press=next;invalidateSelf();
     }
 
     @Override public void draw(Canvas canvas) {
-        if (radius <= 0f) return;
-        // Subtle opacity shift is UNIFORM across the complete circle during hold.
-        // It cannot introduce a white spot or fractured optical interior.
-        fill.setAlpha(Math.round(alpha * bodyOpacity * (1f - .08f * press)));
-        rim.setAlpha(Math.round(alpha * rimOpacity * (.82f + .12f * press)));
-        canvas.drawCircle(centerX, centerY, radius, fill);
-        canvas.drawCircle(centerX, centerY, radius, rim);
+        if(radius<=0f)return;
+        // Press changes alpha uniformly. No localized white halo or lens bump.
+        glass.setAlpha(Math.round(alpha*glassOpacity*(1f-.05f*press)));
+        edge.setAlpha(Math.round(alpha*edgeOpacity*(.96f+.04f*press)));
+        canvas.drawCircle(cx,cy,radius,glass);
+        canvas.drawCircle(cx,cy,radius,edge);
     }
-
     @Override public void setAlpha(int value) {
-        alpha = Math.max(0, Math.min(255, value));
+        alpha=Math.max(0,Math.min(255,value));
         invalidateSelf();
     }
-
     @Override public void setColorFilter(ColorFilter filter) {
-        fill.setColorFilter(filter);
-        rim.setColorFilter(filter);
+        glass.setColorFilter(filter);
+        edge.setColorFilter(filter);
         invalidateSelf();
     }
-
-    @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    @Override public int getOpacity(){return PixelFormat.TRANSLUCENT;}
 }
