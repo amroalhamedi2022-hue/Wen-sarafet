@@ -43,6 +43,7 @@ allowed = {
     "glass-engine/src/main/java/app/wensarafet/glass/WenPremiumLiquidDrawable.java",
     "scripts/test_core.sh",
     "scripts/build_apk.sh",
+    "scripts/audit_recovered_source.sh",
     "scripts/sign_verified_upgrade.sh",
     "scripts/verify_upgrade_apk.sh",
     "tests/original_180_upgrade_contract.py",
