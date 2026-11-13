@@ -22,7 +22,7 @@ command = ('set -euo pipefail\nPROJECT_DIR="$1"\n'
            + '\nprintf "%s|%s" "$APP_VERSION_CODE" "$APP_VERSION_NAME"\n')
 parsed = subprocess.run(["bash", "-c", command, "bash", str(root)],
                         capture_output=True, text=True, check=True)
-assert parsed.stdout == "31|2.2.5", parsed
+assert parsed.stdout == "32|2.2.6", parsed
 
 cert = "6b8268e5b647b12a2aa055d7a22f7b8ea888e40fb863e74409938aad4ec789c9"
 with tempfile.TemporaryDirectory() as directory:
@@ -62,9 +62,9 @@ case "$2" in
       *current-200*) code=28 ;;
       *current-210*) code=29 ;;
       *current-220*) code=30 ;;
-      *) code=31 ;;
+      *) code=32 ;;
     esac
-    echo "package: name='$pkg' versionCode='$code' versionName='2.2.5'"
+    echo "package: name='$pkg' versionCode='$code' versionName='2.2.6'"
     ;;
   xmltree)
     case "$3" in
@@ -102,7 +102,7 @@ esac
         ["bash", str(checker), str(trusted188), str(home / "candidate.apk")],
         env=env, capture_output=True, text=True,
     )
-    assert verified188.returncode == 0 and "24 -> 31" in verified188.stdout, (
+    assert verified188.returncode == 0 and "24 -> 32" in verified188.stdout, (
         verified188.stdout, verified188.stderr
     )
     # Validate every newer original-signed predecessor without replacing the signer gate.
@@ -118,7 +118,7 @@ esac
             ["bash", str(checker), str(prior), str(home / "candidate.apk")],
             env=env, capture_output=True, text=True,
         )
-        assert verified.returncode == 0 and f"{old_code} -> 31" in verified.stdout, (
+        assert verified.returncode == 0 and f"{old_code} -> 32" in verified.stdout, (
             old_name, verified.stdout, verified.stderr
         )
     stale = home / "same-as-current.apk"

@@ -1941,18 +1941,19 @@ public final class FinanceDbHelper extends SQLiteOpenHelper {
                 String required = FinanceRules.INCOME.equals(type) ? FinanceRules.DEBT_RECEIVABLE : FinanceRules.DEBT_PAYABLE;
                 if (!required.equals(direction)) throw new IllegalArgumentException("اتجاه السداد لا يطابق اتجاه العملية المالية");
             }
-            long oldImpact = postedBalanceImpact(writable, transactionId);
+            long oldImpact = affectsBalance ? postedBalanceImpact(writable, transactionId) : 0L;
             ensureDebtOpeningCanBeRemoved(writable, transactionId);
-            if (affectsBalance) reverseBalanceEffect(writable, type, oldImpact, sourceId, destinationId);
             List<Long> oldDebts = removeDebtMovementsForTransaction(writable, transactionId);
             for (Long debtId : oldDebts) recomputeDebt(writable, debtId);
             writable.delete("transaction_splits", "transaction_id=?", new String[]{String.valueOf(transactionId)});
             ContentValues values = new ContentValues(); values.putNull("destination_account_id"); values.putNull("category_id");
             values.put("special_kind", specialKind); values.put("debt_person_id", personId); values.put("debt_direction", direction);
             boolean actualMoney = baseAffects;
-            values.put("affects_balance", actualMoney ? 1 : 0); values.put("balance_impact_minor", actualMoney ? amount : 0L); values.put("needs_review", 0);
+            long newImpact = actualMoney ? amount : 0L;
+            values.put("affects_balance", actualMoney ? 1 : 0); values.put("balance_impact_minor", newImpact); values.put("needs_review", 0);
             writable.update("transactions", values, "id=?", new String[]{String.valueOf(transactionId)});
-            if (actualMoney) applyBalanceEffect(writable, type, amount, sourceId, null);
+            long netBalanceDelta = BalanceReclassificationRules.netDelta(type, oldImpact, newImpact);
+            if (netBalanceDelta != 0L) adjustBalance(writable, sourceId, netBalanceDelta);
             if (FinanceRules.SPECIAL_DEBT.equals(specialKind)) {
                 long debtId = findOrCreateOpenDebt(writable, personId, direction, currency, note, createdAt);
                 insertDebtMovement(writable, debtId, transactionId, "OPEN", amount, createdAt, note); recomputeDebt(writable, debtId);
