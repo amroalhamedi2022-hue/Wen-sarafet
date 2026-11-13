@@ -79,7 +79,7 @@ jobs:
       - name: Upload UNSIGNED original application package for private offline signing
         uses: actions/upload-artifact@v4
         with:
-          name: wen-2-1-original-package-unsigned
-          path: build/unsigned/Wen-Sarafet-2.1-aligned-UNSIGNED.apk
+          name: wen-2-2-5-original-package-unsigned
+          path: build/unsigned/Wen-Sarafet-2.2.5-aligned-UNSIGNED.apk
           if-no-files-found: error
           retention-days: 2
