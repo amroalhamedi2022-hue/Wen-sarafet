@@ -20,7 +20,7 @@ ECJ_JAR="${ECJ_JAR:-}"
 GRADLE_CONFIG="$PROJECT_DIR/app/build.gradle"
 APP_VERSION_CODE="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*$/\1/p' "$GRADLE_CONFIG" | head -1)"
 APP_VERSION_NAME="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\1/p' "$GRADLE_CONFIG" | head -1)"
-[[ "$APP_VERSION_CODE" =~ ^[0-9]+$ && "$APP_VERSION_CODE" -gt 16 && "$APP_VERSION_NAME" =~ ^(1\.(8\.[0-9]+|9)|2\.(0|1))$ ]] || {
+[[ "$APP_VERSION_CODE" =~ ^[0-9]+$ && "$APP_VERSION_CODE" -gt 16 && "$APP_VERSION_NAME" =~ ^(1\.(8\.[0-9]+|9)|2\.[0-9]+(\.[0-9]+)?)$ ]] || {
   echo "Refusing to build: missing/invalid newer release metadata in app/build.gradle" >&2; exit 1;
 }
 SIGNING_KEY_ALIAS="${SIGNING_KEY_ALIAS:-wen-sarafet-test}"

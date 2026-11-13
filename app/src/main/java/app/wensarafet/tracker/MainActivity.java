@@ -101,7 +101,7 @@ public final class MainActivity extends Activity {
             super.setContentView(screenHost);
             screenHost.addView(next, match);
             activeScreen = next;
-            if (Ui.isLiquidTheme(this)
+            if ((Ui.isLiquidTheme(this) || visualMotion.hasFabTransition())
                     && visualMotion.transition(screenHost, null, next,
                             startupResolved && db != null && !addScreenVisible
                                     && !subScreenVisible && !lockScreenVisible
@@ -126,7 +126,7 @@ public final class MainActivity extends Activity {
         activeScreen = next;
         // Only the VIEW transition is replaced for opt-in Liquid designs.
         // If disabled or on a protected screen, the original path remains.
-        if (Ui.isLiquidTheme(this)
+        if ((Ui.isLiquidTheme(this) || visualMotion.hasFabTransition())
                 && visualMotion.transition(screenHost, previous, next,
                         startupResolved && db != null && !addScreenVisible
                                 && !subScreenVisible && !lockScreenVisible
@@ -476,17 +476,16 @@ public final class MainActivity extends Activity {
         fab.setContentDescription("إضافة عملية");
         fab.setTag("wen_intro_fab");
         fab.setOnClickListener(v -> {
-            if (Ui.isLiquidTheme(this)) visualMotion.markFabTap(v, screenHost);
+            // The FAB reveal is identical in every theme. This remains a
+            // view-only transition and never delays or replaces the action.
+            visualMotion.markFabTap(v, screenHost);
             showAddTransaction(); // exact same original action, still immediate
         });
         // Absolute LEFT/RIGHT is essential on an RTL root: START maps to the
         // right side, contrary to the user's saved home_fab_right preference.
-        // Five approved premium scenes restore the reference FAB on the LEFT
-        // by default; an explicit user choice of right stays honoured.
-        int fabGravity = app.wensarafet.glass.WenPremiumLiquidDrawable
-                .supports(Ui.themeIndex(this))
-                ? (Ui.homeFabOnRight(this) ? Gravity.RIGHT : Gravity.LEFT)
-                : (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START);
+        // Every theme uses the same absolute positioning contract: LEFT is the
+        // default, while an explicit saved RIGHT choice remains honoured.
+        int fabGravity = Ui.homeFabOnRight(this) ? Gravity.RIGHT : Gravity.LEFT;
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(
                 fabSize, fabSize, Gravity.BOTTOM | fabGravity);
         int fabInset = WenPremiumLayout.fabSideInsetDp(this);

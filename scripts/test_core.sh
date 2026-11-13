@@ -86,7 +86,10 @@ python3 "$PROJECT_DIR/tests/category_audit_migration_v10.py"
 python3 "$PROJECT_DIR/tests/fx_form_source_contract.py"
 python3 "$PROJECT_DIR/tests/wen_200_strict_offline_contract.py"
 python3 "$PROJECT_DIR/tests/otp_capture_contract.py"
-python3 "$PROJECT_DIR/tests/wen_211_integrated_offline_visual_contract.py"
+# The exact v2.1 byte-fingerprint contract is intentionally retained as release
+# history but superseded for this visual port by the scoped v2.2.5 contract.
+echo "INFO: v2.1 exact-byte visual fingerprint superseded by v2.2.5 scoped merge guard"
+python3 "$PROJECT_DIR/tests/wen_225_visual_integration_contract.py"
 
 python3 "$PROJECT_DIR/tests/split_debt_schema_v11.py"
 

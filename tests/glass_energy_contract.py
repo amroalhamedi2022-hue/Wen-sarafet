@@ -68,7 +68,7 @@ assert "DARK = theme == 20 ||" in ui
 for name in ["زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد"]:
     assert name in ui
 
-# Optical parity contract: cached radial bloom and double glass rim, zero redraw loop.
+# Optical parity contract for non-FAB surfaces; zero recurring redraw loop.
 backdrop = (root / "glass-engine/src/main/java/app/wensarafet/glass/WenGlassBackdropDrawable.java").read_text(encoding="utf-8")
 assert "new RadialGradient" in backdrop
 assert "onBoundsChange" in backdrop
@@ -96,7 +96,9 @@ assert "if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return false
 assert "ViewPropertyAnimator" not in engine
 fab_bubble = (root / "glass-engine/src/main/java/app/wensarafet/glass/WenFabBubbleDrawable.java").read_text(encoding="utf-8")
 assert "public float getPress()" in fab_bubble and "public void setPress(float fraction)" in fab_bubble
-assert "new RadialGradient" in fab_bubble, "Real pearly FAB depth must be restored"
+assert "new RadialGradient" not in fab_bubble, "FAB must not restore the rejected inner glow"
+assert "Bitmap" not in fab_bubble and "RenderEffect" not in fab_bubble
+assert "canvas.drawCircle" in fab_bubble, "FAB must remain a one-pass live translucent circle"
 assert "Timer" not in fab_bubble and "postDelayed" not in fab_bubble
 assert "return false; // Never steal existing FAB click/hold actions." in ui
 

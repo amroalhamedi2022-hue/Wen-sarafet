@@ -8,8 +8,8 @@ android {
         applicationId "app.wensarafet.tracker"
         minSdk 33
         targetSdk 35
-        versionCode 29
-        versionName "2.1"
+        versionCode 31
+        versionName "2.2.5"
         // Test APK only; the release applicationId, permissions and signing stay identical.
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

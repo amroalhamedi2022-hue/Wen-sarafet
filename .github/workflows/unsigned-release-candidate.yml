@@ -44,13 +44,13 @@ jobs:
         run: |
           set -euo pipefail
           INPUT="app/build/outputs/apk/release/app-release-unsigned.apk"
-          OUTPUT="build/unsigned/Wen-Sarafet-2.1-aligned-UNSIGNED.apk"
+          OUTPUT="build/unsigned/Wen-Sarafet-2.2.5-aligned-UNSIGNED.apk"
           test -s "$INPUT"
           mkdir -p build/unsigned
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -P 16 -v 4 "$INPUT" "$OUTPUT"
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$OUTPUT"
           BADGING="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$OUTPUT")"
-          grep -Fq "package: name='app.wensarafet.tracker' versionCode='29' versionName='2.1'" <<< "$BADGING"
+          grep -Fq "package: name='app.wensarafet.tracker' versionCode='31' versionName='2.2.5'" <<< "$BADGING"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$OUTPUT" | head -4
           if "$ANDROID_HOME/build-tools/35.0.0/aapt" dump xmltree "$OUTPUT" AndroidManifest.xml | grep -Eq 'android:debuggable.*0xffffffff'; then
             echo 'ERROR: release is debuggable' >&2
