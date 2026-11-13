@@ -16,14 +16,26 @@ public class QuickActionWidgetProvider extends AppWidgetProvider {
     protected int iconResource() { return R.mipmap.ic_launcher; }
     protected String brandWord() { return ""; }
 
+    private static int crystalMaterial(String action) {
+        if ("bop".equals(action)) return R.drawable.widget_crystal_quick_bop;
+        if ("palpay".equals(action)) return R.drawable.widget_crystal_quick_palpay;
+        return R.drawable.widget_crystal_quick_jawwal;
+    }
+
     @Override public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         for (int id : ids) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_quick_action);
             views.setTextViewText(R.id.widget_title, title());
             views.setTextViewText(R.id.widget_subtitle, subtitle());
-            views.setImageViewResource(R.id.widget_background_image, iconResource());
+            // Place original transparent brand artwork on the optical glass;
+            // avoid the previous opaque brand-coloured app-icon squares.
+            int crystalLogo = "bop".equals(action()) ? R.drawable.icon_bop_widget_soft :
+                    "palpay".equals(action()) ? R.drawable.icon_palpay_widget_soft :
+                            R.drawable.icon_jawwal_pay_widget_soft;
+            views.setImageViewResource(R.id.widget_background_image, crystalLogo);
+            views.setImageViewResource(R.id.widget_crystal_glass, crystalMaterial(action()));
             views.setTextViewText(R.id.widget_brand_word, brandWord());
-            views.setViewVisibility(R.id.widget_brand_word, brandWord().isEmpty() ? View.GONE : View.VISIBLE);
+            views.setViewVisibility(R.id.widget_brand_word, View.GONE); // artwork already contains brand word
             boolean active = LicenseManager.isActivated(context);
             if (!active) views.setTextViewText(R.id.widget_subtitle, "اضغط لتفعيل التطبيق");
             Intent intent = active ? new Intent(context, QuickActionActivity.class).putExtra("action", action())
@@ -31,18 +43,6 @@ public class QuickActionWidgetProvider extends AppWidgetProvider {
             intent.setData(Uri.parse("wensarafet://quick/" + action() + "/" + id));
             PendingIntent pending = PendingIntent.getActivity(context, 9000 + id, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             views.setOnClickPendingIntent(R.id.widget_root, pending);
-            boolean canChooseContact=active && ("jawwal_friend".equals(action())
-                    || "jawwal_merchant".equals(action()) || "palpay".equals(action()));
-            views.setViewVisibility(R.id.widget_choose_contact,
-                    canChooseContact ? View.VISIBLE : View.GONE);
-            if(canChooseContact) {
-                Intent pick=new Intent(context,QuickActionActivity.class)
-                        .putExtra("action",action()).putExtra("pick_contact",true);
-                pick.setData(Uri.parse("wensarafet://contact/"+action()+"/"+id));
-                PendingIntent contactPending=PendingIntent.getActivity(context,19000+id,pick,
-                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-                views.setOnClickPendingIntent(R.id.widget_choose_contact,contactPending);
-            }
             manager.updateAppWidget(id, views);
         }
     }

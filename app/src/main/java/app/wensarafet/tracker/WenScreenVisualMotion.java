@@ -62,7 +62,7 @@ public final class WenScreenVisualMotion {
     }
 
     public void markFabTap(View fab, FrameLayout root) {
-        if (fab == null || root == null || !Ui.isLiquidTheme(context)) return;
+        if (fab == null || root == null) return;
         int[] position = new int[2];
         int[] origin = new int[2];
         fab.getLocationOnScreen(position);
@@ -72,6 +72,9 @@ public final class WenScreenVisualMotion {
         fabRadius = Math.max(1, Math.min(fab.getWidth(), fab.getHeight()) / 2);
         fabOpening = true;
     }
+
+    /** True only while the shared FAB reveal (or its reverse) owns the screen. */
+    public boolean hasFabTransition() { return fabOpening || currentIsFabPage; }
 
     private static void removeIfAttached(FrameLayout host, View oldView) {
         if (oldView != null && oldView.getParent() == host) {
@@ -175,7 +178,10 @@ public final class WenScreenVisualMotion {
      */
     public boolean transition(FrameLayout host, View previous, View next,
                               boolean targetPrimary, int tab) {
-        if (!Ui.isLiquidTheme(context) || host == null || next == null) return false;
+        // Legacy themes opt in only for the FAB reveal requested by the owner;
+        // their existing tab/page motion remains otherwise unchanged.
+        if ((!Ui.isLiquidTheme(context) && !hasFabTransition())
+                || host == null || next == null) return false;
         final int token = ++visualGeneration;
         if (!animate()) {
             if (fabOpening) currentIsFabPage = true;

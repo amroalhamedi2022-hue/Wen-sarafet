@@ -101,7 +101,7 @@ public final class MainActivity extends Activity {
             super.setContentView(screenHost);
             screenHost.addView(next, match);
             activeScreen = next;
-            if (Ui.isLiquidTheme(this)
+            if ((Ui.isLiquidTheme(this) || visualMotion.hasFabTransition())
                     && visualMotion.transition(screenHost, null, next,
                             startupResolved && db != null && !addScreenVisible
                                     && !subScreenVisible && !lockScreenVisible
@@ -126,7 +126,7 @@ public final class MainActivity extends Activity {
         activeScreen = next;
         // Only the VIEW transition is replaced for opt-in Liquid designs.
         // If disabled or on a protected screen, the original path remains.
-        if (Ui.isLiquidTheme(this)
+        if ((Ui.isLiquidTheme(this) || visualMotion.hasFabTransition())
                 && visualMotion.transition(screenHost, previous, next,
                         startupResolved && db != null && !addScreenVisible
                                 && !subScreenVisible && !lockScreenVisible
@@ -451,8 +451,8 @@ public final class MainActivity extends Activity {
                 Ui.TEXT, false);
         fab.setIncludeFontPadding(false);
         fab.setGravity(Gravity.CENTER);
-        // All themes share the same colourless optical bubble; the real
-        // add action, original hit target and on-click behaviour are unchanged.
+        // This is a one-pass live translucent glass surface. The underlying
+        // real background stays visible and in motion; only visuals change.
         fab.setBackground(Ui.glassFloatingAddBackground(this));
         // A hard circular outline (from Sandbox 1.8.8) prevents Android's
         // rectangular default shadow/ripple on Pixel and MIUI renderers.
@@ -470,26 +470,30 @@ public final class MainActivity extends Activity {
             }
         });
         fab.setClipToOutline(true);
-        fab.setElevation(Ui.dp(this, 3));
+        // A raised Android shadow produced the thick grey double-ring in the
+        // owner's screenshot. The matte rim comes solely from the FAB drawable.
+        fab.setElevation(0f);
         fab.setContentDescription("إضافة عملية");
         fab.setTag("wen_intro_fab");
         fab.setOnClickListener(v -> {
-            if (Ui.isLiquidTheme(this)) visualMotion.markFabTap(v, screenHost);
+            // The FAB reveal is identical in every theme. This remains a
+            // view-only transition and never delays or replaces the action.
+            visualMotion.markFabTap(v, screenHost);
             showAddTransaction(); // exact same original action, still immediate
         });
         // Absolute LEFT/RIGHT is essential on an RTL root: START maps to the
         // right side, contrary to the user's saved home_fab_right preference.
-        // Five approved premium scenes restore the reference FAB on the LEFT
-        // by default; an explicit user choice of right stays honoured.
-        int fabGravity = app.wensarafet.glass.WenPremiumLiquidDrawable
-                .supports(Ui.themeIndex(this))
-                ? (Ui.homeFabOnRight(this) ? Gravity.RIGHT : Gravity.LEFT)
-                : (Ui.homeFabOnRight(this) ? Gravity.END : Gravity.START);
+        // Every theme uses the same absolute positioning contract: LEFT is the
+        // default, while an explicit saved RIGHT choice remains honoured.
+        int fabGravity = Ui.homeFabOnRight(this) ? Gravity.RIGHT : Gravity.LEFT;
         FrameLayout.LayoutParams fabParams = new FrameLayout.LayoutParams(
                 fabSize, fabSize, Gravity.BOTTOM | fabGravity);
         int fabInset = WenPremiumLayout.fabSideInsetDp(this);
         fabParams.setMargins(Ui.dp(this, fabInset), 0, Ui.dp(this, fabInset),
                 WenPremiumLayout.fabBottomOffset(this));
+        // True live-translucent glass: no detached bitmap or frozen backdrop.
+        // Underlying cards scroll directly behind the semi-transparent bubble
+        // every frame with zero offscreen capture or extra view.
         root.addView(fab, fabParams);
         final boolean[] chromeHidden = {false};
         final int[] upwardTravel = {0};
@@ -1322,9 +1326,14 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(Ui.dp(this, 92), Ui.dp(this, 48)); deleteParams.setMargins(Ui.dp(this, 4), Ui.dp(this, 10), 0, 0);
         actions.addView(edit, editParams); actions.addView(delete, deleteParams); content.addView(actions);
 
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(content, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("تفاصيل العملية")
-                .setView(content)
+                .setView(scroll)
                 .setPositiveButton("إغلاق", null).create();
         edit.setOnClickListener(v -> { dialog.dismiss(); showTransactionEditMenu(tx); });
         delete.setOnClickListener(v -> { dialog.dismiss(); confirmDeleteTransaction(tx); });
@@ -1424,7 +1433,8 @@ public final class MainActivity extends Activity {
         if(FinanceRules.DEBT_RECEIVABLE.equals(tx.debtDirection))receivable.setChecked(true);else payable.setChecked(true);
         form.addView(label("اتجاه الدين"));form.addView(directionGroup,fieldParams());
         form.addView(Ui.text(this,"تغيير التصنيف يفصل العملية عن دفتر الدين، لكنه لا يغيّر المال المدفوع أو المستلم من الحساب. إذا وُجد سداد مرتبط بأصل الدين فلن يُسمح بفك الارتباط حتى تراجعه.",12,Ui.MUTED,false));
-        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تعديل حركة الدين").setView(form).setNeutralButton("تغيير التصنيف",null).setNegativeButton("إلغاء",null).setPositiveButton("حفظ",null).create();
+        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.addView(form);
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تعديل حركة الدين").setView(scroll).setNeutralButton("تغيير التصنيف",null).setNegativeButton("إلغاء",null).setPositiveButton("حفظ",null).create();
         dialog.setOnShowListener(x->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{Long value=Money.parseMinor(amount.getText().toString());if(value==null||value<=0)throw new IllegalArgumentException("اكتب مبلغًا صحيحًا");String direction=receivable.isChecked()?FinanceRules.DEBT_RECEIVABLE:FinanceRules.DEBT_PAYABLE;db.updateDebtTransaction(tx.id,value,people.get(person.getSelectedItemPosition()).id,direction);dialog.dismiss();showMain(transactionsTab);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}});
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{dialog.dismiss();showCategoryPicker(tx,tx.type);});});dialog.show();
     }

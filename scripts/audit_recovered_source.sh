@@ -23,15 +23,16 @@ PY
 version_code="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*$/\1/p' app/build.gradle | head -1)"
 version_name="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\1/p' app/build.gradle | head -1)"
 [[ "$version_code" =~ ^[0-9]+$ && "$version_code" -ge 16 ]]
-[[ "$version_name" =~ ^(1[.](8[.][0-9]+|9)|2[.](0|1))$ ]]
-grep -q 'android:layout_width="60dp"' app/src/main/res/layout/widget_balances.xml
-grep -q 'android:layout_width="54dp"' app/src/main/res/layout/widget_balances_triple.xml
+[[ "$version_name" =~ ^(1[.](8[.][0-9]+|9)|2[.][0-9]+([.][0-9]+)?)$ ]]
+grep -q 'android:scaleX="1.15"' app/src/main/res/layout/widget_balances.xml
+grep -q 'android:scaleX="1.15"' app/src/main/res/layout/widget_balances_triple.xml
 grep -q 'isVerificationMessage' app/src/main/java/app/wensarafet/tracker/CaptureEngine.java
 ! grep -q 'DriveBackupManager' app/src/main/java/app/wensarafet/tracker/MainActivity.java
 grep -q 'addManualDebtPayment' app/src/main/java/app/wensarafet/tracker/FinanceDbHelper.java
 grep -q 'movementKind' app/src/main/java/app/wensarafet/tracker/DebtLedgerRules.java
 grep -q 'finishAfterTransition' app/src/main/java/app/wensarafet/tracker/MainActivity.java
-grep -q '@color/widget_quick_title' app/src/main/res/layout/widget_quick_action.xml
+grep -q '@+id/widget_crystal_glass' app/src/main/res/layout/widget_quick_action.xml
+grep -q '@+id/widget_title' app/src/main/res/layout/widget_quick_action.xml
 
 ! grep -R --exclude='audit_recovered_source.sh' -E 'WenSarafetTest2026|MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg' .
 ! find . -type f \( -name '*.jks' -o -name '*.keystore' \) | grep -q .

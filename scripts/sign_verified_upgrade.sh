@@ -12,7 +12,7 @@ unsigned="$(realpath "$1")"
 gradle="$project/app/build.gradle"
 name="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]+"([^"]+)".*$/\1/p' "$gradle" | head -1)"
 code="$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*$/\1/p' "$gradle" | head -1)"
-[[ "$name" =~ ^(1\.(8\.[0-9]+|9)|2\.(0|1))$ && "$code" =~ ^[0-9]+$ && "$code" -gt 16 ]] || {
+[[ "$name" =~ ^(1\.(8\.[0-9]+|9)|2\.[0-9]+(\.[0-9]+)?)$ && "$code" =~ ^[0-9]+$ && "$code" -gt 16 ]] || {
   echo "BLOCKED: unexpected source version" >&2; exit 1;
 }
 output="${2:-$project/build/owner-release/Wen-Sarafet-${name}-SIGNED.apk}"

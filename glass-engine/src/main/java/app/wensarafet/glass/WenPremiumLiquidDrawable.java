@@ -2,6 +2,7 @@ package app.wensarafet.glass;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
@@ -74,6 +75,13 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bevel = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float radius;
+    // Each passive card is drawn once at its exact pixel size. This reduces
+    // dozens of radial gradient/path operations in golden scrolling frames.
+    // Bounded ARGB_8888 cache (max 2.2 MB per card); it is not screen capture.
+    private Bitmap goldCardCache;
+    private boolean skipCardCache;
+    private final Paint cachedCardPaint =
+            new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
 
     public WenPremiumLiquidDrawable(Context context, int theme,
             WenReferenceGlassDrawable.Surface kind, boolean darkMode) {
@@ -86,7 +94,11 @@ public final class WenPremiumLiquidDrawable extends Drawable {
         ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         lowPower = (power != null && power.isPowerSaveMode())
                 || (manager != null && manager.isLowRamDevice());
+        // The full-screen AGSL sunlight pass was duplicated over two cached
+        // bloom gradients in the gold themes. Their static gradient art stays
+        // intact while avoiding the extra fullscreen fragment shader cost.
         sunField = kind == WenReferenceGlassDrawable.Surface.BACKDROP
+                && !(theme >= ROYAL_DARK && theme <= CHAMPAGNE)
                 ? new WenPremiumSunlight(lowPower) : null;
         rim.setStyle(Paint.Style.STROKE);
         bevel.setStyle(Paint.Style.STROKE);
@@ -150,6 +162,8 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     }
 
     @Override protected void onBoundsChange(Rect r) {
+        goldCardCache=null;
+        skipCardCache=false;
         super.onBoundsChange(r);
         box.set(r);
         silhouette.reset();
@@ -200,7 +214,38 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     }
 
     @Override public void draw(Canvas canvas) {
-        if (box.isEmpty()) return;
+        if(box.isEmpty())return;
+        // Only cached on GOLD cards. Live navigation and lens remain untouched.
+        if(index>=ROYAL_DARK && index<=CHAMPAGNE
+                && surface==WenReferenceGlassDrawable.Surface.CARD
+                && !lowPower && !skipCardCache && canvas.isHardwareAccelerated()) {
+            int width=Math.round(box.width()),height=Math.round(box.height());
+            if(width>0 && height>0 && (long)width*height<=550000L) {
+                if(goldCardCache==null) {
+                    try {
+                        Bitmap raster=Bitmap.createBitmap(
+                                width,height,Bitmap.Config.ARGB_8888);
+                        Canvas offscreen=new Canvas(raster);
+                        offscreen.translate(-box.left,-box.top);
+                        drawFullMaterial(offscreen);
+                        goldCardCache=raster;
+                    } catch (RuntimeException | OutOfMemoryError unsupported) {
+                        // Material remains drawable even without the cache;
+                        // it must never interrupt financial UI.
+                        goldCardCache=null;
+                        skipCardCache=true;
+                    }
+                }
+                if(goldCardCache!=null){
+                    canvas.drawBitmap(goldCardCache,box.left,box.top,cachedCardPaint);
+                    return;
+                }
+            }
+        }
+        drawFullMaterial(canvas);
+    }
+
+    private void drawFullMaterial(Canvas canvas) {
         int saved=canvas.save();
         canvas.clipPath(silhouette);
         canvas.drawRoundRect(box,radius,radius,base);
@@ -224,6 +269,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     }
 
     @Override public void setAlpha(int a) {
+        goldCardCache=null;
         int opacity=Math.max(0,Math.min(255,a));
         base.setAlpha(opacity);
         bloomA.setAlpha(opacity);
@@ -237,6 +283,7 @@ public final class WenPremiumLiquidDrawable extends Drawable {
     }
 
     @Override public void setColorFilter(ColorFilter filter) {
+        goldCardCache=null;
         base.setColorFilter(filter);
         bloomA.setColorFilter(filter);
         bloomB.setColorFilter(filter);

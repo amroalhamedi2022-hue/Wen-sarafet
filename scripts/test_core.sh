@@ -86,7 +86,10 @@ python3 "$PROJECT_DIR/tests/category_audit_migration_v10.py"
 python3 "$PROJECT_DIR/tests/fx_form_source_contract.py"
 python3 "$PROJECT_DIR/tests/wen_200_strict_offline_contract.py"
 python3 "$PROJECT_DIR/tests/otp_capture_contract.py"
-python3 "$PROJECT_DIR/tests/wen_211_integrated_offline_visual_contract.py"
+# Historical byte-fingerprint contracts remain as release history. The current
+# gate permits only the owner's three explicitly requested v2.2.6 fixes.
+echo "INFO: running v2.2.6 three-fix scoped integration guard"
+python3 "$PROJECT_DIR/tests/wen_226_three_fix_contract.py"
 
 python3 "$PROJECT_DIR/tests/split_debt_schema_v11.py"
 
@@ -160,6 +163,12 @@ python3 "$PROJECT_DIR/tests/debt_safe_zone_contract.py"
 
 python3 "$PROJECT_DIR/tests/mixed_currency_transfer_ui_contract.py"
 python3 "$PROJECT_DIR/tests/debt_cashflow_integrity_contract.py"
+compile \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/FinanceRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/NonNegativeBalanceRules.java" \
+  "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/BalanceReclassificationRules.java" \
+  "$PROJECT_DIR/tests/BalanceReclassificationRulesTest.java"
+java -cp "$OUT_DIR" BalanceReclassificationRulesTest
 python3 "$PROJECT_DIR/tests/debt_audit_history_contract.py"
 python3 "$PROJECT_DIR/tests/captured_import_atomicity_contract.py"
 python3 "$PROJECT_DIR/tests/financial_safe_zone_guard.py"
@@ -169,6 +178,7 @@ compile \
   "$PROJECT_DIR/tests/PalestinianMobileNumberTest.java"
 java -cp "$OUT_DIR" PalestinianMobileNumberTest
 python3 "$PROJECT_DIR/tests/widget_contact_picker_contract.py"
+python3 "$PROJECT_DIR/tests/transaction_detail_scroll_contract.py"
 
 compile \
   "$PROJECT_DIR/app/src/main/java/app/wensarafet/tracker/Money.java" \

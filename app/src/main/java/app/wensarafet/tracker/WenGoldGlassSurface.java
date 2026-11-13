@@ -11,11 +11,11 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LayerDrawable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
-import com.example.liquidglass.LiquidGlassView;
 
 /**
  * Opt-in REAL liquid-glass material for the three GOLD themes (25, 26, 27).
@@ -70,97 +70,18 @@ final class WenGoldGlassSurface {
         Context context=content.getContext();
         if (!enabled(context)) return content;
 
-        FrameLayout host=new FrameLayout(context);
-        // Preserve caller-provided LinearLayout.LayoutParams, weight and
-        // margins exactly, especially the three financial statistic cards.
-        ViewGroup.LayoutParams originalParams=content.getLayoutParams();
-        if(originalParams!=null)host.setLayoutParams(originalParams);
-        host.setClipChildren(false);
-        host.setClipToPadding(false);
-        host.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-
-        // Recover the same passive drawable under the optical glass. Removing
-        // the solid card background from its TEXT child is essential: an
-        // opaque content layer would conceal every refracted pixel below it.
+        // Existing hierarchy used a nested FrameLayout + an extra specular
+        // View per card. Combine those exact visual layers inside the CARD's
+        // background itself: fewer View nodes, measure/layout passes and
+        // render nodes, same paint order behind the data-bearing children.
         Drawable original=content.getBackground();
-        // Preserve the old visual drawable as a subtle warm optical underlay,
-        // never a thick opaque plastic surface blocking live refraction.
-        // Each card owns its own Drawable instance; mutate() prevents bleed
-        // into sibling tiles and old themes.
-        if (original != null) {
-            Drawable underlay=original.mutate();
-            underlay.setAlpha(Ui.themeIndex(context)==27 ? 32 : 24);
-            host.setBackground(underlay);
-        }
-        content.setBackground(null);
-        // The old tile's rectangular elevation outline leaked beneath the
-        // rounded optical glass and created a square press/shadow artifact.
-        // Only the passive visual elevation changes; host still forwards
-        // original accessibility and click behavior to its real content.
-        content.setElevation(0f);
-        // Repeated statistic tiles keep true shader refraction and edge light,
-        // but avoid six simultaneous expensive live-blur/aberration passes.
-        LiquidGlassView glass=buildGlass(context,radiusDp);
-        host.addView(glass,new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
-        View specular=new View(context);
-        specular.setBackground(new Specular(context,Ui.themeIndex(context),radiusDp));
-        specular.setClickable(false);
-        specular.setFocusable(false);
-        specular.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        host.addView(specular,new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
-        host.addView(content,new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
-        bindBackdrop(host,glass);
-        return host;
-    }
-
-    private static LiquidGlassView buildGlass(Context context, int radiusDp) {
-        LiquidGlassView glass=new LiquidGlassView(context);
-        glass.setClickable(false);
-        glass.setFocusable(false);
-        glass.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        final float density=context.getResources().getDisplayMetrics().density;
-        final int theme=Ui.themeIndex(context);
-        // Native SDF lens is a single GPU pass on Android 13+. Do not insert
-        // bitmap snapshots, per-frame shader allocations or animation timers.
-        glass.setUseShaderPipeline(true);
-        glass.setEnableDynamicBackground(false);
-        glass.setEnableBackdropBlur(false);
-        glass.setBlurAmount(0f);
-        glass.setEnableChromaticAberration(false);
-        glass.setEnablePressEffect(false);
-        glass.setEnableShadow(false);
-        glass.setEnableEdgeHighlight(true);
-        glass.setCornerRadius(radiusDp*density);
-        glass.setBevelWidth((theme==27 ? 12.0f : 14.0f)*density);
-        glass.setRefractionHeight((theme==27 ? 28f : 35f)*density);
-        glass.setRefractionFalloff(2.35f);
-        glass.setDispersionStrength(0f);
-        glass.setDisplacementScale(35f);
-        glass.setEdgeSoftness(2.0f*density);
-        glass.setAberrationIntensity(0f);
-        glass.setSaturation(111f);
-        glass.setGlassTint(theme==27?0xFFFFEAD1:0xFFFFD6A0,
-                theme==27?.018f:.020f);
-        glass.setEdgeHighlightBorderWidth(.8f*density);
-        glass.setEdgeHighlightOpacity(theme==27?55f:47f);
-        return glass;
-    }
-
-    private static void bindBackdrop(View host,LiquidGlassView glass) {
-        host.post(() -> {
-            if (!host.isAttachedToWindow()) return;
-            View target=host.getRootView().findViewWithTag(BACKDROP_TAG);
-            if (target!=null && target.isAttachedToWindow() && target!=glass) {
-                glass.setBackdropSource(target);
-            } else {
-                // A screen mounted outside the home has no tagged backdrop.
-                // Sample the decorated parent as the existing lens does.
-                android.util.Log.w("WenGoldGlass","Backdrop not mounted; fallback surface");
-            }
-        });
+        if(original==null)return content;
+        Drawable optics=new Specular(context,Ui.themeIndex(context),radiusDp);
+        LayerDrawable preservedOptics=new LayerDrawable(
+                new Drawable[]{original.mutate(),optics});
+        content.setBackground(preservedOptics);
+        content.setElevation(0f); // the original optical host had no elevation
+        return content;
     }
 
     /** Paint only top 15% + one perimeter stroke; cached until bounds change. */

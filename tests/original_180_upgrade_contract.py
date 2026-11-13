@@ -17,8 +17,8 @@ assert "MessageDigest.isEqual(RELEASE_CERT_SHA256, actual)" in integrity
 assert "FLAG_DEBUGGABLE" in integrity
 assert "getApkContentsSigners()" in integrity
 assert 'applicationId "app.wensarafet.tracker"' in gradle
-assert re.search(r"versionCode\s+29\b", gradle)
-assert 'versionName "2.1"' in gradle
+assert re.search(r"versionCode\s+32\b", gradle)
+assert 'versionName "2.2.6"' in gradle
 assert 'applicationIdSuffix ".recovered.debug"' in gradle
 assert "minifyEnabled true" in gradle
 assert "debuggable false" in gradle
@@ -30,4 +30,4 @@ assert "if (!InstallationIdentity.provesPossession(context) && !InstallationIden
 assert 'ALIAS = "wen_sarafet_installation_identity_v2"' in identity
 assert 'PREFS = "license_state"' in license_manager
 assert 'TOKEN = "activation_token"' in license_manager
-print("Original180UpgradeContract: original certificate, package, keystore identity and license retained; audited version 2.1; no runtime bypass")
+print("Original180UpgradeContract: original certificate, package, keystore identity and license retained; audited version 2.2.6; no runtime bypass")
