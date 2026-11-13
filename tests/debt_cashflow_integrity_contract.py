@@ -107,6 +107,13 @@ for start,required in paths.items():
     for check in required:
         assert check in segment,(start,check)
 
+debt_reclassify=src.split("public void reclassifyTransactionAsDebt(",1)[1].split(
+    "public void updateDebtTransaction(",1)[0]
+assert "BalanceReclassificationRules.netDelta(type, oldImpact, newImpact)" in debt_reclassify
+assert "if (netBalanceDelta != 0L) adjustBalance" in debt_reclassify
+assert "reverseBalanceEffect(" not in debt_reclassify
+assert "applyBalanceEffect(" not in debt_reclassify
+
 assert "return true; // Debt, repayment, and excluded spending are still cash outflows." in split
 assert "if (!affectsBalance)" in edit
 assert "return total;" in rules

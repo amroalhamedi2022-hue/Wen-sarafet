@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""No silent contacts permission, no unsafe USSD, and accessible widget picker."""
+"""No silent contacts permission, no unsafe USSD, and no person badge on widgets."""
 from pathlib import Path
 import xml.etree.ElementTree as ET
 root=Path(__file__).resolve().parents[1]
@@ -10,8 +10,7 @@ layout=root/"app/src/main/res/layout/widget_quick_action.xml"
 tree=ET.parse(layout)
 ns="{http://schemas.android.com/apk/res/android}"
 picker=[node for node in tree.iter() if node.attrib.get(ns+"id")=="@+id/widget_choose_contact"]
-assert len(picker)==1
-assert picker[0].attrib.get(ns+"contentDescription")=="اختيار جهة اتصال للتحويل"
+assert len(picker)==0
 assert "android.permission.READ_CONTACTS" not in manifest
 assert "android.permission.WRITE_CONTACTS" not in manifest
 assert "Intent.ACTION_PICK" in java
@@ -23,13 +22,8 @@ assert "ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME" in java
 assert "if(numberIndex<0)" in java
 assert "pendingContactPhone.setText(mobile.substring(2))" in java
 assert 'PalestinianMobileNumber.normalize("05"+tail)' in java
-assert "new Intent(context,QuickActionActivity.class)" in widget
-assert '"pick_contact",true' in widget
-assert "R.id.widget_choose_contact" in widget
-assert '"jawwal_friend".equals(action())' in widget
-assert '"jawwal_merchant".equals(action())' in widget
-assert '"palpay".equals(action())' in widget
-assert "if(canChooseContact)" in widget
+assert "widget_choose_contact" not in widget
+assert '"pick_contact",true' not in widget
 assert "views.setOnClickPendingIntent(R.id.widget_root, pending)" in widget
 assert ET.parse(root/"app/src/main/res/drawable/widget_contact_chip.xml") is not None
 assert "Intent.ACTION_GET_CONTENT" in java
@@ -61,4 +55,4 @@ probe=[a for a in debug_manifest.iter("activity")
        if a.attrib.get(ns+"name")==".ContactPickerSmokeActivity"]
 assert len(probe)==1
 assert probe[0].attrib.get(ns+"exported")=="true"
-print("WidgetContactPickerContract PASS: contact URI picker, permission-safe, small widget button, normalizer")
+print("WidgetContactPickerContract PASS: no person badge, in-activity picker remains permission-safe")

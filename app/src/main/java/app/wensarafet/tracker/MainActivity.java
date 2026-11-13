@@ -1326,9 +1326,14 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams deleteParams = new LinearLayout.LayoutParams(Ui.dp(this, 92), Ui.dp(this, 48)); deleteParams.setMargins(Ui.dp(this, 4), Ui.dp(this, 10), 0, 0);
         actions.addView(edit, editParams); actions.addView(delete, deleteParams); content.addView(actions);
 
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(content, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("تفاصيل العملية")
-                .setView(content)
+                .setView(scroll)
                 .setPositiveButton("إغلاق", null).create();
         edit.setOnClickListener(v -> { dialog.dismiss(); showTransactionEditMenu(tx); });
         delete.setOnClickListener(v -> { dialog.dismiss(); confirmDeleteTransaction(tx); });
@@ -1428,7 +1433,8 @@ public final class MainActivity extends Activity {
         if(FinanceRules.DEBT_RECEIVABLE.equals(tx.debtDirection))receivable.setChecked(true);else payable.setChecked(true);
         form.addView(label("اتجاه الدين"));form.addView(directionGroup,fieldParams());
         form.addView(Ui.text(this,"تغيير التصنيف يفصل العملية عن دفتر الدين، لكنه لا يغيّر المال المدفوع أو المستلم من الحساب. إذا وُجد سداد مرتبط بأصل الدين فلن يُسمح بفك الارتباط حتى تراجعه.",12,Ui.MUTED,false));
-        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تعديل حركة الدين").setView(form).setNeutralButton("تغيير التصنيف",null).setNegativeButton("إلغاء",null).setPositiveButton("حفظ",null).create();
+        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.addView(form);
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("تعديل حركة الدين").setView(scroll).setNeutralButton("تغيير التصنيف",null).setNegativeButton("إلغاء",null).setPositiveButton("حفظ",null).create();
         dialog.setOnShowListener(x->{dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{Long value=Money.parseMinor(amount.getText().toString());if(value==null||value<=0)throw new IllegalArgumentException("اكتب مبلغًا صحيحًا");String direction=receivable.isChecked()?FinanceRules.DEBT_RECEIVABLE:FinanceRules.DEBT_PAYABLE;db.updateDebtTransaction(tx.id,value,people.get(person.getSelectedItemPosition()).id,direction);dialog.dismiss();showMain(transactionsTab);}catch(Exception error){Toast.makeText(this,error.getMessage(),Toast.LENGTH_LONG).show();}});
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{dialog.dismiss();showCategoryPicker(tx,tx.type);});});dialog.show();
     }
