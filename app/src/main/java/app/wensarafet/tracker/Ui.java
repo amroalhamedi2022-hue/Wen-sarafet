@@ -36,7 +36,12 @@ public final class Ui {
             "Liquid Aurora", "Liquid Fusion",
             "زجاج سائل أزرق", "فقاعات أكوا", "أورورا ليلية", "لؤلؤي متجمد",
             "Prism Glow • زجاج نيوني", "Golden Bloom • زجاج شمسي",
-            "Royal Gold • الذهب الملكي"
+            "Royal Gold • الذهب الملكي",
+            "Royal Dark Gold • ذهبي ملكي داكن",
+            "Imperial Dark Gold • ذهبي إمبراطوري",
+            "Champagne Gold • شامبانيا ملكي فاتح",
+            "Soft Orange-Green Glass • زجاج برتقالي أخضر",
+            "Purple-Pink Liquid Glass • زجاج بنفسجي وردي"
     };
 
     // brand, dark, soft, background, surface, text, muted, expense, income, accent1, accent2, accent3
@@ -66,7 +71,13 @@ public final class Ui {
             {0xFFAD3CDB,0xFF62257F,0xFFF4E3FC,0xFFFAF0FC,0xFFFFFAFF,0xFF291638,0xFF795D87,0xFFC94376,0xFF238D86,0xFF8244DA,0xFFF471B9,0xFF8B88EE},
             {0xFFCE873E,0xFF87502D,0xFFFFE9C8,0xFFFFF7EA,0xFFFFFDF5,0xFF3D3028,0xFF857367,0xFFCA5060,0xFF54866D,0xFFB993BC,0xFFF8AA67,0xFF95BDA6},
             // Royal Gold: deep obsidian and champagne-metallic accents.
-            {0xFFDCB56D,0xFF8C632D,0xFF3B3020,0xFF121418,0xFF23252A,0xFFFAEFCF,0xFFC0AD85,0xFFEF6A69,0xFF7CC6A1,0xFFEAD097,0xFFF4C773,0xFFA98440}
+            {0xFFDCB56D,0xFF8C632D,0xFF3B3020,0xFF121418,0xFF23252A,0xFFFAEFCF,0xFFC0AD85,0xFFEF6A69,0xFF7CC6A1,0xFFEAD097,0xFFF4C773,0xFFA98440},
+            // Five owner-approved additions only: indices 0-24 remain byte-identical.
+            {0xFFE5BF77,0xFF907040,0xFF3E372D,0xFF0C1119,0xFF252B32,0xFFFFF3D7,0xFFD0BF9E,0xFFE97075,0xFF77BEA3,0xFFF2D59B,0xFFE6BC79,0xFFB08B50},
+            {0xFFD6BE9A,0xFF80725E,0xFF3E3D3B,0xFF10151F,0xFF272F3B,0xFFF7EBDD,0xFFC9BEAB,0xFFEB747B,0xFF78BFA7,0xFFE9D4B3,0xFFD1B48B,0xFF9C8D7A},
+            {0xFFB99058,0xFF8E683E,0xFFFFF0D6,0xFFF8F6F0,0xFFFFFFFF,0xFF41372D,0xFF847766,0xFFD15C65,0xFF4B8971,0xFFB99058,0xFFE3C691,0xFFFFE8BA},
+            {0xFFD48C61,0xFF9D6449,0xFFFFE6D3,0xFFFFF5EF,0xFFFFFFFF,0xFF403831,0xFF7B766D,0xFFD06064,0xFF4E9679,0xFFCF9566,0xFFA9CBA9,0xFFF4CBA7},
+            {0xFFB77ACA,0xFF7E509C,0xFFF4DEF6,0xFFF9F2FC,0xFFFFFFFF,0xFF382B47,0xFF7B6C84,0xFFC75C83,0xFF4C8B84,0xFFAC73C2,0xFFF0B8DD,0xFFC9B9F2}
     };
 
     private static final int[][] THEME_LAYERS = {
@@ -94,7 +105,12 @@ public final class Ui {
             {0xFF6A719F,0xFFACB7D8,0xFFE0DFFD,0xFFF8F9FF},
             {0xFF782A9E,0xFFC435B0,0xFFE64CC2,0xFF7956EE},
             {0xFFB86E39,0xFFF2AC65,0xFFFBD6A0,0xFF99B9A1},
-            {0xFF0E121A,0xFF3B3021,0xFF9D7735,0xFFFFDFA1}
+            {0xFF0E121A,0xFF3B3021,0xFF9D7735,0xFFFFDFA1},
+            {0xFF0B1018,0xFF303237,0xFF957443,0xFFF9D99E},
+            {0xFF0D1520,0xFF343E4B,0xFF8C8074,0xFFF2DEC0},
+            {0xFFF5EBDD,0xFFF7F5F0,0xFFE8D0A1,0xFFFFFAED},
+            {0xFFF8DCCB,0xFFFFF1E3,0xFFB9D9BD,0xFFFBECCE},
+            {0xFFE4D3EE,0xFFF9F1FB,0xFFD6B5E8,0xFFFFD5EF}
     };
 
 
@@ -145,6 +161,10 @@ public final class Ui {
         if (isReferenceGlassTheme(context))
             return referenceGlass(context, app.wensarafet.glass.WenReferenceGlassDrawable.Surface.ACCENT);
         if (themeIndex(context) < 16) return gradient(BRAND_DARK, BRAND, radiusDp, context);
+        // The existing FAB is the only consumer of accent radius 24. Keep
+        // every card, button, and the three newer reference palettes intact.
+        if (themeIndex(context) >= 16 && themeIndex(context) <= 21 && radiusDp == 24)
+            return new app.wensarafet.glass.WenFabBubbleDrawable(context, SKY, DARK);
         return new app.wensarafet.glass.WenGlassDrawable(context, dp(context, radiusDp),
                 mix(BRAND_DARK, BRAND, .18f), mix(BRAND, VIOLET, .28f), SKY, true);
     }
@@ -164,7 +184,8 @@ public final class Ui {
         int selected = themeIndex(context);
         return selected == app.wensarafet.glass.WenReferenceGlassDrawable.PRISM
                 || selected == app.wensarafet.glass.WenReferenceGlassDrawable.BLOOM
-                || selected == app.wensarafet.glass.WenReferenceGlassDrawable.ROYAL;
+                || selected == app.wensarafet.glass.WenReferenceGlassDrawable.ROYAL
+                || app.wensarafet.glass.WenPremiumLiquidDrawable.supports(selected);
     }
 
     public static android.graphics.drawable.Drawable glassFloatingAddBackground(Context context) {
@@ -173,8 +194,12 @@ public final class Ui {
 
     private static android.graphics.drawable.Drawable referenceGlass(Context context,
             app.wensarafet.glass.WenReferenceGlassDrawable.Surface surface) {
+        int selected = themeIndex(context);
+        if (app.wensarafet.glass.WenPremiumLiquidDrawable.supports(selected))
+            return new app.wensarafet.glass.WenPremiumLiquidDrawable(context,
+                    selected, surface, DARK);
         return new app.wensarafet.glass.WenReferenceGlassDrawable(context,
-                themeIndex(context), surface, DARK);
+                selected, surface, DARK);
     }
 
     /** Liquid designs are opt-in; existing non-Liquid themes are byte-for-byte visual fallbacks. */
@@ -238,8 +263,11 @@ public final class Ui {
         if (theme < 0 || theme >= THEMES.length) theme = 0;
         // Midnight Aurora is intentionally dark even when the device uses light mode.
         // The Activity already derives system-bar contrast and native dialog theme from DARK.
-        DARK = theme == 20 || theme == 24 || (context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
-                == Configuration.UI_MODE_NIGHT_YES;
+        // The three new light palettes remain legible on dark-mode phones;
+        // all prior 25 themes keep their original dark-mode behaviour.
+        DARK = theme == 20 || theme == 24 || theme == 25 || theme == 26
+                || (theme < 25 && (context.getResources().getConfiguration().uiMode
+                        & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES);
         int[] p = THEMES[theme];
         if (DARK) {
             int[] layers = THEME_LAYERS[theme];
@@ -406,6 +434,21 @@ public final class Ui {
 
     public static void animateScreen(View view) {
         if (Boolean.TRUE.equals(view.getTag()) || !android.animation.ValueAnimator.areAnimatorsEnabled()) return;
+        if (isLiquidTheme(view.getContext())) {
+            // Sandbox visual timing: one short, restrained arrival rather
+            // than a second long page-level slide stacked with card motion.
+            // The content is already attached and every control stays live.
+            view.animate().cancel();
+            view.setTranslationX(0f);
+            view.setScaleX(1f);
+            view.setScaleY(1f);
+            view.setAlpha(.86f);
+            view.setTranslationY(dp(view.getContext(), 3));
+            view.animate().alpha(1f).translationY(0f).setDuration(115)
+                    .setInterpolator(new PathInterpolator(.2f, .8f, .2f, 1f)).start();
+            return;
+        }
+        // Exactly the previous 0–15 theme animation.
         view.setAlpha(0f);
         view.setTranslationX(dp(view.getContext(), 18));
         view.setScaleX(0.992f); view.setScaleY(0.992f);
@@ -415,37 +458,102 @@ public final class Ui {
 
     public static void animateChildren(ViewGroup group) {
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
-        int count = Math.min(group.getChildCount(), 10);
+        // Sandbox visual parity for Liquid themes only: animate the leading
+        // two cards quickly instead of stacking ten 300ms transitions.
+        // Every child remains present and enabled. Legacy 0–15: unchanged.
+        boolean liquid = isLiquidTheme(group.getContext());
+        int count = Math.min(group.getChildCount(), liquid ? 2 : 10);
         for (int i = 0; i < count; i++) {
-            View child = group.getChildAt(i); child.setAlpha(0f); child.setTranslationY(dp(group.getContext(), 10));
-            child.animate().alpha(1f).translationY(0).setStartDelay(45L + i * 28L).setDuration(300)
-                    .setInterpolator(new PathInterpolator(0.2f, 0.75f, 0.25f, 1f)).start();
+            View child = group.getChildAt(i);
+            child.animate().cancel();
+            child.setAlpha(0f);
+            child.setTranslationY(dp(group.getContext(), liquid ? 6 : 10));
+            child.animate().alpha(1f).translationY(0)
+                    .setStartDelay(liquid ? i * 10L : 45L + i * 28L)
+                    .setDuration(liquid ? 125 : 300)
+                    .setInterpolator(new PathInterpolator(.2f, .75f, .25f, 1f)).start();
         }
     }
 
     public static void pressAnimation(View view) {
+        if (isLiquidTheme(view.getContext())) {
+            // Restore the sandbox's true circular FAB pressure-morph, only
+            // for the original glass palettes 16–21. Its listener NEVER
+            // consumes input; the exact original click and long-click remain.
+            if (view.getBackground() instanceof app.wensarafet.glass.WenFabBubbleDrawable
+                    && (view.isClickable() || view.isLongClickable())) {
+                final app.wensarafet.glass.WenFabBubbleDrawable bubble =
+                        (app.wensarafet.glass.WenFabBubbleDrawable) view.getBackground();
+                // A lightweight over-glyph optical crown from the sandbox.
+                // ViewOverlay is visual-only and cannot receive any touch.
+                final app.wensarafet.glass.WenFabOpticalCrownDrawable crown =
+                        new app.wensarafet.glass.WenFabOpticalCrownDrawable(
+                                view.getResources().getDisplayMetrics().density);
+                crown.setBounds(0, 0, view.getWidth(), view.getHeight());
+                view.getOverlay().add(crown);
+                view.addOnLayoutChangeListener((v, left, top, right, bottom,
+                        oldLeft, oldTop, oldRight, oldBottom) ->
+                        crown.setBounds(0, 0, right - left, bottom - top));
+                final android.animation.ValueAnimator[] morph = {null};
+                view.setOnTouchListener((v, e) -> {
+                    final int action = e.getActionMasked();
+                    if (action != MotionEvent.ACTION_DOWN
+                            && action != MotionEvent.ACTION_UP
+                            && action != MotionEvent.ACTION_CANCEL) return false;
+                    boolean down = action == MotionEvent.ACTION_DOWN;
+                    if (morph[0] != null) morph[0].cancel();
+                    if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                        bubble.setPress(0f);
+                        crown.setPress(0f);
+                        v.setScaleX(1f);
+                        v.setScaleY(1f);
+                        return false;
+                    }
+                    morph[0] = android.animation.ValueAnimator.ofFloat(
+                            bubble.getPress(), down ? 1f : 0f);
+                    morph[0].setDuration(down ? 155L : 245L);
+                    morph[0].setInterpolator(new PathInterpolator(.2f, .8f, .2f, 1f));
+                    morph[0].addUpdateListener(a -> {
+                        float t = (Float) a.getAnimatedValue();
+                        bubble.setPress(t);
+                        crown.setPress(t);
+                    });
+                    morph[0].start();
+                    v.animate().cancel();
+                    v.animate().scaleX(down ? .94f : 1f).scaleY(down ? .94f : 1f)
+                            .setDuration(down ? 90L : 225L).start();
+                    return false; // Never steal existing FAB click/hold actions.
+                });
+                view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                    @Override public void onViewAttachedToWindow(View v) {
+                        crown.setBounds(0, 0, v.getWidth(), v.getHeight());
+                        v.getOverlay().add(crown);
+                    }
+                    @Override public void onViewDetachedFromWindow(View v) {
+                        if (morph[0] != null) morph[0].cancel();
+                        bubble.setPress(0f);
+                        crown.setPress(0f);
+                        v.getOverlay().remove(crown);
+                        v.animate().cancel();
+                        v.setScaleX(1f);
+                        v.setScaleY(1f);
+                    }
+                });
+                return;
+            }
+            // Reference gold/pink themes keep their established material
+            // and use the pre-existing non-consuming Liquid press engine.
+            app.wensarafet.glass.GlassMotion.bindPress(view, SKY);
+            return;
+        }
         view.setOnTouchListener((v, event) -> {
             if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return false;
-            if (isLiquidTheme(v.getContext())) {
-                // Liquid-bubble feedback is interaction-only. No idle clock or looping frame callback.
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    v.animate().cancel();
-                    v.animate().scaleX(.955f).scaleY(.955f).setDuration(90)
-                            .setInterpolator(new PathInterpolator(.2f, .8f, .2f, 1f)).start();
-                } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                    v.animate().cancel();
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(230)
-                            .setInterpolator(new android.view.animation.OvershootInterpolator(1.35f)).start();
-                } else if (event.getAction() == MotionEvent.ACTION_CANCEL) {
-                    v.animate().cancel();
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(90).start();
-                }
-            } else {
-                // Preserve exact existing touch behavior for the 16 original themes.
-                if (event.getAction() == MotionEvent.ACTION_DOWN)
-                    v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(90).start();
-                else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL)
-                    v.animate().scaleX(1f).scaleY(1f).setDuration(140).start();
+            // Preserve exact existing touch behavior for the 16 original themes.
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(90).start();
+            } else if (event.getAction() == MotionEvent.ACTION_UP
+                    || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                v.animate().scaleX(1f).scaleY(1f).setDuration(140).start();
             }
             return false;
         });
