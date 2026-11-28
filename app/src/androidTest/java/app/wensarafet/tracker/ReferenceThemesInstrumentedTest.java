@@ -56,7 +56,7 @@ public final class ReferenceThemesInstrumentedTest {
     @Test public void prismGlowHasFloatingVioletBarAndKeepsLiquidInteractions() {
         onUi(() -> underTheme(WenReferenceGlassDrawable.PRISM, () -> {
             Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
-            assertEquals(25, Ui.THEME_NAMES.length);
+            assertEquals(30, Ui.THEME_NAMES.length);
             assertTrue(Ui.THEME_NAMES[22].contains("Prism Glow"));
             assertTrue(Ui.isLiquidTheme(ctx));
             assertTrue(Ui.isReferenceGlassTheme(ctx));
@@ -95,7 +95,7 @@ public final class ReferenceThemesInstrumentedTest {
     @Test public void royalGoldRendersMetallicObsidianWithoutChangingNativeLiquid() {
         onUi(() -> underTheme(WenReferenceGlassDrawable.ROYAL, () -> {
             Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
-            assertEquals(25, Ui.THEME_NAMES.length);
+            assertEquals(30, Ui.THEME_NAMES.length);
             assertTrue(Ui.THEME_NAMES[24].contains("Royal Gold"));
             assertEquals(24, Ui.themeIndex(ctx));
             assertTrue("Royal Gold must have dark premium contrast", Ui.DARK);
@@ -139,4 +139,40 @@ public final class ReferenceThemesInstrumentedTest {
             assertTrue(Ui.isLiquidTheme(ctx));
         }));
     }
+    @Test public void fiveOwnerApprovedPremiumPalettesRenderWithoutTouchingAccounts() {
+        for (int index = 25; index <= 29; index++) {
+            final int theme = index;
+            onUi(() -> underTheme(theme, () -> {
+                Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
+                assertEquals(30, Ui.THEME_NAMES.length);
+                assertTrue(Ui.isReferenceGlassTheme(ctx));
+                assertTrue(Ui.isLiquidTheme(ctx));
+                assertEquals("Only the two gold-dark variants force dark mode",
+                        theme <= 26, Ui.DARK);
+                assertTrue(Ui.glassScreenBackground(ctx)
+                        instanceof app.wensarafet.glass.WenPremiumLiquidDrawable);
+                Bitmap background = draw(Ui.glassScreenBackground(ctx), 480, 800);
+                Bitmap card = draw(Ui.glassBalanceBackground(ctx, 22), 380, 150);
+                Bitmap nav = draw(Ui.glassNavigationBackground(ctx, 26), 440, 88);
+                Bitmap plus = draw(Ui.glassFloatingAddBackground(ctx), 140, 140);
+                assertEquals("Floating add remains a true circle", 0,
+                        Color.alpha(plus.getPixel(0, 0)));
+                assertEquals("Add symbol always has a solid legible centre", 255,
+                        Color.alpha(plus.getPixel(70, 70)));
+                assertTrue("Navigation glass is readable", Color.alpha(
+                        nav.getPixel(220, 44)) > 200);
+                assertTrue("Balance tiles keep a readable fill", Color.alpha(
+                        card.getPixel(190, 75)) > 220);
+                assertNotEquals("Ambient backdrop must have depth",
+                        background.getPixel(65, 75), background.getPixel(400, 730));
+                assertNotEquals("Shimmering glass must not be flat",
+                        nav.getPixel(55, 22), nav.getPixel(380, 67));
+                background.recycle();
+                card.recycle();
+                nav.recycle();
+                plus.recycle();
+            }));
+        }
+    }
+
 }

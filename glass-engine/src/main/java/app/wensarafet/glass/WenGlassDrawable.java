@@ -40,6 +40,8 @@ public final class WenGlassDrawable extends Drawable {
     private final Paint outline = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint innerRim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bubble = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint prismRim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint crown = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF surface = new RectF();
     private final RectF border = new RectF();
     private final RectF innerBorder = new RectF();
@@ -75,6 +77,10 @@ public final class WenGlassDrawable extends Drawable {
         innerRim.setStyle(Paint.Style.STROKE);
         innerRim.setStrokeWidth(Math.max(density * .8f, .8f));
         bubble.setStyle(Paint.Style.FILL);
+        prismRim.setStyle(Paint.Style.STROKE);
+        prismRim.setStrokeWidth(Math.max(density * 1.65f, 1f));
+        crown.setStyle(Paint.Style.STROKE);
+        crown.setStrokeWidth(Math.max(density * 2.4f, 1.4f));
         applyAlpha();
     }
 
@@ -105,10 +111,15 @@ public final class WenGlassDrawable extends Drawable {
         innerBorder.inset(density * 2.4f, density * 2.4f);
 
         // Every shader, path and rect is cached when the size changes, not on draw().
+        // Keep the actual background visible through the frosted material.
+        // Opaque branded gradients made every card look like flat blue plastic.
+        final int bodyAlpha = strong ? 202 : 221;
         fill.setShader(new LinearGradient(surface.left, surface.top,
                 surface.right, surface.bottom,
-                new int[]{startColor, blend(startColor, endColor, .45f), endColor},
-                new float[]{0f, .56f, 1f}, Shader.TileMode.CLAMP));
+                new int[]{opacity(blend(startColor, Color.WHITE, strong ? .22f : .12f), bodyAlpha),
+                        opacity(blend(startColor, endColor, .45f), bodyAlpha - 20),
+                        opacity(endColor, bodyAlpha)},
+                new float[]{0f, .49f, 1f}, Shader.TileMode.CLAMP));
 
         float ambientRadius = Math.max(density, Math.max(w, h) * .88f);
         ambient.setShader(new RadialGradient(
@@ -144,10 +155,20 @@ public final class WenGlassDrawable extends Drawable {
                 new int[]{opacity(Color.WHITE, 240), opacity(accentColor, 100),
                         opacity(Color.WHITE, 155)},
                 new float[]{0f, .52f, 1f}, Shader.TileMode.CLAMP));
-        innerRim.setColor(blend(startColor, Color.BLACK, .22f));
+        // Genuine bright/dark lens-edge contrast and angle-dependent dispersion.
+        innerRim.setColor(Color.WHITE);
+        prismRim.setShader(new LinearGradient(surface.left, surface.top,
+                surface.right, surface.bottom,
+                new int[]{0xCCB4F6FF, 0x9FD5C8FF, 0xABFEECC4,
+                        0x729BE9FF, 0xDAFFFFFF}, null, Shader.TileMode.CLAMP));
+        crown.setShader(new LinearGradient(surface.left, surface.top,
+                surface.right, surface.bottom,
+                new int[]{0xE8FFFFFF, 0x9CFFFFFF, 0x09FFFFFF,
+                        0x4FDDF7FF, 0xADFFFFFF}, null, Shader.TileMode.CLAMP));
 
         // One static glass bubble only on wide hero surfaces, away from RTL labels.
-        showLens = strong && w > h * 3.1f && !lowPower;
+        // No unrelated floating orb on cards. The material is the card itself.
+        showLens = false;
         lensX = surface.left + w * .075f;
         lensY = surface.top + h * .34f;
         lensRadius = Math.min(h * .19f, w * .045f);
@@ -180,6 +201,12 @@ public final class WenGlassDrawable extends Drawable {
         }
         float borderRadius = Math.max(0f, radiusPx - outline.getStrokeWidth() * .5f);
         canvas.drawRoundRect(border, borderRadius, borderRadius, outline);
+        if (!lowPower) {
+            canvas.drawRoundRect(border, borderRadius, borderRadius, prismRim);
+            canvas.drawRoundRect(innerBorder,
+                    Math.max(0f, radiusPx - density * 2.4f),
+                    Math.max(0f, radiusPx - density * 2.4f), crown);
+        }
         if (!lowPower && strong) {
             float innerRadius = Math.max(0f, radiusPx - density * 2.4f);
             canvas.drawRoundRect(innerBorder, innerRadius, innerRadius, innerRim);
@@ -191,9 +218,11 @@ public final class WenGlassDrawable extends Drawable {
         ambient.setAlpha(alpha);
         glint.setAlpha(Math.round(alpha * (strong ? .25f : .19f)));
         wave.setAlpha(Math.round(alpha * (strong ? .17f : .10f)));
-        outline.setAlpha(Math.round(alpha * (strong ? .79f : .62f)));
-        innerRim.setAlpha(Math.round(alpha * .20f));
+        outline.setAlpha(Math.round(alpha * (strong ? .46f : .48f)));
+        innerRim.setAlpha(Math.round(alpha * .16f));
         bubble.setAlpha(Math.round(alpha * .66f));
+        prismRim.setAlpha(Math.round(alpha * (strong ? .60f : .42f)));
+        crown.setAlpha(Math.round(alpha * (strong ? .69f : .54f)));
     }
 
     @Override public void setAlpha(int value) {
@@ -212,6 +241,8 @@ public final class WenGlassDrawable extends Drawable {
         outline.setColorFilter(filter);
         innerRim.setColorFilter(filter);
         bubble.setColorFilter(filter);
+        prismRim.setColorFilter(filter);
+        crown.setColorFilter(filter);
         invalidateSelf();
     }
 
